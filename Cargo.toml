@@ -1,0 +1,10 @@
+[package]
+name = "sdo-tool"
+version = "0.1.0"
+authors = ["daniel"]
+edition = "2018"
+
+[dependencies]
+nom = "6.0.0-alpha1"
+structopt = "0.3"
+anyhow = "1.0"
