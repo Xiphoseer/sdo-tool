@@ -1,12 +1,17 @@
 use nom::{
     bytes::complete::{tag, take, take_while},
     combinator::{map, map_res},
+    error::ErrorKind,
     multi::{count, length_data, many0},
     number::complete::{be_u16, be_u32, be_u8},
-    IResult, error::ErrorKind,
+    IResult,
 };
 
-use crate::{font::antikro, Buf, util::{Bytes32, Bytes16}};
+use crate::{
+    font::antikro,
+    util::{Bytes16, Bytes32},
+    Buf,
+};
 use std::borrow::Cow;
 
 /// A Signum! document container
@@ -100,22 +105,25 @@ pub fn parse_sysp(input: &[u8]) -> IResult<&[u8], SysP> {
     let (input, opts_3) = bytes16(input)?; // 0 == randausgleiche und Sperren
     let (input, opts_4) = bytes32(input)?; // 1 == nicht einrücken, absatzabstand mitkorrigieren
 
-    Ok((input, SysP {
-        space_width,
-        letter_spacing,
-        line_distance,
-        index_distance,
-        margin_left,
-        margin_right,
-        header,
-        footer,
-        page_length,
-        page_numbering,
-        format_options,
-        opts_2,
-        opts_3,
-        opts_4,
-    }))
+    Ok((
+        input,
+        SysP {
+            space_width,
+            letter_spacing,
+            line_distance,
+            index_distance,
+            margin_left,
+            margin_right,
+            header,
+            footer,
+            page_length,
+            page_numbering,
+            format_options,
+            opts_2,
+            opts_3,
+            opts_4,
+        },
+    ))
 }
 
 #[derive(Debug)]
@@ -226,20 +234,87 @@ pub fn parse_pbuf(input: &[u8]) -> IResult<&[u8], PBuf> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub struct Style {
+    pub underlined: bool,
+    pub footnote: bool,
+    pub sth1: bool,
+    pub bold: bool,
+    pub italic: bool,
+    pub sth2: bool,
+    pub small: bool,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Style {
+            underlined: false,
+            footnote: false,
+            sth1: false,
+            bold: false,
+            italic: false,
+            sth2: false,
+            small: false,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 /// A single text character
-pub enum Te {
-    Normal { char: char, width: u8, offset: u16 },
-    Break(u16),
-    Paragraph(u16),
-    Unknown(u16),
+pub struct Te {
+    pub char: char,
+    pub width: u8,
+    pub offset: u16,
+    pub style: Style,
+}
+
+/// The text buffer header
+#[derive(Debug)]
+pub struct TextBufferHeader {
+    pub lines_total: u32,
+    //pub a: Bytes16,
+    //pub b: u16,
+    //pub c: Bytes16,
+}
+
+pub fn parse_tebu_header(input: &[u8]) -> IResult<&[u8], TextBufferHeader> {
+    let (input, lines_total) = be_u32(input)?;
+    //let (input, a) = bytes16(input)?;
+    //let (input, b) = be_u16(input)?;
+    //let (input, c) = bytes16(input)?;
+
+    Ok((
+        input,
+        TextBufferHeader {
+            lines_total, //a, b, c
+        },
+    ))
 }
 
 /// The text buffer
 #[derive(Debug)]
 pub struct TeBu<'a> {
-    pub lines_total: u32,
-    pub first_page: FirstPage,
+    pub header: TextBufferHeader,
     pub lines: Vec<LineBuf<'a>>,
+}
+
+#[derive(Clone)]
+pub struct LineIter<'a>(pub &'a [u8]);
+
+impl<'a> Iterator for LineIter<'a> {
+    type Item = Result<LineBuf<'a>, nom::Err<(&'a [u8], ErrorKind)>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.is_empty() {
+            None
+        } else {
+            match parse_line_buf(self.0) {
+                Ok((rest, buf)) => {
+                    self.0 = rest;
+                    Some(Ok(buf))
+                }
+                Err(e) => Some(Err(e)),
+            }
+        }
+    }
 }
 
 fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
@@ -259,29 +334,51 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
         if cmd >= 0x8000 {
             Ok((
                 input,
-                Te::Normal {
+                Te {
                     char: decode(chr as u8),
                     width,
                     offset: val,
+                    style: Style::default(),
                 },
             ))
         } else {
-            let _style = (val & 0x30) >> 4;
+            let (input, extra) = be_u16(input)?;
+            let offset = extra & 0x07ff;
+
+            let underlined = val & 0x20 > 0;
+            let footnote = val & 0x02 > 0;
+            let sth1 = extra & 0x8000 > 0;
+            let bold = extra & 0x4000 > 0;
+            let italic = extra & 0x2000 > 0;
+            let sth2 = extra & 0x1000 > 0;
+            let small = extra & 0x0800 > 0;
+
+            Ok((
+                input,
+                Te {
+                    char: decode(chr as u8),
+                    width,
+                    offset,
+                    style: Style {
+                        underlined,
+                        footnote,
+                        sth1,
+                        bold,
+                        italic,
+                        sth2,
+                        small,
+                    },
+                },
+            ))
+
+            /*let _style = (val & 0x30) >> 4;
             let kind = val & 0x0f;
             match kind {
                 0 => {
-                    let (input, extra) = be_u16(input)?;
-                    let offset = extra & 0x0fff;
+
+
                     let _mod = (extra & 0xf000) >> 12;
-                    Ok((
-                        input,
-                        Te::Normal {
-                            char: decode(chr as u8),
-                            width,
-                            offset,
-                            // underlined
-                        },
-                    ))
+
                 }
                 2 => {
                     if chr > 0 {
@@ -293,74 +390,10 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
                 }
                 6 => Ok((input, Te::Paragraph(chr))),
                 _ => Ok((input, Te::Unknown(cmd))),
-            }
+            }*/
         }
-
-        /*let te = match key {
-            0 => {
-                return Ok((input, Te::K0(decode(val), val2, val3, w, s)));
-            }
-            1 => Te::K1(val),
-            4 => Te::K4(val),
-            12 => Te::NewPar(val),
-            64 => {
-                let (input, val2) = be_u16(input)?;
-                //let (input, val3) = be_u8(input)?;
-                let (w, _s) = if val < 128 {
-                    (
-                        crate::font::antikro::WIDTH[val as usize],
-                        crate::font::antikro::SKIP[val as usize],
-                    )
-                } else {
-                    (0xff, 0xff)
-                };
-                return Ok((input, Te::K64(decode(val), val2, w)));
-            }
-            _ if key & 0x80 == 0x80 => {
-                let d = (key & 0x7E) >> 1;
-                let (w, s) = if val < 128 {
-                    (
-                        crate::font::antikro::WIDTH[val as usize],
-                        crate::font::antikro::SKIP[val as usize],
-                    )
-                } else {
-                    (0xff, 0xff)
-                };
-                Te::V(decode(val), d, w, s)
-            }
-            _ => Te::U(key, val),
-        };
-        Ok((input, te))*/
     }
 }
-
-#[derive(Debug)]
-pub struct FirstPage {
-    pub a: Bytes16,
-    pub b: u16,
-    pub c: Bytes16,
-}
-
-/*pub struct PageSuffix {
-    pub line_distance: u16,
-    pub opts: Bytes32, // default: H2A000
-}*/
-
-pub fn parse_first_page(input: &[u8]) -> IResult<&[u8], FirstPage> {
-    let (input, a) = bytes16(input)?;
-    let (input, b) = be_u16(input)?;
-    let (input, c) = bytes16(input)?;
-
-    Ok((input, FirstPage { a, b, c }))
-}
-
-/*pub struct PageText {
-
-}
-
-pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
-    Ok((input, PageText {}))
-}*/
 
 #[derive(Debug, Copy, Clone)]
 pub struct LineBuf<'a> {
@@ -370,37 +403,58 @@ pub struct LineBuf<'a> {
 
 #[derive(Debug)]
 pub enum Line {
-    Zero(u16, u16),
+    Zero(Vec<Te>),
     Paragraph(Vec<Te>),
+    Paragraph1(Bytes16, Vec<Te>),
     Line(Vec<Te>),
     Line1(Bytes16, Vec<Te>),
+    Heading(Vec<Te>),
+    Some(Vec<Te>),
+    Heading2(Vec<Te>),
     FirstPageEnd,
     NewPage(u16),
     PageEnd(u16),
-    Unknown(Bytes16)
+    Unknown(Bytes16),
 }
 
-fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
+pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
     let (input, kind_tag) = bytes16(input)?;
     match kind_tag.0 {
         0x0000 => {
-            let (input, a) = be_u16(input)?;
-            let (input, b) = be_u16(input)?;
-            Ok((input, Line::Zero(a, b)))
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Zero(text)))
         }
         0x0C00 => {
             let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Paragraph(text)))        
+            Ok((input, Line::Paragraph(text)))
+        }
+        0x0C01 => {
+            let (input, unknown) = bytes16(input)?;
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Paragraph1(unknown, text)))
         }
         0x0400 => {
             let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Line(text)))        
+            Ok((input, Line::Line(text)))
         }
         0x0401 => {
             let (input, unknown) = bytes16(input)?;
             let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Line1(unknown, text)))        
+            Ok((input, Line::Line1(unknown, text)))
         }
+        0x1000 => {
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Heading(text)))
+        }
+        0x1400 => {
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Some(text)))
+        }
+        0x1C00 => {
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Heading2(text)))
+        }
+
         0xA000 => Ok((input, Line::FirstPageEnd)),
         0xA080 => {
             let (input, page_num) = be_u16(input)?;
@@ -410,37 +464,26 @@ fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
             let (input, page_num) = be_u16(input)?;
             Ok((input, Line::NewPage(page_num)))
         }
-        _ => Ok((input, Line::Unknown(kind_tag)))
-    }   
+        _ => Ok((input, Line::Unknown(kind_tag))),
+    }
 }
 
 impl<'a> LineBuf<'a> {
-    pub fn parse(self) -> Result<Line, nom::Err<(&'a [u8], ErrorKind)>> {
-        parse_line(self.data).map(|(_,line)| line)
+    pub fn _parse(self) -> Result<Line, nom::Err<(&'a [u8], ErrorKind)>> {
+        parse_line(self.data).map(|(_, line)| line)
     }
 }
 
 fn parse_line_buf(input: &[u8]) -> IResult<&[u8], LineBuf> {
     let (input, skip) = be_u16(input)?;
     let (input, data) = length_data(be_u16)(input)?;
-    Ok((input, LineBuf {
-        skip,
-        data,
-    }))
+    Ok((input, LineBuf { skip, data }))
 }
 
 #[allow(clippy::many_single_char_names)]
-pub fn parse_tebu(input: &[u8]) -> IResult<&[u8], TeBu> {
-    let (input, lines_total) = be_u32(input)?;
-    let (input, first_page) = parse_first_page(input)?;
+pub fn _parse_tebu(input: &[u8]) -> IResult<&[u8], TeBu> {
+    let (input, header) = parse_tebu_header(input)?;
     let (input, lines) = many0(parse_line_buf)(input)?;
 
-    Ok((
-        input,
-        TeBu {
-            lines_total,
-            first_page,
-            lines,
-        },
-    ))
+    Ok((input, TeBu { header, lines }))
 }

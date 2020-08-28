@@ -6,7 +6,10 @@ mod font;
 mod sdoc;
 mod util;
 
-use sdoc::{parse_cset, parse_pbuf, parse_sdoc0001_container, parse_sysp, parse_tebu, Te, Line};
+use sdoc::{
+    parse_cset, parse_line, parse_pbuf, parse_sdoc0001_container, parse_sysp, parse_tebu_header,
+    Line, LineIter, Style, Te,
+};
 use util::Buf;
 
 use anyhow::anyhow;
@@ -44,72 +47,87 @@ fn process_eset(buffer: &[u8]) -> anyhow::Result<()> {
 
 fn print_tebu_data(data: Vec<Te>) {
     let mut last_char_width: u8 = 0;
-    let mut line_width: u16 = 0;
-    let mut min_line_width  = 0xffffu16;
-    let mut max_line_width = 0u16;
+    let mut style = Style::default();
+
     for (_index, k) in data.iter().copied().enumerate() {
-        match k {
-            Te::Normal{
-                char,
-                width,
-                offset,
-            } => {
-                if char == '\0' {
-                    println!("<NUL:{}>", offset);
-                    continue;
-                }
-                line_width += offset;
-                let lcw = last_char_width.into();
-                if offset >= lcw {
-                    let mut space = offset - lcw;
+        if k.char == '\0' {
+            println!("<NUL:{}>", k.offset);
+            continue;
+        }
 
-                    // FIXME
-                    if space > 250 {
-                        space = 250;
-                    }
+        if !k.style.bold && style.bold {
+            style.bold = false;
+            print!("</b>");
+        }
+        if !k.style.italic && style.italic {
+            style.italic = false;
+            print!("</i>");
+        }
+        if !k.style.sth2 && style.sth2 {
+            style.sth2 = false;
+            print!("</sth2>");
+        }
+        if !k.style.sth1 && style.sth1 {
+            style.sth1 = false;
+            print!("</sth1>");
+        }
 
-                    while space >= 7 {
-                        print!(" ");
-                        space -= 7;
-                    }
-                }
-                last_char_width = if char == '\n' { 0 } else { width };
-                if (0xE000..=0xE080).contains(&(char as u32)) {
-                    print!("<C{}>", (char as u32) - 0xE000);
-                } else {
-                    print!("{}", char);
-                }
-            }
-            Te::Break(v) => {
-                //println!("{{{}}}", line_width); // <br>
-                println!();
-                min_line_width = min_line_width.min(line_width);
-                max_line_width = max_line_width.max(line_width);
-                line_width = 0;
-                if v > 0 {
-                    print!("{})", v);
-                }
-            }
-            Te::Paragraph(v) => {
-                //println!("{{{}}}", line_width); // <br>
-                println!();
-                min_line_width = min_line_width.min(line_width);
-                max_line_width = max_line_width.max(line_width);
-                line_width = 0;
-                println!();
-                println!("<P>");
-                if v > 0 {
-                    print!("({})", v);
-                }
-            }
-            Te::Unknown(_a) => {
-                print!("<{:04X}>", _a);
+        let lcw = last_char_width.into();
+        if k.offset >= lcw {
+            let mut space = k.offset - lcw;
+
+            while space >= 7 {
+                print!(" ");
+                space -= 7;
             }
         }
+        last_char_width = if k.char == '\n' { 0 } else { k.width };
+        if (0xE000..=0xE080).contains(&(k.char as u32)) {
+            print!("<C{}>", (k.char as u32) - 0xE000);
+        } else {
+            if k.style.footnote {
+                print!("<footnote>");
+            }
+
+            if k.style.small {
+                print!("<small>");
+            }
+
+            if k.style.sth1 && !style.sth1 {
+                style.sth1 = true;
+                print!("<sth1>");
+            }
+            if k.style.sth2 && !style.sth2 {
+                style.sth2 = true;
+                print!("<sth2>");
+            }
+            if k.style.italic && !style.italic {
+                style.italic = true;
+                print!("<i>");
+            }
+            if k.style.bold && !style.bold {
+                style.bold = true;
+                print!("<b>");
+            }
+
+            if k.style.underlined {
+                print!("\u{0332}");
+            }
+            print!("{}", k.char);
+        }
     }
-    println!();
-    //println!("LINE WIDTH: ({},{})", min_line_width, max_line_width);
-    let _ = (min_line_width, max_line_width);
+    if style.bold {
+        print!("</b>");
+    }
+    if style.italic {
+        print!("</i>");
+    }
+    if style.sth2 {
+        print!("</sth2>");
+    }
+    if style.sth1 {
+        print!("</sth1>");
+    }
 }
 
 fn process_sdoc(buffer: &[u8]) -> anyhow::Result<()> {
@@ -124,61 +142,113 @@ fn process_sdoc(buffer: &[u8]) -> anyhow::Result<()> {
                     "sysp" => {
                         let (_, sysp) = parse_sysp(part.0).unwrap();
                         println!("'sysp': {:#?}", sysp);
-                        //println!("{:#?}", part);
                     }
                     "pbuf" => {
                         let (_rest, pbuf) = parse_pbuf(part.0).unwrap();
-                        println!("'pbuf': {}, {}, {}", pbuf.page_count, pbuf.kl, pbuf.first_page_nr);
+                        println!(
+                            "'pbuf': {}, {}, {}",
+                            pbuf.page_count, pbuf.kl, pbuf.first_page_nr
+                        );
                         for (page, buf) in pbuf.vec {
                             println!("  {:?}, {:?}", page, buf);
                         }
-                        
-                        //println!("{:#?}", Buf(rest));
                     }
                     "tebu" => {
-                        let (rest, tebu) = parse_tebu(part.0).unwrap();
+                        let (rest, tebu_header) = parse_tebu_header(part.0).unwrap();
                         //println!("'tebu': {:?}", tebu);
-                        println!("'tebu':");
-                        println!("  lines_total: {}", tebu.lines_total);
-                        println!("  first_page: {:?}", tebu.first_page);
-                        
+                        println!("'tebu': {:?}", tebu_header);
+
+                        let mut iter = LineIter(rest);
+
                         println!("------------------- [PAGE 1] -------------------");
 
-                        for line_buf in tebu.lines {
-                            //println!("SKIP: {}", line_buf.skip);
-                            
-                            if let Ok(line) = line_buf.parse() {
-                                match line {
-                                    Line::Zero(a,b) => {
-                                        println!("<zero {} {} +{}>", a, b, line_buf.skip);
+                        for maybe_line_buf in &mut iter {
+                            let line_buf = match maybe_line_buf {
+                                Ok(line_buf) => line_buf,
+                                Err(e) => return Err(anyhow!("{}", e)),
+                            };
+                            match parse_line(line_buf.data) {
+                                Ok((rest, line)) => {
+                                    match line {
+                                        Line::Zero(data) => {
+                                            println!("<zero +{}>", line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Paragraph(data) => {
+                                            println!("<p +{}>", line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Paragraph1(unknown, data) => {
+                                            println!("<p' {:?} +{}>", unknown, line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Line(data) => {
+                                            println!("<br +{}>", line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Line1(unknown, data) => {
+                                            println!("<br' {:?} +{}>", unknown, line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Heading(data) => {
+                                            print!("<h1 +{}>", line_buf.skip);
+                                            let newlines = !data.is_empty();
+                                            if newlines {
+                                                println!();
+                                            }
+                                            print_tebu_data(data);
+                                            if newlines {
+                                                println!();
+                                            }
+                                        }
+                                        Line::Some(data) => {
+                                            println!("<s +{}>", line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::Heading2(data) => {
+                                            println!("<h2 +{}>", line_buf.skip);
+                                            print_tebu_data(data);
+                                            println!();
+                                        }
+                                        Line::FirstPageEnd => {
+                                            println!(
+                                                "------------------- [ EOP1 ] -------------------"
+                                            );
+                                        }
+                                        Line::NewPage(page_num) => {
+                                            println!(
+                                                "------------------- [PAGE {}] -------------------",
+                                                page_num
+                                            );
+                                        }
+
+                                        Line::PageEnd(page_num) => {
+                                            println!(
+                                                "------------------- [ EOP{} ] -------------------",
+                                                page_num
+                                            );
+                                        }
+                                        Line::Unknown(u) => {
+                                            println!("Unknown line kind {:?}", u);
+                                            println!("SKIP: {}", line_buf.skip);
+                                            println!("{:#?}", Buf(line_buf.data));
+                                        }
+                                    };
+
+                                    if !rest.is_empty() {
+                                        println!("Unconsumed line buffer rest {:#?}", Buf(rest));
                                     }
-                                    Line::Paragraph(data) => {
-                                        println!("<p +{}>", line_buf.skip);
-                                        print_tebu_data(data);
-                                    }
-                                    Line::Line(data) => {
-                                        println!("<br +{}>", line_buf.skip);
-                                        print_tebu_data(data);
-                                    }
-                                    Line::Line1(unknown, data) => {
-                                        println!("<br' {:?} +{}>", unknown, line_buf.skip);
-                                        print_tebu_data(data);
-                                    }
-                                    Line::FirstPageEnd => {
-                                        println!("------------------- [ EOP1 ] -------------------");
-                                    }
-                                    Line::NewPage(page_num) => {
-                                        println!("------------------- [PAGE {}] -------------------", page_num);
-                                    }
-                                    Line::PageEnd(page_num) => {
-                                        println!("------------------- [ EOP{} ] -------------------", page_num);
-                                    }
-                                    Line::Unknown(u) => {
-                                        println!("Unknown line kind {:?}", u);
-                                        println!("SKIP: {}", line_buf.skip);
-                                        println!("{:#?}", Buf(line_buf.data));
-                                    }
-                                };
+                                }
+                                Err(e) => {
+                                    println!("Could not parse {:#?}", Buf(line_buf.data));
+                                    println!("Error: {}", e);
+                                }
                             }
                         }
 
@@ -187,7 +257,7 @@ fn process_sdoc(buffer: &[u8]) -> anyhow::Result<()> {
                         println!("----------------------------");
                         print_tebu_data(tebu.data2);
                         println!("----------------------------");*/
-                        println!("{:#?}", Buf(rest));
+                        println!("{:#?}", Buf(iter.0));
                     }
                     _ => {
                         println!("'{}': {}", key, part.0.len());
@@ -217,6 +287,8 @@ fn main() -> anyhow::Result<()> {
     let mut buffer = Vec::new();
 
     reader.read_to_end(&mut buffer)?;
+
+    println!("\u{0308}\u{1D400}");
 
     if opt.decode {
         let mut decoded = String::with_capacity(buffer.len());
