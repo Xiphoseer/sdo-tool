@@ -2,17 +2,18 @@ use nom::{
     bytes::complete::{tag, take, take_while},
     combinator::{map, map_res},
     error::ErrorKind,
-    multi::{count, length_data, many0},
+    multi::{count, fill, length_data, many0},
     number::complete::{be_u16, be_u32, be_u8},
     IResult,
 };
 
 use crate::{
     font::antikro,
-    util::{Bytes16, Bytes32},
+    util::{key8, Bytes16, Bytes32, Key8},
     Buf,
 };
-use std::borrow::Cow;
+use fmt::Debug;
+use std::{borrow::Cow, fmt};
 
 /// A Signum! document container
 #[derive(Debug)]
@@ -271,16 +272,10 @@ pub struct Te {
 #[derive(Debug)]
 pub struct TextBufferHeader {
     pub lines_total: u32,
-    //pub a: Bytes16,
-    //pub b: u16,
-    //pub c: Bytes16,
 }
 
 pub fn parse_tebu_header(input: &[u8]) -> IResult<&[u8], TextBufferHeader> {
     let (input, lines_total) = be_u32(input)?;
-    //let (input, a) = bytes16(input)?;
-    //let (input, b) = be_u16(input)?;
-    //let (input, c) = bytes16(input)?;
 
     Ok((
         input,
@@ -298,17 +293,19 @@ pub struct TeBu<'a> {
 }
 
 #[derive(Clone)]
-pub struct LineIter<'a>(pub &'a [u8]);
+pub struct LineIter<'a> {
+    pub rest: &'a [u8],
+}
 
 impl<'a> Iterator for LineIter<'a> {
     type Item = Result<LineBuf<'a>, nom::Err<(&'a [u8], ErrorKind)>>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.0.is_empty() {
+        if self.rest.len() <= 4 {
             None
         } else {
-            match parse_line_buf(self.0) {
+            match parse_line_buf(self.rest) {
                 Ok((rest, buf)) => {
-                    self.0 = rest;
+                    self.rest = rest;
                     Some(Ok(buf))
                 }
                 Err(e) => Some(Err(e)),
@@ -370,27 +367,6 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
                     },
                 },
             ))
-
-            /*let _style = (val & 0x30) >> 4;
-            let kind = val & 0x0f;
-            match kind {
-                0 => {
-
-
-                    let _mod = (extra & 0xf000) >> 12;
-
-                }
-                2 => {
-                    if chr > 0 {
-                        let (input, _offset) = be_u16(input)?;
-                        Ok((input, Te::Break(chr)))
-                    } else {
-                        Ok((input, Te::Break(chr)))
-                    }
-                }
-                6 => Ok((input, Te::Paragraph(chr))),
-                _ => Ok((input, Te::Unknown(cmd))),
-            }*/
         }
     }
 }
@@ -408,12 +384,14 @@ pub enum Line {
     Paragraph1(Bytes16, Vec<Te>),
     Line(Vec<Te>),
     Line1(Bytes16, Vec<Te>),
+    P800(Vec<Te>),
     Heading(Vec<Te>),
     Some(Vec<Te>),
     Heading2(Vec<Te>),
     FirstPageEnd,
-    NewPage(u16),
     PageEnd(u16),
+    FirstNewPage,
+    NewPage(u16),
     Unknown(Bytes16),
 }
 
@@ -442,6 +420,10 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
             let (input, text) = many0(te(antikro::decode))(input)?;
             Ok((input, Line::Line1(unknown, text)))
         }
+        0x0800 => {
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::P800(text)))
+        }
         0x1000 => {
             let (input, text) = many0(te(antikro::decode))(input)?;
             Ok((input, Line::Heading(text)))
@@ -460,6 +442,7 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
             let (input, page_num) = be_u16(input)?;
             Ok((input, Line::PageEnd(page_num)))
         }
+        0xC000 => Ok((input, Line::FirstNewPage)),
         0xC080 => {
             let (input, page_num) = be_u16(input)?;
             Ok((input, Line::NewPage(page_num)))
@@ -486,4 +469,105 @@ pub fn _parse_tebu(input: &[u8]) -> IResult<&[u8], TeBu> {
     let (input, lines) = many0(parse_line_buf)(input)?;
 
     Ok((input, TeBu { header, lines }))
+}
+
+#[derive(Debug)]
+pub struct HCIMHeader {
+    pub length: u32,
+    pub count: u16,
+    pub b: u16,
+    pub c: Bytes32,
+    pub d: Bytes32,
+}
+
+#[derive(Debug)]
+pub struct HCIM<'a> {
+    pub header: HCIMHeader,
+    pub part1: Buf<'a>,
+    pub images: Vec<Buf<'a>>,
+}
+
+impl<'a> HCIM<'a> {
+    pub fn ref_iter(&self) -> HCIMRefIter {
+        HCIMRefIter {
+            inner: self.part1.0,
+        }
+    }
+}
+
+pub struct HCIMRefIter<'a> {
+    inner: &'a [u8],
+}
+
+impl<'a> Iterator for HCIMRefIter<'a> {
+    type Item = Result<[u16; 16], nom::Err<(&'a [u8], ErrorKind)>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.inner.is_empty() {
+            None
+        } else {
+            match parse_hcim_img_ref(self.inner) {
+                Ok((rest, value)) => {
+                    self.inner = rest;
+                    Some(Ok(value))
+                }
+                Err(e) => Some(Err(e)),
+            }
+        }
+    }
+}
+
+pub fn parse_image_buf(input: &[u8]) -> IResult<&[u8], Buf> {
+    let (input, length2) = be_u32(input)?;
+    let (input, buf2) = take((length2 - 4) as usize)(input)?;
+    Ok((input, Buf(buf2)))
+}
+
+#[derive(Debug)]
+pub struct Image {
+    pub key: Key8,
+}
+
+pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
+    let (input, key) = key8(input)?;
+    Ok((input, Image { key }))
+}
+
+pub fn parse_hcim_header(input: &[u8]) -> IResult<&[u8], HCIMHeader> {
+    let (input, length) = be_u32(input)?;
+    let (input, count) = be_u16(input)?;
+    let (input, b) = be_u16(input)?;
+    let (input, c) = bytes32(input)?;
+    let (input, d) = bytes32(input)?;
+
+    Ok((
+        input,
+        HCIMHeader {
+            length,
+            count,
+            b,
+            c,
+            d,
+        },
+    ))
+}
+
+pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], [u16; 16]> {
+    let mut res = [0u16; 16];
+    let (input, _) = fill(be_u16, &mut res)(input)?;
+    Ok((input, res))
+}
+
+pub fn parse_hcim(input: &[u8]) -> IResult<&[u8], HCIM> {
+    let (input, header) = parse_hcim_header(input)?;
+    let (input, buf) = take(header.length as usize)(input)?;
+    let (input, images) = count(parse_image_buf, header.count as usize)(input)?;
+
+    Ok((
+        input,
+        HCIM {
+            header,
+            part1: Buf(buf),
+            images,
+        },
+    ))
 }

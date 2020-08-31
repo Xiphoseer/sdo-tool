@@ -1,4 +1,31 @@
-use std::fmt::Debug;
+use nom::{multi::fill, number::complete::be_u8, IResult};
+use std::fmt::{self, Debug, Display};
+
+pub struct Key8([u8; 8]);
+
+impl Display for Key8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for c in &self.0 {
+            if *c == 0 {
+                break;
+            }
+            write!(f, "{}", *c as char)?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for Key8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Key8 as Display>::fmt(self, f)
+    }
+}
+
+pub fn key8(input: &[u8]) -> IResult<&[u8], Key8> {
+    let mut buf = [0u8; 8];
+    let (input, _) = fill(be_u8, &mut buf)(input)?;
+    Ok((input, Key8(buf)))
+}
 
 pub struct Bytes16(pub u16);
 
