@@ -161,12 +161,10 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
 
                     let mut temp: [u8; 32];
                     if d3 == 3 {
-                        {
-                            // subroutine E
-                            let (a, b) = state.a5.split_at(32);
-                            temp = a.try_into().unwrap();
-                            state.a5 = b;
-                        }
+                        // subroutine E
+                        let (a, b) = state.a5.split_at(32);
+                        temp = a.try_into().unwrap();
+                        state.a5 = b;
                     } else {
                         temp = [0u8; 32]; // subroutine G
                         let mut a3 = &mut temp[..];
@@ -191,20 +189,28 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
                         if d3 == 1 {
                             // subroutine I
                             let a0 = &mut temp[..];
-                            let (d00, d01) = (a0[0], a0[1]);
-                            for i in 1..=15 {
-                                a0[i * 2] ^= d00;
-                                a0[i * 2 + 1] ^= d01;
+                            let (mut d00, mut d01) = (a0[0], a0[1]);
+                            for i in 1..16 {
+                                d00 ^= a0[i * 2];
+                                d01 ^= a0[i * 2 + 1];
+
+                                a0[i * 2] = d00;
+                                a0[i * 2 + 1] = d01;
                             }
                         } else if d3 == 2 {
                             // subroutine J
                             let a0 = &mut temp[..];
-                            let (d00, d01, d02, d03) = (a0[0], a0[1], a0[2], a0[3]);
-                            for i in 1..=7 {
-                                a0[i * 4] ^= d00;
-                                a0[i * 4 + 1] ^= d01;
-                                a0[i * 4 + 2] ^= d02;
-                                a0[i * 4 + 3] ^= d03;
+                            let (mut d00, mut d01, mut d02, mut d03) = (a0[0], a0[1], a0[2], a0[3]);
+                            for i in 1..8 {
+                                d00 ^= a0[i * 4];
+                                d01 ^= a0[i * 4 + 1];
+                                d02 ^= a0[i * 4 + 2];
+                                d03 ^= a0[i * 4 + 3];
+
+                                a0[i * 4] = d00;
+                                a0[i * 4 + 1] = d01;
+                                a0[i * 4 + 2] = d02;
+                                a0[i * 4 + 3] = d03;
                             }
                         }
                     }
@@ -222,7 +228,7 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
         } else {
             println!("________________________________________");
         }
-        println!("X: {}, {}, {}", _dest.len(), state.d4, state.a5.len());
+        //println!("X: {}, {}, {}", _dest.len(), state.d4, state.a5.len());
         _dest = &mut _dest[(state.d4 as usize)..];
     }
 
