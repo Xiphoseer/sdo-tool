@@ -1,17 +1,19 @@
 use crate::{
     sdoc::{bytes16, bytes32},
-    util::{key8, Buf, Bytes16, Bytes32, Key8},
+    util::{Buf, Bytes16, Bytes32},
 };
 use nom::{
-    bytes::complete::take,
+    bytes::complete::tag,
+    error::ErrorKind,
     number::complete::{be_u16, be_u32},
-    IResult,
+    Err, IResult,
 };
 use std::{convert::TryInto, slice::Iter};
 
 #[derive(Debug)]
 struct IMCHeader {
-    key: Key8,
+    u1: Bytes32,
+    u2: Bytes32,
     /// ???
     s08: u16,
     /// outer_count
@@ -19,43 +21,41 @@ struct IMCHeader {
     /// data offset
     s0c: u32,
     //u1: Bytes16,
-    u2: Bytes32,
+    u3: Bytes32,
     /// ???
     s14: u16,
-    u3: Bytes16,
-    u4: Bytes32,
+    u4: Bytes16,
     u5: Bytes32,
+    u6: Bytes32,
 }
 
 fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
-    let (input, key) = key8(input)?;
+    let (input, u1) = bytes32(input)?;
+    let (input, u2) = bytes32(input)?;
 
-    let (input, _) = take(8usize)(input)?;
     let (input, s08) = be_u16(input)?;
     let (input, s0a) = be_u16(input)?;
     let (input, s0c) = be_u32(input)?;
 
-    let (input, u2) = bytes32(input)?;
+    let (input, u3) = bytes32(input)?;
     let (input, s14) = be_u16(input)?;
-    let (input, u3) = bytes16(input)?;
-    let (input, u4) = bytes32(input)?;
+    let (input, u4) = bytes16(input)?;
     let (input, u5) = bytes32(input)?;
+    let (input, u6) = bytes32(input)?;
 
-    Ok((
-        input,
-        IMCHeader {
-            key,
-            s08,
-            s0a,
-            s0c,
-            //u1,
-            u2,
-            s14,
-            u3,
-            u4,
-            u5,
-        },
-    ))
+    let header = IMCHeader {
+        u1,
+        u2,
+        s08,
+        s0a,
+        s0c,
+        u3,
+        s14,
+        u4,
+        u5,
+        u6,
+    };
+    Ok((input, header))
 }
 
 struct IMCState<'src> {
@@ -116,22 +116,25 @@ impl<'src> IMCState<'src> {
     }
 }
 
+pub fn parse_imc(input: &[u8]) -> Result<Vec<u8>, Err<(&[u8], ErrorKind)>> {
+    let (input, _) = tag(b"bimc0002")(input)?;
+    Ok(decode_imc(input))
+}
+
 /// Decode a Signum! .IMC image
 pub fn decode_imc(src: &[u8]) -> Vec<u8> {
-    //let src = &src[10..];
     let mut buffer = vec![0; 32000];
-    let mut _dest = &mut buffer[..]; // state[A] moving destination address
+    let mut dest = &mut buffer[..]; // state[A] moving destination address
 
-    let (_rest, header) = parse_imc_header(src).unwrap();
+    let (rest, header) = parse_imc_header(src).unwrap();
 
-    println!("{:?}", header);
+    println!("{:#?}", header);
 
     let d7 = 0x50;
     // this should be sign extend instead of from, but 0x50 is always positive
     let d4 = u32::from(d7) << 4;
 
-    let (bits, data) = _rest.split_at(header.s0c as usize);
-    println!("{:#?}", Buf(bits));
+    let (bits, data) = rest.split_at(header.s0c as usize);
 
     let mut state = IMCState {
         d4,
@@ -142,7 +145,6 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
         a6: bits.iter(),
     };
 
-    println!("({},{})", header.s0a, header.s08);
     for _ in 0..header.s0a {
         if state.next_bit() {
             // subroutine C
@@ -217,8 +219,9 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
 
                     for i in 0..16 {
                         // subroutine F
-                        _dest[(j * 2) as usize + (i * 80)] = temp[i * 2];
-                        _dest[(j * 2) as usize + (i * 80) + 1] = temp[i * 2 + 1];
+                        let offset = (j as usize) * 2 + (i * 80);
+                        dest[offset] = temp[i * 2];
+                        dest[offset + 1] = temp[i * 2 + 1];
                     }
                 } else {
                     print!("_");
@@ -228,18 +231,15 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
         } else {
             println!("________________________________________");
         }
-        //println!("X: {}, {}, {}", _dest.len(), state.d4, state.a5.len());
-        _dest = &mut _dest[(state.d4 as usize)..];
+        dest = &mut dest[(state.d4 as usize)..];
     }
 
     if header.s14 != 0 {
         // subroutine K
         let [a, b] = header.s14.to_be_bytes();
-        state.proc_l(a, &mut _dest[..], header.s08, header.s0a);
-        state.proc_l(b, &mut _dest[80..], header.s08, header.s0a);
+        state.proc_l(a, &mut dest[..], header.s08, header.s0a);
+        state.proc_l(b, &mut dest[80..], header.s08, header.s0a);
     }
-
-    //print!("{:#?}", Buf(_rest));
 
     buffer
 }

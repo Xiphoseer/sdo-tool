@@ -1,9 +1,8 @@
 //! # Signum! file tool
 #![warn(missing_docs)]
 
-mod eset;
 mod font;
-mod imc;
+mod images;
 mod sdoc;
 mod util;
 
@@ -14,8 +13,9 @@ use sdoc::{
 use util::Buf;
 
 use anyhow::anyhow;
-use eset::parse_eset;
-use imc::decode_imc;
+use font::eset::parse_eset;
+use image::ImageFormat;
+use images::{imc::parse_imc, native::decode_monochrome};
 use nom::Err;
 use std::{
     fs::File,
@@ -31,9 +31,9 @@ struct Options {
     /// HACK: decode atari document to utf8
     #[structopt(long)]
     decode: bool,
-    /// HACK: decode IMC image
+    /// Where to store the output, if applicable
     #[structopt(long)]
-    imc: Option<PathBuf>,
+    out: Option<PathBuf>,
 }
 
 fn process_eset(buffer: &[u8]) -> anyhow::Result<()> {
@@ -46,6 +46,16 @@ fn process_eset(buffer: &[u8]) -> anyhow::Result<()> {
         Err(e) => {
             eprintln!("{}", e);
         }
+    }
+    Ok(())
+}
+
+fn process_bimc(buffer: &[u8], out: Option<PathBuf>) -> anyhow::Result<()> {
+    let decoded = parse_imc(&buffer) //
+        .map_err(|err| anyhow!("Failed to parse: {}", err))?;
+    let image = decode_monochrome(&decoded[..])?;
+    if let Some(out_path) = out {
+        image.save_with_format(out_path, ImageFormat::Png)?;
     }
     Ok(())
 }
@@ -335,8 +345,6 @@ fn main() -> anyhow::Result<()> {
 
     reader.read_to_end(&mut buffer)?;
 
-    println!("\u{0308}\u{1D400}");
-
     if opt.decode {
         let mut decoded = String::with_capacity(buffer.len());
         for byte in buffer {
@@ -345,14 +353,11 @@ fn main() -> anyhow::Result<()> {
         }
         print!("{}", decoded);
         Ok(())
-    } else if let Some(out_path) = opt.imc {
-        let decoded = decode_imc(&buffer);
-        std::fs::write(&out_path, decoded)?;
-        Ok(())
     } else {
         match buffer.get(..4) {
             Some(b"sdoc") => process_sdoc(&buffer),
             Some(b"eset") => process_eset(&buffer),
+            Some(b"bimc") => process_bimc(&buffer, opt.out),
             Some(t) => Err(anyhow!("Unknown file type {:?}", t)),
             None => Err(anyhow!("File has less than 4 bytes")),
         }

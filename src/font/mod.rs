@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+pub mod eset;
+
 use std::char::REPLACEMENT_CHARACTER;
 
 pub const LEGACY_7SEG_DIGITS: (char, char, char, char, char, char, char, char, char, char) = (
