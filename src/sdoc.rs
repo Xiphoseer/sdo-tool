@@ -344,6 +344,7 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
 
             let underlined = val & 0x20 > 0;
             let footnote = val & 0x02 > 0;
+            
             let sth1 = extra & 0x8000 > 0;
             let bold = extra & 0x4000 > 0;
             let italic = extra & 0x2000 > 0;
@@ -402,15 +403,6 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
             let (input, text) = many0(te(antikro::decode))(input)?;
             Ok((input, Line::Zero(text)))
         }
-        0x0C00 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Paragraph(text)))
-        }
-        0x0C01 => {
-            let (input, unknown) = bytes16(input)?;
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Paragraph1(unknown, text)))
-        }
         0x0400 => {
             let (input, text) = many0(te(antikro::decode))(input)?;
             Ok((input, Line::Line(text)))
@@ -423,6 +415,15 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
         0x0800 => {
             let (input, text) = many0(te(antikro::decode))(input)?;
             Ok((input, Line::P800(text)))
+        }
+        0x0C00 => {
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Paragraph(text)))
+        }
+        0x0C01 => {
+            let (input, unknown) = bytes16(input)?;
+            let (input, text) = many0(te(antikro::decode))(input)?;
+            Ok((input, Line::Paragraph1(unknown, text)))
         }
         0x1000 => {
             let (input, text) = many0(te(antikro::decode))(input)?;

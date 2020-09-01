@@ -5,6 +5,9 @@ The Signum! word processor was a text editing application from the german softwa
 popular word processors available for that system. This document is as far as I know the only
 description of that file format that is available online.
 
+All of the code snippets in this document are simplified pseudo-code, even though they
+are inspired by the `nom` parser-combinator library.
+
 ## The container
 
 Every SDO file starts with the bytes `73 64 6f 63`, that is `sdoc` in most ASCII-compatible
@@ -14,7 +17,7 @@ Following this is a sequence of sub-files, that is a 4 byte lowercase alphanumer
 a 32bit big-endian length-specifier and then a binary section of that length. In pseudo-code,
 that is
 
-```
+```rust
 tag("sdoc");
 while len > 0 {
   key = take(4);
@@ -36,12 +39,44 @@ This section is usually 128 bytes long
 
 ### Character Sets `cset`
 
-A sequence of NULL terminated strings that represent the names of the charsets used in the document.
-The names have variable length and are always separated by two NULL bytes (not including the previous NULL terminator).
+This section is an array of 8 times 10 bytes, each holding a zero-terminated
+character-set name. I've found some documents where the first slot is empty,
+so you alway
+
+```rust
+for i in 0..8 {
+  let bytes = take(10);
+  chsets[i] = zt_string(bytes);
+}
+```
 
 This section is usually 80 bytes long
 
-### Unknown `sysp`
+### System parameters `sysp`
+
+This section contains information on default page parameters
+as well as general formatting options.
+
+```rust
+take(50); // unknown
+
+space_width    = be_u16();  // Leerzeichenbreite
+letter_spacing = be_u16();  // Sperrung
+line_distance  = be_u16();  // Hauptzeilenabstand
+index_distance = be_u16();  // Indexabstand
+margin_left    = be_u16();  // Linker Rand (0)
+margin_right   = be_u16();  // Rechter Rand (6.5 * 90)
+header         = be_u16();  // Kopfzeilen (0.1 * 54)
+footer         = be_u16();  // Fußzeilen (0.1 * 54)
+page_length    = be_u16();  // Seitenlänge (10.4 * 54)
+
+page_numbering = bytes16(); // 0x5800 == keine Seitennummerierung
+format_options = bytes16(); // 0b10011 == format. optionen
+
+bytes16();                  // 0x302 == trennen
+bytes16();                  // 0 == Randausgleiche und Sperren
+bytes32();                  // 1 == nicht einrücken, Absatzabstand mitkorrigieren
+```
 
 This section is usually 110 bytes long
 
@@ -52,15 +87,26 @@ two unknown values (or some other 8 bytes), five times the tag `unde` in ASCII, 
 not be related to my documents using the german language and 34 bytes of information for every
 page.
 
-```
+```rust
 page_count = be_u32();
-be_u32();
-be_u32();
+be_u32(); // called "kl" in some places, possibly length of each entry
+first_page_nr = be_u32();
 for i in 0..5 {
   tag("unde");
 }
 for p in 0..page_count {
-  take(34);
+  index = be_u16();
+  physical_page_nr = be_u16();
+  logical_page_nr = be_u16();
+  
+  take(2);
+
+  margin_left = be_u16();
+  margin_right = be_u16(); // from the left
+  margin_top = be_u16();
+  margin_bottom = be_u16();
+
+  take(18);
 }
 ```
 
@@ -68,13 +114,41 @@ The length of this section depends on the content
 
 ### Text Buffer `tebu`
 
-This section contains the bulk of the document content. It is made up of a sequence of
-drawing commands that usually correspond to a single character. Note that there is no
-space *character*, instead the offset between characters is longer, wherever a space
-character would be used in other encodings.
+This section contains the bulk of the document content. It is made up of *lines*, which
+correspond to the vertical alignment from top to bottom. It starts with one u32, which
+is supposed to be the total line count or total height of the document (?).
 
-Commands seems to be always a multiple of two bytes wide. The following is what I know
-about these commands:
+The rest of this section is a sequence of lines, with the following layout:
+
+```rust
+vskip = be_u16();
+length = be_u16();
+content = take(length);
+```
+
+#### Lines
+
+Each `content` starts with a 16 bit identifier, that is probably a bitfield:
+
+- 0x0001: prefixed with a 16 bit value, possibly `hskip`
+- 0x0080: prefixed with 16 bit page number
+- 0x0400: standard line
+- 0x0800: paragraph
+- 0x1000: (probably related to alignment, occurs in formulas)
+- 0x2000: page-end
+- 0x4000: page-start
+- 0x8000: page-command (always set for start and end)
+
+These are the only combinations I have seen used in documents:
+0x0000, 0x0400, 0x0401, 0x0800, 0x0C00, 0x0C01,
+0x1000, 0x1400, 0x1C00, 0xA000, 0xA080, 0xC000, 0xC080
+
+#### Characters
+
+Every non-page-command can be followed by some amount of *characters*. Note that there
+is no space *character*, instead the offset between characters is longer, wherever a space
+character would be used in other encodings. Characters are 2 bytes wide by default and
+use the following encoding:
 
 If the first bit is set, then the command is a standard character and the next 6 bits
 encode the offset from the previous drawing position. The last bit has some other function,
@@ -95,7 +169,25 @@ selected charset.
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
 
-### Unknown `hcim`
+**Extended character**
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+| 0 | U | V | W | X | Y | Z | CHSET |          CHARACTER        |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+| A | B | I | D | S |                 OFFSET                    |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+- A: *unknown*
+- B: bold
+- I: italic
+- D: *unknown*
+- S: *small*
+
+- U: underlined
+- Y: footnote
+
+### (ST High) Compressed Images `hcim`
+
+This sections contains information on the images embedded in the document.
 
 This section seems optional
 

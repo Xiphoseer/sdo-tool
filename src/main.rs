@@ -306,8 +306,8 @@ fn process_sdoc(buffer: &[u8]) -> anyhow::Result<()> {
                             println!("image[{}]:", index);
                             let (imgrest, im) = parse_image(img.0).unwrap();
                             println!("{:?}", im);
-                            let name = im.key.to_string();
-                            std::fs::write(&name, &img.0).unwrap();
+                            let _name = im.key.to_string();
+                            //std::fs::write(&name, &img.0).unwrap();
 
                             println!("{:#?}", Buf(imgrest));
                         }
