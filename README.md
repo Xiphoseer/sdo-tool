@@ -1,4 +1,4 @@
-# Signum! Toolbox
+# Signum! Document Toolbox
 
 The *Signum!* program was a popular word-processor available for the ATARI AT line of
 home computers and distributed by [Application Systems Heidelberg (ASH)][ASH]. While it
