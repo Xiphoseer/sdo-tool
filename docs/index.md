@@ -49,6 +49,10 @@ all major platforms (Windows, Linux and OSX).
 4. Use/Copy `target/release/sdo-tool` (Linux/OSX) or `target/release/sdo-tool.exe` (Windows)
 5. Run `sdo-tool SOMEFILE.SDO`, `sdo-tool SOMEFILE.E24`, `sdo-tool SOMEFILE.IMC`
 
+## Documentation
+
+- [Signum Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
+
 ## License
 
 You are free to download, and run this software for any personal and non-commercial reason,
@@ -72,7 +76,7 @@ please file a github issue or send me an email at `ng5on06lc@relay.firefox.com`.
 - The rust compiler + ecosystem people for creating a useful language with really good tooling
   which made porting 68K assembly to working rust code really smooth
 
-[ASH]: application-systems.de
+[ASH]: https://application-systems.de
 [Signum!]: https://www.ashshop.biz/diverses/atari/textverarbeitung/874/signum-2-download
 [Rust]: https://www.rust-lang.org/learn/get-started
 [image-rs]: https://crates.io/crates/image
