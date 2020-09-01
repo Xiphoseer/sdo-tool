@@ -30,7 +30,9 @@ all major platforms (Windows, Linux and OSX).
     - Print a list of charset names
     - Print some global formatting options
     - Print a list of pages with additional formatting information
-    - Print all text to the console, including page breaks, and some HTML-like format annotations
+    - Print text to the console, including page breaks, and some HTML-like format annotations
+        - Fonts that match the default ATARI keys are translated to the appropriate unicode characters
+        - Documents that use only the ANTIKRO font have working space detection. This is a WIP
     - Print a list of image names
 - Load Signum! editor charsets (*.E24, `eset0001`)
     - Print height and width for each character
