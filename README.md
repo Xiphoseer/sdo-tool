@@ -60,7 +60,7 @@ please file a github issue or send me an email at `ng5on06lc@relay.firefox.com`.
   based on his zView-compatible codec
 - Oliver Buchmann of [Application Systems Heidelberg](https://ashshop.biz) for helping
   me set up Signum in an emulator.
-- [Thomas Tempelmann](https://tempel.org) for the [Megamax-2 Doku][MM2]
+- [Thomas Tempelmann](http://tempel.org) for the [Megamax-2 Doku][MM2]
   as example files (with images!) and a *SignumRead* (`S/MYUTIL/SIGNUMRE.M`)
   Program from his MM2 dev-environment
 - Georg Scheibler for his [article and source code for converting 1stWord to Signum][1stWord]
