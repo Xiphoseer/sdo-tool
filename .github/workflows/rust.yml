@@ -1,4 +1,4 @@
-name: Rust
+name: Build
 
 on:
   push:
@@ -12,11 +12,11 @@ env:
 jobs:
   build:
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu, windows, macOS]
 
     steps:
     - uses: actions/checkout@v2
@@ -26,6 +26,13 @@ jobs:
       run: cargo test --verbose
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.1.4
+      if: ${{ matrix.os }} == 'windows'
       with:
-        name: sdo-tool
+        name: sdo-tool-windows.exe
+        path: target/debug/sdo-tool.exe
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.1.4
+      if: ${{ matrix.os }} != 'windows'
+      with:
+        name: sdo-tool-${{ matrix.os }}
         path: target/debug/sdo-tool
