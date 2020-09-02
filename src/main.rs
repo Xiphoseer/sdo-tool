@@ -9,12 +9,15 @@ mod util;
 
 use sdoc::{
     parse_cset, parse_hcim, parse_image, parse_line, parse_pbuf, parse_sdoc0001_container,
-    parse_sysp, parse_tebu_header, Line, LineIter, Style, Te,
+    parse_sysp, parse_tebu_header, Flags, Line, LineIter, Style, Te,
 };
 use util::Buf;
 
 use anyhow::anyhow;
-use font::eset::{parse_eset, OwnedESet};
+use font::{
+    antikro,
+    eset::{parse_eset, OwnedESet},
+};
 use image::ImageFormat;
 use images::imc::parse_imc;
 use nom::Err;
@@ -23,7 +26,7 @@ use print::Page;
 use std::{
     fs::File,
     io::{BufReader, Read},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use structopt::StructOpt;
 
@@ -52,7 +55,7 @@ fn process_eset(buffer: &[u8], input: Option<String>, out: Option<PathBuf>) -> a
                 let mut x = 0;
                 for ci in /*48..58*/ (65..66).chain(98..109) {
                     let ch = &eset.chars[ci as usize];
-                    page.draw_char(x, 0, ch);
+                    page.draw_char(x, 0, ch).unwrap();
                     x += u16::from(ch.width) + 1;
                 }
 
@@ -90,12 +93,13 @@ fn process_bimc(buffer: &[u8], out: Option<PathBuf>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_tebu_data(data: Vec<Te>) {
+fn print_tebu_data(data: Vec<Te>, chsets: &[Option<OwnedESet>; 8]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
     for (_index, k) in data.iter().copied().enumerate() {
-        if k.char == '\0' {
+        let chr = antikro::decode(k.cval);
+        if chr == '\0' {
             println!("<NUL:{}>", k.offset);
             continue;
         }
@@ -155,16 +159,22 @@ fn print_tebu_data(data: Vec<Te>) {
             print!("<b>");
         }
 
-        last_char_width = if k.char == '\n' { 0 } else { k.width };
-        if (0xE000..=0xE080).contains(&(k.char as u32)) {
-            print!("<C{}>", (k.char as u32) - 0xE000);
-        } else if (0x1FBF0..=0x1FBF9).contains(&(k.char as u32)) {
-            print!("[{}]", k.char as u32 - 0x1FBF0);
+        let width = if let Some(eset) = &chsets[k.cset as usize] {
+            eset.chars[k.cval as usize].width
+        } else {
+            // default for fonts that are missing
+            antikro::WIDTH[k.cval as usize]
+        };
+        last_char_width = if chr == '\n' { 0 } else { width };
+        if (0xE000..=0xE080).contains(&(chr as u32)) {
+            print!("<C{}>", (chr as u32) - 0xE000);
+        } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
+            print!("[{}]", chr as u32 - 0x1FBF0);
         } else {
             if k.style.underlined {
                 print!("\u{0332}");
             }
-            print!("{}", k.char);
+            print!("{}", chr);
         }
     }
     if style.bold {
@@ -184,11 +194,44 @@ fn print_tebu_data(data: Vec<Te>) {
     }
 }
 
-fn print_line(line: Line, skip: u16) {
-    match line {
+fn print_line(line: Line, skip: u16, chsets: &[Option<OwnedESet>; 8]) {
+    if line.flags.contains(Flags::PAGE) {
+        if line.flags.contains(Flags::PNEW) {
+            println!(
+                "{:04X} ------------------- [PAGE{:3}] -------------------",
+                skip, line.extra
+            );
+        } else if line.flags.contains(Flags::PEND) {
+            println!(
+                "{:04X} ------------------- [EOP {:3}] -------------------",
+                skip, line.extra
+            );
+        }
+    } else {
+        if line.flags.contains(Flags::FLAG) {
+            println!("<F: {}>", line.extra);
+        }
+
+        if line.flags.contains(Flags::PARA) {
+            print!("<p>");
+        }
+
+        print_tebu_data(line.data, chsets);
+
+        if line.flags.contains(Flags::ALIG) {
+            print!("<A>");
+        }
+
+        if line.flags.contains(Flags::LINE) {
+            print!("<br>");
+        }
+
+        println!("{{{}}}", skip);
+    }
+    /*match line {
         Line::Zero(data) => {
             println!("<zero +{}>", skip);
-            print_tebu_data(data);
+
             println!();
         }
         Line::Paragraph(data) => {
@@ -265,7 +308,7 @@ fn print_line(line: Line, skip: u16) {
             println!("Unknown line kind {:?}", u);
             println!("SKIP: {}", skip);
         }
-    };
+    };*/
 }
 
 fn process_sdoc_cset(
@@ -362,74 +405,121 @@ fn draw_chars(
         *x += te.offset;
         if let Some(eset) = &chsets[te.cset as usize] {
             let ch = &eset.chars[te.cval as usize];
-            page.draw_char(*x, y, ch)
+            match page.draw_char(*x, y, ch) {
+                Ok(()) => {}
+                Err(()) => {
+                    eprintln!("Char out of bounds {:?}", te);
+                }
+            }
         }
     }
     Ok(())
 }
 
+struct Pos {
+    x: u16,
+    y: u16,
+}
+
+impl Pos {
+    fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    fn new() -> Self {
+        Self { x: 0, y: 0 }
+    }
+}
+
 fn draw_line(
     line: Line,
-    path: &Path,
+    skip: u16,
     page: &mut Page,
-    x: &mut u16,
-    y: &mut u16,
-    index: &mut u32,
+    pos: &mut Pos,
     chsets: &[Option<OwnedESet>; 8],
 ) -> anyhow::Result<()> {
-    match line {
+    pos.x = 0;
+    pos.y += (skip + 1) * 2;
+
+    if line.flags.contains(Flags::FLAG) {
+        println!("<F: {}>", line.extra);
+    }
+
+    /*if line.flags.contains(Flags::PARA) {
+        // *y += 4;
+    }*/
+
+    if line.flags.contains(Flags::LINE) {
+        /*let offset = pos.y - pos.last_line;
+        let offset = 11 - (offset % 11);
+        pos.y += offset;
+        pos.last_line = pos.y;*/
+    }
+
+    if line.flags.contains(Flags::ALIG) {}
+
+    //pos.y += 1;
+
+    draw_chars(&line.data, page, &mut pos.x, pos.y, chsets)?;
+
+    /*if line.flags.contains(Flags::LINE) {
+        *y += 2;
+    }*/
+
+    /*match line {
         Line::Zero(data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            draw_chars(&data, page, x, *y, chsets)?;
         }
         Line::Paragraph(data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
+            *y += 7;
             *x = 0;
-            *y += 8;
+            draw_chars(&data, page, x, *y, chsets)?;
+            *y += 4;
         }
         Line::Paragraph1(_unknown, data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            draw_chars(&data, page, x, *y, chsets)?;
+            *y += 4;
         }
         Line::Line(data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            draw_chars(&data, page, x, *y, chsets)?;
             *y += 4;
         }
         Line::Line1(_unknown, data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            draw_chars(&data, page, x, *y, chsets)?;
         }
         Line::P800(data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            draw_chars(&data, page, x, *y, chsets)?;
         }
         Line::Heading(data) => {
+            *x = 0;
+            *y += 1;
             draw_chars(&data, page, x, *y, chsets)?;
         }
         Line::Some(data) => {
-            draw_chars(&data, page, x, *y, chsets)?;
             *x = 0;
+            *y += 7;
+            draw_chars(&data, page, x, *y, chsets)?;
+            *y += 7;
         }
         Line::Heading2(data) => {
+            *x = 0;
             draw_chars(&data, page, x, *y, chsets)?;
         }
         Line::FirstPageEnd | Line::PageEnd(_) => {
-            let image = page.to_image();
-            let file_name = format!("page-{}.png", *index);
-            println!("Saving {}", file_name);
-            let page_path = path.join(&file_name);
-            image.save_with_format(&page_path, ImageFormat::Png)?;
-            *index += 1;
-            *y = 0;
+
         }
         Line::FirstNewPage | Line::NewPage(_) => {
-            *page = Page::new(750, 800);
+
         }
         Line::Unknown(u) => {
             println!("Unknown line kind {:?}", u);
         }
-    };
+    };*/
 
     Ok(())
 }
@@ -445,8 +535,7 @@ fn process_sdoc_tebu(
     let mut iter = LineIter { rest };
 
     let mut page = Page::new(1, 1);
-    let mut x = 0;
-    let mut y = 0;
+    let mut pos = Pos::new();
     let mut index = 0;
 
     for maybe_line_buf in &mut iter {
@@ -460,12 +549,23 @@ fn process_sdoc_tebu(
         match parse_line(line_buf.data) {
             Ok((rest, line)) => {
                 if let Some(out_path) = &opt.out {
-                    y += line_buf.skip & 0x03FF;
-                    draw_line(
-                        line, out_path, &mut page, &mut x, &mut y, &mut index, chsets,
-                    )?;
+                    if line.flags.contains(Flags::PAGE) {
+                        if line.flags.contains(Flags::PNEW) {
+                            page = Page::new(750, 1120);
+                        } else if line.flags.contains(Flags::PEND) {
+                            let image = page.to_image();
+                            let file_name = format!("page-{}.png", index);
+                            println!("Saving {}", file_name);
+                            let page_path = out_path.join(&file_name);
+                            image.save_with_format(&page_path, ImageFormat::Png)?;
+                            index += 1;
+                            pos.reset();
+                        }
+                    } else {
+                        draw_line(line, line_buf.skip, &mut page, &mut pos, chsets)?;
+                    }
                 } else {
-                    print_line(line, line_buf.skip);
+                    print_line(line, line_buf.skip, chsets);
                 }
                 if !rest.is_empty() {
                     println!("Unconsumed line buffer rest {:#?}", Buf(rest));

@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use nom::{
     bytes::complete::{tag, take, take_while},
     combinator::{map, map_res},
@@ -8,7 +9,6 @@ use nom::{
 };
 
 use crate::{
-    font::antikro,
     util::{key8, Bytes16, Bytes32, Key8},
     Buf,
 };
@@ -262,10 +262,8 @@ impl Default for Style {
 #[derive(Debug, Copy, Clone)]
 /// A single text character
 pub struct Te {
-    pub char: char,
     pub cval: u8,
     pub cset: u8,
-    pub width: u8,
     pub offset: u16,
     pub style: Style,
 }
@@ -316,65 +314,56 @@ impl<'a> Iterator for LineIter<'a> {
     }
 }
 
-fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
-    move |input: &[u8]| {
-        let (input, cmd) = be_u16(input)?;
+fn te(input: &[u8]) -> IResult<&[u8], Te> {
+    let (input, cmd) = be_u16(input)?;
 
-        // get the first sub-value
-        let val = (cmd & 0x7E00) >> 9;
-        let cset = ((cmd & 0x0180) >> 7) as u8;
-        let cval = (cmd & 0x007F) as u8;
+    // get the first sub-value
+    let val = (cmd & 0x7E00) >> 9;
+    let cset = ((cmd & 0x0180) >> 7) as u8;
+    let cval = (cmd & 0x007F) as u8;
 
-        let chru = cval as usize;
-        let width = crate::font::antikro::WIDTH[chru];
-        let _skip = crate::font::antikro::SKIP[chru];
+    // check whether the highest bit is set
+    if cmd >= 0x8000 {
+        Ok((
+            input,
+            Te {
+                cval,
+                cset,
+                offset: val,
+                style: Style::default(),
+            },
+        ))
+    } else {
+        let (input, extra) = be_u16(input)?;
+        let offset = extra & 0x07ff;
 
-        // check whether the highest bit is set
-        if cmd >= 0x8000 {
-            Ok((
-                input,
-                Te {
-                    char: decode(cval),
-                    cval,
-                    cset,
-                    width,
-                    offset: val,
-                    style: Style::default(),
+        let underlined = val & 0x20 > 0;
+        let footnote = val & 0x02 > 0;
+        let cset = cset | (((val & 0x01) as u8) << 2);
+
+        let sth1 = extra & 0x8000 > 0;
+        let bold = extra & 0x4000 > 0;
+        let italic = extra & 0x2000 > 0;
+        let sth2 = extra & 0x1000 > 0;
+        let small = extra & 0x0800 > 0;
+
+        Ok((
+            input,
+            Te {
+                cval,
+                cset,
+                offset,
+                style: Style {
+                    underlined,
+                    footnote,
+                    sth1,
+                    bold,
+                    italic,
+                    sth2,
+                    small,
                 },
-            ))
-        } else {
-            let (input, extra) = be_u16(input)?;
-            let offset = extra & 0x07ff;
-
-            let underlined = val & 0x20 > 0;
-            let footnote = val & 0x02 > 0;
-
-            let sth1 = extra & 0x8000 > 0;
-            let bold = extra & 0x4000 > 0;
-            let italic = extra & 0x2000 > 0;
-            let sth2 = extra & 0x1000 > 0;
-            let small = extra & 0x0800 > 0;
-
-            Ok((
-                input,
-                Te {
-                    char: decode(cval),
-                    cval,
-                    cset,
-                    width,
-                    offset,
-                    style: Style {
-                        underlined,
-                        footnote,
-                        sth1,
-                        bold,
-                        italic,
-                        sth2,
-                        small,
-                    },
-                },
-            ))
-        }
+            },
+        ))
     }
 }
 
@@ -384,78 +373,118 @@ pub struct LineBuf<'a> {
     pub data: &'a [u8],
 }
 
+bitflags! {
+    pub struct Flags: u16 {
+        const FLAG = 0x0001;
+        const PNUM = 0x0080;
+        /// Hauptzeile
+        const LINE = 0x0400;
+        /// Absatz
+        const PARA = 0x0800;
+        /// Kein-Text
+        const ALIG = 0x1000;
+        const PEND = 0x2000;
+        const PNEW = 0x4000;
+        const PAGE = 0x8000;
+    }
+}
+
 #[derive(Debug)]
-pub enum Line {
-    Zero(Vec<Te>),
-    Paragraph(Vec<Te>),
-    Paragraph1(Bytes16, Vec<Te>),
-    Line(Vec<Te>),
-    Line1(Bytes16, Vec<Te>),
-    P800(Vec<Te>),
-    Heading(Vec<Te>),
-    Some(Vec<Te>),
-    Heading2(Vec<Te>),
-    FirstPageEnd,
-    PageEnd(u16),
-    FirstNewPage,
-    NewPage(u16),
-    Unknown(Bytes16),
+pub struct Line {
+    pub flags: Flags,
+    pub extra: u16,
+    pub data: Vec<Te>,
 }
 
 pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
-    let (input, kind_tag) = bytes16(input)?;
-    match kind_tag.0 {
-        0x0000 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Zero(text)))
-        }
-        0x0400 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Line(text)))
-        }
-        0x0401 => {
-            let (input, unknown) = bytes16(input)?;
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Line1(unknown, text)))
-        }
-        0x0800 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::P800(text)))
-        }
-        0x0C00 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Paragraph(text)))
-        }
-        0x0C01 => {
-            let (input, unknown) = bytes16(input)?;
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Paragraph1(unknown, text)))
-        }
-        0x1000 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Heading(text)))
-        }
-        0x1400 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Some(text)))
-        }
-        0x1C00 => {
-            let (input, text) = many0(te(antikro::decode))(input)?;
-            Ok((input, Line::Heading2(text)))
-        }
+    let (input, bits) = bytes16(input)?;
+    let flags = Flags::from_bits(bits.0) //
+        .ok_or_else(|| anyhow::anyhow!("Unknown flags {:?}", bits))
+        .unwrap();
 
-        0xA000 => Ok((input, Line::FirstPageEnd)),
-        0xA080 => {
-            let (input, page_num) = be_u16(input)?;
-            Ok((input, Line::PageEnd(page_num)))
-        }
-        0xC000 => Ok((input, Line::FirstNewPage)),
-        0xC080 => {
-            let (input, page_num) = be_u16(input)?;
-            Ok((input, Line::NewPage(page_num)))
-        }
-        _ => Ok((input, Line::Unknown(kind_tag))),
+    if flags.contains(Flags::PAGE) {
+        let (input, pnum) = if flags.contains(Flags::PNUM) {
+            be_u16(input)?
+        } else {
+            (input, 0)
+        };
+        Ok((
+            input,
+            Line {
+                flags,
+                extra: pnum,
+                data: vec![],
+            },
+        ))
+    } else {
+        let (input, extra) = if flags.contains(Flags::FLAG) {
+            be_u16(input)?
+        } else {
+            (input, 0)
+        };
+        let (input, text) = many0(te)(input)?;
+        Ok((
+            input,
+            Line {
+                flags,
+                extra,
+                data: text,
+            },
+        ))
     }
+
+    //match kind_tag.0 {
+    /*0x0000 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Zero(text)))
+    }
+    0x0400 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Line(text)))
+    }
+    0x0401 => {
+        let (input, unknown) = bytes16(input)?;
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Line1(unknown, text)))
+    }
+    0x0800 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::P800(text)))
+    }
+    0x0C00 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Paragraph(text)))
+    }
+    0x0C01 => {
+        let (input, unknown) = bytes16(input)?;
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Paragraph1(unknown, text)))
+    }
+    0x1000 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Heading(text)))
+    }
+    0x1400 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Some(text)))
+    }
+    0x1C00 => {
+        let (input, text) = many0(te(antikro::decode))(input)?;
+        Ok((input, Line::Heading2(text)))
+    }
+
+    0xA000 => Ok((input, Line::FirstPageEnd)),
+    0xA080 => {
+        let (input, page_num) = be_u16(input)?;
+        Ok((input, Line::PageEnd(page_num)))
+    }
+    0xC000 => Ok((input, Line::FirstNewPage)),
+    0xC080 => {
+        let (input, page_num) = be_u16(input)?;
+        Ok((input, Line::NewPage(page_num)))
+    }
+    _ => Ok((input, Line::Unknown(kind_tag))),*/
+    //}
 }
 
 impl<'a> LineBuf<'a> {

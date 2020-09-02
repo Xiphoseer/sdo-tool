@@ -49,7 +49,11 @@ all major platforms (Windows, Linux and OSX).
 4. Use/Copy `target/release/sdo-tool` (Linux/OSX) or `target/release/sdo-tool.exe` (Windows)
 5. Run `sdo-tool SOMEFILE.SDO`, `sdo-tool SOMEFILE.E24`, `sdo-tool SOMEFILE.IMC`
 
-## Documentation
+## Examples
+
+See [this document](https://xiphoseer.github.io/sdo-tool/examples.html)
+
+## Format Documentation
 
 - [Signum! Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
 - [Editor Charset (`eset`)](https://xiphoseer.github.io/sdo-tool/format-eset.html)

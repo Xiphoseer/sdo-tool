@@ -52,7 +52,15 @@ impl Page {
         print(self.bytes_per_line, self.width, &self.buffer);
     }
 
-    pub fn draw_char(&mut self, x: u16, y: u16, ch: &EChar) {
+    pub fn draw_char(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), ()> {
+        if u32::from(x + u16::from(ch.width)) + 2 >= self.width {
+            return Err(());
+        }
+
+        if u32::from(y + u16::from(ch.height + ch.top)) + 2 >= self.height {
+            return Err(());
+        }
+
         let y_byte = u32::from(y + ch.top as u16) * self.bytes_per_line;
         let x_byte = u32::from(x) / 8;
         let x_bit = x % 8;
@@ -78,6 +86,8 @@ impl Page {
                 byte_index += self.bytes_per_line as usize;
             }
         }
+
+        Ok(())
     }
 
     pub fn from_screen(buffer: Vec<u8>) -> Result<Self, Vec<u8>> {

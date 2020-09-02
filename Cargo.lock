@@ -451,6 +451,7 @@ name = "sdo-tool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitflags",
  "image",
  "nom",
  "prettytable-rs",

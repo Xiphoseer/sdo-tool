@@ -132,9 +132,9 @@ Each `content` starts with a 16 bit identifier, that is probably a bitfield:
 
 - 0x0001: prefixed with a 16 bit value, possibly `hskip`
 - 0x0080: prefixed with 16 bit page number
-- 0x0400: standard line
-- 0x0800: paragraph
-- 0x1000: (probably related to alignment, occurs in formulas)
+- 0x0400: standard line (Hauptzeile)
+- 0x0800: paragraph 
+- 0x1000: non-text content
 - 0x2000: page-end
 - 0x4000: page-start
 - 0x8000: page-command (always set for start and end)
@@ -172,19 +172,22 @@ selected charset.
 **Extended character**
 ```
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-| 0 | U | V | W | X | Y | Z | CHSET |          CHARACTER        |
+| 0 | U | V | W | X | Y |   CHSET   |          CHARACTER        |
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 | A | B | I | D | S |                 OFFSET                    |
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
 
-- A: *unknown*
+- A: *unknown* (wide?)
 - B: bold
 - I: italic
-- D: *unknown*
-- S: *small*
+- D: *unknown* (tall?)
+- S: small
 
 - U: underlined
+- V: *unknown* (mark 1 ?)
+- W: *unknown* (mark 2 ?)
+- X: *unknown* (mark 3 ?)
 - Y: footnote
 
 ### (ST High) Compressed Images `hcim`
@@ -192,6 +195,8 @@ selected charset.
 This sections contains information on the images embedded in the document.
 
 This section seems optional
+
+*(This is partially known and will be documented in the future)*
 
 This section is usually 16 bytes long
 
