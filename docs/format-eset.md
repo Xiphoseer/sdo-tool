@@ -1,0 +1,1 @@
+# The Editor Charset file format (E24)

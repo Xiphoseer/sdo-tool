@@ -51,7 +51,8 @@ all major platforms (Windows, Linux and OSX).
 
 ## Documentation
 
-- [Signum Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
+- [Signum! Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
+- [Editor Charset (`eset`)](https://xiphoseer.github.io/sdo-tool/format-eset.html)
 
 ## License
 

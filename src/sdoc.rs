@@ -137,23 +137,23 @@ pub struct PBuf<'a> {
 
 #[derive(Debug)]
 pub struct Margin {
-    left: u16,
-    right: u16,
-    top: u16,
-    bottom: u16,
+    pub left: u16,
+    pub right: u16,
+    pub top: u16,
+    pub bottom: u16,
 }
 
 #[derive(Debug)]
 pub struct Page {
-    index: u16,
-    phys_pnr: u16,
-    log_pnr: u16,
+    pub index: u16,
+    pub phys_pnr: u16,
+    pub log_pnr: u16,
 
-    lines: (u8, u8),
-    margin: Margin,
-    numbpos: (u8, u8),
-    kapitel: (u8, u8),
-    intern: (u8, u8),
+    pub lines: (u8, u8),
+    pub margin: Margin,
+    pub numbpos: (u8, u8),
+    pub kapitel: (u8, u8),
+    pub intern: (u8, u8),
 }
 
 fn parse_margin(input: &[u8]) -> IResult<&[u8], Margin> {
@@ -263,6 +263,8 @@ impl Default for Style {
 /// A single text character
 pub struct Te {
     pub char: char,
+    pub cval: u8,
+    pub cset: u8,
     pub width: u8,
     pub offset: u16,
     pub style: Style,
@@ -320,10 +322,10 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
 
         // get the first sub-value
         let val = (cmd & 0x7E00) >> 9;
-        let _cset = (cmd & 0x0180) >> 7;
-        let chr = cmd & 0x007F;
+        let cset = ((cmd & 0x0180) >> 7) as u8;
+        let cval = (cmd & 0x007F) as u8;
 
-        let chru = chr as usize;
+        let chru = cval as usize;
         let width = crate::font::antikro::WIDTH[chru];
         let _skip = crate::font::antikro::SKIP[chru];
 
@@ -332,7 +334,9 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
             Ok((
                 input,
                 Te {
-                    char: decode(chr as u8),
+                    char: decode(cval),
+                    cval,
+                    cset,
                     width,
                     offset: val,
                     style: Style::default(),
@@ -344,7 +348,7 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
 
             let underlined = val & 0x20 > 0;
             let footnote = val & 0x02 > 0;
-            
+
             let sth1 = extra & 0x8000 > 0;
             let bold = extra & 0x4000 > 0;
             let italic = extra & 0x2000 > 0;
@@ -354,7 +358,9 @@ fn te<F: Fn(u8) -> char>(decode: F) -> impl Fn(&[u8]) -> IResult<&[u8], Te> {
             Ok((
                 input,
                 Te {
-                    char: decode(chr as u8),
+                    char: decode(cval),
+                    cval,
+                    cset,
                     width,
                     offset,
                     style: Style {

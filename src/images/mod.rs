@@ -1,6 +1,5 @@
 //! # Image formats
 pub mod imc;
-pub mod native;
 
 pub struct BitIter<'a> {
     state: u8,
@@ -35,5 +34,17 @@ impl Iterator for BitIter<'_> {
         let (next_buffer, carry) = self.buffer.overflowing_mul(2);
         self.buffer = next_buffer;
         Some(carry)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.inner.size_hint().0 * 8 + self.state as usize;
+        (size, Some(size))
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.inner.count() * 8 + self.state as usize
     }
 }
