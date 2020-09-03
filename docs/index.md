@@ -33,10 +33,14 @@ all major platforms (Windows, Linux and OSX).
     - Print text to the console, including page breaks, and some HTML-like format annotations
         - Fonts that match the default ATARI keys are translated to the appropriate unicode characters
         - Documents that use only the ANTIKRO font have working space detection. This is a WIP
+    - Render a document to one PNG image per page (see [examples](#examples))
+        - This requires the E24 font files to be available
+        - Character modifications (wide, tall, italics, ...) are not yet supported
     - Print a list of image names
 - Load Signum! editor charsets (*.E24, `eset0001`)
     - Print height and width for each character
     - Print ASCII art for each character bitmap
+    - Render a string with the font (use `--input "..."`, currently always "Abcdefghijkl")
 - Load Signum! images (*.IMC, `bimc0002`)
     - Produce a PNG for monochrome images exported from a document
     - NOTE: It's a tiny step from there to exporting images from a document on the fly.
