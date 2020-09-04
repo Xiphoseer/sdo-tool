@@ -61,6 +61,7 @@ See [this document](https://xiphoseer.github.io/sdo-tool/examples.html)
 
 - [Signum! Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
 - [Editor Charset (`eset`)](https://xiphoseer.github.io/sdo-tool/format-eset.html)
+- [Signum! Compressed Image (`bimc`)](https://xiphoseer.github.io/sdo-tool/format-bimc.html)
 
 ## License
 

@@ -572,12 +572,8 @@ pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
     let (input, key_bytes) = take_until(ZERO)(input)?;
     let key = String::from_utf8_lossy(key_bytes);
 
-    println!("{}", key);
     let (input, _) = tag(ZERO)(input)?;
-
     let (input, bytes) = take(27usize - key_bytes.len())(input)?;
-    println!("{:?}", Buf(bytes));
-
     let (input, image) = decode_imc(input)?;
 
     let bytes = Buf(bytes);

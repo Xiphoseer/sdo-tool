@@ -1,6 +1,7 @@
+use super::BitIter;
 use crate::{
     sdoc::{bytes16, bytes32},
-    util::{Buf, Bytes16, Bytes32},
+    util::{Bytes16, Bytes32},
 };
 use nom::{
     bytes::complete::{tag, take},
@@ -8,20 +9,22 @@ use nom::{
     number::complete::{be_u16, be_u32},
     Err, IResult,
 };
-use std::{convert::TryInto, slice::Iter};
+use std::convert::TryInto;
 
 #[derive(Debug)]
 struct IMCHeader {
-    u1: Bytes32,
-    u2: Bytes32,
+    size: u32,
+
+    width: u16,
+    height: u16,
     /// ???
-    s08: u16,
+    hchunks: u16,
     /// outer_count
-    s0a: u16,
+    vchunks: u16,
     /// data offset
-    s0c: u32,
+    size_of_bits: u32,
     //u1: Bytes16,
-    u3: Bytes32,
+    size_of_data: u32,
     /// ???
     s14: u16,
     u4: Bytes16,
@@ -30,26 +33,28 @@ struct IMCHeader {
 }
 
 fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
-    let (input, u1) = bytes32(input)?;
-    let (input, u2) = bytes32(input)?;
+    let (input, size) = be_u32(input)?;
+    let (input, width) = be_u16(input)?;
+    let (input, height) = be_u16(input)?;
 
-    let (input, s08) = be_u16(input)?;
-    let (input, s0a) = be_u16(input)?;
-    let (input, s0c) = be_u32(input)?;
+    let (input, hchunks) = be_u16(input)?;
+    let (input, vchunks) = be_u16(input)?;
+    let (input, size_of_bits) = be_u32(input)?;
+    let (input, size_of_data) = be_u32(input)?;
 
-    let (input, u3) = bytes32(input)?;
     let (input, s14) = be_u16(input)?;
     let (input, u4) = bytes16(input)?;
     let (input, u5) = bytes32(input)?;
     let (input, u6) = bytes32(input)?;
 
     let header = IMCHeader {
-        u1,
-        u2,
-        s08,
-        s0a,
-        s0c,
-        u3,
+        size,
+        width,
+        height,
+        hchunks,
+        vchunks,
+        size_of_bits,
+        size_of_data,
         s14,
         u4,
         u5,
@@ -59,35 +64,10 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
 }
 
 struct IMCState<'src> {
-    d4: u32,
-    d5: u8,
-    d6: u8,
-    d7: u16,
     a5: &'src [u8],
-    a6: Iter<'src, u8>,
 }
 
 impl<'src> IMCState<'src> {
-    /// subprocedure B
-    fn next_bit(&mut self) -> bool {
-        if self.d5 == 0 {
-            self.d5 = 7;
-            match self.a6.next() {
-                Some(v) => {
-                    self.d6 = *v;
-                }
-                None => {
-                    panic!("Could not fetch next bit: {:#?}", Buf(self.a6.as_slice()));
-                }
-            }
-        } else {
-            self.d5 -= 1;
-        }
-        let (n, b) = self.d6.overflowing_add(self.d6);
-        self.d6 = n;
-        b
-    }
-
     fn proc_h(&mut self, a0: &mut [u8]) {
         let mut d1 = self.a5[0];
         self.a5 = &self.a5[1..];
@@ -99,20 +79,6 @@ impl<'src> IMCState<'src> {
                 self.a5 = &self.a5[1..];
             }
             d1 = new_d1;
-        }
-    }
-
-    fn _proc_l(&mut self, d0: u8, mut a0: &mut [u8], s08: u16, s0a: u16) {
-        let d1 = s0a << 3;
-        for _ in 0..d1 {
-            println!("rem: {}, d7: {}", a0.len(), self.d7 * 2);
-            let (mut a1, new_a0) = a0.split_at_mut((self.d7 * 2) as usize);
-            for _ in 0..s08 {
-                a1[0] ^= d0;
-                a1[1] ^= d0;
-                a1 = &mut a1[2..];
-            }
-            a0 = new_a0; // 80 * 2 = 160
         }
     }
 }
@@ -132,6 +98,14 @@ pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<(&[u8], ErrorKind
     Ok(image)
 }
 
+macro_rules! next {
+    ($bit_iter:ident, $state:ident) => {
+        $bit_iter
+            .next()
+            .ok_or(nom::Err::Error(($state.a5, ErrorKind::Eof)))
+    };
+}
+
 /// Decode a Signum! .IMC image
 pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
     let mut buffer = vec![0; 32000];
@@ -141,62 +115,61 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
     println!("{:#?}", header);
 
-    let d7 = 0x50;
+    // Is this really 80, or should this be hchunks * 2?
+    let bytes_per_line = header.hchunks * 2;
+
     // this should be sign extend instead of from, but 0x50 is always positive
-    let d4 = u32::from(d7) << 4;
 
-    let (data, bits) = take(header.s0c as usize)(rest)?;
+    // because one chunk is 32 bytes, and bytes_per_line is hchunks * 2
+    // and 16 * 2 = 32, this is probably bytes_per_group
+    let bytes_per_group: usize = usize::from(bytes_per_line) * 16;
 
-    let mut state = IMCState {
-        d4,
-        d5: 0x00,
-        d6: 0x08,
-        d7,
-        a5: data,
-        a6: bits.iter(),
-    };
+    let (data, bits) = take(header.size_of_bits as usize)(rest)?;
 
-    for _ in 0..header.s0a {
-        if state.next_bit() {
+    let mut bit_iter = BitIter::new(bits);
+
+    let mut state = IMCState { a5: data };
+
+    let mut temp: [u8; 32];
+
+    for _ in 0..header.vchunks {
+        if next!(bit_iter, state)? {
             // subroutine C
-            for j in 0..header.s08 {
-                if state.next_bit() {
+            for j in 0..header.hchunks {
+                if next!(bit_iter, state)? {
                     // subroutine D
                     let mut d3 = 0;
-                    if state.next_bit() {
+                    if next!(bit_iter, state)? {
                         d3 += 2;
                     }
-                    if state.next_bit() {
+                    if next!(bit_iter, state)? {
                         d3 += 1;
                     }
-
                     print!("{}", d3);
 
-                    let mut temp: [u8; 32];
                     if d3 == 3 {
                         // subroutine E
-                        let (a, b) = state.a5.split_at(32);
+                        let (rest, a) = take(32usize)(state.a5)?;
                         temp = a.try_into().unwrap();
-                        state.a5 = b;
+                        state.a5 = rest;
                     } else {
                         temp = [0u8; 32]; // subroutine G
-                        let mut a3 = &mut temp[..];
+                        let (first, second) = temp.split_at_mut(16);
+
                         // first half of temp
-                        if state.next_bit() {
-                            state.proc_h(a3);
+                        if next!(bit_iter, state)? {
+                            state.proc_h(first);
                         }
-                        a3 = &mut a3[1..];
-                        if state.next_bit() {
-                            state.proc_h(a3);
+                        if next!(bit_iter, state)? {
+                            state.proc_h(&mut first[1..]);
                         }
-                        a3 = &mut a3[0xf..];
+
                         // second half of temp
-                        if state.next_bit() {
-                            state.proc_h(a3);
+                        if next!(bit_iter, state)? {
+                            state.proc_h(second);
                         }
-                        a3 = &mut a3[1..];
-                        if state.next_bit() {
-                            state.proc_h(a3);
+                        if next!(bit_iter, state)? {
+                            state.proc_h(&mut second[1..]);
                         }
 
                         if d3 == 1 {
@@ -230,7 +203,7 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
                     for i in 0..16 {
                         // subroutine F
-                        let offset = (j as usize) * 2 + (i * 80);
+                        let offset = (j as usize) * 2 + i * (bytes_per_line as usize);
                         dest[offset] = temp[i * 2];
                         dest[offset + 1] = temp[i * 2 + 1];
                     }
@@ -240,12 +213,12 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
             }
             println!();
         } else {
+            // TODO: this assumes that hchunks is always 40
             println!("________________________________________");
         }
-        dest = &mut dest[(state.d4 as usize)..];
+        dest = &mut dest[bytes_per_group..];
     }
 
-    println!("PRE_DONE");
     if header.s14 != 0 {
         let [a, b] = header.s14.to_be_bytes();
         /*// subroutine K
@@ -253,18 +226,17 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
         state.proc_l(a, &mut buffer[..], header.s08, header.s0a);
         state.proc_l(b, &mut buffer[80..], header.s08, header.s0a);*/
 
-        let d1 = header.s0a << 3;
         let mut a0 = &mut buffer[..];
-        for _ in 0..d1 {
-            //println!("rem: {}, d7: {}", a0.len(), self.d7 * 2);
-            let (mut a1, new_a0) = a0.split_at_mut(state.d7 as usize);
-            for _ in 0..header.s08 {
+        for _ in 0..(header.vchunks * 8) {
+            //println!("rem: {}, bytes_per_line: {}", a0.len(), bytes_per_line * 2);
+            let (mut a1, new_a0) = a0.split_at_mut(bytes_per_line as usize);
+            for _ in 0..header.hchunks {
                 a1[0] ^= a;
                 a1[1] ^= a;
                 a1 = &mut a1[2..];
             }
-            let (mut a1, new_a0) = new_a0.split_at_mut(state.d7 as usize);
-            for _ in 0..header.s08 {
+            let (mut a1, new_a0) = new_a0.split_at_mut(bytes_per_line as usize);
+            for _ in 0..header.hchunks {
                 a1[0] ^= b;
                 a1[1] ^= b;
                 a1 = &mut a1[2..];
