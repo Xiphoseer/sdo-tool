@@ -3,7 +3,7 @@ use crate::{
     util::{Buf, Bytes16, Bytes32},
 };
 use nom::{
-    bytes::complete::tag,
+    bytes::complete::{tag, take},
     error::ErrorKind,
     number::complete::{be_u16, be_u32},
     Err, IResult,
@@ -102,9 +102,10 @@ impl<'src> IMCState<'src> {
         }
     }
 
-    fn proc_l(&mut self, d0: u8, mut a0: &mut [u8], s08: u16, s0a: u16) {
+    fn _proc_l(&mut self, d0: u8, mut a0: &mut [u8], s08: u16, s0a: u16) {
         let d1 = s0a << 3;
         for _ in 0..d1 {
+            println!("rem: {}, d7: {}", a0.len(), self.d7 * 2);
             let (mut a1, new_a0) = a0.split_at_mut((self.d7 * 2) as usize);
             for _ in 0..s08 {
                 a1[0] ^= d0;
@@ -116,13 +117,23 @@ impl<'src> IMCState<'src> {
     }
 }
 
-pub fn parse_imc(input: &[u8]) -> Result<Vec<u8>, Err<(&[u8], ErrorKind)>> {
+#[derive(Debug)]
+pub struct MonochromeScreen(Vec<u8>);
+
+impl MonochromeScreen {
+    pub fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<(&[u8], ErrorKind)>> {
     let (input, _) = tag(b"bimc0002")(input)?;
-    Ok(decode_imc(input))
+    let (_input, image) = decode_imc(input)?;
+    Ok(image)
 }
 
 /// Decode a Signum! .IMC image
-pub fn decode_imc(src: &[u8]) -> Vec<u8> {
+pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
     let mut buffer = vec![0; 32000];
     let mut dest = &mut buffer[..]; // state[A] moving destination address
 
@@ -134,7 +145,7 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
     // this should be sign extend instead of from, but 0x50 is always positive
     let d4 = u32::from(d7) << 4;
 
-    let (bits, data) = rest.split_at(header.s0c as usize);
+    let (data, bits) = take(header.s0c as usize)(rest)?;
 
     let mut state = IMCState {
         d4,
@@ -234,12 +245,33 @@ pub fn decode_imc(src: &[u8]) -> Vec<u8> {
         dest = &mut dest[(state.d4 as usize)..];
     }
 
+    println!("PRE_DONE");
     if header.s14 != 0 {
-        // subroutine K
         let [a, b] = header.s14.to_be_bytes();
-        state.proc_l(a, &mut dest[..], header.s08, header.s0a);
-        state.proc_l(b, &mut dest[80..], header.s08, header.s0a);
+        /*// subroutine K
+
+        state.proc_l(a, &mut buffer[..], header.s08, header.s0a);
+        state.proc_l(b, &mut buffer[80..], header.s08, header.s0a);*/
+
+        let d1 = header.s0a << 3;
+        let mut a0 = &mut buffer[..];
+        for _ in 0..d1 {
+            //println!("rem: {}, d7: {}", a0.len(), self.d7 * 2);
+            let (mut a1, new_a0) = a0.split_at_mut(state.d7 as usize);
+            for _ in 0..header.s08 {
+                a1[0] ^= a;
+                a1[1] ^= a;
+                a1 = &mut a1[2..];
+            }
+            let (mut a1, new_a0) = new_a0.split_at_mut(state.d7 as usize);
+            for _ in 0..header.s08 {
+                a1[0] ^= b;
+                a1[1] ^= b;
+                a1 = &mut a1[2..];
+            }
+            a0 = new_a0; // 80 * 2 = 160
+        }
     }
 
-    buffer
+    Ok((state.a5, MonochromeScreen(buffer)))
 }

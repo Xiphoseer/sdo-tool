@@ -1,4 +1,8 @@
-use crate::{font::eset::EChar, images::BitIter, util::BIT_STRING};
+use crate::{
+    font::eset::EChar,
+    images::{imc::MonochromeScreen, BitIter},
+    util::BIT_STRING,
+};
 use image::GrayImage;
 
 /// A virtual page that works just like the atari monochrome screen
@@ -11,6 +15,17 @@ pub struct Page {
     width: u32,
     height: u32,
     buffer: Vec<u8>,
+}
+
+impl Page {
+    pub fn from_screen(screen: MonochromeScreen) -> Self {
+        Page {
+            bytes_per_line: 80,
+            width: 640,
+            height: 400,
+            buffer: screen.into_inner(),
+        }
+    }
 }
 
 fn print(bytes_per_line: u32, width: u32, buffer: &[u8]) {
@@ -88,19 +103,6 @@ impl Page {
         }
 
         Ok(())
-    }
-
-    pub fn from_screen(buffer: Vec<u8>) -> Result<Self, Vec<u8>> {
-        if buffer.len() == 32000 {
-            Ok(Page {
-                bytes_per_line: 80,
-                width: 640,
-                height: 400,
-                buffer,
-            })
-        } else {
-            Err(buffer)
-        }
     }
 
     pub fn to_image(&self) -> GrayImage {

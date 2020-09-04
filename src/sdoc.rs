@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 use nom::{
-    bytes::complete::{tag, take, take_while},
+    bytes::complete::{tag, take, take_until, take_while},
     combinator::{map, map_res},
     error::ErrorKind,
     multi::{count, fill, length_data, many0},
@@ -9,7 +9,8 @@ use nom::{
 };
 
 use crate::{
-    util::{key8, Bytes16, Bytes32, Key8},
+    images::imc::{decode_imc, MonochromeScreen},
+    util::{Bytes16, Bytes32},
     Buf,
 };
 use fmt::Debug;
@@ -559,13 +560,28 @@ pub fn parse_image_buf(input: &[u8]) -> IResult<&[u8], Buf> {
 }
 
 #[derive(Debug)]
-pub struct Image {
-    pub key: Key8,
+pub struct Image<'a> {
+    pub key: Cow<'a, str>,
+    pub bytes: Buf<'a>,
+    pub image: MonochromeScreen,
 }
 
+const ZERO: &[u8] = &[0];
+
 pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
-    let (input, key) = key8(input)?;
-    Ok((input, Image { key }))
+    let (input, key_bytes) = take_until(ZERO)(input)?;
+    let key = String::from_utf8_lossy(key_bytes);
+
+    println!("{}", key);
+    let (input, _) = tag(ZERO)(input)?;
+
+    let (input, bytes) = take(27usize - key_bytes.len())(input)?;
+    println!("{:?}", Buf(bytes));
+
+    let (input, image) = decode_imc(input)?;
+
+    let bytes = Buf(bytes);
+    Ok((input, Image { key, bytes, image }))
 }
 
 pub fn parse_hcim_header(input: &[u8]) -> IResult<&[u8], HCIMHeader> {

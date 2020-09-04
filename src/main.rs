@@ -40,6 +40,9 @@ struct Options {
     /// Where to store the output, if applicable
     #[structopt(long)]
     out: Option<PathBuf>,
+    /// Where to store the image output, if applicable
+    #[structopt(long)]
+    imout: Option<PathBuf>,
     /// Some input to process
     #[structopt(long)]
     input: Option<String>,
@@ -81,8 +84,7 @@ fn process_bimc(buffer: &[u8], out: Option<PathBuf>) -> anyhow::Result<()> {
     let decoded = parse_imc(&buffer) //
         .map_err(|err| anyhow!("Failed to parse: {}", err))?;
 
-    let page = Page::from_screen(decoded) //
-        .map_err(|x| anyhow!("Deoder produced buffer of size {}, expected 32000", x.len()))?;
+    let page = Page::from_screen(decoded);
 
     if let Some(out_path) = out {
         let image = page.to_image();
@@ -584,6 +586,48 @@ fn process_sdoc_tebu(
     Ok(())
 }
 
+fn process_sdoc_hcim(part: Buf, opt: &Options) -> anyhow::Result<()> {
+    let (rest, hcim) = parse_hcim(part.0).unwrap();
+    println!("'hcim':");
+    println!("  {:?}", hcim.header);
+
+    let out_img = opt.imout.as_ref(); //opt.out.as_ref().map(|p| p.join("images"));
+    if let Some(out_img) = out_img {
+        std::fs::create_dir_all(out_img)?;
+    }
+
+    for res_ref in hcim.ref_iter() {
+        let iref = res_ref.unwrap();
+        println!("IREF: {:?}", iref);
+    }
+
+    for (index, img) in hcim.images.iter().enumerate() {
+        println!("image[{}]:", index);
+        match parse_image(img.0) {
+            Ok((_imgrest, im)) => {
+                println!("IMAGE: {:?}", im.key);
+                println!("{:#?}", im.bytes);
+                if let Some(out_img) = out_img.as_ref() {
+                    let name = format!("{:02}-{}.png", index, im.key);
+                    let path = out_img.join(name);
+                    let page = Page::from_screen(im.image);
+                    let img = page.to_image();
+                    img.save_with_format(&path, ImageFormat::Png)?;
+                }
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+            }
+        }
+    }
+
+    if !rest.is_empty() {
+        println!("{:#?}", Buf(rest));
+    }
+
+    Ok(())
+}
+
 fn process_sdoc(buffer: &[u8], opt: Options) -> anyhow::Result<()> {
     match parse_sdoc0001_container(buffer) {
         Ok((rest, sdoc)) => {
@@ -610,28 +654,7 @@ fn process_sdoc(buffer: &[u8], opt: Options) -> anyhow::Result<()> {
                         process_sdoc_tebu(part, &chsets, &opt)?;
                     }
                     "hcim" => {
-                        let (rest, hcim) = parse_hcim(part.0).unwrap();
-                        println!("'hcim':");
-                        println!("  {:?}", hcim.header);
-
-                        for res_ref in hcim.ref_iter() {
-                            let iref = res_ref.unwrap();
-                            println!("IREF: {:?}", iref);
-                        }
-
-                        for (index, img) in hcim.images.iter().enumerate() {
-                            println!("image[{}]:", index);
-                            let (_imgrest, im) = parse_image(img.0).unwrap();
-                            println!("{:?}", im);
-                            let _name = im.key.to_string();
-                            //std::fs::write(&name, &img.0).unwrap();
-
-                            //println!("{:#?}", Buf(imgrest));
-                        }
-
-                        if !rest.is_empty() {
-                            println!("{:#?}", Buf(rest));
-                        }
+                        process_sdoc_hcim(part, &opt)?;
                     }
                     _ => {
                         println!("'{}': {}", key, part.0.len());
