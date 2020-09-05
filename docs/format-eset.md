@@ -87,4 +87,4 @@ To turn this into something useful, you may need to
 |`4_`| ü  | A  | B  | C  | D  | E  | F  | G  | H  | I  | J  | K  | L  | M  | N  | O  |
 |`5_`| P  | Q  | R  | S  | T  | U  | V  | W  | X  | Y  | Z  | ö  | Ü  | ä  | ^  | _  |
 |`6_`| `  | a  | b  | c  | d  | e  | f  | g  | h  | i  | j  | k  | l  | m  | n  | o  |
-|`7_`| p  | q  | r  | s  | t  | u  | v  | w  | x  | y  | z  | Ö  | |  | Ä  | ~  | ß  |
+|`7_`| p  | q  | r  | s  | t  | u  | v  | w  | x  | y  | z  | Ö  | \| | Ä  | ~  | ß  |
