@@ -194,6 +194,8 @@ selected charset.
 
 This sections contains information on the images embedded in the document.
 
+
+
 This section seems optional
 
 *(This is partially known and will be documented in the future)*

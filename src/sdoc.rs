@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::{tag, take, take_until, take_while},
     combinator::{map, map_res},
     error::ErrorKind,
-    multi::{count, fill, length_data, many0},
+    multi::{count, length_data, many0},
     number::complete::{be_u16, be_u32, be_u8},
     IResult,
 };
@@ -433,59 +433,6 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
             },
         ))
     }
-
-    //match kind_tag.0 {
-    /*0x0000 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Zero(text)))
-    }
-    0x0400 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Line(text)))
-    }
-    0x0401 => {
-        let (input, unknown) = bytes16(input)?;
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Line1(unknown, text)))
-    }
-    0x0800 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::P800(text)))
-    }
-    0x0C00 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Paragraph(text)))
-    }
-    0x0C01 => {
-        let (input, unknown) = bytes16(input)?;
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Paragraph1(unknown, text)))
-    }
-    0x1000 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Heading(text)))
-    }
-    0x1400 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Some(text)))
-    }
-    0x1C00 => {
-        let (input, text) = many0(te(antikro::decode))(input)?;
-        Ok((input, Line::Heading2(text)))
-    }
-
-    0xA000 => Ok((input, Line::FirstPageEnd)),
-    0xA080 => {
-        let (input, page_num) = be_u16(input)?;
-        Ok((input, Line::PageEnd(page_num)))
-    }
-    0xC000 => Ok((input, Line::FirstNewPage)),
-    0xC080 => {
-        let (input, page_num) = be_u16(input)?;
-        Ok((input, Line::NewPage(page_num)))
-    }
-    _ => Ok((input, Line::Unknown(kind_tag))),*/
-    //}
 }
 
 impl<'a> LineBuf<'a> {
@@ -510,47 +457,39 @@ pub fn _parse_tebu(input: &[u8]) -> IResult<&[u8], TeBu> {
 
 #[derive(Debug)]
 pub struct HCIMHeader {
-    pub length: u32,
-    pub count: u16,
-    pub b: u16,
+    pub header_length: u32,
+    pub img_count: u16,
+    pub site_count: u16,
     pub c: Bytes32,
     pub d: Bytes32,
 }
 
 #[derive(Debug)]
+#[allow(non_snake_case)]
+pub struct ImageSite {
+    pub page: u16,
+    pub pos_x: u16,
+    pub pos_y: u16,
+    pub _3: u16,
+    pub _4: u16,
+    pub _5: u16,
+    pub sel_x: u16,
+    pub sel_y: u16,
+    pub sel_w: u16,
+    pub sel_h: u16,
+    pub _A: u16,
+    pub _B: u16,
+    pub _C: u16,
+    pub img: u16,
+    pub _E: u16,
+    pub _F: Bytes16,
+}
+
+#[derive(Debug)]
 pub struct HCIM<'a> {
     pub header: HCIMHeader,
-    pub part1: Buf<'a>,
+    pub sites: Vec<ImageSite>,
     pub images: Vec<Buf<'a>>,
-}
-
-impl<'a> HCIM<'a> {
-    pub fn ref_iter(&self) -> HCIMRefIter {
-        HCIMRefIter {
-            inner: self.part1.0,
-        }
-    }
-}
-
-pub struct HCIMRefIter<'a> {
-    inner: &'a [u8],
-}
-
-impl<'a> Iterator for HCIMRefIter<'a> {
-    type Item = Result<[u16; 16], nom::Err<(&'a [u8], ErrorKind)>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.inner.is_empty() {
-            None
-        } else {
-            match parse_hcim_img_ref(self.inner) {
-                Ok((rest, value)) => {
-                    self.inner = rest;
-                    Some(Ok(value))
-                }
-                Err(e) => Some(Err(e)),
-            }
-        }
-    }
 }
 
 pub fn parse_image_buf(input: &[u8]) -> IResult<&[u8], Buf> {
@@ -581,40 +520,76 @@ pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
 }
 
 pub fn parse_hcim_header(input: &[u8]) -> IResult<&[u8], HCIMHeader> {
-    let (input, length) = be_u32(input)?;
-    let (input, count) = be_u16(input)?;
-    let (input, b) = be_u16(input)?;
+    let (input, header_length) = be_u32(input)?;
+    let (input, img_count) = be_u16(input)?;
+    let (input, site_count) = be_u16(input)?;
     let (input, c) = bytes32(input)?;
     let (input, d) = bytes32(input)?;
 
     Ok((
         input,
         HCIMHeader {
-            length,
-            count,
-            b,
+            header_length,
+            img_count,
+            site_count,
             c,
             d,
         },
     ))
 }
 
-pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], [u16; 16]> {
-    let mut res = [0u16; 16];
-    let (input, _) = fill(be_u16, &mut res)(input)?;
-    Ok((input, res))
+#[allow(non_snake_case, clippy::just_underscores_and_digits)]
+pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], ImageSite> {
+    let (input, page) = be_u16(input)?;
+    let (input, pos_x) = be_u16(input)?;
+    let (input, pos_y) = be_u16(input)?;
+    let (input, _3) = be_u16(input)?;
+    let (input, _4) = be_u16(input)?;
+    let (input, _5) = be_u16(input)?;
+    let (input, sel_x) = be_u16(input)?;
+    let (input, sel_y) = be_u16(input)?;
+    let (input, sel_w) = be_u16(input)?;
+    let (input, sel_h) = be_u16(input)?;
+    let (input, _A) = be_u16(input)?;
+    let (input, _B) = be_u16(input)?;
+    let (input, _C) = be_u16(input)?;
+    let (input, img) = be_u16(input)?;
+    let (input, _E) = be_u16(input)?;
+    let (input, _F) = bytes16(input)?;
+    Ok((
+        input,
+        ImageSite {
+            page,
+            pos_x,
+            pos_y,
+            _3,
+            _4,
+            _5,
+            sel_x,
+            sel_y,
+            sel_w,
+            sel_h,
+            _A,
+            _B,
+            _C,
+            img,
+            _E,
+            _F,
+        },
+    ))
 }
 
 pub fn parse_hcim(input: &[u8]) -> IResult<&[u8], HCIM> {
     let (input, header) = parse_hcim_header(input)?;
-    let (input, buf) = take(header.length as usize)(input)?;
-    let (input, images) = count(parse_image_buf, header.count as usize)(input)?;
+    let (input, buf) = take(header.header_length as usize)(input)?;
+    let (_, sites) = count(parse_hcim_img_ref, header.site_count as usize)(buf)?;
+    let (input, images) = count(parse_image_buf, header.img_count as usize)(input)?;
 
     Ok((
         input,
         HCIM {
             header,
-            part1: Buf(buf),
+            sites,
             images,
         },
     ))

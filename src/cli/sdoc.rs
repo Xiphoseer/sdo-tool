@@ -369,28 +369,28 @@ fn process_sdoc_hcim(part: Buf, opt: &Options) -> anyhow::Result<()> {
 
     // Add a row per time
     image_table.set_titles(row![
-        "page", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",
+        "page", "pos_x", "pos_y", "[3]", "[4]", "[5]", "sel_x", "sel_y", "sel_w", "sel_h", "[A]",
+        "[B]", "[C]", "img", "[E]", "[F]",
     ]);
 
-    for res_ref in hcim.ref_iter() {
-        let iref = res_ref.unwrap();
+    for isite in hcim.sites {
         image_table.add_row(Row::new(vec![
-            Cell::new(&format!("{}", iref[0x0])),
-            Cell::new(&format!("{}", iref[0x1])),
-            Cell::new(&format!("{}", iref[0x2])),
-            Cell::new(&format!("{}", iref[0x3])),
-            Cell::new(&format!("{}", iref[0x4])),
-            Cell::new(&format!("{}", iref[0x5])),
-            Cell::new(&format!("{}", iref[0x6])),
-            Cell::new(&format!("{}", iref[0x7])),
-            Cell::new(&format!("{}", iref[0x8])),
-            Cell::new(&format!("{}", iref[0x9])),
-            Cell::new(&format!("{}", iref[0xA])),
-            Cell::new(&format!("{}", iref[0xB])),
-            Cell::new(&format!("{}", iref[0xC])),
-            Cell::new(&format!("{}", iref[0xD])),
-            Cell::new(&format!("{}", iref[0xE])),
-            Cell::new(&format!("{}", iref[0xF])),
+            Cell::new(&format!("{}", isite.page)),
+            Cell::new(&format!("{}", isite.pos_x)),
+            Cell::new(&format!("{}", isite.pos_y)),
+            Cell::new(&format!("{}", isite._3)),
+            Cell::new(&format!("{}", isite._4)),
+            Cell::new(&format!("{}", isite._5)),
+            Cell::new(&format!("{}", isite.sel_x)),
+            Cell::new(&format!("{}", isite.sel_y)),
+            Cell::new(&format!("{}", isite.sel_w)),
+            Cell::new(&format!("{}", isite.sel_h)),
+            Cell::new(&format!("{}", isite._A)),
+            Cell::new(&format!("{}", isite._B)),
+            Cell::new(&format!("{}", isite._C)),
+            Cell::new(&format!("{}", isite.img)),
+            Cell::new(&format!("{}", isite._E)),
+            Cell::new(&format!("{:?}", isite._F)),
         ]));
     }
 
