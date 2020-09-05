@@ -72,7 +72,7 @@ impl<'a> ESet<'a> {
         let mut widths = Vec::with_capacity(capacity);
         let mut skips = Vec::with_capacity(capacity);
         for (index, ch) in self.chars.iter().enumerate() {
-            println!("\nchar[{}]", index + 1);
+            println!("\nchar[{}]", index);
             let wu = ch.width as usize;
             let hu = ch.height as usize;
             widths.push(ch.width);
