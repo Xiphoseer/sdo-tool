@@ -723,7 +723,7 @@ pub struct KBOptions {
     out: PathBuf,
 }
 
-const fn get_gchar(gchar: u8) -> &'static EChar<'static> {
+fn get_gchar(gchar: u8) -> &'static EChar<'static> {
     match gchar {
         49 => &EChar {
             width: 15,
@@ -804,7 +804,7 @@ const fn get_gchar(gchar: u8) -> &'static EChar<'static> {
     }
 }
 
-const fn get_lchar(lchar: u8) -> &'static EChar<'static> {
+fn get_lchar(lchar: u8) -> &'static EChar<'static> {
     match lchar {
         65 => &EChar {
             width: 5,
