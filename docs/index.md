@@ -33,7 +33,7 @@ all major platforms (Windows, Linux and OSX).
     - Print text to the console, including page breaks, and some HTML-like format annotations
         - Fonts that match the default ATARI keys are translated to the appropriate unicode characters
         - Documents that use only the ANTIKRO font have working space detection. This is a WIP
-    - Render a document to one PNG image per page (see [examples](#examples))
+    - Render a document to one PNG image per page (see [examples][examples])
         - This requires the E24 font files to be available
         - Character modifications (wide, tall, italics, ...) are not yet supported
     - Print a list of image names
@@ -41,6 +41,8 @@ all major platforms (Windows, Linux and OSX).
     - Print height and width for each character
     - Print ASCII art for each character bitmap
     - Render a string with the font (use `--input "..."`, currently always "Abcdefghijkl")
+    - Generate a visual map of the characters on an ATARI keyboard
+      - Examples of those are on the [font mappings][font-mappings] page
 - Load Signum! images (*.IMC, `bimc0002`)
     - Produce a PNG for monochrome images exported from a document
     - NOTE: It's a tiny step from there to exporting images from a document on the fly.
@@ -55,11 +57,11 @@ all major platforms (Windows, Linux and OSX).
 
 ## Examples
 
-See [this document](https://xiphoseer.github.io/sdo-tool/examples.html)
+See [this document][examples]
 
 ## Font Mappings
 
-See [this document](https://xiphoseer.github.io/sdo-tool/font-mappings.html) for mappings from
+See [this document][font-mappings] for mappings from
 standard Signum! fonts to [Unicode](https://unicode.org) codepoints.
 
 ## Format Documentation
@@ -98,3 +100,6 @@ please file a github issue or send me an email at `ng5on06lc@relay.firefox.com`.
 [MM2]: http://www.tempel.org/files-d.html#MM2
 [ZERO-WHITE]: https://en.wikipedia.org/wiki/List_of_monochrome_and_RGB_color_formats#Monochrome_(1-bit)
 [1stWord]: http://stcarchiv.de/stc1989/02/von-1stword-zu-signum2
+
+[font-mappings]: https://xiphoseer.github.io/sdo-tool/font-mappings.html
+[examples]: https://xiphoseer.github.io/sdo-tool/examples.html
