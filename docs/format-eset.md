@@ -54,10 +54,7 @@ the next one.
 
 ## Character Encoding
 
-The following image is the layout of all valid characters of the
-`ANTIKRO` font on the ATARI ST keyboard.
-
-![KBANTIK](img/kbantik.png)
+See also: [Font Mappings](font-mappings.html)
 
 The standard notation to talk about Signum! font character identity
 was introduced by the program itself and its "ASCII" compatibility mode.

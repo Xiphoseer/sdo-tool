@@ -7,13 +7,19 @@ for each character that can be mapped with its name and the character itself.
 
 [Unicode]: https://unicode.org
 
+See also: [E24 Charset Format](format-eset.html)
+
 ## ANTIKRO
+
+![KBANTIK](img/kbantik.png)
 
 <https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/ANTIKRO.TXT>
 
 - 0xFF should be "HYPHEN WITH SMALL T"
 
 ## GRIECH
+
+![KBGRIECH](img/kbgriech.png)
 
 <https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/GRIECH.TXT>
 
