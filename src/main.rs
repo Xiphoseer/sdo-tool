@@ -156,6 +156,6 @@ fn main() -> anyhow::Result<()> {
             print!("{}", decoded);
             Ok(())
         }
-        Some(Command::Keyboard(kbopt)) => keyboard::run(&buffer, kbopt),
+        Some(Command::Keyboard(kbopt)) => keyboard::run(&opt.file, &buffer, kbopt),
     }
 }

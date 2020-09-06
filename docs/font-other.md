@@ -40,13 +40,15 @@ Seems ot be an older version of the default `GRAPH1` font.
 
 ### TIMES
 
-![TIMES](img/kb/TIMES.png)### FONT_001
+![TIMES](img/kb/TIMES.png)
 
 ## Random unnamed fonts
 
 These are fonts that people on the internet collected
 
 Source: <http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/>
+
+### FONT_001
 
 ![FONT_001](img/kb/FONT_001.png)
 

@@ -983,7 +983,7 @@ fn _run_stage_2() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn run(buffer: &[u8], kbopt: KBOptions) -> anyhow::Result<()> {
+pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> anyhow::Result<()> {
     let (_, eset) = parse_eset(buffer) //
         .map_err(|e| anyhow!("Could not load editor charset:\n{}", e))?;
     let mut page = Page::new(730, 175);
@@ -998,7 +998,14 @@ pub fn run(buffer: &[u8], kbopt: KBOptions) -> anyhow::Result<()> {
     }
 
     let img = page.to_image();
-    img.save_with_format(&kbopt.out, ImageFormat::Png)?;
+
+    let mut out = kbopt.out;
+    if out.exists() && out.is_dir() {
+        out.push(file.file_name().unwrap());
+        out.set_extension("png");
+    }
+
+    img.save_with_format(&out, ImageFormat::Png)?;
 
     Ok(())
 }
