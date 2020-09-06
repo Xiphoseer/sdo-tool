@@ -5,7 +5,8 @@ use nom::{
     number::complete::{be_u32, be_u8},
     IResult,
 };
-use std::{ops::Deref, path::Path};
+use std::{io, ops::Deref, path::Path};
+use thiserror::Error;
 
 const BORDER: [&str; 17] = [
     "+|---------------+",
@@ -46,9 +47,15 @@ impl Deref for OwnedESet {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("Failed IO")]
+    Io(#[from] io::Error),
+}
+
 impl OwnedESet {
-    pub fn load(path: &Path) -> Result<Self, String> {
-        let buffer = std::fs::read(path).unwrap();
+    pub fn load(path: &Path) -> Result<Self, LoadError> {
+        let buffer = std::fs::read(path)?;
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };
@@ -62,9 +69,15 @@ pub struct EChar<'a> {
     pub width: u8,
     pub height: u8,
     pub top: u8,
-    d: u8,
     pub buf: &'a [u8],
 }
+
+pub const ECHAR_NULL: EChar<'static> = EChar {
+    width: 0,
+    height: 0,
+    top: 0,
+    buf: &[],
+};
 
 impl<'a> ESet<'a> {
     pub fn print(&self) {
@@ -77,7 +90,7 @@ impl<'a> ESet<'a> {
             let hu = ch.height as usize;
             widths.push(ch.width);
             skips.push(ch.top);
-            println!("{}, {}x{}, {}", ch.top, wu, hu, ch.d);
+            println!("{}, {}x{}", ch.top, wu, hu);
             let border = BORDER[wu];
             println!("{}", border);
             for _ in 1..ch.top {
@@ -134,7 +147,7 @@ pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
     let (input, top) = be_u8(input)?;
     let (input, height) = be_u8(input)?;
     let (input, width) = be_u8(input)?;
-    let (input, d) = be_u8(input)?;
+    let (input, _d) = be_u8(input)?;
     let (input, buf) = take((height * 2) as usize)(input)?;
     Ok((
         input,
@@ -142,7 +155,6 @@ pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
             width,
             height,
             top,
-            d,
             buf,
         },
     ))
@@ -161,13 +173,7 @@ pub fn parse_eset(input: &[u8]) -> IResult<&[u8], ESet> {
     let (input, char_buf) = take(len as usize)(input)?;
 
     let mut chars = Vec::with_capacity(skip as usize);
-    chars.push(EChar {
-        width: 0,
-        height: 0,
-        top: 0,
-        d: 0,
-        buf: &[],
-    });
+    chars.push(ECHAR_NULL);
 
     for _ in 1..skip {
         let (rest, offset) = be_u32(offset_buf)?;

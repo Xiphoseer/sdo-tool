@@ -11,8 +11,9 @@ mod util;
 use crate::{font::eset::parse_eset, images::imc::parse_imc, print::Page, util::Buf};
 
 use anyhow::anyhow;
-use cli::sdoc::process_sdoc;
+use cli::{keyboard, sdoc::process_sdoc};
 use image::ImageFormat;
+use keyboard::KBOptions;
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -38,6 +39,8 @@ pub enum Command {
     Dump(Options),
     /// Options for decoding an ATARI String
     Decode,
+    /// Print a keyboard for the given font
+    Keyboard(KBOptions),
 }
 
 /// OPTIONS
@@ -52,6 +55,8 @@ pub struct Options {
     /// Some input to process
     #[structopt(long)]
     input: Option<String>,
+    #[structopt(long)]
+    pdraw: bool,
 }
 
 fn process_eset(buffer: &[u8], input: Option<String>, out: Option<PathBuf>) -> anyhow::Result<()> {
@@ -151,5 +156,6 @@ fn main() -> anyhow::Result<()> {
             print!("{}", decoded);
             Ok(())
         }
+        Some(Command::Keyboard(kbopt)) => keyboard::run(&buffer, kbopt),
     }
 }

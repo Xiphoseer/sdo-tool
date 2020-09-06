@@ -256,6 +256,13 @@ fn draw_chars(
     Ok(())
 }
 
+fn print_char_cmds(data: &[Te], x: &mut u16, y: u16) {
+    for te in data {
+        *x += te.offset;
+        println!("({}, {}, {},  {}),", *x, y, te.cval, te.cset);
+    }
+}
+
 struct Pos {
     x: u16,
     y: u16,
@@ -290,6 +297,13 @@ fn draw_line(
     draw_chars(&line.data, page, &mut pos.x, pos.y, chsets)?;
 
     Ok(())
+}
+
+fn print_line_cmds(line: Line, skip: u16, pos: &mut Pos) {
+    pos.x = 0;
+    pos.y += (skip + 1) * 2;
+
+    print_char_cmds(&line.data, &mut pos.x, pos.y);
 }
 
 fn process_sdoc_tebu(
@@ -339,6 +353,8 @@ fn process_sdoc_tebu(
             } else {
                 draw_line(line, line_buf.skip, &mut page, &mut pos, chsets)?;
             }
+        } else if opt.pdraw {
+            print_line_cmds(line, line_buf.skip, &mut pos)
         } else {
             print_line(line, line_buf.skip, chsets);
         }
