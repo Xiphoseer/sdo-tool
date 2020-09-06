@@ -57,6 +57,11 @@ all major platforms (Windows, Linux and OSX).
 
 See [this document](https://xiphoseer.github.io/sdo-tool/examples.html)
 
+## Font Mappings
+
+See [this document](https://xiphoseer.github.io/sdo-tool/font-mappings.html) for mappings from
+standard Signum! fonts to [Unicode](https://unicode.org) codepoints.
+
 ## Format Documentation
 
 - [Signum! Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)

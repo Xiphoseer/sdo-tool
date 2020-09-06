@@ -3,7 +3,7 @@
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A
-# Date:             2015 October 08
+# Date:             2020 September 06
 # Authors:          Xiphoseer <ng5on06lc AT relay.firefox.com>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646

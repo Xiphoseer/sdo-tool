@@ -1,0 +1,105 @@
+# File encoding:    UTF-8
+# Name:             Signum! GRIECH to Unicode
+# Unicode version:  13.0
+# Table version:    1.0
+# Table format:     Format A
+# Date:             2020 September 06
+# Authors:          Xiphoseer <ng5on06lc AT relay.firefox.com>
+
+0x00	0x0000	# NULL                                      	# <NUL> ISO646
+0x01	0x27E8	# MATHEMATICAL LEFT ANGLE BRACKET           	# ⟨
+0x02	0x27E9	# MATHEMATICAL RIGHT ANGLE BRACKET          	# ⟩
+0x03	0x007B	# LEFT CURLY BRACKET                        	# {
+0x04	0x007D	# RIGHT CURLY BRACKET                       	# }
+
+0x0F	0x003C	# LESS-THAN SIGN                            	# <
+0x10	0x003E	# GREATER-THAN SIGN                         	# >
+0x11	0x0028	# LEFT PARENTHESIS                          	# (
+0x12	0x0029	# RIGHT PARENTHESIS                         	# )
+0x13	0x2080	# SUBSCRIPT ZERO                            	# ₀
+
+0x20	0x22C1	# N-ARY LOGICAL OR                          	# ⋁
+0x21	0x007C	# VERTICAL LINE                             	# |
+0x22	0x2016	# DOUBLE VERTICAL LINE                      	# ‖
+
+0x24	0x22C0	# N-ARY LOGICAL AND                         	# ⋀
+0x25	0x22C3	# N-ARY UNION                               	# ⋃
+0x26	0x22C2	# N-ARY INTERSECTION                        	# ⋂
+
+0x28	0x27EE	# MATHEMATICAL LEFT FLATTENED PARENTHESIS   	# ⟮
+0x29	0x27EF	# MATHEMATICAL RIGHT FLATTENED PARENTHESIS  	# ⟯
+
+0x2F	0x002F	# SOLIDUS                                   	# /	ASCII
+
+0x31	0x007C	# VERTICAL LINE                             	# |
+0x32	0x2016	# DOUBLE VERTICAL LINE                      	# ‖
+0x33	0x2228	# LOGICAL OR                                	# ∨
+0x34	0x2227	# LOGICAL AND                               	# ∧
+0x35	0x222A	# UNION                                     	# ∪
+0x36	0x2229	# INTERSECTION                              	# ∩
+0x37	0x002F	# SOLIDUS                                   	# /
+0x38	0xFE59	# SMALL LEFT PARENTHESIS                    	# ﹙
+0x39	0xFE5A	# SMALL RIGHT PARENTHESIS                   	# ﹚
+
+0x3C	0xFE64	# SMALL LESS-THAN SIGN                      	# ﹤
+
+0x3E	0xFE65	# SMALL GREATER-THAN SIGN                   	# ﹥
+
+0x40	0xFE68	# SMALL REVERSE SOLIDUS                     	# ﹨
+0x41	0x0391	# GREEK CAPITAL LETTER ALPHA                	# Α
+0x42	0x0392	# GREEK CAPITAL LETTER BETA                 	# Β
+0x43	0x03A7	# GREEK CAPITAL LETTER CHI                  	# Χ
+0x44	0x0394	# GREEK CAPITAL LETTER DELTA                	# Δ
+0x45	0x0395	# GREEK CAPITAL LETTER EPSILON              	# Ε
+0x46	0x03A6	# GREEK CAPITAL LETTER PHI                  	# Φ
+0x47	0x0393	# GREEK CAPITAL LETTER GAMMA                	# Γ
+0x48	0x0397	# GREEK CAPITAL LETTER ETA                  	# Η
+0x49	0x0398	# GREEK CAPITAL LETTER THETA                	# Θ
+0x4A	0x0399	# GREEK CAPITAL LETTER IOTA                 	# Ι
+0x4B	0x039A	# GREEK CAPITAL LETTER KAPPA                	# Κ
+0x4C	0x039B	# GREEK CAPITAL LETTER LAMBDA               	# Λ
+0x4D	0x039C	# GREEK CAPITAL LETTER MY                   	# Μ
+0x4E	0x039D	# GREEK CAPITAL LETTER NY                   	# Ν
+0x4F	0x039F	# GREEK CAPITAL LETTER OMICRON              	# Ο
+0x50	0x03A0	# GREEK CAPITAL LETTER PI                   	# Π
+0x51	0x03A8	# GREEK CAPITAL LETTER PSI                  	# Ψ
+0x52	0x03A1	# GREEK CAPITAL LETTER RHO                  	# Ρ
+0x53	0x03A3	# GREEK CAPITAL LETTER SIGMA                	# Σ
+0x54	0x03A4	# GREEK CAPITAL LETTER TAU                  	# Τ
+
+0x57	0x03A9	# GREEK CAPITAL LETTER OMEGA                	# Ω
+0x58	0x039E	# GREEK CAPITAL LETTER XI                   	# Ξ
+0x59	0x03A5	# GREEK CAPITAL LETTER UPSILON              	# Υ
+0x5A	0x0396	# GREEK CAPITAL LETTER ZETA                 	# Ζ
+0x5B	0x005B	# LEFT SQUARE BRACKET                       	# [ ASCII
+0x5C	0x005C	# REVERSE SOLIDUS                           	# \ ASCII
+0x5D	0x005D	# RIGHT SQUARE BRACKET                      	# ] ASCII
+
+0x61	0x03B1	# GREEK SMALL LETTER ALPHA                  	# α
+0x62	0x03B2	# GREEK SMALL LETTER BETA                   	# β
+0x63	0x03C7	# GREEK SMALL LETTER CHI                    	# χ
+0x64	0x03B4	# GREEK SMALL LETTER DELTA                  	# δ
+0x65	0x03B5	# GREEK SMALL LETTER EPSILON                	# ε
+0x66	0x03C6	# GREEK SMALL LETTER PHI                      	# φ
+0x67	0x03B3	# GREEK SMALL LETTER GAMMA                  	# γ
+0x68	0x03B7	# GREEK SMALL LETTER ETA                    	# η
+0x69	0x03B8	# GREEK SMALL LETTER THETA                  	# θ
+0x6A	0x03B9	# GREEK SMALL LETTER IOTA                   	# ι
+0x6B	0x03BA	# GREEK SMALL LETTER KAPPA                  	# κ
+0x6C	0x03BB	# GREEK SMALL LETTER LAMBDA                 	# λ
+0x6D	0x03BC	# GREEK SMALL LETTER MU                     	# μ
+0x6E	0x03BD	# GREEK SMALL LETTER NU                     	# ν
+0x6F	0x03BF	# GREEK SMALL LETTER OMICRON                	# ο
+0x70	0x03C0	# GREEK SMALL LETTER PI                     	# π
+0x71	0x03C8	# GREEK SMALL LETTER PSI                    	# ψ
+0x72	0x03C1	# GREEK SMALL LETTER RHO                    	# ρ
+0x73	0x03C3	# GREEK SMALL LETTER SIGMA                  	# σ
+0x74	0x03C4	# GREEK SMALL LETTER TAU                      	# τ
+
+0x77	0x03C9	# GREEK SMALL LETTER OMEGA                  	# ω
+0x78	0x03BE	# GREEK SMALL LETTER XI                     	# ξ
+0x79	0x03C5	# GREEK SMALL LETTER UPSILON                	# υ
+0x7A	0x03B6	# GREEK SMALL LETTER ZETA                      	# ζ
+0x7B	0x005B	# LEFT SQUARE BRACKET                       	# [
+
+0x7D	0x005D	# RIGHT SQUARE BRACKET                      	# ]
