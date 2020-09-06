@@ -9,6 +9,8 @@ for each character that can be mapped with its name and the character itself.
 
 See also: [E24 Charset Format](format-eset.html)
 
+Some non-standard fonts that I came across are listed [here](font-other.html).
+
 ## ANTIKRO
 
 ![KBANTIK](img/kb/ANTIKRO.png)
