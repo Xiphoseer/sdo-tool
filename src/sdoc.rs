@@ -4,7 +4,7 @@ use nom::{
     combinator::{map, map_res},
     error::ErrorKind,
     multi::{count, length_data, many0},
-    number::complete::{be_u16, be_u32, be_u8},
+    number::complete::{be_u16, be_u32},
     IResult,
 };
 
@@ -133,7 +133,7 @@ pub struct PBuf<'a> {
     pub page_count: u32,
     pub kl: u32,
     pub first_page_nr: u32,
-    pub vec: Vec<(Page, Buf<'a>)>,
+    pub pages: Vec<Option<(Page, Buf<'a>)>>,
 }
 
 #[derive(Debug)]
@@ -146,15 +146,14 @@ pub struct Margin {
 
 #[derive(Debug)]
 pub struct Page {
-    pub index: u16,
     pub phys_pnr: u16,
     pub log_pnr: u16,
 
-    pub lines: (u8, u8),
+    pub lines: u16,
     pub margin: Margin,
-    pub numbpos: (u8, u8),
-    pub kapitel: (u8, u8),
-    pub intern: (u8, u8),
+    pub numbpos: Bytes16,
+    pub kapitel: Bytes16,
+    pub intern: Bytes16,
 }
 
 fn parse_margin(input: &[u8]) -> IResult<&[u8], Margin> {
@@ -174,29 +173,21 @@ fn parse_margin(input: &[u8]) -> IResult<&[u8], Margin> {
     ))
 }
 
-fn be_2_u8(input: &[u8]) -> IResult<&[u8], (u8, u8)> {
-    let (input, v1) = be_u8(input)?;
-    let (input, v2) = be_u8(input)?;
-    Ok((input, (v1, v2)))
-}
-
 fn parse_page(input: &[u8]) -> IResult<&[u8], (Page, Buf)> {
-    let (input, index) = be_u16(input)?;
     let (input, phys_pnr) = be_u16(input)?;
     let (input, log_pnr) = be_u16(input)?;
 
-    let (input, lines) = be_2_u8(input)?;
+    let (input, lines) = be_u16(input)?;
     let (input, margin) = parse_margin(input)?;
-    let (input, numbpos) = be_2_u8(input)?;
-    let (input, kapitel) = be_2_u8(input)?;
-    let (input, intern) = be_2_u8(input)?;
+    let (input, numbpos) = bytes16(input)?;
+    let (input, kapitel) = bytes16(input)?;
+    let (input, intern) = bytes16(input)?;
 
     let (input, rest) = take(12usize)(input)?;
     Ok((
         input,
         (
             Page {
-                index,
                 phys_pnr,
                 log_pnr,
 
@@ -222,15 +213,31 @@ pub fn parse_pbuf(input: &[u8]) -> IResult<&[u8], PBuf> {
     let (input, _) = tag(b"unde")(input)?;
     let (input, _) = tag(b"unde")(input)?;
 
-    let (input, vec) = count(parse_page, page_count as usize)(input)?;
-    //let (input, d) = be_i32(input)?;
+    let mut pages = Vec::with_capacity(page_count as usize);
+    let mut rest = input;
+
+    for _ in 0..page_count {
+        let (input, index) = be_u16(rest)?;
+        let (input, (page, buf)) = parse_page(input)?;
+        rest = input;
+        let uindex = index as usize;
+        if let Some(entry) = pages.get_mut(uindex) {
+            *entry = Some((page, buf))
+        } else {
+            while pages.len() < uindex {
+                pages.push(None);
+            }
+            pages.push(Some((page, buf)));
+        }
+    }
+
     Ok((
-        input,
+        rest,
         PBuf {
             page_count,
             kl,
             first_page_nr,
-            vec,
+            pages,
         },
     ))
 }

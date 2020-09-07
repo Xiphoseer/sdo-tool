@@ -211,21 +211,27 @@ fn process_sdoc_pbuf(part: Buf) -> anyhow::Result<()> {
         "intern", "rest",
     ]);
 
-    for (page, buf) in pbuf.vec {
-        page_table.add_row(Row::new(vec![
-            Cell::new(&format!("{:3}", page.index)),
-            Cell::new(&format!("{:5}", page.phys_pnr)),
-            Cell::new(&format!("{:4}", page.log_pnr)),
-            Cell::new(&format!("{:3} {:3}", page.lines.0, page.lines.1)),
-            Cell::new(&format!("{:3}", page.margin.left)),
-            Cell::new(&format!("{:3}", page.margin.right)),
-            Cell::new(&format!("{:3}", page.margin.top)),
-            Cell::new(&format!("{:3}", page.margin.bottom)),
-            Cell::new(&format!("{:3} {:3}", page.numbpos.0, page.numbpos.1)),
-            Cell::new(&format!("{:3} {:3}", page.kapitel.0, page.kapitel.1)),
-            Cell::new(&format!("{:3} {:3}", page.intern.0, page.intern.1)),
-            Cell::new(&format!("{:?}", buf)),
-        ]));
+    for (index, pbuf_entry) in pbuf.pages.iter().enumerate() {
+        if let Some((page, buf)) = pbuf_entry {
+            page_table.add_row(row![
+                index,
+                page.phys_pnr,
+                page.log_pnr,
+                page.lines,
+                page.margin.left,
+                page.margin.right,
+                page.margin.top,
+                page.margin.bottom,
+                page.numbpos,
+                page.kapitel,
+                page.intern,
+                buf,
+            ]);
+        } else {
+            page_table.add_row(row![
+                index, "---", "---", "---", "---", "---", "---", "---", "---", "---", "---", "---"
+            ]);
+        }
     }
 
     // Print the table to stdout

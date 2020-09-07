@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 pub const BIT_STRING: [&str; 256] = [
     "        ", "       #", "      # ", "      ##", "     #  ", "     # #", "     ## ", "     ###",
@@ -43,6 +43,12 @@ impl<'a> Debug for Bytes16 {
     }
 }
 
+impl<'a> Display for Bytes16 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{:04X}", self.0)
+    }
+}
+
 pub struct Bytes32(pub u32);
 
 impl<'a> Debug for Bytes32 {
@@ -73,5 +79,11 @@ impl<'a> Debug for Buf<'a> {
             }
         }
         Ok(())
+    }
+}
+
+impl<'a> Display for Buf<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Buf as Debug>::fmt(self, f)
     }
 }
