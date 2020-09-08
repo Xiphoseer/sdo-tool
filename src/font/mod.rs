@@ -1,7 +1,16 @@
 #![allow(dead_code)]
-pub mod eset;
+use thiserror::Error;
 
-use std::char::REPLACEMENT_CHARACTER;
+pub mod eset;
+pub mod ps24;
+
+use std::{char::REPLACEMENT_CHARACTER, io};
+
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("Failed IO")]
+    Io(#[from] io::Error),
+}
 
 pub const LEGACY_7SEG_DIGITS: (char, char, char, char, char, char, char, char, char, char) = (
     '\u{1FBF0}',

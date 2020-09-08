@@ -1,5 +1,5 @@
 use crate::{
-    font::eset::EChar,
+    font::{eset::EChar, ps24::PSetChar},
     images::{imc::MonochromeScreen, BitIter},
     util::BIT_STRING,
 };
@@ -67,7 +67,57 @@ impl Page {
         print(self.bytes_per_line, self.width, &self.buffer);
     }
 
-    pub fn draw_char(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), ()> {
+    pub fn draw_char_p24(&mut self, x: u32, y: u32, ch: &PSetChar) -> Result<(), ()> {
+        let width = usize::from(ch.width);
+        let height = usize::from(ch.height);
+        let top = usize::from(ch.top);
+
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
+
+        let ux = x as usize;
+        let uy = y as usize;
+
+        if ux + width + 1 > (self.width as usize) {
+            return Err(());
+        }
+
+        if uy + height + top + 1 > (self.height as usize) {
+            return Err(());
+        }
+
+        let ubpl = self.bytes_per_line as usize;
+        let x_bit = x % 8;
+        let mut base_index = ((uy + top) * ubpl + ux / 8) as usize;
+        if x_bit == 0 {
+            for row in ch.bitmap.chunks_exact(width as usize) {
+                let mut row_index = base_index;
+                for byte in row {
+                    self.buffer[row_index] |= *byte;
+                    row_index += 1;
+                }
+                base_index += ubpl;
+            }
+        } else {
+            let x_shift = 8 - x_bit;
+            for row in ch.bitmap.chunks_exact(width as usize) {
+                let mut row_index = base_index;
+                let mut next = 0x00;
+                for byte in row {
+                    self.buffer[row_index] |= (byte >> x_bit) | next;
+                    next = byte << x_shift;
+                    row_index += 1;
+                }
+                self.buffer[row_index] |= next;
+                base_index += ubpl;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), ()> {
         if u32::from(x + u16::from(ch.width)) + 2 >= self.width {
             return Err(());
         }

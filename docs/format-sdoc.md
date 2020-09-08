@@ -6,7 +6,8 @@ popular word processors available for that system. This document is as far as I 
 description of that file format that is available online.
 
 All of the code snippets in this document are simplified pseudo-code, even though they
-are inspired by the `nom` parser-combinator library.
+are inspired by the `nom` parser-combinator library. For general information on Signum!
+documents, have a look at [this page](documents.html).
 
 ## The container
 

@@ -994,7 +994,7 @@ pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> anyhow::Result<()> {
             KBCSet::Graphics => get_gchar(cval),
             KBCSet::Labels => get_lchar(cval),
         };
-        page.draw_char(x + 6, y - 52, &echr);
+        page.draw_echar(x + 6, y - 52, &echr);
     }
 
     let img = page.to_image();

@@ -1,3 +1,4 @@
+use super::LoadError;
 use crate::util::BIT_STRING;
 use crate::Buf;
 use nom::{
@@ -5,8 +6,7 @@ use nom::{
     number::complete::{be_u32, be_u8},
     IResult,
 };
-use std::{io, ops::Deref, path::Path};
-use thiserror::Error;
+use std::{ops::Deref, path::Path};
 
 const BORDER: [&str; 17] = [
     "+|---------------+",
@@ -45,12 +45,6 @@ impl Deref for OwnedESet {
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
-}
-
-#[derive(Debug, Error)]
-pub enum LoadError {
-    #[error("Failed IO")]
-    Io(#[from] io::Error),
 }
 
 impl OwnedESet {
