@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 use nom::{
     bytes::complete::{tag, take, take_until, take_while},
+    combinator::iterator,
     combinator::{map, map_parser, map_res},
     error::ErrorKind,
     multi::{count, length_data, many0},
@@ -477,33 +478,36 @@ pub struct PageText {
 }
 
 pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
-    let (mut input, (skip, index)) = parse_page_start_line(input)?;
+    let (input, (lskip, index)) = parse_page_start_line(input)?;
+    let mut iter = iterator(input, parse_buffered_line);
 
     let mut content = vec![];
-    let (input, rskip) = loop {
-        let (rest, (skip, line)) = parse_buffered_line(input)?;
-        if line.flags.contains(Flags::PAGE) {
-            if line.flags.contains(Flags::PEND) {
-                assert_eq!(line.extra, index);
-                break (rest, skip);
-            } else {
-                panic!("This is an unknown case, please send in this document for investigation.")
-            }
-        } else {
+    for (skip, line) in &mut iter {
+        if !line.flags.contains(Flags::PAGE) {
             content.push((skip, line));
+            continue;
         }
-        input = rest;
-    };
 
-    Ok((
-        input,
-        PageText {
-            index,
-            skip,
-            rskip,
-            content,
-        },
-    ))
+        if !line.flags.contains(Flags::PEND) {
+            panic!("This is an unknown case, please send in this document for investigation.")
+        }
+
+        assert_eq!(line.extra, index);
+        return iter.finish().map(|(rest, ())| {
+            let text = PageText {
+                index,
+                skip: lskip,
+                rskip: skip,
+                content,
+            };
+            (rest, text)
+        });
+    }
+
+    match iter.finish() {
+        Ok((rest, ())) => Err(nom::Err::Failure((rest, ErrorKind::Eof))),
+        Err(e) => Err(e),
+    }
 }
 
 #[allow(clippy::many_single_char_names)]

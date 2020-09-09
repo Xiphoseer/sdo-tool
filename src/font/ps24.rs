@@ -85,16 +85,6 @@ pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _offset_buf) = take(127usize * 4)(input)?;
     let (input, chars) = count(parse_ps24_char, 128usize)(input)?;
 
-    /*let mut chars = Vec::with_capacity(skip as usize);
-    chars.push(ECHAR_NULL);
-
-    for _ in 1..skip {
-        let (rest, offset) = be_u32(offset_buf)?;
-        let (_, echar) = parse_echar(&char_buf[offset as usize..])?;
-        chars.push(echar);
-        offset_buf = rest;
-    }*/
-
     Ok((
         input,
         PSet {
