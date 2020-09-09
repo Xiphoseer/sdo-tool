@@ -1,7 +1,7 @@
 use crate::{
     font::{eset::parse_eset, ps24::parse_ps24},
     print::Page,
-    util::{Buf, BIT_STRING},
+    util::{data::BIT_STRING, Buf},
     Options,
 };
 use anyhow::anyhow;

@@ -1,5 +1,5 @@
 use super::LoadError;
-use crate::util::BIT_STRING;
+use crate::util::data::BIT_STRING;
 use crate::Buf;
 use nom::{
     bytes::complete::{tag, take},
