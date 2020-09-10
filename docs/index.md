@@ -37,13 +37,16 @@ all major platforms (Windows, Linux and OSX).
         - This requires the E24 font files to be available
         - Character modifications (wide, tall, italics, ...) are not yet supported
     - Print a list of image names
-- Load Signum! editor charsets (*.E24, `eset0001`)
+- Load Signum! editor charsets (`*.E24`, `eset0001`)
     - Print height and width for each character
     - Print ASCII art for each character bitmap
     - Render a string with the font (use `--input "..."`, currently always "Abcdefghijkl")
     - Generate a visual map of the characters on an ATARI keyboard
       - Examples of those are on the [font mappings][font-mappings] page
-- Load Signum! images (*.IMC, `bimc0002`)
+- Load Signum! printer charsets (`*.P24`/`ps240001` and `*.L30`/`ls300001`)
+    - Print height and width for each character
+    - Print ASCII art for each character bitmap
+- Load Signum! images (`*.IMC`, `bimc0002`)
     - Produce a PNG for monochrome images exported from a document
     - NOTE: It's a tiny step from there to exporting images from a document on the fly.
 

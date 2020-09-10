@@ -7,7 +7,7 @@ mod font;
 pub mod keyboard;
 pub mod sdoc;
 
-pub use font::{process_eset, process_ps24};
+pub use font::{process_eset, process_ls30, process_ps24};
 
 pub fn process_bimc(buffer: &[u8], out: Option<PathBuf>) -> anyhow::Result<()> {
     let decoded = parse_imc(&buffer) //

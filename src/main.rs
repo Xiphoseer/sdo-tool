@@ -12,7 +12,7 @@ use crate::util::Buf;
 
 use anyhow::anyhow;
 use cli::{
-    keyboard, process_bimc, process_eset, process_ps24,
+    keyboard, process_bimc, process_eset, process_ls30, process_ps24,
     sdoc::{process_sdoc, PrintDriver},
 };
 use keyboard::KBOptions;
@@ -101,6 +101,7 @@ fn main() -> anyhow::Result<()> {
             Some(b"sdoc") => process_sdoc(&buffer, dump_opt, &opt.file),
             Some(b"eset") => process_eset(&buffer, dump_opt.input, dump_opt.out),
             Some(b"ps24") => process_ps24(&buffer, &dump_opt),
+            Some(b"ls30") => process_ls30(&buffer, &dump_opt),
             Some(b"bimc") => process_bimc(&buffer, dump_opt.out),
             Some(t) => Err(anyhow!("Unknown file type {:?}", t)),
             None => Err(anyhow!("File has less than 4 bytes")),

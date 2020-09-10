@@ -536,16 +536,21 @@ pub struct ImageSite {
     pub _3: u16,
     pub _4: u16,
     pub _5: u16,
-    pub sel_x: u16,
-    pub sel_y: u16,
-    pub sel_w: u16,
-    pub sel_h: u16,
+    pub sel: ImageArea,
     pub _A: u16,
     pub _B: u16,
     pub _C: u16,
     pub img: u16,
     pub _E: u16,
     pub _F: Bytes16,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ImageArea {
+    pub x: u16,
+    pub y: u16,
+    pub w: u16,
+    pub h: u16,
 }
 
 #[derive(Debug)]
@@ -628,10 +633,12 @@ pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], ImageSite> {
             _3,
             _4,
             _5,
-            sel_x,
-            sel_y,
-            sel_w,
-            sel_h,
+            sel: ImageArea {
+                x: sel_x,
+                y: sel_y,
+                w: sel_w,
+                h: sel_h,
+            },
             _A,
             _B,
             _C,

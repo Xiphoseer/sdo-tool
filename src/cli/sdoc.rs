@@ -1,5 +1,6 @@
 use crate::{
-    font::{antikro, eset::OwnedESet, ps24::OwnedPSet},
+    font::printer::FontKind,
+    font::{antikro, editor::OwnedESet, printer::OwnedPSet},
     print::Page,
     sdoc::{
         self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
@@ -12,7 +13,7 @@ use anyhow::anyhow;
 use image::ImageFormat;
 use nom::multi::count;
 use prettytable::{cell, format, row, Cell, Row, Table};
-use sdoc::parse_page_text;
+use sdoc::{parse_page_text, ImageSite, PageText};
 use std::{path::Path, str::FromStr};
 use thiserror::Error;
 
@@ -34,7 +35,7 @@ fn print_char_cmds(data: &[Te], x: &mut u16, y: u16) {
     }
 }
 
-fn print_line_cmds(line: Line, skip: u16, pos: &mut Pos) {
+fn print_line_cmds(line: &Line, skip: u16, pos: &mut Pos) {
     pos.x = 0;
     pos.y += (skip + 1) * 2;
 
@@ -46,6 +47,24 @@ pub enum PrintDriver {
     Editor,
     Printer24,
     Laser30,
+}
+
+impl PrintDriver {
+    fn scale_y(&self, units: u16) -> u32 {
+        match self {
+            Self::Editor => u32::from(units) * 2,
+            Self::Printer24 => u32::from(units) * 6,
+            Self::Laser30 => u32::from(units) * 5,
+        }
+    }
+
+    fn scale_x(&self, units: u16) -> u32 {
+        match self {
+            Self::Editor => u32::from(units),
+            Self::Printer24 => u32::from(units) * 18 / 5,
+            Self::Laser30 => u32::from(units) * 7 / 2,
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -66,13 +85,22 @@ impl FromStr for PrintDriver {
 }
 
 pub struct Document<'a> {
+    // Configuration
+    print_driver: Option<PrintDriver>,
     opt: &'a Options,
     file: &'a Path,
-    chsets: [Option<OwnedESet>; 8],
+    // cset
+    chsets_e24: [Option<OwnedESet>; 8],
     chsets_p24: [Option<OwnedPSet>; 8],
+    chsets_l30: [Option<OwnedPSet>; 8],
+    // pbuf
     pages: Vec<Option<sdoc::Page>>,
     page_count: usize,
-    print_driver: Option<PrintDriver>,
+    // tebu
+    tebu: Vec<PageText>,
+    // hcim
+    images: Vec<Page>,
+    sites: Vec<ImageSite>,
 }
 
 impl<'a> Document<'a> {
@@ -80,15 +108,19 @@ impl<'a> Document<'a> {
         Document {
             opt,
             file,
-            chsets: [None, None, None, None, None, None, None, None],
+            chsets_e24: [None, None, None, None, None, None, None, None],
             chsets_p24: [None, None, None, None, None, None, None, None],
+            chsets_l30: [None, None, None, None, None, None, None, None],
             pages: vec![],
             page_count: 0,
             print_driver: opt.print_driver,
+            tebu: vec![],
+            images: vec![],
+            sites: vec![],
         }
     }
 
-    fn print_tebu_data(&self, data: Vec<Te>) {
+    fn print_tebu_data(&self, data: &[Te]) {
         let mut last_char_width: u8 = 0;
         let mut style = Style::default();
 
@@ -154,7 +186,7 @@ impl<'a> Document<'a> {
                 print!("<b>");
             }
 
-            let width = if let Some(eset) = &self.chsets[k.cset as usize] {
+            let width = if let Some(eset) = &self.chsets_e24[k.cset as usize] {
                 eset.chars[k.cval as usize].width
             } else {
                 // default for fonts that are missing
@@ -189,7 +221,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn print_line(&self, line: Line, skip: u16) {
+    fn print_line(&self, line: &Line, skip: u16) {
         if line.flags.contains(Flags::FLAG) {
             println!("<F: {}>", line.extra);
         }
@@ -198,7 +230,7 @@ impl<'a> Document<'a> {
             print!("<p>");
         }
 
-        self.print_tebu_data(line.data);
+        self.print_tebu_data(&line.data);
 
         if line.flags.contains(Flags::ALIG) {
             print!("<A>");
@@ -221,7 +253,7 @@ impl<'a> Document<'a> {
 
         match OwnedESet::load(&editor_cset_file) {
             Ok(eset) => {
-                self.chsets[index] = Some(eset);
+                self.chsets_e24[index] = Some(eset);
                 println!("Loaded font file '{}'", editor_cset_file.display());
                 true
             }
@@ -234,21 +266,26 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn load_cset_printer24(&mut self, index: usize, cset_file: &Path) -> bool {
-        let printer_cset_file = cset_file.with_extension("P24");
+    fn load_cset_printer(&mut self, index: usize, cset_file: &Path, kind: FontKind) -> bool {
+        let printer_cset_file = cset_file.with_extension(kind.extension());
 
         if !printer_cset_file.exists() {
             println!("Font file '{}' not found", printer_cset_file.display());
             return false;
         }
 
-        match OwnedPSet::load(&printer_cset_file) {
-            Ok(pset) => {
+        match (OwnedPSet::load(&printer_cset_file, kind), kind) {
+            (Ok(pset), FontKind::Needle24) => {
                 self.chsets_p24[index] = Some(pset);
                 println!("Loaded font file '{}'", printer_cset_file.display());
                 true
             }
-            Err(e) => {
+            (Ok(pset), FontKind::Laser30) => {
+                self.chsets_l30[index] = Some(pset);
+                println!("Loaded font file '{}'", printer_cset_file.display());
+                true
+            }
+            (Err(e), _) => {
                 println!("Failed to parse font file {}", printer_cset_file.display());
                 println!("Are you sure this is a valid Signum! editor font?");
                 println!("Error: {}", e);
@@ -266,14 +303,15 @@ impl<'a> Document<'a> {
 
         let mut all_eset = true;
         let mut all_pset = true;
-        let all_lset = true;
+        let mut all_lset = true;
         for (index, name) in charsets.into_iter().enumerate() {
             if name.is_empty() {
                 continue;
             }
             let cset_file = default_cset_folder.join(name.as_ref());
             all_eset &= self.load_cset_editor(index, &cset_file);
-            all_pset &= self.load_cset_printer24(index, &cset_file);
+            all_pset &= self.load_cset_printer(index, &cset_file, FontKind::Needle24);
+            all_lset &= self.load_cset_printer(index, &cset_file, FontKind::Laser30);
         }
         // Print info on which sets are available
         if all_eset {
@@ -305,6 +343,8 @@ impl<'a> Document<'a> {
                     }
                 }
             }
+        } else if all_lset {
+            self.print_driver = Some(PrintDriver::Laser30);
         } else if all_pset {
             self.print_driver = Some(PrintDriver::Printer24);
         } else if all_eset {
@@ -375,7 +415,7 @@ impl<'a> Document<'a> {
             *x += te.offset;
             match self.print_driver {
                 Some(PrintDriver::Editor) => {
-                    if let Some(eset) = &self.chsets[te.cset as usize] {
+                    if let Some(eset) = &self.chsets_e24[te.cset as usize] {
                         let ch = &eset.chars[te.cval as usize];
                         let x = *x; // No skew compensation (18/15)
                         let y = y * 2;
@@ -392,7 +432,7 @@ impl<'a> Document<'a> {
                         let ch = &eset.chars[te.cval as usize];
                         let x = (*x as u32) * 18 / 5;
                         let y = (y as u32) * 6;
-                        match page.draw_char_p24(x, y, ch) {
+                        match page.draw_printer_char(x, y, ch) {
                             Ok(()) => {}
                             Err(()) => {
                                 eprintln!("Char out of bounds {:?}", te);
@@ -400,7 +440,21 @@ impl<'a> Document<'a> {
                         }
                     }
                 }
-                _ => {
+                Some(PrintDriver::Laser30) => {
+                    if let Some(eset) = &self.chsets_l30[te.cset as usize] {
+                        let ch = &eset.chars[te.cval as usize];
+                        // 405 DPI
+                        let x = (*x as u32) * 7 / 2;
+                        let y = (y as u32) * 5;
+                        match page.draw_printer_char(x, y, ch) {
+                            Ok(()) => {}
+                            Err(()) => {
+                                eprintln!("Char out of bounds {:?}", te);
+                            }
+                        }
+                    }
+                }
+                None => {
                     continue;
                 }
             }
@@ -410,7 +464,7 @@ impl<'a> Document<'a> {
 
     fn draw_line(
         &self,
-        line: Line,
+        line: &Line,
         skip: u16,
         page: &mut Page,
         pos: &mut Pos,
@@ -432,74 +486,14 @@ impl<'a> Document<'a> {
         let (rest, tebu_header) = parse_tebu_header(part.0).unwrap();
         println!("'tebu': {:?}", tebu_header);
 
-        let (rest, tebu) = count(parse_page_text, self.page_count)(rest).unwrap();
-        if let Some(out_path) = &self.opt.out {
-            for page_text in tebu {
-                let index = page_text.index as usize;
-                let pbuf_entry = self.pages[index].as_ref().unwrap();
-
-                let (mut page, mut pos) = match self.print_driver {
-                    Some(PrintDriver::Editor) => {
-                        let width = pbuf_entry.margin.left + pbuf_entry.margin.right + 20; // No skew compensation (18/15)
-                        let height = pbuf_entry.lines * 2 + 24;
-
-                        let page = Page::new(width.into(), height.into());
-                        let pos = Pos::new(10, 0);
-                        (page, pos)
-                    }
-                    Some(PrintDriver::Printer24) => {
-                        let width =
-                            ((pbuf_entry.margin.left + pbuf_entry.margin.right + 20) * 18) / 5;
-                        let height = pbuf_entry.lines * 6 + 72;
-
-                        let page = Page::new(width.into(), height.into());
-                        let pos = Pos::new(10, 0);
-                        (page, pos)
-                    }
-                    _ => {
-                        println!(
-                            "Print Driver not set, skipping page #{}",
-                            pbuf_entry.log_pnr
-                        );
-                        continue;
-                    }
-                };
-
-                for (skip, line) in page_text.content {
-                    pos.x = 10;
-                    self.draw_line(line, skip, &mut page, &mut pos)?;
-                }
-
-                let image = page.to_image();
-                let file_name = format!("page-{}.png", pbuf_entry.log_pnr);
-                println!("Saving {}", file_name);
-                let page_path = out_path.join(&file_name);
-                image.save_with_format(&page_path, ImageFormat::Png)?;
+        let (rest, tebu) = match count(parse_page_text, self.page_count)(rest) {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(anyhow!("Failed to process pages: {}", e));
             }
-        } else if self.opt.pdraw {
-            for page_text in tebu {
-                let mut pos = Pos::new(0, 0);
-                for (skip, line) in page_text.content {
-                    print_line_cmds(line, skip, &mut pos);
-                }
-            }
-        } else {
-            for page_text in tebu {
-                let index = page_text.index as usize;
-                let pbuf_entry = self.pages[index].as_ref().unwrap();
-                println!(
-                    "{:04X} ----------------- [PAGE {} ({})] -------------------",
-                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-                );
-                for (skip, line) in page_text.content {
-                    self.print_line(line, skip);
-                }
-                println!(
-                    "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
-                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-                );
-            }
-        }
+        };
+        self.tebu = tebu;
+        println!("Loaded all pages!");
 
         if !rest.is_empty() {
             println!("{:#?}", Buf(rest));
@@ -507,12 +501,12 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn process_hcim(&mut self, part: Buf, opt: &Options) -> anyhow::Result<()> {
+    fn process_hcim(&mut self, part: Buf) -> anyhow::Result<()> {
         let (rest, hcim) = parse_hcim(part.0).unwrap();
         println!("'hcim':");
         println!("  {:?}", hcim.header);
 
-        let out_img = opt.imout.as_ref();
+        let out_img = self.opt.imout.as_ref();
         if let Some(out_img) = out_img {
             std::fs::create_dir_all(out_img)?;
         }
@@ -526,7 +520,7 @@ impl<'a> Document<'a> {
             "[A]", "[B]", "[C]", "img", "[E]", "[F]",
         ]);
 
-        for isite in hcim.sites {
+        for isite in &hcim.sites {
             image_table.add_row(Row::new(vec![
                 Cell::new(&format!("{}", isite.page)),
                 Cell::new(&format!("{}", isite.pos_x)),
@@ -534,10 +528,10 @@ impl<'a> Document<'a> {
                 Cell::new(&format!("{}", isite._3)),
                 Cell::new(&format!("{}", isite._4)),
                 Cell::new(&format!("{}", isite._5)),
-                Cell::new(&format!("{}", isite.sel_x)),
-                Cell::new(&format!("{}", isite.sel_y)),
-                Cell::new(&format!("{}", isite.sel_w)),
-                Cell::new(&format!("{}", isite.sel_h)),
+                Cell::new(&format!("{}", isite.sel.x)),
+                Cell::new(&format!("{}", isite.sel.y)),
+                Cell::new(&format!("{}", isite.sel.w)),
+                Cell::new(&format!("{}", isite.sel.h)),
                 Cell::new(&format!("{}", isite._A)),
                 Cell::new(&format!("{}", isite._B)),
                 Cell::new(&format!("{}", isite._C)),
@@ -549,19 +543,22 @@ impl<'a> Document<'a> {
 
         image_table.printstd();
 
+        let mut images = Vec::with_capacity(hcim.header.img_count as usize);
+
         for (index, img) in hcim.images.iter().enumerate() {
             println!("image[{}]:", index);
             match parse_image(img.0) {
                 Ok((_imgrest, im)) => {
                     println!("IMAGE: {:?}", im.key);
                     println!("{:#?}", im.bytes);
-                    if let Some(out_img) = out_img.as_ref() {
+                    let page = Page::from_screen(im.image);
+                    if let Some(out_img) = out_img {
                         let name = format!("{:02}-{}.png", index, im.key);
                         let path = out_img.join(name);
-                        let page = Page::from_screen(im.image);
                         let img = page.to_image();
                         img.save_with_format(&path, ImageFormat::Png)?;
                     }
+                    images.push(page);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
@@ -569,10 +566,98 @@ impl<'a> Document<'a> {
             }
         }
 
+        self.images = images;
+        self.sites = hcim.sites;
+
         if !rest.is_empty() {
             println!("{:#?}", Buf(rest));
         }
 
+        Ok(())
+    }
+
+    fn output(&self) -> anyhow::Result<()> {
+        if let Some(out_path) = &self.opt.out {
+            for page_text in &self.tebu {
+                let index = page_text.index as usize;
+                let pbuf_entry = self.pages[index].as_ref().unwrap();
+
+                let (mut page, mut pos) = if let Some(print_driver) = self.print_driver {
+                    let width_units: u16 = pbuf_entry.margin.left + pbuf_entry.margin.right + 20;
+                    let height_units: u16 =
+                        pbuf_entry.margin.top + pbuf_entry.lines + pbuf_entry.margin.bottom;
+
+                    let width = print_driver.scale_x(width_units);
+                    let height = print_driver.scale_y(height_units);
+
+                    let page = Page::new(width, height);
+                    let pos = Pos::new(10, pbuf_entry.margin.top);
+                    (page, pos)
+                } else {
+                    println!(
+                        "Print Driver not set, skipping page #{}",
+                        pbuf_entry.log_pnr
+                    );
+                    continue;
+                };
+
+                for (skip, line) in &page_text.content {
+                    pos.x = 10;
+                    self.draw_line(line, *skip, &mut page, &mut pos)?;
+                }
+
+                for site in self.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
+                    println!(
+                        "{}x{}+{},{} of {} at {},{}",
+                        site.sel.w,
+                        site.sel.h,
+                        site.sel.x,
+                        site.sel.y,
+                        site.img,
+                        site.pos_x,
+                        site.pos_y
+                    );
+
+                    if let Some(pd) = self.print_driver {
+                        let px = pd.scale_x(10 + site.pos_x);
+                        let w = pd.scale_x(site._3);
+                        let py = pd.scale_y(10 + site.pos_y);
+                        let h = pd.scale_y(site._4 / 2);
+                        let image = &self.images[site.img as usize];
+                        page.draw_image(px, py, w, h, image, site.sel);
+                    }
+                }
+
+                let image = page.to_image();
+                let file_name = format!("page-{}.png", pbuf_entry.log_pnr);
+                println!("Saving {}", file_name);
+                let page_path = out_path.join(&file_name);
+                image.save_with_format(&page_path, ImageFormat::Png)?;
+            }
+        } else if self.opt.pdraw {
+            for page_text in &self.tebu {
+                let mut pos = Pos::new(0, 0);
+                for (skip, line) in &page_text.content {
+                    print_line_cmds(&line, *skip, &mut pos);
+                }
+            }
+        } else {
+            for page_text in &self.tebu {
+                let index = page_text.index as usize;
+                let pbuf_entry = self.pages[index].as_ref().unwrap();
+                println!(
+                    "{:04X} ----------------- [PAGE {} ({})] -------------------",
+                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
+                );
+                for (skip, line) in &page_text.content {
+                    self.print_line(line, *skip);
+                }
+                println!(
+                    "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
+                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
+                );
+            }
+        }
         Ok(())
     }
 }
@@ -613,13 +698,16 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> anyhow::Result<
                 document.process_tebu(part)?;
             }
             "hcim" => {
-                document.process_hcim(part, &opt)?;
+                document.process_hcim(part)?;
             }
             _ => {
                 println!("'{}': {}", key, part.0.len());
             }
         }
     }
+
+    // Output the document
+    document.output()?;
 
     if !rest.is_empty() {
         println!("remaining: {:#?}", Buf(rest));

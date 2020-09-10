@@ -9,6 +9,21 @@ use nom::{
 };
 use std::{ops::Deref, path::Path};
 
+#[derive(Debug, Copy, Clone)]
+pub enum FontKind {
+    Needle24,
+    Laser30,
+}
+
+impl FontKind {
+    pub fn extension(&self) -> &'static str {
+        match self {
+            Self::Needle24 => "P24",
+            Self::Laser30 => "L30",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PSet<'a> {
     pub header: Buf<'a>,
@@ -37,12 +52,16 @@ impl Deref for OwnedPSet {
 }
 
 impl OwnedPSet {
-    pub fn load(path: &Path) -> Result<Self, LoadError> {
+    pub fn load(path: &Path, kind: FontKind) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };
-        let (_, inner) = parse_ps24(input).unwrap();
+        let (_, inner) = match kind {
+            FontKind::Needle24 => parse_ps24(input),
+            FontKind::Laser30 => parse_ls30(input),
+        }
+        .unwrap();
         Ok(Self { inner, buffer })
     }
 }
@@ -74,8 +93,7 @@ pub fn parse_ps24_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
     ))
 }
 
-pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
-    let (input, _) = tag(b"ps24")(input)?;
+pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"0001")(input)?;
     let (input, _) = verify(be_u32, |x| *x == 128)(input)?;
 
@@ -92,4 +110,14 @@ pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
             chars,
         },
     ))
+}
+
+pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
+    let (input, _) = tag(b"ps24")(input)?;
+    parse_font(input)
+}
+
+pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
+    let (input, _) = tag(b"ls30")(input)?;
+    parse_font(input)
 }

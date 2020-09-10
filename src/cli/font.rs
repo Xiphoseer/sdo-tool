@@ -1,5 +1,8 @@
 use crate::{
-    font::{eset::parse_eset, ps24::parse_ps24},
+    font::{
+        editor::parse_eset,
+        printer::{parse_ls30, parse_ps24},
+    },
     print::Page,
     util::{data::BIT_STRING, Buf},
     Options,
@@ -69,6 +72,45 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> anyhow::Result<()> {
     }
 
     for glyph in pset.chars {
+        println!("+{}, {}x{}", glyph.top, glyph.width, glyph.height);
+        if glyph.width > 0 {
+            print_border(glyph.width);
+            for row in glyph.bitmap.chunks_exact(glyph.width as usize) {
+                print!("|");
+                for byte in row {
+                    print!("{}", &BIT_STRING[*byte as usize]);
+                }
+                println!("|");
+            }
+            print_border(glyph.width);
+        }
+        println!()
+    }
+
+    Ok(())
+}
+
+pub fn process_ls30(buffer: &[u8], _opt: &Options) -> anyhow::Result<()> {
+    let (rest, lset) = match parse_ls30(buffer) {
+        Ok(result) => result,
+        Err(e) => {
+            return Err(anyhow!("Failed to parse Editor Charset: \n{}", e));
+        }
+    };
+
+    if !rest.is_empty() {
+        println!("Unconsumed input: {:#?}", Buf(rest));
+    }
+
+    fn print_border(w: u8) {
+        print!("+");
+        for _ in 0..w {
+            print!("--------");
+        }
+        println!("+");
+    }
+
+    for glyph in lset.chars {
         println!("+{}, {}x{}", glyph.top, glyph.width, glyph.height);
         if glyph.width > 0 {
             print_border(glyph.width);

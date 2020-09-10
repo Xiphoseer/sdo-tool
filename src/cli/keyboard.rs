@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::{
-    font::eset::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
+    font::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
     print::Page,
 };
 use anyhow::anyhow;

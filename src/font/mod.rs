@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use thiserror::Error;
 
-pub mod eset;
-pub mod ps24;
+pub mod editor;
+pub mod printer;
 
 use std::{char::REPLACEMENT_CHARACTER, io};
 
