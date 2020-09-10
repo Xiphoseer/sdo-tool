@@ -41,7 +41,7 @@ impl<'a> VScaler<'a> {
     fn new(image: &'a Page, w: usize, h: usize, sel: ImageArea) -> Self {
         let iubpl = image.bytes_per_line as usize;
         let pixel_v_len = (h as usize) / (sel.h as usize);
-        let ivpixel_rem = pixel_v_len;
+        let ivpixel_rem = 0;
         let vpxl = false;
         Self {
             sel_h: sel.h as usize,
@@ -61,12 +61,12 @@ impl<'a> VScaler<'a> {
     }
 
     fn next_line<'b>(&'b mut self) -> HScaler<'a, 'b> {
-        let ibit_iter = BitIter::new(&self.image.buffer[self.ibyte_index..]);
+        let mut ibit_iter = BitIter::new(&self.image.buffer[self.ibyte_index..]);
         let hpixel_count = 0;
         let last_hcount = 0;
         let hpxl = self.vpxl;
         let ipixel_rem = 0;
-        let icurr = false;
+        let icurr = ibit_iter.next().unwrap_or(true);
         HScaler {
             vscaler: self,
             ibit_iter,
@@ -91,49 +91,67 @@ struct HScaler<'a, 'b> {
 
 impl<'a, 'b> HScaler<'a, 'b> {
     fn next(&mut self) -> bool {
-        if self.ipixel_rem == 0 {
-            self.hpxl = !self.hpxl;
-            self.hpixel_count += 1;
-            if self.vscaler.pixel_h_len == 0 {
-                while self.last_hcount < self.hpixel_count * self.vscaler.sel_w / self.vscaler.w {
-                    self.icurr = self.ibit_iter.next().unwrap();
-                    self.last_hcount += 1;
-                }
-            } else if self.vscaler.pixel_h_len == 1 {
+        if self.vscaler.pixel_h_len == 0 {
+            while self.last_hcount < self.hpixel_count * self.vscaler.sel_w / self.vscaler.w {
                 self.icurr = self.ibit_iter.next().unwrap();
-                if self.last_hcount < self.hpixel_count * self.vscaler.w / self.vscaler.sel_w {
-                    self.ipixel_rem = 1;
-                    self.last_hcount += 1;
-                } else {
-                    self.ipixel_rem = 0;
-                }
-            } else {
-                self.icurr = self.ibit_iter.next().unwrap();
-                self.ipixel_rem = self.vscaler.pixel_h_len - 1;
+                self.last_hcount += 1;
             }
         } else {
-            self.ipixel_rem -= 1;
+            let hcount = self.hpixel_count * self.vscaler.sel_w / self.vscaler.w;
+            if self.last_hcount < hcount {
+                if self.ipixel_rem == 7 {
+                    self.hpxl = !self.hpxl;
+                    //self.icurr = self.hpxl;
+                    self.ipixel_rem = 0;
+                } else {
+                    self.ipixel_rem += 1;
+                }
+                self.icurr = self.ibit_iter.next().unwrap();
+                self.last_hcount += 1;
+            }
         }
+        self.hpixel_count += 1;
         self.icurr
     }
 
     fn end(self) {
         let vs = self.vscaler;
-        if vs.ivpixel_rem == 0 {
-            vs.ivpixel_rem = vs.pixel_v_len;
-            if vs.pixel_v_len == 0 {
-                vs.vpixel_count += 1;
-                while vs.last_vcount < vs.vpixel_count * vs.sel_h / vs.h {
-                    vs.last_vcount += 1;
-                    vs.ibyte_index += vs.iubpl;
-                }
-            } else {
+        /*println!(
+            "lhcount: {:4}, hpixel: {:4}, sel_w: {:4}, w: {:4}",
+            self.last_hcount, self.hpixel_count, vs.sel_w, vs.w
+        );
+        println!(
+            "lvcount: {:4}, vpixel: {:4}, sel_h: {:4}, h: {:4}",
+            vs.last_vcount, vs.vpixel_count, vs.sel_h, vs.h
+        );*/
+
+        //vs.ivpixel_rem = vs.pixel_v_len;
+        if vs.pixel_v_len == 0 {
+            while vs.last_vcount < vs.vpixel_count * vs.sel_h / vs.h {
+                vs.last_vcount += 1;
                 vs.ibyte_index += vs.iubpl;
+                if vs.ivpixel_rem == 7 {
+                    vs.ivpixel_rem = 0;
+                    vs.vpxl = !vs.vpxl;
+                } else {
+                    vs.ivpixel_rem += 1;
+                }
             }
-            vs.vpxl = !vs.vpxl;
         } else {
-            vs.ivpixel_rem -= 1;
+            let vcount = vs.vpixel_count * vs.sel_h / vs.h;
+            if vs.last_vcount < vcount {
+                vs.ibyte_index += vs.iubpl;
+                if vs.ivpixel_rem == 7 {
+                    vs.ivpixel_rem = 0;
+                    vs.vpxl = !vs.vpxl;
+                } else {
+                    vs.ivpixel_rem += 1;
+                }
+                vs.last_vcount += 1;
+            }
         }
+
+        vs.vpixel_count += 1;
     }
 }
 

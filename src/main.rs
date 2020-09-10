@@ -59,6 +59,8 @@ pub struct Options {
     input: Option<String>,
     #[structopt(long = "print-driver", short = "P")]
     print_driver: Option<PrintDriver>,
+    #[structopt(long = "pages", short = "#")]
+    page: Option<Vec<usize>>,
     #[structopt(long)]
     pdraw: bool,
 }
