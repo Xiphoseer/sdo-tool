@@ -1,0 +1,7 @@
+# Resources
+
+From: <https://exxoshost.co.uk/atari/PDL/FLOPPYSHOP/index.htm>
+
+- FNT-0004 ... FNT-0007, FNT-0020M ... FNT-0025M
+- UTL-0077, UTL-0160M
+- WRD-3891

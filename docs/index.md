@@ -23,6 +23,28 @@ Or you can use this (work-in-progress) tool, which can read Signum!2 documents a
 make some of these steps much easier. It's written in Rust, so it should work across
 all major platforms (Windows, Linux and OSX).
 
+## Rationale
+
+When searching for ways to decode Signum! files, I came across three general
+approaches:
+
+1. Running Signum!: Print to a decodable image format
+2. Running Signum!: Export to ASCII, fix the rest by hand
+3. Import to RTF with `papyrus`
+
+The first one works, but makes it difficult to recover the text, i.e. you need to
+use some sort of OCR later. The second one is probably the most straight-forward
+and reliable and is useful for texts that have no formatting or non-trivial fonts.
+
+I actually found a working copy of papyrus 7 (demo) after a lot of digging around
+and it turns out that this actually just calls `TEXTCONV.PRG` by Andreas Pirner.
+Version 1.23 is the one that comes with papyrus and I don't agree that it's
+useful. Yes, it can export to RTF and all the letters and numbers survive, but
+subscript, superscript and formulas are not close enough to be readable, the
+line-height was too low, the alignment was off, and more. Also, while papyrus
+(for ATARI) supports signum fonts, modern tools to read those files don't,
+so you still end up needing to find a perfect match for your font for newer systems.
+
 ## Features
 
 - Load Signum! 1/2 documents (*.SDO, `sdoc0001`)
