@@ -6,6 +6,7 @@
 
 - Added `--plain` option to the `dump` command to skip printing
   tags that provide debugging information on lines and paragraphs.
+- Minor improvements in image positioning and scaling.
 
 ### 11.09.2020
 

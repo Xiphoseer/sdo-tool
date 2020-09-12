@@ -678,7 +678,7 @@ impl<'a> Document<'a> {
                 if let Some(pd) = self.print_driver {
                     let px = pd.scale_x(10 + site.pos_x);
                     let w = pd.scale_x(site._3);
-                    let py = pd.scale_y(10 + site.pos_y);
+                    let py = pd.scale_y(10 + site.pos_y - site._5 / 2);
                     let h = pd.scale_y(site._4 / 2);
                     let image = &self.images[site.img as usize];
                     page.draw_image(px, py, w, h, image, site.sel);

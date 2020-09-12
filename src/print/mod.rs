@@ -33,6 +33,7 @@ struct VScaler<'a> {
     last_vcount: usize,
     iubpl: usize,
     ibyte_index: usize,
+    skip_bits: u16,
     ivpixel_rem: usize,
     vpxl: bool,
 }
@@ -42,6 +43,8 @@ impl<'a> VScaler<'a> {
         let iubpl = image.bytes_per_line as usize;
         let pixel_v_len = (h as usize) / (sel.h as usize);
         let ivpixel_rem = 0;
+        let ibyte_index = (sel.y as usize) * iubpl + (sel.x as usize) / 8;
+        let skip_bits = sel.x % 8;
         let vpxl = false;
         Self {
             sel_h: sel.h as usize,
@@ -54,7 +57,8 @@ impl<'a> VScaler<'a> {
             vpixel_count: 0,
             last_vcount: 0,
             iubpl,
-            ibyte_index: (sel.y as usize) * iubpl + (sel.x as usize) / 8,
+            ibyte_index,
+            skip_bits,
             ivpixel_rem,
             vpxl,
         }
@@ -66,6 +70,9 @@ impl<'a> VScaler<'a> {
         let last_hcount = 0;
         let hpxl = self.vpxl;
         let ipixel_rem = 0;
+        for _ in 0..self.skip_bits {
+            let _ = ibit_iter.next();
+        }
         let icurr = ibit_iter.next().unwrap_or(true);
         HScaler {
             vscaler: self,
@@ -93,6 +100,13 @@ impl<'a, 'b> HScaler<'a, 'b> {
     fn next(&mut self) -> bool {
         if self.vscaler.pixel_h_len == 0 {
             while self.last_hcount < self.hpixel_count * self.vscaler.sel_w / self.vscaler.w {
+                if self.ipixel_rem == 7 {
+                    self.hpxl = !self.hpxl;
+                    //self.icurr = self.hpxl;
+                    self.ipixel_rem = 0;
+                } else {
+                    self.ipixel_rem += 1;
+                }
                 self.icurr = self.ibit_iter.next().unwrap();
                 self.last_hcount += 1;
             }
