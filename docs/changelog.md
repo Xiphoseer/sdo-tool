@@ -2,6 +2,12 @@
 
 ## Unreleased (`main` branch)
 
+### 11.09.2020
+
+- Added recursive font search in `CHSETS` folder. Signum! doesn't do that,
+  but it's useful if you have a large collection of fonts and want to find
+  out whether you have the needed ones somewhere.
+
 ### 10.09.2020
 
 - Added `--page`/`-p` option to `dump`. Optional, can be used multiple times.

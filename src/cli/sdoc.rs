@@ -14,7 +14,11 @@ use image::ImageFormat;
 use nom::multi::count;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use sdoc::{parse_page_text, ImageSite, PageText};
-use std::{path::Path, str::FromStr};
+use std::{
+    fs::DirEntry,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use thiserror::Error;
 
 struct Pos {
@@ -243,13 +247,46 @@ impl<'a> Document<'a> {
         println!("{{{}}}", skip);
     }
 
-    fn load_cset_editor(&mut self, index: usize, cset_file: &Path) -> bool {
-        let editor_cset_file = cset_file.with_extension("E24");
+    fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
+        let cset_file = cset_folder.join(name);
+        let editor_cset_file = cset_file.with_extension(extension);
 
-        if !editor_cset_file.exists() {
-            println!("Font file '{}' not found", editor_cset_file.display());
-            return false;
+        if editor_cset_file.exists() && editor_cset_file.is_file() {
+            return Some(editor_cset_file);
         }
+
+        let mut dir_iter = match std::fs::read_dir(cset_folder) {
+            Ok(i) => i,
+            Err(e) => {
+                println!("Could not find CHSET folder: {}", e);
+                return None;
+            }
+        };
+
+        let file = dir_iter.find_map(|entry| {
+            entry
+                .ok()
+                .as_ref()
+                .map(DirEntry::path)
+                .filter(|p| p.is_dir())
+                .and_then(|cset_folder| Self::find_font_file(&cset_folder, name, extension))
+        });
+
+        if let Some(file) = file {
+            Some(file)
+        } else {
+            None
+        }
+    }
+
+    fn load_cset_editor(&mut self, index: usize, cset_folder: &Path, name: &str) -> bool {
+        let editor_cset_file = match Self::find_font_file(cset_folder, name, "E24") {
+            Some(f) => f,
+            None => {
+                println!("Editor font for `{}` not found!", name);
+                return false;
+            }
+        };
 
         match OwnedESet::load(&editor_cset_file) {
             Ok(eset) => {
@@ -266,13 +303,21 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn load_cset_printer(&mut self, index: usize, cset_file: &Path, kind: FontKind) -> bool {
-        let printer_cset_file = cset_file.with_extension(kind.extension());
-
-        if !printer_cset_file.exists() {
-            println!("Font file '{}' not found", printer_cset_file.display());
-            return false;
-        }
+    fn load_cset_printer(
+        &mut self,
+        index: usize,
+        cset_folder: &Path,
+        name: &str,
+        kind: FontKind,
+    ) -> bool {
+        let extension = kind.extension();
+        let printer_cset_file = match Self::find_font_file(cset_folder, name, extension) {
+            Some(f) => f,
+            None => {
+                println!("Printer font file '{}.{}' not found", name, extension);
+                return false;
+            }
+        };
 
         match (OwnedPSet::load(&printer_cset_file, kind), kind) {
             (Ok(pset), FontKind::Needle24) => {
@@ -308,10 +353,11 @@ impl<'a> Document<'a> {
             if name.is_empty() {
                 continue;
             }
-            let cset_file = default_cset_folder.join(name.as_ref());
-            all_eset &= self.load_cset_editor(index, &cset_file);
-            all_pset &= self.load_cset_printer(index, &cset_file, FontKind::Needle24);
-            all_lset &= self.load_cset_printer(index, &cset_file, FontKind::Laser30);
+            let cset_folder = default_cset_folder.as_path();
+            let name_ref = name.as_ref();
+            all_eset &= self.load_cset_editor(index, cset_folder, name_ref);
+            all_pset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Needle24);
+            all_lset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Laser30);
         }
         // Print info on which sets are available
         if all_eset {

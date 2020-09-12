@@ -37,10 +37,10 @@ pub const ATARI_CHAR_MAP_0: [char; 14] = [
     '\u{1fbbf}',
     '\u{2713}',
     '\u{1F552}',
-    '\u{1F514}',
+    '\n',
     '\u{266A}',
     '\u{240C}',
-    '\n',
+    '\r',
 ];
 
 /// The ATARI-ST character encoding 1 row
