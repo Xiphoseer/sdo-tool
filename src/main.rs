@@ -63,6 +63,10 @@ pub struct Options {
     page: Option<Vec<usize>>,
     #[structopt(long)]
     pdraw: bool,
+
+    /// Tells the text generator not to generate any tags
+    #[structopt(long)]
+    plain: bool,
 }
 
 fn main() -> anyhow::Result<()> {

@@ -2,6 +2,11 @@
 
 ## Unreleased (`main` branch)
 
+### 12.09.2020
+
+- Added `--plain` option to the `dump` command to skip printing
+  tags that provide debugging information on lines and paragraphs.
+
 ### 11.09.2020
 
 - Added recursive font search in `CHSETS` folder. Signum! doesn't do that,

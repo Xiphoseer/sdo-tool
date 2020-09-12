@@ -226,25 +226,29 @@ impl<'a> Document<'a> {
     }
 
     fn print_line(&self, line: &Line, skip: u16) {
-        if line.flags.contains(Flags::FLAG) {
+        if line.flags.contains(Flags::FLAG) && !self.opt.plain {
             println!("<F: {}>", line.extra);
         }
 
-        if line.flags.contains(Flags::PARA) {
+        if line.flags.contains(Flags::PARA) && !self.opt.plain {
             print!("<p>");
         }
 
         self.print_tebu_data(&line.data);
 
-        if line.flags.contains(Flags::ALIG) {
+        if line.flags.contains(Flags::ALIG) && !self.opt.plain {
             print!("<A>");
         }
 
-        if line.flags.contains(Flags::LINE) {
+        if line.flags.contains(Flags::LINE) && !self.opt.plain {
             print!("<br>");
         }
 
-        println!("{{{}}}", skip);
+        if self.opt.plain {
+            println!();
+        } else {
+            println!("{{{}}}", skip);
+        }
     }
 
     fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
