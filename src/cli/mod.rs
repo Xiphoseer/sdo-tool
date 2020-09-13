@@ -6,6 +6,7 @@ use std::path::PathBuf;
 mod font;
 pub mod keyboard;
 pub mod sdoc;
+pub mod ps;
 
 pub use font::{process_eset, process_ls30, process_ps24};
 

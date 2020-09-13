@@ -3,6 +3,7 @@ use thiserror::Error;
 
 pub mod editor;
 pub mod printer;
+pub mod dvips;
 
 use std::{char::REPLACEMENT_CHARACTER, io};
 

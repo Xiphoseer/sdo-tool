@@ -14,7 +14,7 @@ use anyhow::anyhow;
 use cli::{
     keyboard, process_bimc, process_eset, process_ls30, process_ps24,
     sdoc::{process_sdoc, PrintDriver},
-};
+ps::process_ps_font};
 use keyboard::KBOptions;
 use std::{
     fs::File,
@@ -98,6 +98,10 @@ fn main() -> anyhow::Result<()> {
             Some(b"bimc") => {
                 println!("Signum!2 Compressed Image");
                 println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+                Ok(())
+            }
+            Some(b"/Fa ") => {
+                process_ps_font(&buffer)?;
                 Ok(())
             }
             Some(t) => Err(anyhow!("Unknown file type {:?}", t)),
