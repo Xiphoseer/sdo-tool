@@ -2,24 +2,34 @@ use crate::{
     font::printer::FontKind,
     font::{antikro, editor::OwnedESet, printer::OwnedPSet},
     print::Page,
+    ps::PSWriter,
     sdoc::{
         self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
         parse_sysp, parse_tebu_header, Flags, Line, Style, Te,
     },
     util::Buf,
-    Options,
+    Format, Options,
 };
 use anyhow::anyhow;
 use image::ImageFormat;
 use nom::multi::count;
 use prettytable::{cell, format, row, Cell, Row, Table};
+use ps::prog_dict;
 use sdoc::{parse_page_text, ImageSite, PageText};
 use std::{
+    borrow::Cow,
     fs::DirEntry,
+    fs::File,
+    io::BufWriter,
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
 };
 use thiserror::Error;
+
+use super::ps::write_ls30_ps_bitmap;
+
+mod ps;
 
 struct Pos {
     x: u16,
@@ -94,6 +104,7 @@ pub struct Document<'a> {
     opt: &'a Options,
     file: &'a Path,
     // cset
+    chsets: Vec<Cow<'a, str>>,
     chsets_e24: [Option<OwnedESet>; 8],
     chsets_p24: [Option<OwnedPSet>; 8],
     chsets_l30: [Option<OwnedPSet>; 8],
@@ -112,6 +123,7 @@ impl<'a> Document<'a> {
         Document {
             opt,
             file,
+            chsets: vec![],
             chsets_e24: [None, None, None, None, None, None, None, None],
             chsets_p24: [None, None, None, None, None, None, None, None],
             chsets_l30: [None, None, None, None, None, None, None, None],
@@ -226,25 +238,25 @@ impl<'a> Document<'a> {
     }
 
     fn print_line(&self, line: &Line, skip: u16) {
-        if line.flags.contains(Flags::FLAG) && !self.opt.plain {
+        if line.flags.contains(Flags::FLAG) && self.opt.format == Format::Html {
             println!("<F: {}>", line.extra);
         }
 
-        if line.flags.contains(Flags::PARA) && !self.opt.plain {
+        if line.flags.contains(Flags::PARA) && self.opt.format == Format::Html {
             print!("<p>");
         }
 
         self.print_tebu_data(&line.data);
 
-        if line.flags.contains(Flags::ALIG) && !self.opt.plain {
+        if line.flags.contains(Flags::ALIG) && self.opt.format == Format::Html {
             print!("<A>");
         }
 
-        if line.flags.contains(Flags::LINE) && !self.opt.plain {
+        if line.flags.contains(Flags::LINE) && self.opt.format == Format::Html {
             print!("<br>");
         }
 
-        if self.opt.plain {
+        if self.opt.format == Format::Plain {
             println!();
         } else {
             println!("{{{}}}", skip);
@@ -343,7 +355,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(&mut self, part: Buf) -> anyhow::Result<()> {
+    fn process_cset(&mut self, part: Buf<'a>) -> anyhow::Result<()> {
         let (_, charsets) = parse_cset(part.0).unwrap();
         println!("'cset': {:?}", charsets);
 
@@ -353,7 +365,7 @@ impl<'a> Document<'a> {
         let mut all_eset = true;
         let mut all_pset = true;
         let mut all_lset = true;
-        for (index, name) in charsets.into_iter().enumerate() {
+        for (index, name) in charsets.iter().enumerate() {
             if name.is_empty() {
                 continue;
             }
@@ -402,6 +414,7 @@ impl<'a> Document<'a> {
         } else {
             println!("No print-driver has all fonts available.");
         }
+        self.chsets = charsets;
         Ok(())
     }
 
@@ -556,7 +569,7 @@ impl<'a> Document<'a> {
         println!("'hcim':");
         println!("  {:?}", hcim.header);
 
-        let out_img = self.opt.imout.as_ref();
+        let out_img = self.opt.with_images.as_ref();
         if let Some(out_img) = out_img {
             std::fs::create_dir_all(out_img)?;
         }
@@ -694,34 +707,183 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self) -> anyhow::Result<()> {
-        if let Some(out_path) = &self.opt.out {
-            self.output_print(out_path)?;
-        } else if self.opt.pdraw {
-            for page_text in &self.tebu {
-                let mut pos = Pos::new(0, 0);
-                for (skip, line) in &page_text.content {
-                    print_line_cmds(&line, *skip, &mut pos);
-                }
-            }
-        } else {
-            for page_text in &self.tebu {
-                let index = page_text.index as usize;
-                let pbuf_entry = self.pages[index].as_ref().unwrap();
-                println!(
-                    "{:04X} ----------------- [PAGE {} ({})] -------------------",
-                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-                );
-                for (skip, line) in &page_text.content {
-                    self.print_line(line, *skip);
-                }
-                println!(
-                    "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
-                    page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-                );
+    fn output_pdraw(&self) -> anyhow::Result<()> {
+        for page_text in &self.tebu {
+            let mut pos = Pos::new(0, 0);
+            for (skip, line) in &page_text.content {
+                print_line_cmds(&line, *skip, &mut pos);
             }
         }
         Ok(())
+    }
+
+    fn output_console(&self) -> anyhow::Result<()> {
+        for page_text in &self.tebu {
+            let index = page_text.index as usize;
+            let pbuf_entry = self.pages[index].as_ref().unwrap();
+            println!(
+                "{:04X} ----------------- [PAGE {} ({})] -------------------",
+                page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
+            );
+            for (skip, line) in &page_text.content {
+                self.print_line(line, *skip);
+            }
+            println!(
+                "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
+                page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
+            );
+        }
+        Ok(())
+    }
+
+    fn output_postscript(&self) -> anyhow::Result<()> {
+        if self.opt.out == Path::new("-") {
+            let mut pw = PSWriter::new();
+            self.output_ps_writer(&mut pw)
+        } else {
+            let out = self.opt.out.join("output.ps");
+            let out_file = File::create(out)?;
+            let out_buf = BufWriter::new(out_file);
+            let mut pw = PSWriter::from(out_buf);
+            self.output_ps_writer(&mut pw)
+        }
+    }
+
+    fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> anyhow::Result<()> {
+        println!("-------------------------- [output.ps] --------------------------");
+        pw.write_magic()?;
+        pw.write_meta_field("Creator", "sdo-tool 0.X-preview Copyright 2020 Xiphoseer")?;
+        pw.write_meta_field("Title", "TODO.SDO")?;
+        pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
+        pw.write_meta_field("Pages", &format!("{}", 1))?;
+        pw.write_meta_field("Pages", "Ascend")?;
+        pw.write_meta_field("BoundingBox", "0 0 596 842")?;
+        pw.write_meta_field("DocumentPaperSizes", "a4")?;
+        pw.write_meta("EndComments")?;
+
+        pw.write_meta_field("BeginProcSet", "signum.pro")?;
+        pw.write_header_end()?;
+
+        const DICT: &str = "SignumDict";
+        prog_dict(pw, DICT)?;
+
+        pw.write_meta("EndProcSet")?;
+        pw.name(DICT)?;
+        pw.begin(|pw| {
+            pw.isize(39158280)?;
+            pw.isize(55380996)?;
+            pw.isize(1000)?;
+            pw.isize(300)?;
+            pw.isize(300)?;
+            pw.bytes(b"hello.dvi")?;
+            pw.crlf()?;
+            pw.name("@start")?;
+            if let Some(pset) = &self.chsets_l30[0] {
+                pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[0]))?;
+                write_ls30_ps_bitmap("Fa", pw, pset)?;
+                pw.write_comment("EndSignumBitmapFont")?;
+            }
+            Ok(())
+        })?;
+        pw.write_meta("EndProlog")?;
+
+        pw.write_meta("BeginSetup")?;
+        pw.write_meta_field("Feature", "*Resolution 300dpi")?;
+
+        pw.name(DICT)?;
+        pw.begin(|pw| {
+            pw.write_meta_field("BeginPaperSize", "a4")?;
+            pw.lit("setpagedevice")?;
+            pw.ps_where()?;
+            pw.crlf()?;
+            pw.seq(|pw| {
+                pw.ps_pop()?;
+                pw.dict(|pw| {
+                    pw.lit("PageSize")?;
+                    pw.arr(|pw| {
+                        pw.isize(595)?;
+                        pw.isize(842)
+                    })
+                })?;
+                pw.ps_setpagedevice()
+            })?;
+            pw.crlf()?;
+            pw.seq(|pw| {
+                pw.lit("a4")?;
+                pw.ps_where()?;
+                pw.seq(|pw| {
+                    pw.ps_pop()?;
+                    pw.name("a4")
+                })?;
+                pw.ps_if()
+            })?;
+            pw.crlf()?;
+            pw.ps_ifelse()?;
+            pw.write_meta("EndPaperSize")?;
+            Ok(())
+        })?;
+        pw.write_meta("EndSetup")?;
+
+        let mut page_iter = self.tebu.iter();
+
+        let page = page_iter.next().unwrap();
+        let pd = PrintDriver::Laser30;
+
+        let mut x: u16 = 0;
+        let mut y: u16 = 0;
+
+        pw.write_meta_field("Page", "1 1")?;
+        // TeXDict begin 1 0 bop 83 42 a Fa(Hello)13 b(World!)965 2770 y(1)p eop end
+        pw.name(DICT)?;
+        pw.begin(|pw| {
+            pw.isize(1)?;
+            pw.isize(0)?;
+            pw.name("bop")?;
+
+            // select font a
+            pw.name("Fa")?;
+
+            for (skip, line) in &page.content {
+                y += 1 + *skip;
+                x = 0;
+
+                let y_val = pd.scale_y(y) as isize;
+                for chr in &line.data {
+                    // moveto
+                    x += chr.offset;
+                    let x_val = pd.scale_x(x) as isize;
+                    pw.isize(x_val)?;
+                    pw.isize(y_val)?;
+                    pw.name("a")?;
+
+                    pw.bytes(&[chr.cval])?;
+                    pw.name("p")?;
+                }
+            }
+
+            pw.name("eop")?;
+            Ok(())
+        })?;
+        pw.write_meta("Trailer")?;
+
+        pw.ps_userdict()?;
+        pw.lit("end-hook")?;
+        pw.ps_known()?;
+        pw.seq(|pw| pw.name("end-hook"))?;
+        pw.ps_if()?;
+
+        pw.write_meta("EOF")?;
+        println!("-----------------------------------------------------------------");
+        Ok(())
+    }
+
+    fn output(&self) -> anyhow::Result<()> {
+        match self.opt.format {
+            Format::Html | Format::Plain => self.output_console(),
+            Format::PostScript => self.output_postscript(),
+            Format::PDraw => self.output_pdraw(),
+            Format::Png => self.output_print(&self.opt.out),
+        }
     }
 }
 
@@ -741,9 +903,7 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> anyhow::Result<
 
     let mut document = Document::new(&opt, file);
 
-    if let Some(out_path) = &opt.out {
-        std::fs::create_dir_all(out_path)?;
-    }
+    std::fs::create_dir_all(&opt.out)?;
 
     for (key, part) in sdoc.parts {
         match key {

@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 use thiserror::Error;
 
+pub mod dvips;
 pub mod editor;
 pub mod printer;
-pub mod dvips;
 
 use std::{char::REPLACEMENT_CHARACTER, io};
 
