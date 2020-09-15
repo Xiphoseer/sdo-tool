@@ -129,6 +129,10 @@ pub struct Options {
     /// "txt", "html", "ps", "png", and "pdraw"
     #[structopt(default_value, long, short = "F")]
     format: Format,
+
+    /// HACK: fix horizontal offset
+    #[structopt(long)]
+    xoffset: Option<isize>,
 }
 
 fn main() -> anyhow::Result<()> {

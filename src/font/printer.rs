@@ -12,6 +12,7 @@ use std::{ops::Deref, path::Path};
 #[derive(Debug, Copy, Clone)]
 pub enum FontKind {
     Needle24,
+    Needle9,
     Laser30,
 }
 
@@ -19,6 +20,7 @@ impl FontKind {
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Needle24 => "P24",
+            Self::Needle9 => "P9",
             Self::Laser30 => "L30",
         }
     }
@@ -60,6 +62,9 @@ impl OwnedPSet {
         let (_, inner) = match kind {
             FontKind::Needle24 => parse_ps24(input),
             FontKind::Laser30 => parse_ls30(input),
+            FontKind::Needle9 => {
+                return Err(LoadError::Unimplemented);
+            }, // TODO
         }
         .unwrap();
         Ok(Self { inner, buffer })

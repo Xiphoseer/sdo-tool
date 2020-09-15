@@ -9,7 +9,7 @@ use crate::{
     },
     util::Buf,
     Format, Options,
-};
+font::printer::PSet};
 use anyhow::anyhow;
 use image::ImageFormat;
 use nom::multi::count;
@@ -56,9 +56,10 @@ fn print_line_cmds(line: &Line, skip: u16, pos: &mut Pos) {
     print_char_cmds(&line.data, &mut pos.x, pos.y);
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum PrintDriver {
     Editor,
+    Printer9,
     Printer24,
     Laser30,
 }
@@ -67,16 +68,36 @@ impl PrintDriver {
     fn scale_y(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units) * 2,
-            Self::Printer24 => u32::from(units) * 6,
-            Self::Laser30 => u32::from(units) * 5,
+            Self::Printer9 => u32::from(units) * 4,
+            Self::Printer24 => u32::from(units) * 20 / 3,
+            Self::Laser30 => u32::from(units) * 50 / 9,
         }
     }
 
     fn scale_x(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units),
-            Self::Printer24 => u32::from(units) * 18 / 5,
-            Self::Laser30 => u32::from(units) * 7 / 2,
+            Self::Printer9 => u32::from(units) * 12 / 5,
+            Self::Printer24 => u32::from(units) * 4,
+            Self::Laser30 => u32::from(units) * 10 / 3,
+        }
+    }
+
+    fn resolution(&self) -> (isize, isize) {
+        match self {
+            Self::Editor => (104, 90),
+            Self::Printer9 => (216, 216),
+            Self::Printer24 => (360, 360),
+            Self::Laser30 => (300, 300),
+        }
+    }
+
+    fn chset<'a, 'b>(&self, doc: &'b Document<'a>, cset: u8) -> Option<&'b PSet<'a>> {
+        match self {
+            Self::Editor => None,
+            Self::Printer9 => doc.chsets_p9[cset as usize].as_deref(),
+            Self::Printer24 => doc.chsets_p24[cset as usize].as_deref(),
+            Self::Laser30 => doc.chsets_l30[cset as usize].as_deref(),
         }
     }
 }
@@ -106,6 +127,7 @@ pub struct Document<'a> {
     // cset
     chsets: Vec<Cow<'a, str>>,
     chsets_e24: [Option<OwnedESet>; 8],
+    chsets_p9: [Option<OwnedPSet>; 8],
     chsets_p24: [Option<OwnedPSet>; 8],
     chsets_l30: [Option<OwnedPSet>; 8],
     // pbuf
@@ -125,6 +147,7 @@ impl<'a> Document<'a> {
             file,
             chsets: vec![],
             chsets_e24: [None, None, None, None, None, None, None, None],
+            chsets_p9: [None, None, None, None, None, None, None, None],
             chsets_p24: [None, None, None, None, None, None, None, None],
             chsets_l30: [None, None, None, None, None, None, None, None],
             pages: vec![],
@@ -346,6 +369,11 @@ impl<'a> Document<'a> {
                 println!("Loaded font file '{}'", printer_cset_file.display());
                 true
             }
+            (Ok(pset), FontKind::Needle9) => {
+                self.chsets_p9[index] = Some(pset);
+                println!("Loaded font file '{}'", printer_cset_file.display());
+                true
+            }
             (Err(e), _) => {
                 println!("Failed to parse font file {}", printer_cset_file.display());
                 println!("Are you sure this is a valid Signum! editor font?");
@@ -365,6 +393,7 @@ impl<'a> Document<'a> {
         let mut all_eset = true;
         let mut all_pset = true;
         let mut all_lset = true;
+        let mut all_p9 = true;
         for (index, name) in charsets.iter().enumerate() {
             if name.is_empty() {
                 continue;
@@ -374,7 +403,9 @@ impl<'a> Document<'a> {
             all_eset &= self.load_cset_editor(index, cset_folder, name_ref);
             all_pset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Needle24);
             all_lset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Laser30);
+            all_p9 &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Needle9);
         }
+        all_p9 = false;
         // Print info on which sets are available
         if all_eset {
             println!("Editor fonts available for all character sets");
@@ -383,7 +414,10 @@ impl<'a> Document<'a> {
             println!("Printer fonts (24-needle) available for all character sets");
         }
         if all_lset {
-            //println!("Printer fonts (laser/30) available for all character sets");
+            println!("Printer fonts (laser/30) available for all character sets");
+        }
+        if all_p9 {
+            println!("Printer fonts (9-needle) available for all character sets");
         }
 
         // If none was set, choose one strategy
@@ -399,6 +433,11 @@ impl<'a> Document<'a> {
                         println!("WARNING: Explicitly chosen 24-needle print-driver but not all fonts are available");
                     }
                 }
+                PrintDriver::Printer9 => {
+                    if !all_p9 {
+                        println!("WARNING: Explicitly chosen 9-needle print-driver but not all fonts are available");
+                    }
+                }
                 PrintDriver::Laser30 => {
                     if !all_lset {
                         println!("WARNING: Explicitly chosen laser/30 print-driver but not all fonts are available");
@@ -409,6 +448,8 @@ impl<'a> Document<'a> {
             self.print_driver = Some(PrintDriver::Laser30);
         } else if all_pset {
             self.print_driver = Some(PrintDriver::Printer24);
+        } else if all_p9 {
+            self.print_driver = Some(PrintDriver::Printer9);
         } else if all_eset {
             self.print_driver = Some(PrintDriver::Editor);
         } else {
@@ -490,25 +531,11 @@ impl<'a> Document<'a> {
                         }
                     }
                 }
-                Some(PrintDriver::Printer24) => {
-                    if let Some(eset) = &self.chsets_p24[te.cset as usize] {
+                Some(pd) => {
+                    if let Some(eset) = pd.chset(self, te.cset) {
                         let ch = &eset.chars[te.cval as usize];
-                        let x = (*x as u32) * 18 / 5;
-                        let y = (y as u32) * 6;
-                        match page.draw_printer_char(x, y, ch) {
-                            Ok(()) => {}
-                            Err(()) => {
-                                eprintln!("Char out of bounds {:?}", te);
-                            }
-                        }
-                    }
-                }
-                Some(PrintDriver::Laser30) => {
-                    if let Some(eset) = &self.chsets_l30[te.cset as usize] {
-                        let ch = &eset.chars[te.cval as usize];
-                        // 405 DPI
-                        let x = (*x as u32) * 7 / 2;
-                        let y = (y as u32) * 5;
+                        let x = pd.scale_x(*x);
+                        let y = pd.scale_y(y);
                         match page.draw_printer_char(x, y, ch) {
                             Ok(()) => {}
                             Err(()) => {
@@ -761,6 +788,9 @@ impl<'a> Document<'a> {
     }
 
     fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> anyhow::Result<()> {
+        let pd = self.print_driver.ok_or_else(|| anyhow!("No printer type selected"))?;
+        let (hdpi, vdpi) = pd.resolution();
+        
         pw.write_magic()?;
         pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
         let file_name = self.file.file_name().unwrap().to_string_lossy();
@@ -796,17 +826,30 @@ impl<'a> Document<'a> {
             pw.isize(39158280)?;
             pw.isize(55380996)?;
             pw.isize(1000)?;
-            pw.isize(300)?;
-            pw.isize(300)?;
+            pw.isize(hdpi)?;
+            pw.isize(vdpi)?;
             pw.bytes(b"hello.dvi")?;
             pw.crlf()?;
             pw.name("@start")?;
             for (i, use_matrix) in use_matrix.iter().enumerate() {
-                if let Some(pset) = &self.chsets_l30[i] {
-                    pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
-                    write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
-                    pw.write_comment("EndSignumBitmapFont")?;
+                match pd {
+                    PrintDriver::Printer24 => {
+                        if let Some(pset) = &self.chsets_p24[i] {
+                            pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
+                            write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
+                            pw.write_comment("EndSignumBitmapFont")?;
+                        }
+                    }
+                    PrintDriver::Laser30 => {
+                        if let Some(pset) = &self.chsets_l30[i] {
+                            pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
+                            write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
+                            pw.write_comment("EndSignumBitmapFont")?;
+                        }
+                    }
+                    _ => { println!("Print-Driver {:?} not yet supported", pd); }
                 }
+                
             }
 
             Ok(())
@@ -814,7 +857,8 @@ impl<'a> Document<'a> {
         pw.write_meta("EndProlog")?;
 
         pw.write_meta("BeginSetup")?;
-        pw.write_meta_field("Feature", "*Resolution 300dpi")?;
+        let feature = format!("*Resolution {}dpi", hdpi);
+        pw.write_meta_field("Feature", &feature)?;
 
         pw.name(DICT)?;
         pw.begin(|pw| {
@@ -850,7 +894,7 @@ impl<'a> Document<'a> {
         })?;
         pw.write_meta("EndSetup")?;
 
-        let pd = PrintDriver::Laser30;
+        let x_offset = self.opt.xoffset.unwrap_or(0);
 
         for (index, page) in self.tebu.iter().enumerate() {
             let page_info = self.pages[page.index as usize].as_ref().unwrap();
@@ -882,7 +926,7 @@ impl<'a> Document<'a> {
                             pw.name(FONTS[chr.cset as usize])?;
                         }
 
-                        let x_val = pd.scale_x(x) as isize;
+                        let x_val = pd.scale_x(x) as isize + x_offset;
                         pw.isize(x_val)?;
                         pw.isize(y_val)?;
                         pw.name("a")?;

@@ -11,6 +11,8 @@ use std::{char::REPLACEMENT_CHARACTER, io};
 pub enum LoadError {
     #[error("Failed IO")]
     Io(#[from] io::Error),
+    #[error("Unimplemented")]
+    Unimplemented,
 }
 
 pub const LEGACY_7SEG_DIGITS: (char, char, char, char, char, char, char, char, char, char) = (
