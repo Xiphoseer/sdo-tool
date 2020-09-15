@@ -113,14 +113,21 @@ impl fmt::Display for Format {
 pub struct Options {
     /// Where to store the output
     out: PathBuf,
-    /// Where to store the image output, if applicable
-    #[structopt(long = "with-images")]
+    /// If specified, extract all embedded images to that folder
+    #[structopt(long = "with-images", short = "I")]
     with_images: Option<PathBuf>,
+    /// Select the printer font (and resolution).
+    ///
+    /// May fail, if the fonts are not available.
     #[structopt(long = "print-driver", short = "P")]
     print_driver: Option<PrintDriver>,
-    #[structopt(long = "pages", short = "#")]
+    /// If specified, limits the pages that are printed
+    #[structopt(long = "page", short = "#")]
     page: Option<Vec<usize>>,
-    #[structopt(default_value, long)]
+    /// Format of the output. Valid choices are:
+    ///
+    /// "txt", "html", "ps", "png", and "pdraw"
+    #[structopt(default_value, long, short = "F")]
     format: Format,
 }
 

@@ -10,18 +10,22 @@ use anyhow::anyhow;
 
 pub fn write_ls30_ps_bitmap(
     key: &str,
+    name: &str,
     pw: &mut PSWriter<impl Write>,
     font: &PSet,
+    use_matrix: Option<&[usize; 128]>,
 ) -> io::Result<()> {
     pw.lit(key)?;
     let count = font.chars.iter().filter(|c| c.width > 0).count();
+    pw.bytes(name.as_bytes())?;
     pw.write_usize(count)?;
     pw.write_usize(128)?;
     pw.name("df")?;
 
     let mut cc = 0;
     for (i, chr) in font.chars.iter().enumerate() {
-        if chr.width > 0 {
+        let used = use_matrix.map(|arr| arr[i as usize] > 0);
+        if chr.width > 0 && used != Some(false) {
             let char_header = CharHeader::from_signum(&chr);
             let head_iter = char_header.iter();
             let iter = chr.bitmap.iter().copied().chain(head_iter);
@@ -34,6 +38,11 @@ pub fn write_ls30_ps_bitmap(
                 pw.name("D")?;
             }
             cc = i + 1;
+        } else if used == Some(true) {
+            println!(
+                "Warning: Font `{}`: Non-renderable character is used #{}",
+                key, i
+            );
         }
     }
     pw.name("E")?;
@@ -63,7 +72,7 @@ pub fn convert_ls30(buffer: &[u8]) -> anyhow::Result<()> {
     };
 
     let mut writer = PSWriter::new();
-    write_ls30_ps_bitmap("Fa", &mut writer, &font)?;
+    write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &font, None)?;
 
     Ok(())
 }

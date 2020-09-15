@@ -234,10 +234,13 @@ pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
 
     pw.lit("df-tail")?;
     pw.seq(|pw| {
+        // create the font dict
         pw.lit("nn")?;
-        pw.isize(8)?;
+        pw.isize(9)?;
         pw.ps_dict()?;
         pw.name("N")?;
+
+        // populate the font dict
         pw.name("nn")?;
         pw.begin(|pw| {
             pw.lit("FontType")?;
@@ -258,6 +261,24 @@ pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
 
             pw.ps_array()?;
             pw.lit("BitMaps")?;
+            pw.name("X")?;
+
+            pw.name("A")?;
+            pw.lit("FontName")?;
+            pw.name("X")?;
+
+            pw.isize(2)?;
+            pw.ps_dict()?;
+            pw.name("A")?; // duplicate dict
+            pw.begin(|pw| {
+                pw.name("S")?; // get name from beneath dict
+                pw.name("A")?;
+                pw.lit("FamilyName")?;
+                pw.name("X")?;
+                pw.lit("FullName")?;
+                pw.name("X")
+            })?;
+            pw.lit("FontInfo")?;
             pw.name("X")?;
 
             pw.lit("BuildChar")?;
@@ -338,6 +359,9 @@ pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
         pw.ps_pop()?;
         pw.name("nn")?;
         pw.name("A")?;
+        pw.lit("FontName")?;
+        pw.ps_get()?;
+        pw.name("S")?;
         pw.ps_definefont()?;
         pw.ps_setfont()
     })?;

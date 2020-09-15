@@ -738,24 +738,35 @@ impl<'a> Document<'a> {
 
     fn output_postscript(&self) -> anyhow::Result<()> {
         if self.opt.out == Path::new("-") {
+            println!("----------------------------- PostScript -----------------------------");
             let mut pw = PSWriter::new();
-            self.output_ps_writer(&mut pw)
+            self.output_ps_writer(&mut pw)?;
+            println!("----------------------------------------------------------------------");
+            Ok(())
         } else {
-            let out = self.opt.out.join("output.ps");
-            let out_file = File::create(out)?;
+            let file = self.file.file_stem().unwrap();
+            let out = {
+                let mut buf = self.opt.out.join(file);
+                buf.set_extension("ps");
+                buf
+            };
+            let out_file = File::create(&out)?;
             let out_buf = BufWriter::new(out_file);
             let mut pw = PSWriter::from(out_buf);
-            self.output_ps_writer(&mut pw)
+            print!("Writing `{}` ...", out.display());
+            self.output_ps_writer(&mut pw)?;
+            println!(" Done!");
+            Ok(())
         }
     }
 
     fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> anyhow::Result<()> {
-        println!("-------------------------- [output.ps] --------------------------");
         pw.write_magic()?;
-        pw.write_meta_field("Creator", "sdo-tool 0.X-preview Copyright 2020 Xiphoseer")?;
-        pw.write_meta_field("Title", "TODO.SDO")?;
-        pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
-        pw.write_meta_field("Pages", &format!("{}", 1))?;
+        pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
+        let file_name = self.file.file_name().unwrap().to_string_lossy();
+        pw.write_meta_field("Title", file_name.as_ref())?;
+        //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
+        pw.write_meta_field("Pages", &format!("{}", self.page_count))?;
         pw.write_meta_field("Pages", "Ascend")?;
         pw.write_meta_field("BoundingBox", "0 0 596 842")?;
         pw.write_meta_field("DocumentPaperSizes", "a4")?;
@@ -765,10 +776,22 @@ impl<'a> Document<'a> {
         pw.write_header_end()?;
 
         const DICT: &str = "SignumDict";
+        const FONTS: [&str; 8] = ["Fa", "Fb", "Fc", "Fd", "Fe", "Ff", "Fg", "Fh"];
         prog_dict(pw, DICT)?;
 
         pw.write_meta("EndProcSet")?;
         pw.name(DICT)?;
+
+        let mut use_matrix: [[usize; 128]; 8] = [[0; 128]; 8];
+
+        for page in &self.tebu {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    use_matrix[tw.cset as usize][tw.cval as usize] += 1;
+                }
+            }
+        }
+
         pw.begin(|pw| {
             pw.isize(39158280)?;
             pw.isize(55380996)?;
@@ -778,11 +801,14 @@ impl<'a> Document<'a> {
             pw.bytes(b"hello.dvi")?;
             pw.crlf()?;
             pw.name("@start")?;
-            if let Some(pset) = &self.chsets_l30[0] {
-                pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[0]))?;
-                write_ls30_ps_bitmap("Fa", pw, pset)?;
-                pw.write_comment("EndSignumBitmapFont")?;
+            for (i, use_matrix) in use_matrix.iter().enumerate() {
+                if let Some(pset) = &self.chsets_l30[i] {
+                    pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
+                    write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
+                    pw.write_comment("EndSignumBitmapFont")?;
+                }
             }
+
             Ok(())
         })?;
         pw.write_meta("EndProlog")?;
@@ -824,46 +850,52 @@ impl<'a> Document<'a> {
         })?;
         pw.write_meta("EndSetup")?;
 
-        let mut page_iter = self.tebu.iter();
-
-        let page = page_iter.next().unwrap();
         let pd = PrintDriver::Laser30;
 
-        let mut x: u16 = 0;
-        let mut y: u16 = 0;
+        for (index, page) in self.tebu.iter().enumerate() {
+            let page_info = self.pages[page.index as usize].as_ref().unwrap();
+            let page_comment = format!("{} {}", page_info.log_pnr, page_info.phys_pnr);
+            pw.write_meta_field("Page", &page_comment)?;
 
-        pw.write_meta_field("Page", "1 1")?;
-        // TeXDict begin 1 0 bop 83 42 a Fa(Hello)13 b(World!)965 2770 y(1)p eop end
-        pw.name(DICT)?;
-        pw.begin(|pw| {
-            pw.isize(1)?;
-            pw.isize(0)?;
-            pw.name("bop")?;
+            pw.name(DICT)?;
+            pw.begin(|pw| {
+                let mut x: u16;
+                let mut y: u16 = 0;
+                let mut cset = 10;
 
-            // select font a
-            pw.name("Fa")?;
+                pw.isize(page_info.log_pnr as isize)?;
+                pw.isize(index as isize)?;
+                pw.name("bop")?;
 
-            for (skip, line) in &page.content {
-                y += 1 + *skip;
-                x = 0;
+                for (skip, line) in &page.content {
+                    y += 1 + *skip;
+                    x = 0;
 
-                let y_val = pd.scale_y(y) as isize;
-                for chr in &line.data {
-                    // moveto
-                    x += chr.offset;
-                    let x_val = pd.scale_x(x) as isize;
-                    pw.isize(x_val)?;
-                    pw.isize(y_val)?;
-                    pw.name("a")?;
+                    let y_val = pd.scale_y(y) as isize;
+                    for chr in &line.data {
+                        // moveto
+                        x += chr.offset;
 
-                    pw.bytes(&[chr.cval])?;
-                    pw.name("p")?;
+                        if cset != chr.cset {
+                            // select font a
+                            cset = chr.cset;
+                            pw.name(FONTS[chr.cset as usize])?;
+                        }
+
+                        let x_val = pd.scale_x(x) as isize;
+                        pw.isize(x_val)?;
+                        pw.isize(y_val)?;
+                        pw.name("a")?;
+
+                        pw.bytes(&[chr.cval])?;
+                        pw.name("p")?;
+                    }
                 }
-            }
 
-            pw.name("eop")?;
-            Ok(())
-        })?;
+                pw.name("eop")?;
+                Ok(())
+            })?;
+        }
         pw.write_meta("Trailer")?;
 
         pw.ps_userdict()?;
@@ -873,7 +905,6 @@ impl<'a> Document<'a> {
         pw.ps_if()?;
 
         pw.write_meta("EOF")?;
-        println!("-----------------------------------------------------------------");
         Ok(())
     }
 
@@ -903,7 +934,9 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> anyhow::Result<
 
     let mut document = Document::new(&opt, file);
 
-    std::fs::create_dir_all(&opt.out)?;
+    if opt.out != Path::new("-") {
+        std::fs::create_dir_all(&opt.out)?;
+    }
 
     for (key, part) in sdoc.parts {
         match key {

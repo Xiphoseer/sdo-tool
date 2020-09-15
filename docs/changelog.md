@@ -2,6 +2,18 @@
 
 ## Unreleased (`main` branch)
 
+### 15.09.2020
+
+- The output folder parameter on `dump` was changed from a long argument `--out`
+  to a required positional one (`<out>`). If you want to print to the console
+  anyways, use the string `-` for the path.
+- Removed the `--plain` parameter.
+- Added the `--format` parameter. Valid options include `html`, `plain`, `ps`,
+  `png` and `pdraw`.
+- Added a PostScript output. Currently only working for `L30` fonts, this output
+  routine creates a PS file with embedded bitmap fonts (Adobe Type 3). You can
+  use this to create a PDF using the `ps2pdf` program from `ghostscript`.
+
 ### 12.09.2020
 
 - Added `--plain` option to the `dump` command to skip printing

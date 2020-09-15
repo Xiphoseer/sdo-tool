@@ -198,10 +198,30 @@ impl<W: Write> PSWriter<W> {
     }
 
     pub fn bytes(&mut self, buf: &[u8]) -> io::Result<()> {
-        let len = buf.len() + 2;
+        let mut len = buf.len() + 2;
+        for byte in buf {
+            if matches!(*byte, 40 | 41 | 92) {
+                len += 1;
+            }
+        }
+
         self.need_len(len)?;
         write!(self.inner, "(")?;
-        self.inner.write_all(buf)?;
+
+        let mut off = 0;
+        for i in 0..buf.len() {
+            if matches!(buf[i], 40 | 41 | 92) {
+                if off < i {
+                    self.inner.write_all(&buf[off..i])?;
+                }
+                write!(self.inner, "\\{}", buf[i] as char)?;
+                off = i + 1;
+            }
+        }
+        if off < buf.len() {
+            self.inner.write_all(&buf[off..])?;
+        }
+
         write!(self.inner, ")")?;
         self.lc += len;
         Ok(())
