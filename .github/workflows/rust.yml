@@ -28,6 +28,7 @@ jobs:
           ~/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Cache cargo target dir
+      if: matrix.os != 'macOS'
       uses: actions/cache@v2
       with:
         path: target
