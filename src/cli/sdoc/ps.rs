@@ -267,19 +267,23 @@ pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
             pw.lit("FontName")?;
             pw.name("X")?;
 
+            pw.lit("FontInfo")?;
             pw.isize(2)?;
             pw.ps_dict()?;
-            pw.name("A")?; // duplicate dict
+            pw.name("N")?;
+
+            pw.name("FontInfo")?; // duplicate dict
             pw.begin(|pw| {
-                pw.name("S")?; // get name from beneath dict
                 pw.name("A")?;
+                pw.name("A")?;
+                pw.ps_print()?;
+                pw.bytes(b"\n")?;
+                pw.ps_print()?;
                 pw.lit("FamilyName")?;
                 pw.name("X")?;
                 pw.lit("FullName")?;
                 pw.name("X")
             })?;
-            pw.lit("FontInfo")?;
-            pw.name("X")?;
 
             pw.lit("BuildChar")?;
             pw.seq(|pw| pw.name("CharBuilder"))?;

@@ -277,6 +277,10 @@ impl<W: Write> PSWriter<W> {
         self.name("type")
     }
 
+    pub fn ps_print(&mut self) -> io::Result<()> {
+        self.name("print")
+    }
+
     pub fn ps_copy(&mut self) -> io::Result<()> {
         self.name("copy")
     }

@@ -1,5 +1,6 @@
 use crate::{
     font::printer::FontKind,
+    font::printer::PSet,
     font::{antikro, editor::OwnedESet, printer::OwnedPSet},
     print::Page,
     ps::PSWriter,
@@ -9,7 +10,7 @@ use crate::{
     },
     util::Buf,
     Format, Options,
-font::printer::PSet};
+};
 use anyhow::anyhow;
 use image::ImageFormat;
 use nom::multi::count;
@@ -788,16 +789,18 @@ impl<'a> Document<'a> {
     }
 
     fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> anyhow::Result<()> {
-        let pd = self.print_driver.ok_or_else(|| anyhow!("No printer type selected"))?;
+        let pd = self
+            .print_driver
+            .ok_or_else(|| anyhow!("No printer type selected"))?;
         let (hdpi, vdpi) = pd.resolution();
-        
+
         pw.write_magic()?;
         pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
         let file_name = self.file.file_name().unwrap().to_string_lossy();
         pw.write_meta_field("Title", file_name.as_ref())?;
         //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
         pw.write_meta_field("Pages", &format!("{}", self.page_count))?;
-        pw.write_meta_field("Pages", "Ascend")?;
+        pw.write_meta_field("PageOrder", "Ascend")?;
         pw.write_meta_field("BoundingBox", "0 0 596 842")?;
         pw.write_meta_field("DocumentPaperSizes", "a4")?;
         pw.write_meta("EndComments")?;
@@ -836,20 +839,33 @@ impl<'a> Document<'a> {
                     PrintDriver::Printer24 => {
                         if let Some(pset) = &self.chsets_p24[i] {
                             pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
-                            write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
+                            write_ls30_ps_bitmap(
+                                FONTS[i],
+                                &self.chsets[i],
+                                pw,
+                                pset,
+                                Some(use_matrix),
+                            )?;
                             pw.write_comment("EndSignumBitmapFont")?;
                         }
                     }
                     PrintDriver::Laser30 => {
                         if let Some(pset) = &self.chsets_l30[i] {
                             pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
-                            write_ls30_ps_bitmap(FONTS[i], &self.chsets[i], pw, pset, Some(use_matrix))?;
+                            write_ls30_ps_bitmap(
+                                FONTS[i],
+                                &self.chsets[i],
+                                pw,
+                                pset,
+                                Some(use_matrix),
+                            )?;
                             pw.write_comment("EndSignumBitmapFont")?;
                         }
                     }
-                    _ => { println!("Print-Driver {:?} not yet supported", pd); }
+                    _ => {
+                        println!("Print-Driver {:?} not yet supported", pd);
+                    }
                 }
-                
             }
 
             Ok(())

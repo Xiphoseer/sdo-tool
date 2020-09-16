@@ -64,7 +64,7 @@ impl OwnedPSet {
             FontKind::Laser30 => parse_ls30(input),
             FontKind::Needle9 => {
                 return Err(LoadError::Unimplemented);
-            }, // TODO
+            } // TODO
         }
         .unwrap();
         Ok(Self { inner, buffer })
