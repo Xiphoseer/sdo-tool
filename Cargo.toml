@@ -16,3 +16,6 @@ thiserror = "1.0"
 default-features = false
 version = "0.23"
 features = ["png"]
+
+[workspace]
+members = ["pdf"]

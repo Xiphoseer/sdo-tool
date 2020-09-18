@@ -1,0 +1,8 @@
+[package]
+name = "sdo-pdf"
+version = "0.1.0"
+authors = ["Xiphoseer <Xiphoseer@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+pdf = "0.7"
