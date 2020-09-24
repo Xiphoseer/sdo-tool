@@ -18,4 +18,4 @@ version = "0.23"
 features = ["png"]
 
 [workspace]
-members = ["pdf"]
+members = ["crates/*"]
