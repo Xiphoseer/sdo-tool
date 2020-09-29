@@ -13,6 +13,9 @@ pub struct Encoder<'a> {
     ref_color: Color,
     ref_pos: usize,
     done: bool,
+    pub skip_lead: usize,
+    pub skip_tail: usize,
+    pub debug: bool,
 }
 
 impl<'a> Encoder<'a> {
@@ -28,6 +31,9 @@ impl<'a> Encoder<'a> {
             ref_color: Color::White,
             ref_pos: 0,
             done: false,
+            skip_lead: 0,
+            skip_tail: 0,
+            debug: false,
         }
     }
 
@@ -100,6 +106,39 @@ impl<'a> Encoder<'a> {
         let mut color = Color::White;
 
         loop {
+            if self.debug {
+                let mut cl = self.iter.clone();
+                print!("|");
+                for _ in 0..self.skip_lead {
+                    match cl.next() {
+                        Some(true) => print!("#"),
+                        Some(false) => print!("_"),
+                        None => print!(" "),
+                    }
+                }
+                print!("|");
+                for _ in 0..self.width {
+                    match cl.next() {
+                        Some(true) => print!("#"),
+                        Some(false) => print!("_"),
+                        None => print!(" "),
+                    }
+                }
+                print!("|");
+                for _ in 0..self.skip_tail {
+                    match cl.next() {
+                        Some(true) => print!("#"),
+                        Some(false) => print!("_"),
+                        None => print!(" "),
+                    }
+                }
+                println!("|");
+            }
+
+            for _ in 0..self.skip_lead {
+                self.done |= self.iter.next().is_none();
+            }
+
             let mut a0 = 0;
             let mut a1 = self.find_next_changing_element();
 
@@ -120,7 +159,9 @@ impl<'a> Encoder<'a> {
 
                 if b2 < a1 {
                     // pass mode
-                    print!("P({})", b2);
+                    if self.debug {
+                        print!("P({})", b2);
+                    }
                     self.output.write_bits(0b0001, 4);
                     //println!("\n-----------------------------");
                     a0 = b2;
@@ -132,37 +173,51 @@ impl<'a> Encoder<'a> {
                     //print!("(d/{})", d);
                     let v = match d {
                         -3 => {
-                            print!("VL3");
+                            if self.debug {
+                                print!("VL3");
+                            }
                             self.output.write_bits(0b0000010, 7);
                             true
                         }
                         -2 => {
-                            print!("VL2");
+                            if self.debug {
+                                print!("VL2");
+                            }
                             self.output.write_bits(0b000010, 6);
                             true
                         }
                         -1 => {
-                            print!("VL1");
+                            if self.debug {
+                                print!("VL1");
+                            }
                             self.output.write_bits(0b010, 3);
                             true
                         }
                         0 => {
-                            print!("V0");
+                            if self.debug {
+                                print!("V0");
+                            }
                             self.output.write_bits(0b1, 1);
                             true
                         }
                         1 => {
-                            print!("VR1");
+                            if self.debug {
+                                print!("VR1");
+                            }
                             self.output.write_bits(0b011, 3);
                             true
                         }
                         2 => {
-                            print!("VR2");
+                            if self.debug {
+                                print!("VR2");
+                            }
                             self.output.write_bits(0b000011, 6);
                             true
                         }
                         3 => {
-                            print!("VR3");
+                            if self.debug {
+                                print!("VR3");
+                            }
                             self.output.write_bits(0b0000011, 7);
                             true
                         }
@@ -171,7 +226,9 @@ impl<'a> Encoder<'a> {
 
                     if v {
                         //println!("\n-----------------------------");
-                        print!("({})", b1);
+                        if self.debug {
+                            print!("({})", b1);
+                        }
                         a0 = a1;
                         a1 = a2;
                         a2 = self.find_next_changing_element();
@@ -181,7 +238,9 @@ impl<'a> Encoder<'a> {
                         // horizontal mode
                         let a0a1 = a1 - a0;
                         let a1a2 = a2 - a1;
-                        print!("H({},{})", a0a1, a1a2);
+                        if self.debug {
+                            print!("H({},{})", a0a1, a1a2);
+                        }
                         self.output.write_bits(0b001, 3);
                         match color {
                             Color::White => {
@@ -206,7 +265,9 @@ impl<'a> Encoder<'a> {
                 //println!("{} {} {} | {} {}", a0, a1, a2, b1, b2);
 
                 if a0 > self.width {
-                    println!("#");
+                    if self.debug {
+                        println!("#");
+                    }
                     break;
                 }
             }
@@ -217,6 +278,10 @@ impl<'a> Encoder<'a> {
             self.read_pos = 0;
             self.ref_pos = 0;
             std::mem::swap(&mut self.reference, &mut self.current);
+
+            for _ in 0..self.skip_tail {
+                self.iter.next();
+            }
 
             //Color::_print_row(&self.reference);
 
@@ -237,7 +302,7 @@ fn write_black_len(output: &mut BitWriter, mut len: usize) {
     }
 
     match len / 64 {
-        0 => {},
+        0 => {}
         1 => output.write_bits(0b0000001111, 10),
         2 => output.write_bits(0b000011001000, 12),
         3 => output.write_bits(0b000011001001, 12),
@@ -355,10 +420,10 @@ fn write_white_len(output: &mut BitWriter, mut len: usize) {
         output.write_bits(0b000000011111, 12);
     }
     match len / 64 {
-        0 => {},
+        0 => {}
         1 => output.write_bits(0b11011, 5),
         2 => output.write_bits(0b10010, 5),
-        3 => output.write_bits(0b010111, 6), 
+        3 => output.write_bits(0b010111, 6),
         4 => output.write_bits(0b0110111, 7),
         5 => output.write_bits(0b00110110, 8),
         6 => output.write_bits(0b00110111, 8),

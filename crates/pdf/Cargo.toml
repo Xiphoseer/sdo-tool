@@ -1,5 +1,5 @@
 [package]
-name = "sdo-pdf"
+name = "pdf-create"
 version = "0.1.0"
 authors = ["Xiphoseer <Xiphoseer@users.noreply.github.com>"]
 edition = "2018"
@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 pdf = "0.7"
 ccitt-t4-t6 = { path = "../ccitt" }
+
+[dev-dependencies]
+color-eyre = { version = "0.5", default-features = false }

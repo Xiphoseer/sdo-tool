@@ -13,7 +13,7 @@ use nom::{
     combinator::value,
     multi::count,
     multi::separated_list1,
-    number::complete::le_u8,
+    number::complete::u8,
     sequence::delimited,
     sequence::preceded,
     sequence::terminated,
@@ -181,11 +181,11 @@ impl From<CacheDevice> for CharHeader {
 }
 
 pub fn parse_char_header(input: &[u8]) -> IResult<&[u8], CharHeader> {
-    let (input, width) = le_u8(input)?;
-    let (input, height) = le_u8(input)?;
-    let (input, x_offset) = le_u8(input)?;
-    let (input, y_offset) = le_u8(input)?;
-    let (input, delta_x) = le_u8(input)?;
+    let (input, width) = u8(input)?;
+    let (input, height) = u8(input)?;
+    let (input, x_offset) = u8(input)?;
+    let (input, y_offset) = u8(input)?;
+    let (input, delta_x) = u8(input)?;
     Ok((
         input,
         CharHeader {

@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 /// Source: <https://stackoverflow.com/questions/42187591/>
-pub(crate) struct ByteCounter<W> {
+pub struct ByteCounter<W> {
     inner: W,
     count: usize,
 }
@@ -37,5 +37,21 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
+    }
+}
+
+pub(crate) struct NextID {
+    obj_id: u64,
+}
+
+impl NextID {
+    pub(crate) fn new(start: u64) -> Self {
+        Self { obj_id: start }
+    }
+
+    pub(crate) fn next(&mut self) -> u64 {
+        let next = self.obj_id;
+        self.obj_id += 1;
+        next
     }
 }

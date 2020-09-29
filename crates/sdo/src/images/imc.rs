@@ -92,7 +92,7 @@ impl MonochromeScreen {
     }
 }
 
-pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<(&[u8], ErrorKind)>> {
+pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<nom::error::Error<&[u8]>>> {
     let (input, _) = tag(b"bimc0002")(input)?;
     let (_input, image) = decode_imc(input)?;
     Ok(image)
@@ -100,9 +100,10 @@ pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<(&[u8], ErrorKind
 
 macro_rules! next {
     ($bit_iter:ident, $state:ident) => {
-        $bit_iter
-            .next()
-            .ok_or(nom::Err::Error(($state.a5, ErrorKind::Eof)))
+        $bit_iter.next().ok_or(nom::Err::Error(nom::error::Error {
+            input: $state.a5,
+            code: ErrorKind::Eof,
+        }))
     };
 }
 

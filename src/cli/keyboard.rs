@@ -1,10 +1,10 @@
 #![allow(unused)]
-use crate::{
+use color_eyre::eyre::{self, eyre};
+use image::ImageFormat;
+use sdo::{
     font::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
     print::Page,
 };
-use anyhow::anyhow;
-use image::ImageFormat;
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -974,7 +974,7 @@ fn _print_eset(needed: &[u8], set: &ESet, name: &str) {
     println!("}}");
 }
 
-fn _run_stage_2() -> anyhow::Result<()> {
+fn _run_stage_2() -> eyre::Result<()> {
     let gfont = OwnedESet::load(Path::new("../chsets/GRAPH1.E24"))?;
     let lfont = OwnedESet::load(Path::new("../chsets/GROTMIKR.E24"))?;
 
@@ -983,9 +983,9 @@ fn _run_stage_2() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> anyhow::Result<()> {
+pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> eyre::Result<()> {
     let (_, eset) = parse_eset(buffer) //
-        .map_err(|e| anyhow!("Could not load editor charset:\n{}", e))?;
+        .map_err(|e| eyre!("Could not load editor charset:\n{}", e))?;
     let mut page = Page::new(730, 175);
 
     for (x, y, cval, cset) in KB_DRAW.iter().cloned() {

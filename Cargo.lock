@@ -31,12 +31,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b602bfe940d21c130f3895acd65221e8a61270debe89d628b9cb4e3ccb8569b"
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -468,9 +462,9 @@ dependencies = [
 
 [[package]]
 name = "nom"
-version = "6.0.0-alpha1"
+version = "6.0.0-alpha2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25020779544bf717b917323b42f23c9dbef1bd2b97b576df6484a0c8709705c6"
+checksum = "5bd3285fb63b4f8b6f48411c2dd483e2fef0188cd00a1397c106b6f7b35077b9"
 dependencies = [
  "lexical-core",
  "memchr",
@@ -606,6 +600,15 @@ dependencies = [
  "ordermap",
  "pdf_derive",
  "snafu",
+]
+
+[[package]]
+name = "pdf-create"
+version = "0.1.0"
+dependencies = [
+ "ccitt-t4-t6",
+ "color-eyre",
+ "pdf",
 ]
 
 [[package]]
@@ -770,22 +773,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
-name = "sdo-pdf"
+name = "sdo"
 version = "0.1.0"
 dependencies = [
- "ccitt-t4-t6",
- "pdf",
+ "bitflags",
+ "image",
+ "nom",
+ "thiserror",
 ]
 
 [[package]]
 name = "sdo-tool"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitflags",
+ "ccitt-t4-t6",
+ "color-eyre",
  "image",
- "nom",
+ "pdf",
+ "pdf-create",
  "prettytable-rs",
+ "sdo",
  "structopt",
  "thiserror",
 ]

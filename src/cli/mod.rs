@@ -1,18 +1,18 @@
-use crate::{images::imc::parse_imc, print::Page};
-use anyhow::anyhow;
+use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
+use sdo::{images::imc::parse_imc, print::Page};
 use std::path::PathBuf;
 
-mod font;
+pub mod font;
 pub mod keyboard;
-pub mod ps;
+pub mod opt;
 pub mod sdoc;
 
 pub use font::{process_eset, process_ls30, process_ps24};
 
-pub fn process_bimc(buffer: &[u8], out_path: PathBuf) -> anyhow::Result<()> {
+pub fn process_bimc(buffer: &[u8], out_path: PathBuf) -> eyre::Result<()> {
     let decoded = parse_imc(&buffer) //
-        .map_err(|err| anyhow!("Failed to parse: {}", err))?;
+        .map_err(|err| eyre!("Failed to parse: {}", err))?;
 
     let page = Page::from_screen(decoded);
 

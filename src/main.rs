@@ -2,29 +2,21 @@
 #![warn(missing_docs)]
 
 mod cli;
-mod font;
-mod images;
-mod print;
-mod ps;
-mod sdoc;
-mod util;
 
-use crate::util::Buf;
+use cli::opt::Options;
+use sdo::font;
 
-use anyhow::anyhow;
 use cli::{
+    font::ps::{convert_ls30, process_ps_font},
     keyboard, process_bimc, process_eset, process_ls30, process_ps24,
-    ps::convert_ls30,
-    ps::process_ps_font,
-    sdoc::{process_sdoc, PrintDriver},
+    sdoc::process_sdoc,
 };
+use color_eyre::eyre::{self, eyre};
 use keyboard::KBOptions;
 use std::{
-    fmt,
     fs::File,
     io::{BufReader, Read},
     path::PathBuf,
-    str::FromStr,
 };
 use structopt::StructOpt;
 
@@ -50,92 +42,8 @@ pub enum Command {
     Keyboard(KBOptions),
 }
 
-/// The format to export the document into
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Format {
-    /// Plain utf-8 text
-    Plain,
-    /// Text with formatting annotations
-    Html,
-    /// PostScript page description file
-    PostScript,
-    /// A Sequence of images
-    Png,
-    /// A list of draw commands
-    PDraw,
-}
-
-#[derive(Debug)]
-/// Failed to parse a format name
-pub struct FormatError {}
-
-impl fmt::Display for FormatError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Use one of `plain`, `html`, `ps`, `png` or `pdraw`")?;
-        Ok(())
-    }
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::Html
-    }
-}
-
-impl FromStr for Format {
-    type Err = FormatError;
-    fn from_str(val: &str) -> Result<Self, Self::Err> {
-        match val {
-            "txt" | "plain" => Ok(Self::Plain),
-            "html" => Ok(Self::Html),
-            "ps" | "postscript" => Ok(Self::PostScript),
-            "png" => Ok(Self::Png),
-            "pdraw" => Ok(Self::PDraw),
-            _ => Err(FormatError {}),
-        }
-    }
-}
-
-impl fmt::Display for Format {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Plain => f.write_str("txt"),
-            Self::Html => f.write_str("html"),
-            Self::PostScript => f.write_str("ps"),
-            Self::Png => f.write_str("png"),
-            Self::PDraw => f.write_str("pdraw"),
-        }
-    }
-}
-
-/// OPTIONS
-#[derive(StructOpt)]
-pub struct Options {
-    /// Where to store the output
-    out: PathBuf,
-    /// If specified, extract all embedded images to that folder
-    #[structopt(long = "with-images", short = "I")]
-    with_images: Option<PathBuf>,
-    /// Select the printer font (and resolution).
-    ///
-    /// May fail, if the fonts are not available.
-    #[structopt(long = "print-driver", short = "P")]
-    print_driver: Option<PrintDriver>,
-    /// If specified, limits the pages that are printed
-    #[structopt(long = "page", short = "#")]
-    page: Option<Vec<usize>>,
-    /// Format of the output. Valid choices are:
-    ///
-    /// "txt", "html", "ps", "png", and "pdraw"
-    #[structopt(default_value, long, short = "F")]
-    format: Format,
-
-    /// HACK: fix horizontal offset
-    #[structopt(long)]
-    xoffset: Option<isize>,
-}
-
-fn main() -> anyhow::Result<()> {
+fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
     let opt = CLI::from_args();
 
     let file = File::open(&opt.file)?;
@@ -174,8 +82,8 @@ fn main() -> anyhow::Result<()> {
                 convert_ls30(&buffer)?;
                 Ok(())
             }
-            Some(t) => Err(anyhow!("Unknown file type {:?}", t)),
-            None => Err(anyhow!("File has less than 4 bytes")),
+            Some(t) => Err(eyre!("Unknown file type {:?}", t)),
+            None => Err(eyre!("File has less than 4 bytes")),
         },
         Some(Command::Dump(dump_opt)) => match buffer.get(..4) {
             Some(b"sdoc") => process_sdoc(&buffer, dump_opt, &opt.file),
@@ -183,8 +91,8 @@ fn main() -> anyhow::Result<()> {
             Some(b"ps24") => process_ps24(&buffer, &dump_opt),
             Some(b"ls30") => process_ls30(&buffer, &dump_opt),
             Some(b"bimc") => process_bimc(&buffer, dump_opt.out),
-            Some(t) => Err(anyhow!("Unknown file type {:?}", t)),
-            None => Err(anyhow!("File has less than 4 bytes")),
+            Some(t) => Err(eyre!("Unknown file type {:?}", t)),
+            None => Err(eyre!("File has less than 4 bytes")),
         },
         Some(Command::Decode) => {
             let mut decoded = String::with_capacity(buffer.len());

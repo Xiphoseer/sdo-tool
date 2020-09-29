@@ -1,9 +1,8 @@
 use super::LoadError;
-use crate::util::data::BIT_STRING;
-use crate::Buf;
+use crate::util::{data::BIT_STRING, Buf};
 use nom::{
     bytes::complete::{tag, take},
-    number::complete::{be_u32, be_u8},
+    number::complete::{be_u32, u8},
     IResult,
 };
 use std::{ops::Deref, path::Path};
@@ -138,10 +137,10 @@ impl<'a> ESet<'a> {
 }
 
 pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
-    let (input, top) = be_u8(input)?;
-    let (input, height) = be_u8(input)?;
-    let (input, width) = be_u8(input)?;
-    let (input, _d) = be_u8(input)?;
+    let (input, top) = u8(input)?;
+    let (input, height) = u8(input)?;
+    let (input, width) = u8(input)?;
+    let (input, _d) = u8(input)?;
     let (input, buf) = take((height * 2) as usize)(input)?;
     Ok((
         input,

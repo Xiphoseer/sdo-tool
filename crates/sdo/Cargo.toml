@@ -1,0 +1,17 @@
+[package]
+name = "sdo"
+version = "0.1.0"
+authors = ["Xiphoseer <Xiphoseer@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nom = "6.0.0-alpha2"
+thiserror = "1.0"
+bitflags = "1.2"
+
+[dependencies.image]
+default-features = false
+version = "0.23"
+features = ["png"]

@@ -1,8 +1,9 @@
 #![allow(dead_code)]
-use thiserror::Error;
+use thiserror::*;
 
 pub mod dvips;
 pub mod editor;
+pub mod pdf;
 pub mod printer;
 
 use std::{char::REPLACEMENT_CHARACTER, io};
@@ -119,8 +120,9 @@ pub mod antikro {
     pub const LFD: char = '\n';
 
     /// Private use characters for missing chars
-    pub const A: (char, char, char, char, char, char, char) = (
-        '\u{E003}', '\u{E004}', '\u{E005}', '\u{E006}', '\u{E008}', '\u{E00C}', '\u{E00E}',
+    pub const A: (char, char, char, char, char, char, char, char) = (
+        '\u{E003}', '\u{E004}', '\u{E005}', '\u{E006}', '\u{E008}', '\u{E00A}', '\u{E00C}',
+        '\u{E00E}',
     );
 
     /// Private use characters for missing chars
@@ -129,7 +131,7 @@ pub mod antikro {
     /// The ANTIKRO encoding row 0
     #[rustfmt::skip]
     pub const MAP: [char; 128] = [
-        NUL, '{', '}', A.0, A.1, A.2, A.3, '↓', A.4, '←', '⏎', '→', A.5, '↑', A.6, '[',
+        NUL, '{', '}', A.0, A.1, A.2, A.3, '↓', A.4, '←', A.5, '→', A.6, '↑', A.7, '[',
         ']', '<', '>', S.0, S.1, S.2, S.3, S.4, S.5, S.6, S.7, S.8, S.9, B.0, B.1, B.2,
         '§', '!', '"', '#', '$', '%', '&', TIC, '(', ')', '*', '+', ',', '−', '.', '/',
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '«', '=', '»', '?',

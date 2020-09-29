@@ -1,7 +1,13 @@
-use crate::{
+use crate::cli::opt::{Format, Options};
+use color_eyre::eyre::{self, eyre};
+use image::ImageFormat;
+use nom::Finish;
+use prettytable::{cell, format, row, Cell, Row, Table};
+use ps::prog_dict;
+use sdo::{
     font::printer::FontKind,
     font::printer::PSet,
-    font::{antikro, editor::OwnedESet, printer::OwnedPSet},
+    font::{antikro, editor::OwnedESet, printer::OwnedPSet, printer::PrintDriver},
     print::Page,
     ps::PSWriter,
     sdoc::{
@@ -9,14 +15,11 @@ use crate::{
         parse_sysp, parse_tebu_header, Flags, Line, Style, Te,
     },
     util::Buf,
-    Format, Options,
 };
-use anyhow::anyhow;
-use image::ImageFormat;
-use nom::multi::count;
-use prettytable::{cell, format, row, Cell, Row, Table};
-use ps::prog_dict;
-use sdoc::{parse_page_text, ImageSite, PageText};
+use sdo::{
+    nom::{self, multi::count},
+    sdoc::{parse_page_text, ImageSite, PageText},
+};
 use std::{
     borrow::Cow,
     fs::DirEntry,
@@ -24,11 +27,9 @@ use std::{
     io::BufWriter,
     io::Write,
     path::{Path, PathBuf},
-    str::FromStr,
 };
-use thiserror::Error;
 
-use super::ps::write_ls30_ps_bitmap;
+use super::font::ps::write_ls30_ps_bitmap;
 
 mod ps;
 
@@ -57,69 +58,6 @@ fn print_line_cmds(line: &Line, skip: u16, pos: &mut Pos) {
     print_char_cmds(&line.data, &mut pos.x, pos.y);
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum PrintDriver {
-    Editor,
-    Printer9,
-    Printer24,
-    Laser30,
-}
-
-impl PrintDriver {
-    fn scale_y(&self, units: u16) -> u32 {
-        match self {
-            Self::Editor => u32::from(units) * 2,
-            Self::Printer9 => u32::from(units) * 4,
-            Self::Printer24 => u32::from(units) * 20 / 3,
-            Self::Laser30 => u32::from(units) * 50 / 9,
-        }
-    }
-
-    fn scale_x(&self, units: u16) -> u32 {
-        match self {
-            Self::Editor => u32::from(units),
-            Self::Printer9 => u32::from(units) * 12 / 5,
-            Self::Printer24 => u32::from(units) * 4,
-            Self::Laser30 => u32::from(units) * 10 / 3,
-        }
-    }
-
-    fn resolution(&self) -> (isize, isize) {
-        match self {
-            Self::Editor => (104, 90),
-            Self::Printer9 => (216, 216),
-            Self::Printer24 => (360, 360),
-            Self::Laser30 => (300, 300),
-        }
-    }
-
-    fn chset<'a, 'b>(&self, doc: &'b Document<'a>, cset: u8) -> Option<&'b PSet<'a>> {
-        match self {
-            Self::Editor => None,
-            Self::Printer9 => doc.chsets_p9[cset as usize].as_deref(),
-            Self::Printer24 => doc.chsets_p24[cset as usize].as_deref(),
-            Self::Laser30 => doc.chsets_l30[cset as usize].as_deref(),
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("Unknown print driver!")]
-pub struct UnknownPrintDriver {}
-
-impl FromStr for PrintDriver {
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        match input {
-            "E24" => Ok(Self::Editor),
-            "P24" => Ok(Self::Printer24),
-            "L30" => Ok(Self::Laser30),
-            _ => Err(UnknownPrintDriver {}),
-        }
-    }
-
-    type Err = UnknownPrintDriver;
-}
-
 pub struct Document<'a> {
     // Configuration
     print_driver: Option<PrintDriver>,
@@ -142,6 +80,15 @@ pub struct Document<'a> {
 }
 
 impl<'a> Document<'a> {
+    fn chset<'b>(&'b self, pd: &PrintDriver, cset: u8) -> Option<&'b PSet<'a>> {
+        match pd {
+            PrintDriver::Editor => None,
+            PrintDriver::Printer9 => self.chsets_p9[cset as usize].as_deref(),
+            PrintDriver::Printer24 => self.chsets_p24[cset as usize].as_deref(),
+            PrintDriver::Laser30 => self.chsets_l30[cset as usize].as_deref(),
+        }
+    }
+
     pub fn new(opt: &'a Options, file: &'a Path) -> Self {
         Document {
             opt,
@@ -384,7 +331,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(&mut self, part: Buf<'a>) -> anyhow::Result<()> {
+    fn process_cset(&mut self, part: Buf<'a>) -> eyre::Result<()> {
         let (_, charsets) = parse_cset(part.0).unwrap();
         println!("'cset': {:?}", charsets);
 
@@ -460,7 +407,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn process_pbuf(&mut self, part: Buf) -> anyhow::Result<()> {
+    fn process_pbuf(&mut self, part: Buf) -> eyre::Result<()> {
         let (rest, pbuf) = parse_pbuf(part.0).unwrap();
 
         println!(
@@ -515,7 +462,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn draw_chars(&self, data: &[Te], page: &mut Page, x: &mut u16, y: u16) -> anyhow::Result<()> {
+    fn draw_chars(&self, data: &[Te], page: &mut Page, x: &mut u16, y: u16) -> eyre::Result<()> {
         for te in data {
             *x += te.offset;
             match self.print_driver {
@@ -533,7 +480,7 @@ impl<'a> Document<'a> {
                     }
                 }
                 Some(pd) => {
-                    if let Some(eset) = pd.chset(self, te.cset) {
+                    if let Some(eset) = self.chset(&pd, te.cset) {
                         let ch = &eset.chars[te.cval as usize];
                         let x = pd.scale_x(*x);
                         let y = pd.scale_y(y);
@@ -559,7 +506,7 @@ impl<'a> Document<'a> {
         skip: u16,
         page: &mut Page,
         pos: &mut Pos,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         pos.y += skip + 1;
 
         if line.flags.contains(Flags::FLAG) {
@@ -573,14 +520,14 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn process_tebu(&mut self, part: Buf) -> anyhow::Result<()> {
+    fn process_tebu(&mut self, part: Buf) -> eyre::Result<()> {
         let (rest, tebu_header) = parse_tebu_header(part.0).unwrap();
         println!("'tebu': {:?}", tebu_header);
 
         let (rest, tebu) = match count(parse_page_text, self.page_count)(rest) {
             Ok(r) => r,
             Err(e) => {
-                return Err(anyhow!("Failed to process pages: {}", e));
+                return Err(eyre!("Failed to process pages: {}", e));
             }
         };
         self.tebu = tebu;
@@ -592,7 +539,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn process_hcim(&mut self, part: Buf) -> anyhow::Result<()> {
+    fn process_hcim(&mut self, part: Buf) -> eyre::Result<()> {
         let (rest, hcim) = parse_hcim(part.0).unwrap();
         println!("'hcim':");
         println!("  {:?}", hcim.header);
@@ -667,7 +614,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output_print(&self, out_path: &Path) -> anyhow::Result<()> {
+    fn output_print(&self, out_path: &Path) -> eyre::Result<()> {
         for page_text in &self.tebu {
             let index = page_text.index as usize;
             let pbuf_entry = self.pages[index].as_ref().unwrap();
@@ -735,7 +682,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output_pdraw(&self) -> anyhow::Result<()> {
+    fn output_pdraw(&self) -> eyre::Result<()> {
         for page_text in &self.tebu {
             let mut pos = Pos::new(0, 0);
             for (skip, line) in &page_text.content {
@@ -745,7 +692,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output_console(&self) -> anyhow::Result<()> {
+    fn output_console(&self) -> eyre::Result<()> {
         for page_text in &self.tebu {
             let index = page_text.index as usize;
             let pbuf_entry = self.pages[index].as_ref().unwrap();
@@ -764,7 +711,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output_postscript(&self) -> anyhow::Result<()> {
+    fn output_postscript(&self) -> eyre::Result<()> {
         if self.opt.out == Path::new("-") {
             println!("----------------------------- PostScript -----------------------------");
             let mut pw = PSWriter::new();
@@ -788,10 +735,10 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> anyhow::Result<()> {
+    fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> eyre::Result<()> {
         let pd = self
             .print_driver
-            .ok_or_else(|| anyhow!("No printer type selected"))?;
+            .ok_or_else(|| eyre!("No printer type selected"))?;
         let (hdpi, vdpi) = pd.resolution();
 
         pw.write_magic()?;
@@ -968,29 +915,22 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self) -> anyhow::Result<()> {
+    fn output(&self) -> eyre::Result<()> {
         match self.opt.format {
             Format::Html | Format::Plain => self.output_console(),
             Format::PostScript => self.output_postscript(),
             Format::PDraw => self.output_pdraw(),
             Format::Png => self.output_print(&self.opt.out),
+            Format::DVIPSBitmapFont => panic!("Document can't be formatted as a font"),
+            Format::CCITTT6 => panic!("Document can't be formatted as a font"),
         }
     }
 }
 
-pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> anyhow::Result<()> {
-    let (rest, sdoc) = match parse_sdoc0001_container(buffer) {
-        Ok(x) => x,
-        Err(nom::Err::Failure((rest, kind))) => {
-            return Err(anyhow!("Parse failed [{:?}]:\n{:?}", rest, kind));
-        }
-        Err(nom::Err::Error((rest, kind))) => {
-            return Err(anyhow!("Parse errored [{:?}]:\n{:?}", rest, kind));
-        }
-        Err(nom::Err::Incomplete(a)) => {
-            return Err(anyhow!("Parse incomplete, needed {:?}", a));
-        }
-    };
+pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()> {
+    let (rest, sdoc) = parse_sdoc0001_container(buffer)
+        .finish()
+        .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
 
     let mut document = Document::new(&opt, file);
 

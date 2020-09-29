@@ -12,8 +12,7 @@ use nom::{
 
 use crate::{
     images::imc::{decode_imc, MonochromeScreen},
-    util::{Bytes16, Bytes32},
-    Buf,
+    util::{Buf, Bytes16, Bytes32},
 };
 use fmt::Debug;
 use std::{borrow::Cow, fmt};
@@ -308,7 +307,7 @@ pub struct LineIter<'a> {
 }
 
 impl<'a> Iterator for LineIter<'a> {
-    type Item = Result<LineBuf<'a>, nom::Err<(&'a [u8], ErrorKind)>>;
+    type Item = Result<LineBuf<'a>, nom::Err<nom::error::Error<&'a [u8]>>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.rest.len() <= 4 {
             None
@@ -408,9 +407,7 @@ pub struct Line {
 
 pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
     let (input, bits) = bytes16(input)?;
-    let flags = Flags::from_bits(bits.0) //
-        .ok_or_else(|| anyhow::anyhow!("Unknown flags {:?}", bits))
-        .unwrap();
+    let flags = Flags::from_bits(bits.0).expect("Unknown flags");
 
     if flags.contains(Flags::PAGE) {
         let (input, pnum) = if flags.contains(Flags::PNUM) {
@@ -445,7 +442,7 @@ pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
 }
 
 impl<'a> LineBuf<'a> {
-    pub fn _parse(self) -> Result<Line, nom::Err<(&'a [u8], ErrorKind)>> {
+    pub fn _parse(self) -> Result<Line, nom::Err<nom::error::Error<&'a [u8]>>> {
         parse_line(self.data).map(|(_, line)| line)
     }
 }
@@ -505,7 +502,10 @@ pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
     }
 
     match iter.finish() {
-        Ok((rest, ())) => Err(nom::Err::Failure((rest, ErrorKind::Eof))),
+        Ok((rest, ())) => Err(nom::Err::Failure(nom::error::Error {
+            input: rest,
+            code: ErrorKind::Eof,
+        })),
         Err(e) => Err(e),
     }
 }

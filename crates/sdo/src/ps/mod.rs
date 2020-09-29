@@ -15,6 +15,12 @@ impl PSWriter<Stdout> {
     }
 }
 
+impl Default for PSWriter<Stdout> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<W: Write> From<W> for PSWriter<W> {
     fn from(inner: W) -> Self {
         Self {

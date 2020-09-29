@@ -1,12 +1,12 @@
 use std::io::{self, Write};
 
-use crate::ps::PSWriter;
-use crate::{
+use color_eyre::eyre::{self, eyre};
+use nom::Finish;
+use sdo::{
     font::dvips::parse_char_header, font::dvips::parse_dvips_bitmap_font, font::dvips::CacheDevice,
-    font::dvips::CharHeader, font::printer::parse_ls30, font::printer::PSet,
+    font::dvips::CharHeader, font::printer::parse_ls30, font::printer::PSet, nom, ps::PSWriter,
     util::data::BIT_STRING,
 };
-use anyhow::anyhow;
 
 pub fn write_ls30_ps_bitmap(
     key: &str,
@@ -49,27 +49,10 @@ pub fn write_ls30_ps_bitmap(
     Ok(())
 }
 
-pub fn convert_ls30(buffer: &[u8]) -> anyhow::Result<()> {
-    let font = match parse_ls30(&buffer) {
-        Ok((_, fa)) => fa,
-        Err(nom::Err::Failure((rest, e))) => {
-            return Err(anyhow!(
-                "Parse failure: {:?}\n{}",
-                e,
-                std::str::from_utf8(rest).unwrap()
-            ));
-        }
-        Err(nom::Err::Error((rest, e))) => {
-            return Err(anyhow!(
-                "Parse error: {:?}\n{}",
-                e,
-                std::str::from_utf8(rest).unwrap()
-            ));
-        }
-        Err(nom::Err::Incomplete(_)) => {
-            return Err(anyhow!("Incomplete"));
-        }
-    };
+pub fn convert_ls30(buffer: &[u8]) -> eyre::Result<()> {
+    let (_, font) = parse_ls30(&buffer)
+        .finish()
+        .map_err(|e| eyre!("Failed to parse font file: {:?}", e))?;
 
     let mut writer = PSWriter::new();
     write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &font, None)?;
@@ -77,27 +60,10 @@ pub fn convert_ls30(buffer: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn process_ps_font(buffer: &[u8]) -> anyhow::Result<()> {
-    let fa = match parse_dvips_bitmap_font(&buffer) {
-        Ok((_, fa)) => fa,
-        Err(nom::Err::Failure((rest, e))) => {
-            return Err(anyhow!(
-                "Parse failure: {:?}\n{}",
-                e,
-                std::str::from_utf8(rest).unwrap()
-            ));
-        }
-        Err(nom::Err::Error((rest, e))) => {
-            return Err(anyhow!(
-                "Parse error: {:?}\n{}",
-                e,
-                std::str::from_utf8(rest).unwrap()
-            ));
-        }
-        Err(nom::Err::Incomplete(_)) => {
-            return Err(anyhow!("Incomplete"));
-        }
-    };
+pub fn process_ps_font(buffer: &[u8]) -> eyre::Result<()> {
+    let (_, fa) = parse_dvips_bitmap_font(&buffer)
+        .finish()
+        .map_err(|e| eyre!("Faile to parse DVIPSBitmapFont: {:?}", e))?;
     println!("Font: {} of {}", fa.len, fa.max);
     for ch in fa.chars {
         let bytes = &ch.stream.inner;

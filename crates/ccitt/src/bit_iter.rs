@@ -203,6 +203,7 @@ impl Iterator for BitIter<'_> {
             if let Some(value) = self.inner.next() {
                 self.buffer = *value;
             } else {
+                self.state = State::S0;
                 return None;
             }
         }

@@ -2,7 +2,7 @@ use std::io;
 
 use io::Write;
 
-use crate::ps::PSWriter;
+use sdo::ps::PSWriter;
 
 pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
     pw.lit(dict)?;
