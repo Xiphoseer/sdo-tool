@@ -3,12 +3,11 @@
 
 mod cli;
 
-use cli::opt::Options;
+use cli::{font::process_ps09, opt::Options};
 use sdo::font;
 
 use cli::{
-    font::ps::{convert_ls30, process_ps_font},
-    keyboard, process_bimc, process_eset, process_ls30, process_ps24,
+    font::ps::process_ps_font, keyboard, process_bimc, process_eset, process_ls30, process_ps24,
     sdoc::process_sdoc,
 };
 use color_eyre::eyre::{self, eyre};
@@ -79,7 +78,23 @@ fn main() -> eyre::Result<()> {
                 Ok(())
             }
             Some(b"ls30") => {
-                convert_ls30(&buffer)?;
+                println!("Signum!2 30-Point Laser Printer Font");
+                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+                Ok(())
+            }
+            Some(b"ps24") => {
+                println!("Signum!2 24-Needle Printer Font");
+                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+                Ok(())
+            }
+            Some(b"ps09") => {
+                println!("Signum!2 9-Needle Printer Font");
+                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+                Ok(())
+            }
+            Some(b"cryp") => {
+                println!("Papyrus Encrypted Font (?)");
+                println!("Currently not supported!");
                 Ok(())
             }
             Some(t) => Err(eyre!("Unknown file type {:?}", t)),
@@ -88,6 +103,7 @@ fn main() -> eyre::Result<()> {
         Some(Command::Dump(dump_opt)) => match buffer.get(..4) {
             Some(b"sdoc") => process_sdoc(&buffer, dump_opt, &opt.file),
             Some(b"eset") => process_eset(&buffer, None, None),
+            Some(b"ps09") => process_ps09(&buffer, &dump_opt),
             Some(b"ps24") => process_ps24(&buffer, &dump_opt),
             Some(b"ls30") => process_ls30(&buffer, &dump_opt),
             Some(b"bimc") => process_bimc(&buffer, dump_opt.out),

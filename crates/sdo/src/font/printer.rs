@@ -37,6 +37,17 @@ impl PrintDriver {
         }
     }
 
+    /// Returns the amount of pixels from the top of the box to
+    /// the baseline of the font.
+    pub fn baseline(&self) -> i16 {
+        match self {
+            Self::Editor => 18,
+            Self::Laser30 => 48,
+            Self::Printer24 => 58,
+            Self::Printer9 => 36,
+        }
+    }
+
     pub fn resolution(&self) -> (isize, isize) {
         match self {
             Self::Editor => (104, 90),
@@ -207,6 +218,11 @@ pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
 
 pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ps24")(input)?;
+    parse_font(input)
+}
+
+pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
+    let (input, _) = tag(b"ps09")(input)?;
     parse_font(input)
 }
 

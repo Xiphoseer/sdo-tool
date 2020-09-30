@@ -5,7 +5,7 @@ use image::ImageFormat;
 use sdo::{
     font::{
         editor::parse_eset,
-        printer::{parse_ls30, parse_ps24},
+        printer::{parse_ls30, parse_ps09, parse_ps24, PSet},
     },
     print::Page,
     ps::PSWriter,
@@ -57,6 +57,73 @@ pub fn process_eset(
     Ok(())
 }
 
+fn save_as_ccitt(pset: &PSet, opt: &Options) -> eyre::Result<()> {
+    std::fs::create_dir_all(&opt.out)?;
+    for (cval, chr) in pset.chars.iter().enumerate() {
+        if chr.width > 0 {
+            // TODO
+            let hb = chr.hbounds();
+
+            println!("{}: {} .. {}", cval, hb.max_lead, hb.max_tail);
+
+            let width = chr.width as usize;
+            let width = width - hb.max_tail - hb.max_lead;
+            let mut encoder = Encoder::new(width, &chr.bitmap);
+            encoder.skip_lead = hb.max_lead;
+            encoder.skip_tail = hb.max_tail;
+            //encoder.debug = cval == 87;
+            let contents = encoder.encode();
+            let file = format!("char-{}.{}.bin", cval, width);
+            let path = opt.out.join(file);
+            std::fs::write(path, contents)?;
+        }
+    }
+    Ok(())
+}
+
+fn print_pset(pset: &PSet) {
+    fn print_border(w: u8) {
+        print!("+");
+        for _ in 0..w {
+            print!("--------");
+        }
+        println!("+");
+    }
+
+    for glyph in &pset.chars {
+        println!("+{}, {}x{}", glyph.top, glyph.width, glyph.height);
+        if glyph.width > 0 {
+            print_border(glyph.width);
+            for row in glyph.bitmap.chunks_exact(glyph.width as usize) {
+                print!("|");
+                for byte in row {
+                    print!("{}", &BIT_STRING[*byte as usize]);
+                }
+                println!("|");
+            }
+            print_border(glyph.width);
+        }
+        println!()
+    }
+}
+
+pub fn process_ps09(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
+    let (rest, pset) = match parse_ps09(buffer) {
+        Ok(result) => result,
+        Err(e) => {
+            return Err(eyre!("Failed to parse Editor Charset: \n{}", e));
+        }
+    };
+
+    if !rest.is_empty() {
+        println!("Unconsumed input: {:#?}", Buf(rest));
+    }
+
+    print_pset(&pset);
+
+    Ok(())
+}
+
 pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
     let (rest, pset) = match parse_ps24(buffer) {
         Ok(result) => result,
@@ -69,29 +136,7 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
         println!("Unconsumed input: {:#?}", Buf(rest));
     }
 
-    fn print_border(w: u8) {
-        print!("+");
-        for _ in 0..w {
-            print!("--------");
-        }
-        println!("+");
-    }
-
-    for glyph in pset.chars {
-        println!("+{}, {}x{}", glyph.top, glyph.width, glyph.height);
-        if glyph.width > 0 {
-            print_border(glyph.width);
-            for row in glyph.bitmap.chunks_exact(glyph.width as usize) {
-                print!("|");
-                for byte in row {
-                    print!("{}", &BIT_STRING[*byte as usize]);
-                }
-                println!("|");
-            }
-            print_border(glyph.width);
-        }
-        println!()
-    }
+    print_pset(&pset);
 
     Ok(())
 }
@@ -100,7 +145,7 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
     let (rest, lset) = match parse_ls30(buffer) {
         Ok(result) => result,
         Err(e) => {
-            return Err(eyre!("Failed to parse Editor Charset: \n{}", e));
+            return Err(eyre!("Failed to parse laser printer charset: \n{}", e));
         }
     };
 
@@ -113,52 +158,10 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
         write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
         return Ok(());
     } else if opt.format == Format::CCITTT6 {
-        std::fs::create_dir_all(&opt.out)?;
-        for (cval, chr) in lset.chars.iter().enumerate() {
-            if chr.width > 0 {
-                // TODO
-                let hb = chr.hbounds();
-
-                println!("{}: {} .. {}", cval, hb.max_lead, hb.max_tail);
-
-                let width = chr.width as usize;
-                let width = width - hb.max_tail - hb.max_lead;
-                let mut encoder = Encoder::new(width, &chr.bitmap);
-                encoder.skip_lead = hb.max_lead;
-                encoder.skip_tail = hb.max_tail;
-                //encoder.debug = cval == 87;
-                let contents = encoder.encode();
-                let file = format!("char-{}.{}.bin", cval, width);
-                let path = opt.out.join(file);
-                std::fs::write(path, contents)?;
-            }
-        }
+        save_as_ccitt(&lset, opt)?;
         return Ok(());
     }
 
-    fn print_border(w: u8) {
-        print!("+");
-        for _ in 0..w {
-            print!("--------");
-        }
-        println!("+");
-    }
-
-    for glyph in lset.chars {
-        println!("+{}, {}x{}", glyph.top, glyph.width, glyph.height);
-        if glyph.width > 0 {
-            print_border(glyph.width);
-            for row in glyph.bitmap.chunks_exact(glyph.width as usize) {
-                print!("|");
-                for byte in row {
-                    print!("{}", &BIT_STRING[*byte as usize]);
-                }
-                println!("|");
-            }
-            print_border(glyph.width);
-        }
-        println!()
-    }
-
+    print_pset(&lset);
     Ok(())
 }

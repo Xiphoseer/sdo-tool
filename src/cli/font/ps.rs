@@ -4,8 +4,7 @@ use color_eyre::eyre::{self, eyre};
 use nom::Finish;
 use sdo::{
     font::dvips::parse_char_header, font::dvips::parse_dvips_bitmap_font, font::dvips::CacheDevice,
-    font::dvips::CharHeader, font::printer::parse_ls30, font::printer::PSet, nom, ps::PSWriter,
-    util::data::BIT_STRING,
+    font::dvips::CharHeader, font::printer::PSet, nom, ps::PSWriter, util::data::BIT_STRING,
 };
 
 pub fn write_ls30_ps_bitmap(
@@ -46,17 +45,6 @@ pub fn write_ls30_ps_bitmap(
         }
     }
     pw.name("E")?;
-    Ok(())
-}
-
-pub fn convert_ls30(buffer: &[u8]) -> eyre::Result<()> {
-    let (_, font) = parse_ls30(&buffer)
-        .finish()
-        .map_err(|e| eyre!("Failed to parse font file: {:?}", e))?;
-
-    let mut writer = PSWriter::new();
-    write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &font, None)?;
-
     Ok(())
 }
 

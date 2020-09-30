@@ -31,7 +31,12 @@ struct Options {
     font: PathBuf,
 }
 
-fn write_char_stream<W: Write>(w: &mut W, pchar: &PSetChar, dx: u32) -> io::Result<()> {
+fn write_char_stream<W: Write>(
+    w: &mut W,
+    pchar: &PSetChar,
+    dx: u32,
+    pd: PrintDriver,
+) -> io::Result<()> {
     let hb = pchar.hbounds();
     let ur_x = (pchar.width as usize) * 8 - hb.max_tail;
     let ll_x = hb.max_lead;
@@ -42,7 +47,7 @@ fn write_char_stream<W: Write>(w: &mut W, pchar: &PSetChar, dx: u32) -> io::Resu
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
 
-    let top = 48; // FIXME: for ls30 fonts, the top is 48 px above the baseline
+    let top = pd.baseline();
     let ur_y = top - (pchar.top as i16);
     let ll_y = ur_y - (pchar.height as i16);
 
@@ -145,16 +150,18 @@ pub fn main() -> eyre::Result<()> {
     let mut widths = Vec::with_capacity(capacity);
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
+    let pd = PrintDriver::Laser30;
+
     for cval in first_char..=last_char {
         let echar = &efont.chars[cval as usize];
         if echar.width > 0 {
-            let width = PrintDriver::Laser30.scale_x(echar.width.into());
+            let width = pd.scale_x(echar.width.into());
             widths.push(width);
 
             let pchar = &pfont.chars[cval as usize];
             if pchar.width > 0 {
                 let mut cproc = Vec::new();
-                write_char_stream(&mut cproc, pchar, width).unwrap();
+                write_char_stream(&mut cproc, pchar, width, pd).unwrap();
                 procs.push((DEFAULT_NAMES[cval as usize], cproc));
             } else {
                 // FIXME: empty glyph for non-printable character?
