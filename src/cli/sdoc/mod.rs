@@ -3,16 +3,14 @@ use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use nom::Finish;
 use prettytable::{cell, format, row, Cell, Row, Table};
-use ps::prog_dict;
 use sdo::{
     font::printer::FontKind,
     font::printer::PSet,
-    font::{antikro, editor::OwnedESet, printer::OwnedPSet, printer::PrintDriver},
+    font::{editor::OwnedESet, printer::OwnedPSet, printer::PrintDriver},
     print::Page,
-    ps::PSWriter,
     sdoc::{
         self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
-        parse_sysp, parse_tebu_header, Flags, Line, Style, Te,
+        parse_sysp, parse_tebu_header, Flags, Line, Te,
     },
     util::Buf,
 };
@@ -23,15 +21,14 @@ use sdo::{
 use std::{
     borrow::Cow,
     fs::DirEntry,
-    fs::File,
-    io::BufWriter,
-    io::Write,
     path::{Path, PathBuf},
 };
 
-use super::font::ps::write_ls30_ps_bitmap;
-
+mod console;
+mod imgseq;
+mod pdraw;
 mod ps;
+mod ps_proc;
 
 struct Pos {
     x: u16,
@@ -42,20 +39,6 @@ impl Pos {
     fn new(x: u16, y: u16) -> Self {
         Self { x, y }
     }
-}
-
-fn print_char_cmds(data: &[Te], x: &mut u16, y: u16) {
-    for te in data {
-        *x += te.offset;
-        println!("({}, {}, {},  {}),", *x, y, te.cval, te.cset);
-    }
-}
-
-fn print_line_cmds(line: &Line, skip: u16, pos: &mut Pos) {
-    pos.x = 0;
-    pos.y += (skip + 1) * 2;
-
-    print_char_cmds(&line.data, &mut pos.x, pos.y);
 }
 
 pub struct Document<'a> {
@@ -104,133 +87,6 @@ impl<'a> Document<'a> {
             tebu: vec![],
             images: vec![],
             sites: vec![],
-        }
-    }
-
-    fn print_tebu_data(&self, data: &[Te]) {
-        let mut last_char_width: u8 = 0;
-        let mut style = Style::default();
-
-        for (_index, k) in data.iter().copied().enumerate() {
-            let chr = antikro::decode(k.cval);
-            if chr == '\0' {
-                println!("<NUL:{}>", k.offset);
-                continue;
-            }
-
-            if !k.style.bold && style.bold {
-                style.bold = false;
-                print!("</b>");
-            }
-            if !k.style.italic && style.italic {
-                style.italic = false;
-                print!("</i>");
-            }
-            if !k.style.sth2 && style.sth2 {
-                style.sth2 = false;
-                print!("</sth2>");
-            }
-            if !k.style.sth1 && style.sth1 {
-                style.sth1 = false;
-                print!("</sth1>");
-            }
-            if !k.style.small && style.small {
-                style.small = false;
-                print!("</small>");
-            }
-
-            let lcw = last_char_width.into();
-            if k.offset >= lcw {
-                let mut space = k.offset - lcw;
-
-                while space >= 7 {
-                    print!(" ");
-                    space -= 7;
-                }
-            }
-
-            if k.style.footnote {
-                print!("<footnote>");
-            }
-            if k.style.small && !style.small {
-                style.small = true;
-                print!("<small>");
-            }
-            if k.style.sth1 && !style.sth1 {
-                style.sth1 = true;
-                print!("<sth1>");
-            }
-            if k.style.sth2 && !style.sth2 {
-                style.sth2 = true;
-                print!("<sth2>");
-            }
-            if k.style.italic && !style.italic {
-                style.italic = true;
-                print!("<i>");
-            }
-            if k.style.bold && !style.bold {
-                style.bold = true;
-                print!("<b>");
-            }
-
-            let width = if let Some(eset) = &self.chsets_e24[k.cset as usize] {
-                eset.chars[k.cval as usize].width
-            } else {
-                // default for fonts that are missing
-                antikro::WIDTH[k.cval as usize]
-            };
-            last_char_width = if chr == '\n' { 0 } else { width };
-            if (0xE000..=0xE080).contains(&(chr as u32)) {
-                print!("<C{}>", (chr as u32) - 0xE000);
-            } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
-                print!("[{}]", chr as u32 - 0x1FBF0);
-            } else {
-                if k.style.underlined {
-                    print!("\u{0332}");
-                }
-                print!("{}", chr);
-            }
-        }
-        if style.bold {
-            print!("</b>");
-        }
-        if style.italic {
-            print!("</i>");
-        }
-        if style.sth2 {
-            print!("</sth2>");
-        }
-        if style.sth1 {
-            print!("</sth1>");
-        }
-        if style.small {
-            print!("</small>");
-        }
-    }
-
-    fn print_line(&self, line: &Line, skip: u16) {
-        if line.flags.contains(Flags::FLAG) && self.opt.format == Format::Html {
-            println!("<F: {}>", line.extra);
-        }
-
-        if line.flags.contains(Flags::PARA) && self.opt.format == Format::Html {
-            print!("<p>");
-        }
-
-        self.print_tebu_data(&line.data);
-
-        if line.flags.contains(Flags::ALIG) && self.opt.format == Format::Html {
-            print!("<A>");
-        }
-
-        if line.flags.contains(Flags::LINE) && self.opt.format == Format::Html {
-            print!("<br>");
-        }
-
-        if self.opt.format == Format::Plain {
-            println!();
-        } else {
-            println!("{{{}}}", skip);
         }
     }
 
@@ -404,6 +260,14 @@ impl<'a> Document<'a> {
             println!("No print-driver has all fonts available.");
         }
         self.chsets = charsets;
+        Ok(())
+    }
+
+    fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
+        let (_, sysp) = parse_sysp(part.0)
+            .finish()
+            .map_err(|e| eyre!("Failed to parse `sysp`: {:?}", e))?;
+        println!("'sysp': {:#?}", sysp);
         Ok(())
     }
 
@@ -614,315 +478,15 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output_print(&self, out_path: &Path) -> eyre::Result<()> {
-        for page_text in &self.tebu {
-            let index = page_text.index as usize;
-            let pbuf_entry = self.pages[index].as_ref().unwrap();
-
-            println!("{}", page_text.skip);
-
-            if let Some(pages) = &self.opt.page {
-                if !pages.contains(&(pbuf_entry.log_pnr as usize)) {
-                    continue;
-                }
-            }
-
-            let (mut page, mut pos) = if let Some(print_driver) = self.print_driver {
-                let width_units: u16 = pbuf_entry.margin.left + pbuf_entry.margin.right + 20;
-                let height_units: u16 =
-                    pbuf_entry.margin.top + pbuf_entry.lines + pbuf_entry.margin.bottom;
-
-                let width = print_driver.scale_x(width_units);
-                let height = print_driver.scale_y(height_units);
-
-                let page = Page::new(width, height);
-                let pos = Pos::new(10, 0 /*page_text.skip & 0x00FF*/);
-                (page, pos)
-            } else {
-                println!(
-                    "Print Driver not set, skipping page #{}",
-                    pbuf_entry.log_pnr
-                );
-                continue;
-            };
-
-            for (skip, line) in &page_text.content {
-                pos.x = 10;
-                self.draw_line(line, *skip, &mut page, &mut pos)?;
-            }
-
-            for site in self.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
-                println!(
-                    "{}x{}+{},{} of {} at {},{}",
-                    site.sel.w,
-                    site.sel.h,
-                    site.sel.x,
-                    site.sel.y,
-                    site.img,
-                    site.pos_x,
-                    site.pos_y
-                );
-
-                if let Some(pd) = self.print_driver {
-                    let px = pd.scale_x(10 + site.pos_x);
-                    let w = pd.scale_x(site._3);
-                    let py = pd.scale_y(10 + site.pos_y - site._5 / 2);
-                    let h = pd.scale_y(site._4 / 2);
-                    let image = &self.images[site.img as usize];
-                    page.draw_image(px, py, w, h, image, site.sel);
-                }
-            }
-
-            let image = page.to_image();
-            let file_name = format!("page-{}.png", pbuf_entry.log_pnr);
-            println!("Saving {}", file_name);
-            let page_path = out_path.join(&file_name);
-            image.save_with_format(&page_path, ImageFormat::Png)?;
-        }
-        Ok(())
-    }
-
-    fn output_pdraw(&self) -> eyre::Result<()> {
-        for page_text in &self.tebu {
-            let mut pos = Pos::new(0, 0);
-            for (skip, line) in &page_text.content {
-                print_line_cmds(&line, *skip, &mut pos);
-            }
-        }
-        Ok(())
-    }
-
-    fn output_console(&self) -> eyre::Result<()> {
-        for page_text in &self.tebu {
-            let index = page_text.index as usize;
-            let pbuf_entry = self.pages[index].as_ref().unwrap();
-            println!(
-                "{:04X} ----------------- [PAGE {} ({})] -------------------",
-                page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-            );
-            for (skip, line) in &page_text.content {
-                self.print_line(line, *skip);
-            }
-            println!(
-                "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
-                page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
-            );
-        }
-        Ok(())
-    }
-
-    fn output_postscript(&self) -> eyre::Result<()> {
-        if self.opt.out == Path::new("-") {
-            println!("----------------------------- PostScript -----------------------------");
-            let mut pw = PSWriter::new();
-            self.output_ps_writer(&mut pw)?;
-            println!("----------------------------------------------------------------------");
-            Ok(())
-        } else {
-            let file = self.file.file_stem().unwrap();
-            let out = {
-                let mut buf = self.opt.out.join(file);
-                buf.set_extension("ps");
-                buf
-            };
-            let out_file = File::create(&out)?;
-            let out_buf = BufWriter::new(out_file);
-            let mut pw = PSWriter::from(out_buf);
-            print!("Writing `{}` ...", out.display());
-            self.output_ps_writer(&mut pw)?;
-            println!(" Done!");
-            Ok(())
-        }
-    }
-
-    fn output_ps_writer(&self, pw: &mut PSWriter<impl Write>) -> eyre::Result<()> {
-        let pd = self
-            .print_driver
-            .ok_or_else(|| eyre!("No printer type selected"))?;
-        let (hdpi, vdpi) = pd.resolution();
-
-        pw.write_magic()?;
-        pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
-        let file_name = self.file.file_name().unwrap().to_string_lossy();
-        pw.write_meta_field("Title", file_name.as_ref())?;
-        //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
-        pw.write_meta_field("Pages", &format!("{}", self.page_count))?;
-        pw.write_meta_field("PageOrder", "Ascend")?;
-        pw.write_meta_field("BoundingBox", "0 0 596 842")?;
-        pw.write_meta_field("DocumentPaperSizes", "a4")?;
-        pw.write_meta("EndComments")?;
-
-        pw.write_meta_field("BeginProcSet", "signum.pro")?;
-        pw.write_header_end()?;
-
-        const DICT: &str = "SignumDict";
-        const FONTS: [&str; 8] = ["Fa", "Fb", "Fc", "Fd", "Fe", "Ff", "Fg", "Fh"];
-        prog_dict(pw, DICT)?;
-
-        pw.write_meta("EndProcSet")?;
-        pw.name(DICT)?;
-
-        let mut use_matrix: [[usize; 128]; 8] = [[0; 128]; 8];
-
-        for page in &self.tebu {
-            for (_, line) in &page.content {
-                for tw in &line.data {
-                    use_matrix[tw.cset as usize][tw.cval as usize] += 1;
-                }
-            }
-        }
-
-        pw.begin(|pw| {
-            pw.isize(39158280)?;
-            pw.isize(55380996)?;
-            pw.isize(1000)?;
-            pw.isize(hdpi)?;
-            pw.isize(vdpi)?;
-            pw.bytes(b"hello.dvi")?;
-            pw.crlf()?;
-            pw.name("@start")?;
-            for (i, use_matrix) in use_matrix.iter().enumerate() {
-                match pd {
-                    PrintDriver::Printer24 => {
-                        if let Some(pset) = &self.chsets_p24[i] {
-                            pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
-                            write_ls30_ps_bitmap(
-                                FONTS[i],
-                                &self.chsets[i],
-                                pw,
-                                pset,
-                                Some(use_matrix),
-                            )?;
-                            pw.write_comment("EndSignumBitmapFont")?;
-                        }
-                    }
-                    PrintDriver::Laser30 => {
-                        if let Some(pset) = &self.chsets_l30[i] {
-                            pw.write_comment(&format!("SignumBitmapFont: {}", &self.chsets[i]))?;
-                            write_ls30_ps_bitmap(
-                                FONTS[i],
-                                &self.chsets[i],
-                                pw,
-                                pset,
-                                Some(use_matrix),
-                            )?;
-                            pw.write_comment("EndSignumBitmapFont")?;
-                        }
-                    }
-                    _ => {
-                        println!("Print-Driver {:?} not yet supported", pd);
-                    }
-                }
-            }
-
-            Ok(())
-        })?;
-        pw.write_meta("EndProlog")?;
-
-        pw.write_meta("BeginSetup")?;
-        let feature = format!("*Resolution {}dpi", hdpi);
-        pw.write_meta_field("Feature", &feature)?;
-
-        pw.name(DICT)?;
-        pw.begin(|pw| {
-            pw.write_meta_field("BeginPaperSize", "a4")?;
-            pw.lit("setpagedevice")?;
-            pw.ps_where()?;
-            pw.crlf()?;
-            pw.seq(|pw| {
-                pw.ps_pop()?;
-                pw.dict(|pw| {
-                    pw.lit("PageSize")?;
-                    pw.arr(|pw| {
-                        pw.isize(595)?;
-                        pw.isize(842)
-                    })
-                })?;
-                pw.ps_setpagedevice()
-            })?;
-            pw.crlf()?;
-            pw.seq(|pw| {
-                pw.lit("a4")?;
-                pw.ps_where()?;
-                pw.seq(|pw| {
-                    pw.ps_pop()?;
-                    pw.name("a4")
-                })?;
-                pw.ps_if()
-            })?;
-            pw.crlf()?;
-            pw.ps_ifelse()?;
-            pw.write_meta("EndPaperSize")?;
-            Ok(())
-        })?;
-        pw.write_meta("EndSetup")?;
-
-        let x_offset = self.opt.xoffset.unwrap_or(0);
-
-        for (index, page) in self.tebu.iter().enumerate() {
-            let page_info = self.pages[page.index as usize].as_ref().unwrap();
-            let page_comment = format!("{} {}", page_info.log_pnr, page_info.phys_pnr);
-            pw.write_meta_field("Page", &page_comment)?;
-
-            pw.name(DICT)?;
-            pw.begin(|pw| {
-                let mut x: u16;
-                let mut y: u16 = 0;
-                let mut cset = 10;
-
-                pw.isize(page_info.log_pnr as isize)?;
-                pw.isize(index as isize)?;
-                pw.name("bop")?;
-
-                for (skip, line) in &page.content {
-                    y += 1 + *skip;
-                    x = 0;
-
-                    let y_val = pd.scale_y(y) as isize;
-                    for chr in &line.data {
-                        // moveto
-                        x += chr.offset;
-
-                        if cset != chr.cset {
-                            // select font a
-                            cset = chr.cset;
-                            pw.name(FONTS[chr.cset as usize])?;
-                        }
-
-                        let x_val = pd.scale_x(x) as isize + x_offset;
-                        pw.isize(x_val)?;
-                        pw.isize(y_val)?;
-                        pw.name("a")?;
-
-                        pw.bytes(&[chr.cval])?;
-                        pw.name("p")?;
-                    }
-                }
-
-                pw.name("eop")?;
-                Ok(())
-            })?;
-        }
-        pw.write_meta("Trailer")?;
-
-        pw.ps_userdict()?;
-        pw.lit("end-hook")?;
-        pw.ps_known()?;
-        pw.seq(|pw| pw.name("end-hook"))?;
-        pw.ps_if()?;
-
-        pw.write_meta("EOF")?;
-        Ok(())
-    }
-
     fn output(&self) -> eyre::Result<()> {
         match self.opt.format {
-            Format::Html | Format::Plain => self.output_console(),
-            Format::PostScript => self.output_postscript(),
-            Format::PDraw => self.output_pdraw(),
-            Format::Png => self.output_print(&self.opt.out),
-            Format::DVIPSBitmapFont => panic!("Document can't be formatted as a font"),
-            Format::CCITTT6 => panic!("Document can't be formatted as a font"),
+            Format::Html | Format::Plain => console::output_console(self),
+            Format::PostScript => ps::output_postscript(self),
+            Format::PDraw => pdraw::output_pdraw(self),
+            Format::Png => imgseq::output_print(self),
+            Format::DVIPSBitmapFont | Format::CCITTT6 => {
+                panic!("Document can't be formatted as a font")
+            }
         }
     }
 }
@@ -940,26 +504,16 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()
 
     for (key, part) in sdoc.parts {
         match key {
-            "cset" => {
-                document.process_cset(part)?;
-            }
-            "sysp" => {
-                let (_, sysp) = parse_sysp(part.0).unwrap();
-                println!("'sysp': {:#?}", sysp);
-            }
-            "pbuf" => {
-                document.process_pbuf(part)?;
-            }
-            "tebu" => {
-                document.process_tebu(part)?;
-            }
-            "hcim" => {
-                document.process_hcim(part)?;
-            }
+            "cset" => document.process_cset(part),
+            "sysp" => document.process_sysp(part),
+            "pbuf" => document.process_pbuf(part),
+            "tebu" => document.process_tebu(part),
+            "hcim" => document.process_hcim(part),
             _ => {
                 println!("'{}': {}", key, part.0.len());
+                Ok(())
             }
-        }
+        }?;
     }
 
     // Output the document

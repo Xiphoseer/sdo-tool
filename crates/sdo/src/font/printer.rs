@@ -56,6 +56,18 @@ impl PrintDriver {
             Self::Laser30 => (300, 300),
         }
     }
+
+    /// Get the scale that needs to be applied to the font to
+    /// get the correct resoltion.
+    ///
+    /// FIXME: Make this part of the font matrix?
+    pub fn scale(&self) -> f32 {
+        match self {
+            Self::Printer24 => 0.2,
+            Self::Laser30 => 0.24,
+            _ => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
