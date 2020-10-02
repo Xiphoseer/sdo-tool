@@ -1,6 +1,6 @@
 use std::{fmt, path::PathBuf, str::FromStr};
 
-use sdo::font::printer::PrintDriver;
+use sdo::font::FontKind;
 use structopt::StructOpt;
 
 /// The format to export the document into
@@ -82,7 +82,7 @@ pub struct Options {
     ///
     /// May fail, if the fonts are not available.
     #[structopt(long = "print-driver", short = "P")]
-    pub print_driver: Option<PrintDriver>,
+    pub print_driver: Option<FontKind>,
     /// If specified, limits the pages that are printed
     #[structopt(long = "page", short = "#")]
     pub page: Option<Vec<usize>>,

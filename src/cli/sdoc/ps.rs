@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use color_eyre::eyre::{self, eyre};
-use sdo::{font::printer::PrintDriver, ps::PSWriter};
+use sdo::{font::printer::PrinterKind, font::FontKind, ps::PSWriter};
 
 use crate::cli::font::ps::write_ls30_ps_bitmap;
 
@@ -34,15 +34,7 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
     pw.write_meta("EndProcSet")?;
     pw.name(DICT)?;
 
-    let mut use_matrix: [[usize; 128]; 8] = [[0; 128]; 8];
-
-    for page in &doc.tebu {
-        for (_, line) in &page.content {
-            for tw in &line.data {
-                use_matrix[tw.cset as usize][tw.cval as usize] += 1;
-            }
-        }
-    }
+    let use_matrix = doc.use_matrix();
 
     pw.begin(|pw| {
         pw.isize(39158280)?;
@@ -55,7 +47,7 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
         pw.name("@start")?;
         for (i, use_matrix) in use_matrix.iter().enumerate() {
             match pd {
-                PrintDriver::Printer24 => {
+                FontKind::Printer(PrinterKind::Needle24) => {
                     if let Some(pset) = &doc.chsets_p24[i] {
                         let name = &doc.chsets[i];
                         pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
@@ -63,7 +55,7 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
                         pw.write_comment("EndSignumBitmapFont")?;
                     }
                 }
-                PrintDriver::Laser30 => {
+                FontKind::Printer(PrinterKind::Laser30) => {
                     if let Some(pset) = &doc.chsets_l30[i] {
                         let name = &doc.chsets[i];
                         pw.write_comment(&format!("SignumBitmapFont: {}", name))?;

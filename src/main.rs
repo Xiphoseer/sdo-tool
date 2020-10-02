@@ -113,7 +113,7 @@ fn main() -> eyre::Result<()> {
         Some(Command::Decode) => {
             let mut decoded = String::with_capacity(buffer.len());
             for byte in buffer {
-                let ch = font::decode_atari(byte);
+                let ch = font::encoding::decode_atari(byte);
                 decoded.push(ch);
             }
             print!("{}", decoded);

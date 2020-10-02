@@ -4,9 +4,11 @@ use image::ImageFormat;
 use nom::Finish;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use sdo::{
-    font::printer::FontKind,
-    font::printer::PSet,
-    font::{editor::OwnedESet, printer::OwnedPSet, printer::PrintDriver},
+    font::{
+        editor::OwnedESet,
+        printer::{OwnedPSet, PSet, PrinterKind},
+        FontKind,
+    },
     print::Page,
     sdoc::{
         self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
@@ -43,7 +45,7 @@ impl Pos {
 
 pub struct Document<'a> {
     // Configuration
-    print_driver: Option<PrintDriver>,
+    print_driver: Option<FontKind>,
     opt: &'a Options,
     file: &'a Path,
     // cset
@@ -63,13 +65,26 @@ pub struct Document<'a> {
 }
 
 impl<'a> Document<'a> {
-    fn chset<'b>(&'b self, pd: &PrintDriver, cset: u8) -> Option<&'b PSet<'a>> {
+    fn chset<'b>(&'b self, pd: &PrinterKind, cset: u8) -> Option<&'b PSet<'a>> {
         match pd {
-            PrintDriver::Editor => None,
-            PrintDriver::Printer9 => self.chsets_p9[cset as usize].as_deref(),
-            PrintDriver::Printer24 => self.chsets_p24[cset as usize].as_deref(),
-            PrintDriver::Laser30 => self.chsets_l30[cset as usize].as_deref(),
+            PrinterKind::Needle9 => self.chsets_p9[cset as usize].as_deref(),
+            PrinterKind::Needle24 => self.chsets_p24[cset as usize].as_deref(),
+            PrinterKind::Laser30 => self.chsets_l30[cset as usize].as_deref(),
         }
+    }
+
+    pub fn use_matrix(&self) -> [[usize; 128]; 8] {
+        let mut use_matrix = [[0; 128]; 8];
+
+        for page in &self.tebu {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    use_matrix[tw.cset as usize][tw.cval as usize] += 1;
+                }
+            }
+        }
+
+        use_matrix
     }
 
     pub fn new(opt: &'a Options, file: &'a Path) -> Self {
@@ -151,7 +166,7 @@ impl<'a> Document<'a> {
         index: usize,
         cset_folder: &Path,
         name: &str,
-        kind: FontKind,
+        kind: PrinterKind,
     ) -> bool {
         let extension = kind.extension();
         let printer_cset_file = match Self::find_font_file(cset_folder, name, extension) {
@@ -163,17 +178,17 @@ impl<'a> Document<'a> {
         };
 
         match (OwnedPSet::load(&printer_cset_file, kind), kind) {
-            (Ok(pset), FontKind::Needle24) => {
+            (Ok(pset), PrinterKind::Needle24) => {
                 self.chsets_p24[index] = Some(pset);
                 println!("Loaded font file '{}'", printer_cset_file.display());
                 true
             }
-            (Ok(pset), FontKind::Laser30) => {
+            (Ok(pset), PrinterKind::Laser30) => {
                 self.chsets_l30[index] = Some(pset);
                 println!("Loaded font file '{}'", printer_cset_file.display());
                 true
             }
-            (Ok(pset), FontKind::Needle9) => {
+            (Ok(pset), PrinterKind::Needle9) => {
                 self.chsets_p9[index] = Some(pset);
                 println!("Loaded font file '{}'", printer_cset_file.display());
                 true
@@ -205,9 +220,9 @@ impl<'a> Document<'a> {
             let cset_folder = default_cset_folder.as_path();
             let name_ref = name.as_ref();
             all_eset &= self.load_cset_editor(index, cset_folder, name_ref);
-            all_pset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Needle24);
-            all_lset &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Laser30);
-            all_p9 &= self.load_cset_printer(index, cset_folder, name_ref, FontKind::Needle9);
+            all_pset &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Needle24);
+            all_lset &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Laser30);
+            all_p9 &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Needle9);
         }
         all_p9 = false;
         // Print info on which sets are available
@@ -227,35 +242,35 @@ impl<'a> Document<'a> {
         // If none was set, choose one strategy
         if let Some(pd) = self.print_driver {
             match pd {
-                PrintDriver::Editor => {
+                FontKind::Editor => {
                     if !all_eset {
                         println!("WARNING: Explicitly chosen editor print-driver but not all fonts are available");
                     }
                 }
-                PrintDriver::Printer24 => {
+                FontKind::Printer(PrinterKind::Needle24) => {
                     if !all_pset {
                         println!("WARNING: Explicitly chosen 24-needle print-driver but not all fonts are available");
                     }
                 }
-                PrintDriver::Printer9 => {
+                FontKind::Printer(PrinterKind::Needle9) => {
                     if !all_p9 {
                         println!("WARNING: Explicitly chosen 9-needle print-driver but not all fonts are available");
                     }
                 }
-                PrintDriver::Laser30 => {
+                FontKind::Printer(PrinterKind::Laser30) => {
                     if !all_lset {
                         println!("WARNING: Explicitly chosen laser/30 print-driver but not all fonts are available");
                     }
                 }
             }
         } else if all_lset {
-            self.print_driver = Some(PrintDriver::Laser30);
+            self.print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
         } else if all_pset {
-            self.print_driver = Some(PrintDriver::Printer24);
+            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
         } else if all_p9 {
-            self.print_driver = Some(PrintDriver::Printer9);
+            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
         } else if all_eset {
-            self.print_driver = Some(PrintDriver::Editor);
+            self.print_driver = Some(FontKind::Editor);
         } else {
             println!("No print-driver has all fonts available.");
         }
@@ -330,7 +345,7 @@ impl<'a> Document<'a> {
         for te in data {
             *x += te.offset;
             match self.print_driver {
-                Some(PrintDriver::Editor) => {
+                Some(FontKind::Editor) => {
                     if let Some(eset) = &self.chsets_e24[te.cset as usize] {
                         let ch = &eset.chars[te.cval as usize];
                         let x = *x; // No skew compensation (18/15)
@@ -343,11 +358,12 @@ impl<'a> Document<'a> {
                         }
                     }
                 }
-                Some(pd) => {
-                    if let Some(eset) = self.chset(&pd, te.cset) {
+                Some(FontKind::Printer(pk)) => {
+                    if let Some(eset) = self.chset(&pk, te.cset) {
                         let ch = &eset.chars[te.cval as usize];
-                        let x = pd.scale_x(*x);
-                        let y = pd.scale_y(y);
+                        let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
+                        let x = fk.scale_x(*x);
+                        let y = fk.scale_y(y);
                         match page.draw_printer_char(x, y, ch) {
                             Ok(()) => {}
                             Err(()) => {

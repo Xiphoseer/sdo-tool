@@ -1,6 +1,6 @@
 use color_eyre::eyre;
 use sdo::{
-    font::antikro,
+    font::encoding::antikro,
     sdoc::{Flags, Line, Style, Te},
 };
 

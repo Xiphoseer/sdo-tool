@@ -777,9 +777,18 @@ name = "sdo"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "ccitt-t4-t6",
  "image",
  "nom",
  "thiserror",
+]
+
+[[package]]
+name = "sdo-pdf"
+version = "0.1.0"
+dependencies = [
+ "ccitt-t4-t6",
+ "sdo",
 ]
 
 [[package]]
@@ -794,6 +803,7 @@ dependencies = [
  "pdf-create",
  "prettytable-rs",
  "sdo",
+ "sdo-pdf",
  "structopt",
  "thiserror",
 ]

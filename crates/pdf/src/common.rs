@@ -117,6 +117,16 @@ pub struct Rectangle<P> {
     pub ur: Point<P>,
 }
 
+impl Rectangle<i32> {
+    /// The media box for A4 Paper (Portrait)
+    pub fn a4_media_box() -> Self {
+        Rectangle {
+            ll: Point { x: 0, y: 0 },
+            ur: Point { x: 592, y: 842 },
+        }
+    }
+}
+
 impl<P: Serialize> Serialize for Rectangle<P> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_arr()

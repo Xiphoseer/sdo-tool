@@ -7,94 +7,16 @@ use nom::{
     number::complete::{be_u32, u8},
     IResult,
 };
-use std::{ops::Deref, path::Path, str::FromStr};
-use thiserror::*;
+use std::{ops::Deref, path::Path};
 
 #[derive(Debug, Copy, Clone)]
-pub enum PrintDriver {
-    Editor,
-    Printer9,
-    Printer24,
-    Laser30,
-}
-
-impl PrintDriver {
-    pub fn scale_y(&self, units: u16) -> u32 {
-        match self {
-            Self::Editor => u32::from(units) * 2,
-            Self::Printer9 => u32::from(units) * 4,
-            Self::Printer24 => u32::from(units) * 20 / 3,
-            Self::Laser30 => u32::from(units) * 50 / 9,
-        }
-    }
-
-    pub fn scale_x(&self, units: u16) -> u32 {
-        match self {
-            Self::Editor => u32::from(units),
-            Self::Printer9 => u32::from(units) * 12 / 5,
-            Self::Printer24 => u32::from(units) * 4,
-            Self::Laser30 => u32::from(units) * 10 / 3,
-        }
-    }
-
-    /// Returns the amount of pixels from the top of the box to
-    /// the baseline of the font.
-    pub fn baseline(&self) -> i16 {
-        match self {
-            Self::Editor => 18,
-            Self::Laser30 => 48,
-            Self::Printer24 => 58,
-            Self::Printer9 => 36,
-        }
-    }
-
-    pub fn resolution(&self) -> (isize, isize) {
-        match self {
-            Self::Editor => (104, 90),
-            Self::Printer9 => (216, 216),
-            Self::Printer24 => (360, 360),
-            Self::Laser30 => (300, 300),
-        }
-    }
-
-    /// Get the scale that needs to be applied to the font to
-    /// get the correct resoltion.
-    ///
-    /// FIXME: Make this part of the font matrix?
-    pub fn scale(&self) -> f32 {
-        match self {
-            Self::Printer24 => 0.2,
-            Self::Laser30 => 0.24,
-            _ => todo!(),
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("Unknown print driver!")]
-pub struct UnknownPrintDriver {}
-
-impl FromStr for PrintDriver {
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        match input {
-            "E24" => Ok(Self::Editor),
-            "P24" => Ok(Self::Printer24),
-            "L30" => Ok(Self::Laser30),
-            _ => Err(UnknownPrintDriver {}),
-        }
-    }
-
-    type Err = UnknownPrintDriver;
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum FontKind {
+pub enum PrinterKind {
     Needle24,
     Needle9,
     Laser30,
 }
 
-impl FontKind {
+impl PrinterKind {
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Needle24 => "P24",
@@ -171,17 +93,15 @@ impl Deref for OwnedPSet {
 }
 
 impl OwnedPSet {
-    pub fn load(path: &Path, kind: FontKind) -> Result<Self, LoadError> {
+    pub fn load(path: &Path, kind: PrinterKind) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };
         let (_, inner) = match kind {
-            FontKind::Needle24 => parse_ps24(input),
-            FontKind::Laser30 => parse_ls30(input),
-            FontKind::Needle9 => {
-                return Err(LoadError::Unimplemented);
-            } // TODO
+            PrinterKind::Needle24 => parse_ps24(input),
+            PrinterKind::Laser30 => parse_ls30(input),
+            PrinterKind::Needle9 => parse_ps09(input),
         }
         .unwrap();
         Ok(Self { inner, buffer })
