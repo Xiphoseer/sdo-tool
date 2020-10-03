@@ -13,6 +13,7 @@ use sdo::font::{
     dvips::CacheDevice,
     editor::ESet,
     printer::{PSet, PSetChar, PrinterKind},
+    UseTable,
 };
 
 #[rustfmt::skip]
@@ -45,7 +46,7 @@ pub const DEFAULT_NAMES: [&str; 128] = [
 /// Charcodes of all characters that have a different name compared to the `WinAnsiEncoding`
 pub const DIFFERENCES: &[u8] = &[
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32, 64, 91, 92, 93, 123, 125, 127,
+    26, 27, 28, 29, 30, 31, 32, 45, 64, 91, 92, 93, 123, 125, 127,
 ];
 
 pub fn write_char_stream<W: Write>(
@@ -106,37 +107,40 @@ pub fn write_char_stream<W: Write>(
     Ok(())
 }
 
-pub fn type3_font<'a>(efont: &'a ESet, pfont: &'a PSet, pk: PrinterKind) -> Type3Font<'a> {
+pub fn type3_font<'a>(
+    efont: Option<&'a ESet>,
+    pfont: &'a PSet,
+    pk: PrinterKind,
+    use_table: &UseTable,
+    name: Option<&'a str>,
+) -> Option<Type3Font<'a>> {
     let font_bbox = Rectangle {
         ll: Point::default(),
         ur: Point { x: 1, y: -1 },
     };
-    let font_matrix = Matrix {
-        a: pk.scale(),
-        b: 0.0,
-        c: 0.0,
-        d: -pk.scale(),
-        e: 0.0,
-        f: 0.0,
-    };
+    let font_matrix = Matrix::scale(pk.scale(), -pk.scale());
 
-    let first_char: u8 = 1;
-    let last_char: u8 = 127;
+    let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
     let mut widths = Vec::with_capacity(capacity);
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
     for cval in first_char..=last_char {
-        let echar = &efont.chars[cval as usize];
-        if echar.width > 0 {
-            let width = pk.scale_x(echar.width.into());
+        let cvu = cval as usize;
+        let ewidth = if let Some(efont) = efont {
+            efont.chars[cvu].width
+        } else {
+            todo!();
+        };
+        if ewidth > 0 && use_table.chars[cvu] > 0 {
+            let width = pk.scale_x(ewidth.into());
             widths.push(width);
 
-            let pchar = &pfont.chars[cval as usize];
+            let pchar = &pfont.chars[cvu];
             if pchar.width > 0 {
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, pk).unwrap();
-                procs.push((DEFAULT_NAMES[cval as usize], cproc));
+                procs.push((DEFAULT_NAMES[cvu], cproc));
             } else {
                 // FIXME: empty glyph for non-printable character?
             }
@@ -153,10 +157,14 @@ pub fn type3_font<'a>(efont: &'a ESet, pfont: &'a PSet, pk: PrinterKind) -> Type
     let mut differences = SparseSet::with_size(256);
     for cval in DIFFERENCES {
         let i = *cval as usize;
-        differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
+        if use_table.chars[i] > 0 {
+            // skip unused chars
+            differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
+        }
     }
 
-    Type3Font {
+    Some(Type3Font {
+        name: name.map(|name| PdfName(name)),
         font_bbox,
         font_matrix,
         first_char,
@@ -168,5 +176,5 @@ pub fn type3_font<'a>(efont: &'a ESet, pfont: &'a PSet, pk: PrinterKind) -> Type
         },
         widths,
         to_unicode: (),
-    }
+    })
 }

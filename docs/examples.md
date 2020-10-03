@@ -4,6 +4,13 @@ There is a `PHYSIK.SDO` example file that comes with Signum!2, which uses differ
 fonts, multiple formulas and some character formatting. We can use this example to
 demonstrate how a signum document is layed out and printed.
 
+## PDF
+
+This is the document converted to a PDF (Portable Document Format) file. The
+`--xoffset` / `--yoffset` flags were used to center the text on an A4 Page.
+
+[PHYSIK.pdf](img/PHYSIK.pdf)
+
 ## Editor
 
 This is a render of the document with the editor font, *without* skew compensation.

@@ -8,6 +8,7 @@ use crate::{
     low,
     util::NextID,
     write::Formatter,
+    write::PdfName,
     write::Serialize,
 };
 
@@ -93,6 +94,7 @@ pub enum Resource<T> {
 
 #[derive(Debug)]
 pub struct Type3Font<'a> {
+    pub name: Option<PdfName<'a>>,
     pub font_bbox: Rectangle<i32>,
     pub font_matrix: Matrix<f32>,
     pub first_char: u8,
@@ -110,6 +112,7 @@ impl<'a> Default for Type3Font<'a> {
                 ll: Point::default(),
                 ur: Point::default(),
             },
+            name: None,
             font_matrix: Matrix::default_glyph(),
             first_char: 0,
             last_char: 255,
@@ -196,14 +199,6 @@ trait Lowerable<'a> {
 #[derive(Debug, Clone)]
 pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
-impl<'a> Serialize for CharProc<'a> {
-    fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        f.pdf_dict().field("Length", &self.0.len())?.finish()?;
-        f.pdf_stream(self.0.as_ref())?;
-        Ok(())
-    }
-}
-
 type LowerFontCtx<'a> = (LowerBox<'a, CharProc<'a>>, LowerBox<'a, Encoding<'a>>);
 
 fn lower_font<'a>(
@@ -222,6 +217,7 @@ fn lower_font<'a>(
                 })
                 .collect();
             low::Font::Type3(low::Type3Font {
+                name: font.name,
                 font_bbox: font.font_bbox,
                 font_matrix: font.font_matrix,
                 first_char: font.first_char,
@@ -488,7 +484,8 @@ impl<'a> Handle<'a> {
 
         // FIXME: this only works AFTER all fonts are lowered
         for (cproc_ref, char_proc) in &lowering.font_ctx.0.store {
-            fmt.obj(*cproc_ref, char_proc)?;
+            let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
+            fmt.obj(*cproc_ref, &cp)?;
         }
 
         let pages_ref = make_ref(pages_id);

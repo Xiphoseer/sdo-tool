@@ -4,7 +4,7 @@ use pdf::object::PlainRef;
 
 use crate::{
     common::Dict, common::Encoding, common::Matrix, common::ProcSet, common::Rectangle,
-    write::Formatter, write::PdfName, write::Serialize,
+    encoding::ascii_85_encode, write::Formatter, write::PdfName, write::Serialize,
 };
 
 pub struct Page<'a> {
@@ -46,6 +46,7 @@ impl<T: Serialize> Serialize for Resource<T> {
 }
 
 pub struct Type3Font<'a> {
+    pub name: Option<PdfName<'a>>,
     pub font_bbox: Rectangle<i32>,
     pub font_matrix: Matrix<f32>,
     pub first_char: u8,
@@ -66,6 +67,7 @@ impl Serialize for Font<'_> {
         match self {
             Self::Type3(font) => {
                 dict.field("Subtype", &PdfName("Type3"))?
+                    .opt_field("BaseFont", &font.name)?
                     .field("FontBBox", &font.font_bbox)?
                     .field("FontMatrix", &font.font_matrix)?
                     .field("FirstChar", &font.first_char)?
@@ -81,6 +83,20 @@ impl Serialize for Font<'_> {
 }
 
 pub struct CharProc<'a>(pub Cow<'a, [u8]>);
+
+impl<'a> Serialize for CharProc<'a> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict()
+            .field("Length", &self.0.len())?
+            .field("Filter", &PdfName("ASCII85Decode"))?
+            .finish()?;
+        let mut buf = Vec::new();
+        ascii_85_encode(self.0.as_ref(), &mut buf)?;
+        buf.push(10);
+        f.pdf_stream(&buf)?;
+        Ok(())
+    }
+}
 
 pub enum XObject {
     Image {},

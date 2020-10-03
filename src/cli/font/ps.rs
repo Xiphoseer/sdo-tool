@@ -4,7 +4,8 @@ use color_eyre::eyre::{self, eyre};
 use nom::Finish;
 use sdo::{
     font::dvips::parse_char_header, font::dvips::parse_dvips_bitmap_font, font::dvips::CacheDevice,
-    font::dvips::CharHeader, font::printer::PSet, nom, ps::PSWriter, util::data::BIT_STRING,
+    font::dvips::CharHeader, font::printer::PSet, font::UseTable, nom, ps::PSWriter,
+    util::data::BIT_STRING,
 };
 
 pub fn write_ls30_ps_bitmap(
@@ -12,7 +13,7 @@ pub fn write_ls30_ps_bitmap(
     name: &str,
     pw: &mut PSWriter<impl Write>,
     font: &PSet,
-    use_matrix: Option<&[usize; 128]>,
+    use_table: Option<&UseTable>,
 ) -> io::Result<()> {
     pw.lit(key)?;
     let count = font.chars.iter().filter(|c| c.width > 0).count();
@@ -23,7 +24,7 @@ pub fn write_ls30_ps_bitmap(
 
     let mut cc = 0;
     for (i, chr) in font.chars.iter().enumerate() {
-        let used = use_matrix.map(|arr| arr[i as usize] > 0);
+        let used = use_table.map(|arr| arr.chars[i as usize] > 0);
         if chr.width > 0 && used != Some(false) {
             let char_header = CharHeader::from_signum(&chr);
             let head_iter = char_header.iter();

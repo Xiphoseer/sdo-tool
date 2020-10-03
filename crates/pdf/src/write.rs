@@ -247,7 +247,7 @@ macro_rules! serialize_display_impl {
         impl Serialize for $ty {
             fn write(&self, f: &mut Formatter) -> io::Result<()> {
                 if f.needs_space {
-                    print!(" ");
+                    write!(f.inner, " ")?;
                 }
                 write!(f.inner, "{}", self)?;
                 f.needs_space = true;

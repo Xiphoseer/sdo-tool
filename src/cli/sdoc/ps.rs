@@ -45,7 +45,7 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
         pw.bytes(b"hello.dvi")?;
         pw.crlf()?;
         pw.name("@start")?;
-        for (cset, use_matrix) in use_matrix.iter().enumerate() {
+        for (cset, use_matrix) in use_matrix.csets.iter().enumerate() {
             match pd {
                 FontKind::Printer(pk) => {
                     if let Some(pset) = &doc.chset(&pk, cset) {

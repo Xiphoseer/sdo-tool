@@ -7,7 +7,7 @@ use sdo::{
     font::{
         editor::OwnedESet,
         printer::{OwnedPSet, PSet, PrinterKind},
-        FontKind,
+        FontKind, UseMatrix,
     },
     raster::Page,
     sdoc::{
@@ -74,13 +74,15 @@ impl<'a> Document<'a> {
         }
     }
 
-    pub fn use_matrix(&self) -> [[usize; 128]; 8] {
-        let mut use_matrix = [[0; 128]; 8];
+    pub fn use_matrix(&self) -> UseMatrix {
+        let mut use_matrix = UseMatrix::new();
 
         for page in &self.tebu {
             for (_, line) in &page.content {
                 for tw in &line.data {
-                    use_matrix[tw.cset as usize][tw.cval as usize] += 1;
+                    let cval = tw.cval as usize;
+                    let cset = tw.cset as usize;
+                    use_matrix.csets[cset].chars[cval] += 1;
                 }
             }
         }

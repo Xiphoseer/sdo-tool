@@ -99,6 +99,9 @@ pub struct Options {
     /// HACK: fix horizontal offset
     #[structopt(long)]
     pub xoffset: Option<isize>,
+    /// HACK: fix horizontal offset
+    #[structopt(long)]
+    pub yoffset: Option<isize>,
 
     /// Author
     #[structopt(long)]

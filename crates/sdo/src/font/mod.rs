@@ -9,6 +9,63 @@ pub mod editor;
 pub mod encoding;
 pub mod printer;
 
+#[derive(Copy, Clone)]
+pub struct UseTable {
+    pub chars: [usize; 128],
+}
+
+impl UseTable {
+    /// Get the first and last char that is used
+    ///
+    /// ```
+    /// use sdo::font::UseTable;
+    /// let mut chars = [0; 128];
+    /// let use_table = UseTable { chars };
+    /// assert_eq!(use_table.first_last(), None);
+    /// chars[5] = 1;
+    /// let use_table = UseTable { chars };
+    /// assert_eq!(use_table.first_last(), Some((5, 5)));
+    /// chars[120] = 3;
+    /// let use_table = UseTable { chars };
+    /// assert_eq!(use_table.first_last(), Some((5, 120)));
+    /// ```
+    pub fn first_last(&self) -> Option<(u8, u8)> {
+        let mut iter = self.chars.iter();
+        let first_char = iter.position(|x| *x > 0)? as u8;
+        let last_char = iter.rposition(|x| *x > 0).map(|x| x + 1).unwrap_or(0) as u8 + first_char;
+
+        Some((first_char, last_char))
+    }
+}
+
+impl From<&str> for UseTable {
+    fn from(text: &str) -> UseTable {
+        let mut chars = [0; 128];
+        for c in text.chars() {
+            chars[c as usize] += 1;
+        }
+        Self { chars }
+    }
+}
+
+impl UseTable {
+    pub const fn new() -> Self {
+        Self { chars: [0; 128] }
+    }
+}
+
+pub struct UseMatrix {
+    pub csets: [UseTable; 8],
+}
+
+impl UseMatrix {
+    pub const fn new() -> Self {
+        Self {
+            csets: [UseTable::new(); 8],
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum FontKind {
     Editor,

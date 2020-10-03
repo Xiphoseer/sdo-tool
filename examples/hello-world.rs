@@ -8,7 +8,7 @@ use pdf_create::{
     common::Rectangle,
     high::{Font, Handle, Page, Resource, Resources},
 };
-use sdo::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind};
+use sdo::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind, UseTable};
 use sdo::nom::Finish;
 use sdo_pdf::font::type3_font;
 
@@ -51,11 +51,13 @@ pub fn main() -> eyre::Result<()> {
     doc.info.title = Some(PdfString::new(title));
 
     let pk = PrinterKind::Laser30;
-    let font = type3_font(&efont, &pfont, pk);
-    doc.res.fonts.push(Font::Type3(font));
+    let use_table = UseTable::from("HelloJ@rgen!1");
 
     let mut fonts = BTreeMap::new();
-    fonts.insert(String::from("C0"), Resource::Global { index: 0 });
+    if let Some(font) = type3_font(Some(&efont), &pfont, pk, &use_table, None) {
+        doc.res.fonts.push(Font::Type3(font));
+        fonts.insert(String::from("C0"), Resource::Global { index: 0 });
+    }
 
     doc.res.font_dicts.push(fonts);
 
