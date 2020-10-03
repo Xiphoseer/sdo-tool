@@ -1,7 +1,7 @@
 pub mod font;
 pub mod images;
-pub mod print;
 pub mod ps;
+pub mod raster;
 pub mod sdoc;
 pub mod util;
 

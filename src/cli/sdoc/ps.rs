@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use color_eyre::eyre::{self, eyre};
-use sdo::{font::printer::PrinterKind, font::FontKind, ps::PSWriter};
+use sdo::{font::FontKind, ps::PSWriter};
 
 use crate::cli::font::ps::write_ls30_ps_bitmap;
 
@@ -45,26 +45,18 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
         pw.bytes(b"hello.dvi")?;
         pw.crlf()?;
         pw.name("@start")?;
-        for (i, use_matrix) in use_matrix.iter().enumerate() {
+        for (cset, use_matrix) in use_matrix.iter().enumerate() {
             match pd {
-                FontKind::Printer(PrinterKind::Needle24) => {
-                    if let Some(pset) = &doc.chsets_p24[i] {
-                        let name = &doc.chsets[i];
+                FontKind::Printer(pk) => {
+                    if let Some(pset) = &doc.chset(&pk, cset) {
+                        let name = &doc.chsets[cset];
                         pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
-                        write_ls30_ps_bitmap(FONTS[i], name, pw, pset, Some(use_matrix))?;
+                        write_ls30_ps_bitmap(FONTS[cset], name, pw, pset, Some(use_matrix))?;
                         pw.write_comment("EndSignumBitmapFont")?;
                     }
                 }
-                FontKind::Printer(PrinterKind::Laser30) => {
-                    if let Some(pset) = &doc.chsets_l30[i] {
-                        let name = &doc.chsets[i];
-                        pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
-                        write_ls30_ps_bitmap(FONTS[i], name, pw, pset, Some(use_matrix))?;
-                        pw.write_comment("EndSignumBitmapFont")?;
-                    }
-                }
-                _ => {
-                    println!("Print-Driver {:?} not yet supported", pd);
+                FontKind::Editor => {
+                    println!("FIXME: Printing with editor fonts is not yet supported");
                 }
             }
         }

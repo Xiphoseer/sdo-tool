@@ -1,4 +1,4 @@
-use std::io;
+use std::{borrow::Cow, io};
 
 use pdf::object::PlainRef;
 
@@ -79,6 +79,8 @@ impl Serialize for Font<'_> {
         Ok(())
     }
 }
+
+pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
 pub enum XObject {
     Image {},

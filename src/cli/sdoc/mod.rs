@@ -9,7 +9,7 @@ use sdo::{
         printer::{OwnedPSet, PSet, PrinterKind},
         FontKind,
     },
-    print::Page,
+    raster::Page,
     sdoc::{
         self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
         parse_sysp, parse_tebu_header, Flags, Line, Te,
@@ -28,6 +28,7 @@ use std::{
 
 mod console;
 mod imgseq;
+mod pdf;
 mod pdraw;
 mod ps;
 mod ps_proc;
@@ -65,11 +66,11 @@ pub struct Document<'a> {
 }
 
 impl<'a> Document<'a> {
-    fn chset<'b>(&'b self, pd: &PrinterKind, cset: u8) -> Option<&'b PSet<'a>> {
-        match pd {
-            PrinterKind::Needle9 => self.chsets_p9[cset as usize].as_deref(),
-            PrinterKind::Needle24 => self.chsets_p24[cset as usize].as_deref(),
-            PrinterKind::Laser30 => self.chsets_l30[cset as usize].as_deref(),
+    fn chset<'b>(&'b self, pk: &PrinterKind, cset: usize) -> Option<&'b PSet<'a>> {
+        match pk {
+            PrinterKind::Needle9 => self.chsets_p9[cset].as_deref(),
+            PrinterKind::Needle24 => self.chsets_p24[cset].as_deref(),
+            PrinterKind::Laser30 => self.chsets_l30[cset].as_deref(),
         }
     }
 
@@ -359,7 +360,7 @@ impl<'a> Document<'a> {
                     }
                 }
                 Some(FontKind::Printer(pk)) => {
-                    if let Some(eset) = self.chset(&pk, te.cset) {
+                    if let Some(eset) = self.chset(&pk, te.cset as usize) {
                         let ch = &eset.chars[te.cval as usize];
                         let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
                         let x = fk.scale_x(*x);
@@ -500,6 +501,7 @@ impl<'a> Document<'a> {
             Format::PostScript => ps::output_postscript(self),
             Format::PDraw => pdraw::output_pdraw(self),
             Format::Png => imgseq::output_print(self),
+            Format::PDF => pdf::output_pdf(self),
             Format::DVIPSBitmapFont | Format::CCITTT6 => {
                 panic!("Document can't be formatted as a font")
             }

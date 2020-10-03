@@ -5,13 +5,12 @@ use structopt::StructOpt;
 use color_eyre::eyre::{self, eyre};
 use pdf::primitive::PdfString;
 use pdf_create::{
-    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet},
-    high::{CharProc, Font, Handle, Page, Resource, Resources, Type3Font},
-    write::PdfName,
+    common::Rectangle,
+    high::{Font, Handle, Page, Resource, Resources},
 };
-use sdo::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind, FontKind};
+use sdo::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind};
 use sdo::nom::Finish;
-use sdo_pdf::font::{write_char_stream, DEFAULT_NAMES, DIFFERENCES};
+use sdo_pdf::font::type3_font;
 
 #[derive(StructOpt)]
 struct Options {
@@ -40,9 +39,6 @@ pub fn main() -> eyre::Result<()> {
         .finish()
         .map_err(|_| eyre!("Could not parse editor font file: {}", efont_path.display()))?;
 
-    let stdout = std::io::stdout();
-    let mut stdolock = stdout.lock();
-
     let mut doc = Handle::new();
 
     let author = String::from("Xiphoseer").into_bytes();
@@ -54,70 +50,9 @@ pub fn main() -> eyre::Result<()> {
     let title = String::from("EMPTY.SDO").into_bytes();
     doc.info.title = Some(PdfString::new(title));
 
-    let font_bbox = Rectangle {
-        ll: Point::default(),
-        ur: Point { x: 1, y: -1 },
-    };
-    let font_matrix = Matrix {
-        a: 0.24,
-        b: 0.0,
-        c: 0.0,
-        d: -0.24,
-        e: 0.0,
-        f: 0.0,
-    };
-
-    let mut differences = SparseSet::with_size(256);
-    for cval in DIFFERENCES {
-        let i = *cval as usize;
-        differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
-    }
-
-    let first_char: u8 = 1;
-    let last_char: u8 = 127;
-    let capacity = (last_char - first_char + 1) as usize;
-    let mut widths = Vec::with_capacity(capacity);
-    let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
-
-    let pd = FontKind::Printer(PrinterKind::Laser30);
-
-    for cval in first_char..=last_char {
-        let echar = &efont.chars[cval as usize];
-        if echar.width > 0 {
-            let width = pd.scale_x(echar.width.into());
-            widths.push(width);
-
-            let pchar = &pfont.chars[cval as usize];
-            if pchar.width > 0 {
-                let mut cproc = Vec::new();
-                write_char_stream(&mut cproc, pchar, width, pd).unwrap();
-                procs.push((DEFAULT_NAMES[cval as usize], cproc));
-            } else {
-                // FIXME: empty glyph for non-printable character?
-            }
-        } else {
-            widths.push(0);
-        }
-    }
-
-    let mut char_procs = Dict::new();
-    for (name, cproc) in &procs {
-        char_procs.insert(String::from(*name), CharProc(cproc));
-    }
-
-    doc.res.fonts.push(Font::Type3(Type3Font {
-        font_bbox,
-        font_matrix,
-        first_char,
-        last_char,
-        char_procs,
-        encoding: Encoding {
-            base_encoding: Some(BaseEncoding::WinAnsiEncoding),
-            differences: Some(differences),
-        },
-        widths,
-        to_unicode: (),
-    }));
+    let pk = PrinterKind::Laser30;
+    let font = type3_font(&efont, &pfont, pk);
+    doc.res.fonts.push(Font::Type3(font));
 
     let mut fonts = BTreeMap::new();
     fonts.insert(String::from("C0"), Resource::Global { index: 0 });
@@ -156,6 +91,8 @@ pub fn main() -> eyre::Result<()> {
     };
     doc.pages.push(page);
 
+    let stdout = std::io::stdout();
+    let mut stdolock = stdout.lock();
     doc.write(&mut stdolock)?;
 
     Ok(())

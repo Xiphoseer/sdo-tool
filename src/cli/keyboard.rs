@@ -3,7 +3,7 @@ use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use sdo::{
     font::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
-    print::Page,
+    raster::Page,
 };
 use std::{
     collections::HashSet,

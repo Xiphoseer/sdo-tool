@@ -28,9 +28,7 @@ impl FontKind {
     pub fn scale_x(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units),
-            Self::Printer(PrinterKind::Needle9) => u32::from(units) * 12 / 5,
-            Self::Printer(PrinterKind::Needle24) => u32::from(units) * 4,
-            Self::Printer(PrinterKind::Laser30) => u32::from(units) * 10 / 3,
+            Self::Printer(pk) => pk.scale_x(units),
         }
     }
 
@@ -39,9 +37,7 @@ impl FontKind {
     pub fn baseline(&self) -> i16 {
         match self {
             Self::Editor => 18,
-            Self::Printer(PrinterKind::Needle9) => 36,
-            Self::Printer(PrinterKind::Needle24) => 58,
-            Self::Printer(PrinterKind::Laser30) => 48,
+            Self::Printer(pk) => pk.baseline(),
         }
     }
 
@@ -60,9 +56,8 @@ impl FontKind {
     /// FIXME: Make this part of the font matrix?
     pub fn scale(&self) -> f32 {
         match self {
-            Self::Printer(PrinterKind::Needle24) => 0.2,
-            Self::Printer(PrinterKind::Laser30) => 0.24,
-            _ => todo!(),
+            Self::Printer(pk) => pk.scale(),
+            Self::Editor => todo!(),
         }
     }
 

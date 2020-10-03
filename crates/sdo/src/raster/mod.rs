@@ -1,3 +1,5 @@
+//! Raster/Bitmap image processing
+
 use std::cmp::Ordering;
 
 use crate::{

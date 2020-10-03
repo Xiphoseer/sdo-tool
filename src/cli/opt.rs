@@ -14,6 +14,8 @@ pub enum Format {
     PostScript,
     /// A Sequence of images
     Png,
+    /// Portable Document Format
+    PDF,
     /// A list of draw commands
     PDraw,
 
@@ -48,6 +50,7 @@ impl FromStr for Format {
             "html" => Ok(Self::Html),
             "ps" | "postscript" => Ok(Self::PostScript),
             "png" => Ok(Self::Png),
+            "pdf" => Ok(Self::PDF),
             "pdraw" => Ok(Self::PDraw),
             "dvipsbf" => Ok(Self::DVIPSBitmapFont),
             "ccitt-t6" => Ok(Self::CCITTT6),
@@ -63,6 +66,7 @@ impl fmt::Display for Format {
             Self::Html => f.write_str("html"),
             Self::PostScript => f.write_str("ps"),
             Self::Png => f.write_str("png"),
+            Self::PDF => f.write_str("pdf"),
             Self::PDraw => f.write_str("pdraw"),
             Self::DVIPSBitmapFont => f.write_str("dvipsbf"),
             Self::CCITTT6 => f.write_str("ccitt-t6"),
@@ -95,4 +99,8 @@ pub struct Options {
     /// HACK: fix horizontal offset
     #[structopt(long)]
     pub xoffset: Option<isize>,
+
+    /// Author
+    #[structopt(long)]
+    pub author: Option<String>,
 }

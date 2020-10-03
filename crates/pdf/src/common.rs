@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, io, ops::Deref, ops::DerefMut};
+use std::{collections::BTreeMap, io, ops::Add, ops::Deref, ops::DerefMut, ops::Mul};
 
 use crate::write::{Formatter, PdfName, Serialize};
 
@@ -138,7 +138,14 @@ impl<P: Serialize> Serialize for Rectangle<P> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+/// A font matrix
+///
+/// <pre style="line-height: 120%;">
+/// ⎛ a b 0 ⎞
+/// ⎜ c d 0 ⎟
+/// ⎝ e f 1 ⎠
+/// </pre>
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Matrix<P> {
     pub a: P,
     pub b: P,
@@ -146,6 +153,98 @@ pub struct Matrix<P> {
     pub d: P,
     pub e: P,
     pub f: P,
+}
+
+impl<P> Mul for Matrix<P>
+where
+    P: Copy + Mul<Output = P> + Add<Output = P>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            a: self.a * rhs.a + self.b * rhs.c,
+            b: self.a * rhs.b + self.b * rhs.d,
+            c: self.c * rhs.a + self.d * rhs.c,
+            d: self.c * rhs.b + self.d * rhs.d,
+            e: self.e * rhs.a + self.f * rhs.c + rhs.e,
+            f: self.e * rhs.b + self.f * rhs.d + rhs.f,
+        }
+    }
+}
+
+/// A matrix
+impl Matrix<f32> {
+    /// ```
+    /// use pdf_create::common::Matrix;
+    /// let id = Matrix::<f32>::identity();
+    /// assert_eq!(id, id * id);
+    /// ```
+    pub fn identity() -> Self {
+        Self::scale(1.0, 1.0)
+    }
+
+    /// ```
+    /// use pdf_create::common::Matrix;
+    /// let id = Matrix::<f32>::identity();
+    /// let ivy = Matrix::<f32>::inverse_y();
+    /// assert_eq!(ivy, ivy * id);
+    /// assert_eq!(id, ivy * ivy);
+    /// ```
+    pub fn inverse_y() -> Self {
+        Self::scale(1.0, -1.0)
+    }
+
+    /// ```
+    /// use pdf_create::common::Matrix;
+    /// let id = Matrix::<f32>::identity();
+    /// let ivx = Matrix::<f32>::inverse_x();
+    /// assert_eq!(ivx, ivx * id);
+    /// assert_eq!(id, ivx * ivx);
+    /// ```
+    pub fn inverse_x() -> Self {
+        Self::scale(-1.0, 1.0)
+    }
+
+    pub fn inverse_xy() -> Self {
+        Self::scale(-1.0, -1.0)
+    }
+
+    /// ```
+    /// use pdf_create::common::Matrix;
+    /// let ty1 = Matrix::<f32>::translate(0.0, 3.0);
+    /// let ty2 = Matrix::<f32>::translate(0.0, 5.0);
+    /// let tx1 = Matrix::<f32>::translate(2.0, 0.0);
+    /// let tx2 = Matrix::<f32>::translate(7.0, 0.0);
+    /// let res = Matrix::<f32>::translate(9.0, 8.0);
+    /// assert_eq!(res, ty1 * ty2 * tx1 * tx2);
+    /// assert_eq!(res, ty1 * tx2 * ty2 * tx1);
+    /// ```
+    pub fn translate(x: f32, y: f32) -> Self {
+        Self {
+            a: 1.0,
+            b: 0.0,
+            c: 0.0,
+            d: 1.0,
+            e: x,
+            f: y,
+        }
+    }
+
+    pub fn scale(x: f32, y: f32) -> Self {
+        Self {
+            a: x,
+            b: 0.0,
+            c: 0.0,
+            d: y,
+            e: 0.0,
+            f: 0.0,
+        }
+    }
+
+    pub fn default_glyph() -> Self {
+        Self::scale(0.0001, 0.0001)
+    }
 }
 
 impl<P: Serialize> Serialize for Matrix<P> {
@@ -158,19 +257,6 @@ impl<P: Serialize> Serialize for Matrix<P> {
             .entry(&self.e)?
             .entry(&self.f)?
             .finish()
-    }
-}
-
-impl Matrix<f32> {
-    pub fn default_glyph() -> Self {
-        Self {
-            a: 0.0001,
-            b: 0.0,
-            c: 0.0,
-            d: 0.0001,
-            e: 0.0,
-            f: 0.0,
-        }
     }
 }
 

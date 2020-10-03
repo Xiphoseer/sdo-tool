@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 sdo = { path = "../sdo" }
+pdf-create = { path = "../pdf" }
 ccitt-t4-t6 = { path = "../ccitt" }

@@ -24,6 +24,30 @@ impl PrinterKind {
             Self::Laser30 => "L30",
         }
     }
+
+    pub fn scale(&self) -> f32 {
+        match self {
+            Self::Needle9 => todo!(),
+            Self::Needle24 => 0.2,
+            Self::Laser30 => 0.24,
+        }
+    }
+
+    pub fn scale_x(self, units: u16) -> u32 {
+        match self {
+            Self::Needle9 => u32::from(units) * 12 / 5,
+            Self::Needle24 => u32::from(units) * 4,
+            Self::Laser30 => u32::from(units) * 10 / 3,
+        }
+    }
+
+    pub fn baseline(self) -> i16 {
+        match self {
+            Self::Needle9 => 36,
+            Self::Needle24 => 58,
+            Self::Laser30 => 48,
+        }
+    }
 }
 
 #[derive(Debug)]

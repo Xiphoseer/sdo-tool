@@ -788,6 +788,7 @@ name = "sdo-pdf"
 version = "0.1.0"
 dependencies = [
  "ccitt-t4-t6",
+ "pdf-create",
  "sdo",
 ]
 

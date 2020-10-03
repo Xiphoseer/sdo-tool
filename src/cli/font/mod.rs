@@ -7,8 +7,8 @@ use sdo::{
         editor::parse_eset,
         printer::{parse_ls30, parse_ps09, parse_ps24, PSet},
     },
-    print::Page,
     ps::PSWriter,
+    raster::Page,
     util::{data::BIT_STRING, Buf},
 };
 use std::path::PathBuf;

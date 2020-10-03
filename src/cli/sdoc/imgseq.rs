@@ -1,6 +1,6 @@
 use color_eyre::eyre;
 use image::ImageFormat;
-use sdo::print::Page;
+use sdo::raster::Page;
 
 use super::{Document, Pos};
 

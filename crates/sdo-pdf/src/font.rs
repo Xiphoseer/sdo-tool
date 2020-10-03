@@ -1,7 +1,19 @@
-use std::io::{self, Write};
+use std::{
+    borrow::Cow,
+    io::{self, Write},
+};
 
 use ccitt_t4_t6::g42d::encode::Encoder;
-use sdo::font::{dvips::CacheDevice, printer::PSetChar, FontKind};
+use pdf_create::{
+    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet},
+    high::{CharProc, Type3Font},
+    write::PdfName,
+};
+use sdo::font::{
+    dvips::CacheDevice,
+    editor::ESet,
+    printer::{PSet, PSetChar, PrinterKind},
+};
 
 #[rustfmt::skip]
 pub const DEFAULT_NAMES: [&str; 128] = [
@@ -40,7 +52,7 @@ pub fn write_char_stream<W: Write>(
     w: &mut W,
     pchar: &PSetChar,
     dx: u32,
-    pd: FontKind,
+    pk: PrinterKind,
 ) -> io::Result<()> {
     let hb = pchar.hbounds();
     let ur_x = (pchar.width as usize) * 8 - hb.max_tail;
@@ -52,7 +64,7 @@ pub fn write_char_stream<W: Write>(
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
 
-    let top = pd.baseline();
+    let top = pk.baseline();
     let ur_y = top - (pchar.top as i16);
     let ll_y = ur_y - (pchar.height as i16);
 
@@ -92,4 +104,69 @@ pub fn write_char_stream<W: Write>(
     writeln!(w, "EI")?;
     writeln!(w, "Q")?;
     Ok(())
+}
+
+pub fn type3_font<'a>(efont: &'a ESet, pfont: &'a PSet, pk: PrinterKind) -> Type3Font<'a> {
+    let font_bbox = Rectangle {
+        ll: Point::default(),
+        ur: Point { x: 1, y: -1 },
+    };
+    let font_matrix = Matrix {
+        a: pk.scale(),
+        b: 0.0,
+        c: 0.0,
+        d: -pk.scale(),
+        e: 0.0,
+        f: 0.0,
+    };
+
+    let first_char: u8 = 1;
+    let last_char: u8 = 127;
+    let capacity = (last_char - first_char + 1) as usize;
+    let mut widths = Vec::with_capacity(capacity);
+    let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
+
+    for cval in first_char..=last_char {
+        let echar = &efont.chars[cval as usize];
+        if echar.width > 0 {
+            let width = pk.scale_x(echar.width.into());
+            widths.push(width);
+
+            let pchar = &pfont.chars[cval as usize];
+            if pchar.width > 0 {
+                let mut cproc = Vec::new();
+                write_char_stream(&mut cproc, pchar, width, pk).unwrap();
+                procs.push((DEFAULT_NAMES[cval as usize], cproc));
+            } else {
+                // FIXME: empty glyph for non-printable character?
+            }
+        } else {
+            widths.push(0);
+        }
+    }
+
+    let mut char_procs = Dict::new();
+    for (name, cproc) in procs {
+        char_procs.insert(String::from(name), CharProc(Cow::Owned(cproc.to_owned())));
+    }
+
+    let mut differences = SparseSet::with_size(256);
+    for cval in DIFFERENCES {
+        let i = *cval as usize;
+        differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
+    }
+
+    Type3Font {
+        font_bbox,
+        font_matrix,
+        first_char,
+        last_char,
+        char_procs,
+        encoding: Encoding {
+            base_encoding: Some(BaseEncoding::WinAnsiEncoding),
+            differences: Some(differences),
+        },
+        widths,
+        to_unicode: (),
+    }
 }

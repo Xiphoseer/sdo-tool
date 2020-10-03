@@ -1,4 +1,4 @@
-use std::io;
+use std::{borrow::Cow, io};
 
 use io::Write;
 use pdf::{object::PlainRef, primitive::PdfString};
@@ -82,9 +82,9 @@ impl Info {
     }
 }
 
-/// This enum represents a resource of type T for use in
-/// a dictionary. It does not implement serialize, because
-/// it's possible that an index needs to be resolved
+/// This enum represents a resource of type T for use in a dictionary.
+///
+/// It does not implement serialize, because it's possible that an index needs to be resolved
 #[derive(Debug)]
 pub enum Resource<T> {
     Global { index: usize },
@@ -193,13 +193,13 @@ trait Lowerable<'a> {
     fn name() -> &'static str;
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct CharProc<'a>(pub &'a [u8]);
+#[derive(Debug, Clone)]
+pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
 impl<'a> Serialize for CharProc<'a> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict().field("Length", &self.0.len())?.finish()?;
-        f.pdf_stream(self.0)?;
+        f.pdf_stream(self.0.as_ref())?;
         Ok(())
     }
 }
@@ -261,11 +261,11 @@ impl<'a> Lowerable<'a> for XObject {
 }
 
 impl<'a> Lowerable<'a> for CharProc<'a> {
-    type Lower = CharProc<'a>;
+    type Lower = low::CharProc<'a>;
     type Ctx = ();
 
     fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        *self
+        low::CharProc(self.0.clone())
     }
 
     fn name() -> &'static str {
