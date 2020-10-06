@@ -16,6 +16,8 @@ pdf-create = { path = "crates/pdf" }
 sdo-pdf = { path = "crates/sdo-pdf" }
 sdo = { path = "crates/sdo" }
 pdf = "0.7"
+ron = "0.6"
+serde = "1.0"
 
 [dependencies.image]
 default-features = false

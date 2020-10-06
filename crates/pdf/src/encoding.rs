@@ -1,4 +1,8 @@
-use std::io::{self, Write};
+use std::{
+    error::Error,
+    fmt,
+    io::{self, Write},
+};
 
 /// Encode the input slice so that it can be decoded with the
 /// *Ascii85Decode* filter. Returns the number of written bytes.
@@ -60,4 +64,74 @@ pub fn ascii_85_encode<W: Write>(data: &[u8], w: &mut W) -> io::Result<usize> {
     }
 
     Ok(ctr)
+}
+
+#[derive(Debug)]
+pub struct PDFDocEncodingError(char);
+
+impl fmt::Display for PDFDocEncodingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Codepoint U+{:04x} is not valid in PDFDocEncoding",
+            self.0 as u32
+        )
+    }
+}
+
+impl Error for PDFDocEncodingError {}
+
+fn pdf_char_encode(chr: char) -> Result<u8, PDFDocEncodingError> {
+    match u32::from(chr) {
+        0x00..=0x17 | 0x20..=0x7E | 0xA1..=0xff => Ok(chr as u8),
+
+        0x02D8 => Ok(0x18),
+        0x02C7 => Ok(0x19),
+        0x02C6 => Ok(0x1A),
+        0x02D9 => Ok(0x1B),
+        0x02DD => Ok(0x1C),
+        0x02DB => Ok(0x1D),
+        0x02DA => Ok(0x1E),
+        0x02DC => Ok(0x1F),
+        0x2022 => Ok(0x80),
+        0x2020 => Ok(0x81),
+        0x2021 => Ok(0x82),
+        0x2026 => Ok(0x83),
+        0x2014 => Ok(0x84),
+        0x2013 => Ok(0x85),
+        0x0192 => Ok(0x86),
+        0x2044 => Ok(0x87),
+        0x2039 => Ok(0x88),
+        0x203A => Ok(0x89),
+        0x2212 => Ok(0x8A),
+        0x2030 => Ok(0x8B),
+        0x201E => Ok(0x8C),
+        0x201C => Ok(0x8D),
+        0x201D => Ok(0x8E),
+        0x2018 => Ok(0x8F),
+
+        0x2019 => Ok(0x90),
+        0x201A => Ok(0x91),
+        0x2122 => Ok(0x92),
+        0xFB01 => Ok(0x93),
+        0xFB02 => Ok(0x94),
+        0x0141 => Ok(0x95),
+        0x0152 => Ok(0x96),
+        0x0160 => Ok(0x97),
+        0x0178 => Ok(0x98),
+        0x017D => Ok(0x99),
+        0x0131 => Ok(0x9A),
+        0x0142 => Ok(0x9B),
+        0x0153 => Ok(0x9C),
+        0x0161 => Ok(0x9D),
+        0x017e => Ok(0x9E),
+
+        0x20AC => Ok(0xA0),
+
+        _ => Err(PDFDocEncodingError(chr)),
+    }
+}
+
+pub fn pdf_doc_encode(input: &str) -> Result<Vec<u8>, PDFDocEncodingError> {
+    input.chars().map(pdf_char_encode).collect()
 }

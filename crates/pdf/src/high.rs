@@ -1,10 +1,11 @@
 use std::{borrow::Cow, io};
 
+use chrono::{DateTime, Local};
 use io::Write;
 use pdf::{object::PlainRef, primitive::PdfString};
 
 use crate::{
-    common::{Date, Dict, Encoding, Matrix, Point, ProcSet, Rectangle, Trapped},
+    common::{Dict, Encoding, Matrix, Point, ProcSet, Rectangle, Trapped},
     low,
     util::NextID,
     write::Formatter,
@@ -27,8 +28,8 @@ pub struct Info {
     pub creator: Option<PdfString>,
     pub producer: Option<PdfString>,
 
-    pub creation_date: Option<Date>,
-    pub mod_date: Option<Date>,
+    pub creation_date: Option<DateTime<Local>>,
+    pub mod_date: Option<DateTime<Local>>,
 
     pub trapped: Option<Trapped>,
 }

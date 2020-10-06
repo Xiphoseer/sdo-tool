@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 pdf = "0.7"
+chrono = "0.4"
 ccitt-t4-t6 = { path = "../ccitt" }
 
 [dev-dependencies]

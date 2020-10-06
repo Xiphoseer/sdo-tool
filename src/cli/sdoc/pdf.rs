@@ -1,148 +1,52 @@
-use std::{collections::BTreeMap, fmt::Write, fs::File, io::BufWriter, path::Path};
+use std::{collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre};
 use pdf::primitive::PdfString;
 use pdf_create::{
+    chrono::Local,
     common::Rectangle,
+    encoding::pdf_doc_encode,
     high::{Font, Handle, Page, Resource, Resources},
 };
 use sdo::font::FontKind;
-use sdo_pdf::font::type3_font;
+use sdo_pdf::{font::type3_font, sdoc::Contents};
 
 use super::Document;
-
-struct Contents {
-    buf: Vec<u8>,
-    inner: String,
-    cset: u8,
-    open: bool,
-    needs_space: bool,
-    is_ascii: bool,
-    line_started: bool,
-    line_y: f32,
-    line_x: f32,
-}
-
-impl Contents {
-    fn new(left: f32, top: f32) -> Self {
-        Contents {
-            line_started: false,
-            line_y: 0.0,
-            line_x: 0.0,
-            buf: vec![],
-            open: false,
-            needs_space: false,
-            is_ascii: true,
-            cset: 0xff,
-            inner: format!("0 g\nBT\n1 0 0 -1 {} {} Tm\n", left, top),
-        }
-    }
-
-    fn next_line(&mut self, x: f32, y: f32) {
-        self.line_x += x;
-        self.line_y += y;
-        self.line_started = false;
-    }
-
-    fn start_line(&mut self) {
-        if !self.line_started {
-            self.line_started = true;
-            writeln!(self.inner, "{} {} Td", self.line_x, self.line_y).unwrap();
-            self.line_y = 0.0;
-        }
-    }
-
-    fn cset(&mut self, cset: u8) {
-        if self.cset != cset {
-            self.cset = cset;
-            self.flush();
-            writeln!(self.inner, "/C{} 1 Tf", cset).unwrap();
-        }
-    }
-
-    fn xoff(&mut self, xoff: isize) {
-        self.open();
-        self.buf_flush();
-        if self.needs_space {
-            write!(self.inner, " ").unwrap();
-        }
-        write!(self.inner, "{}", xoff).unwrap();
-        self.needs_space = true;
-    }
-
-    fn byte(&mut self, byte: u8) {
-        self.open();
-        self.buf.push(byte);
-        self.is_ascii = self.is_ascii && (byte > 31) && (byte < 127);
-    }
-
-    fn buf_flush(&mut self) {
-        if self.buf.is_empty() {
-            return;
-        }
-        if self.is_ascii {
-            self.inner.push('(');
-            for b in self.buf.drain(..) {
-                if matches!(b, 0x28 | 0x29 | 0x5c) {
-                    self.inner.push('\\');
-                }
-                self.inner.push(b as char);
-            }
-            self.inner.push(')');
-        } else {
-            write!(self.inner, "<").unwrap();
-            for byte in self.buf.drain(..) {
-                write!(self.inner, "{:02X}", byte).unwrap();
-            }
-            write!(self.inner, ">").unwrap();
-        }
-        self.is_ascii = true;
-        self.needs_space = false;
-    }
-
-    fn open(&mut self) {
-        if !self.open {
-            self.start_line();
-            write!(self.inner, "[").unwrap();
-            self.open = true;
-            self.needs_space = false;
-        }
-    }
-
-    fn flush(&mut self) {
-        if self.open {
-            self.open = false;
-            self.buf_flush();
-            writeln!(self.inner, "] TJ").unwrap();
-        }
-    }
-
-    fn into_inner(mut self) -> String {
-        self.inner.push_str("ET\n");
-        self.inner
-    }
-}
 
 pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
-    if let Some(author) = &doc.opt.author {
-        let author = author.to_owned().into_bytes();
+    let meta = &doc.opt.meta()?;
+
+    if let Some(author) = &meta.author {
+        let author = pdf_doc_encode(author)?;
         hnd.info.author = Some(PdfString::new(author));
     }
-    let creator = String::from("SIGNUM (c) 1986-93 F. Schmerbeck").into_bytes();
+    if let Some(subject) = &meta.subject {
+        let subject = pdf_doc_encode(subject)?;
+        hnd.info.subject = Some(PdfString::new(subject));
+    }
+    if let Some(title) = &meta.title {
+        let title = pdf_doc_encode(title)?;
+        hnd.info.title = Some(PdfString::new(title));
+    } else {
+        let file_name = doc
+            .file
+            .file_name()
+            .unwrap()
+            .to_str()
+            .ok_or_else(|| eyre!("File name contains invalid characters"))?;
+        let title = pdf_doc_encode(file_name)?;
+        hnd.info.title = Some(PdfString::new(title));
+    }
+    let creator = pdf_doc_encode("SIGNUM © 1986-93 F. Schmerbeck")?;
     hnd.info.creator = Some(PdfString::new(creator));
-    let producer = String::from("Signum! Document Toolbox").into_bytes();
+    let producer = pdf_doc_encode("Signum! Document Toolbox")?;
     hnd.info.producer = Some(PdfString::new(producer));
-    // FIXME: string encoding
-    let title = doc
-        .file
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .into_owned()
-        .into_bytes();
-    hnd.info.title = Some(PdfString::new(title));
+
+    let now = Local::now();
+    hnd.info.creation_date = Some(now);
+    hnd.info.mod_date = Some(now);
 
     let use_matrix = doc.use_matrix();
     let pd = doc
@@ -187,10 +91,11 @@ pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
     }
     hnd.res.font_dicts.push(fonts);
 
-    // FIXME START
-
     let media_box = Rectangle::a4_media_box();
-    let fscale = (pd.scale() * 1000.0) as isize;
+    let fscale = (pd.scale() * 500.0) as isize;
+    let left = meta.xoffset.unwrap_or(0) as f32;
+    let top = 842.0 - meta.yoffset.unwrap_or(0) as f32;
+    //100.0 - (pd.scale_x(page_info.margin.left) as f32 * 0.2);
 
     for (_index, page) in doc.tebu.iter().enumerate() {
         let _page_info = doc.pages[page.index as usize].as_ref().unwrap();
@@ -198,9 +103,6 @@ pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
         let mut resources = Resources::default();
         resources.fonts = Resource::Global { index: 0 };
 
-        //100.0 - (pd.scale_x(page_info.margin.left) as f32 * 0.2);
-        let left = doc.opt.xoffset.unwrap_or(0) as f32;
-        let top = 842.0 - doc.opt.yoffset.unwrap_or(0) as f32;
         let mut contents = Contents::new(left, top);
 
         for (skip, line) in &page.content {
@@ -233,8 +135,6 @@ pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
             contents: contents.into_inner(),
         };
         hnd.pages.push(page);
-
-        // FIXME END
     }
 
     Ok(hnd)

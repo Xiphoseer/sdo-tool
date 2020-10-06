@@ -607,6 +607,7 @@ name = "pdf-create"
 version = "0.1.0"
 dependencies = [
  "ccitt-t4-t6",
+ "chrono",
  "color-eyre",
  "pdf",
 ]
@@ -734,6 +735,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8a58080b7bb83b2ea28c3b7a9a994fd5e310330b7c8ca5258d99b98128ecfe4"
+dependencies = [
+ "base64",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "rust-argon2"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -803,8 +815,10 @@ dependencies = [
  "pdf",
  "pdf-create",
  "prettytable-rs",
+ "ron",
  "sdo",
  "sdo-pdf",
+ "serde",
  "structopt",
  "thiserror",
 ]
@@ -829,6 +843,20 @@ name = "serde"
 version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96fe57af81d28386a513cbc6858332abc6117cfdb5999647c6444b8f43a370a5"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.116"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f630a6370fd8e457873b4bd2ffdae75408bc291ba72be773772a4c2a065d9ae8"
+dependencies = [
+ "proc-macro2 1.0.21",
+ "quote 1.0.7",
+ "syn 1.0.41",
+]
 
 [[package]]
 name = "smallvec"

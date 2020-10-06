@@ -310,12 +310,3 @@ impl Serialize for Trapped {
         todo!()
     }
 }
-
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Date {}
-
-impl Serialize for Date {
-    fn write(&self, _f: &mut Formatter) -> io::Result<()> {
-        todo!()
-    }
-}

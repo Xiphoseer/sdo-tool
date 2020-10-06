@@ -103,7 +103,8 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
     })?;
     pw.write_meta("EndSetup")?;
 
-    let x_offset = doc.opt.xoffset.unwrap_or(0);
+    let meta = &doc.opt.meta()?;
+    let x_offset = meta.xoffset.unwrap_or(0);
 
     for (index, page) in doc.tebu.iter().enumerate() {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
@@ -124,7 +125,7 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
                 y += 1 + *skip;
                 x = 0;
 
-                let y_val = pd.scale_y(y) as isize;
+                let y_val = pd.scale_y(y) as i32;
                 for chr in &line.data {
                     // moveto
                     x += chr.offset;
@@ -135,9 +136,9 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
                         pw.name(FONTS[chr.cset as usize])?;
                     }
 
-                    let x_val = pd.scale_x(x) as isize + x_offset;
-                    pw.isize(x_val)?;
-                    pw.isize(y_val)?;
+                    let x_val = pd.scale_x(x) as i32 + x_offset;
+                    pw.i32(x_val)?;
+                    pw.i32(y_val)?;
                     pw.name("a")?;
 
                     pw.bytes(&[chr.cval])?;

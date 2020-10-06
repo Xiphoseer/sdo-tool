@@ -83,12 +83,12 @@ pub fn write_char_stream<W: Write>(
         cd.w_x, cd.w_y, cd.ll_x, cd.ll_y, cd.ur_x, cd.ur_y
     )?;
     writeln!(w, "0.01 0 0 0.01 0 0 cm")?;
-    writeln!(w, "q")?;
+    //writeln!(w, "q")?;
 
     let gc_w = box_width * 100;
     let gc_h = box_height * 100;
-    let gc_y = ll_y * 100; // + 10;
-    let gc_x = ll_x * 100; // + 10;
+    let gc_y = ll_y * 100;
+    let gc_x = ll_x * 100;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;
@@ -103,7 +103,7 @@ pub fn write_char_stream<W: Write>(
     w.write_all(&buf)?;
 
     writeln!(w, "EI")?;
-    writeln!(w, "Q")?;
+    //writeln!(w, "Q")?;
     Ok(())
 }
 
@@ -116,9 +116,9 @@ pub fn type3_font<'a>(
 ) -> Option<Type3Font<'a>> {
     let font_bbox = Rectangle {
         ll: Point::default(),
-        ur: Point { x: 1, y: -1 },
+        ur: Point { x: 0, y: 0 },
     };
-    let font_matrix = Matrix::scale(pk.scale(), -pk.scale());
+    let font_matrix = Matrix::scale(pk.scale() / 2.0, -pk.scale() / 2.0);
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;

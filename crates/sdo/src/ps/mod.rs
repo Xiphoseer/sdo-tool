@@ -242,6 +242,15 @@ impl<W: Write> PSWriter<W> {
         Ok(())
     }
 
+    pub fn i32(&mut self, val: i32) -> io::Result<()> {
+        let f = format!("{}", val);
+        self.need_len(f.len())?;
+        write!(self.inner, "{}", f)?;
+        self.lc += f.len();
+        self.ns = true;
+        Ok(())
+    }
+
     pub fn write_usize(&mut self, val: usize) -> io::Result<()> {
         let f = format!("{}", val);
         self.need_len(f.len())?;

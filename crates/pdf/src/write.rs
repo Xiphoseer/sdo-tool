@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use chrono::{DateTime, Local};
 use pdf::{
     object::PlainRef,
     primitive::{Dictionary, PdfStream, PdfString, Primitive},
@@ -303,6 +304,30 @@ pub struct PdfName<'a>(pub &'a str);
 impl Serialize for PdfName<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.needs_space = write_name(&self.0, &mut f.inner)?;
+        Ok(())
+    }
+}
+
+impl Serialize for DateTime<Local> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let off = self.offset();
+        let off_sec = off.local_minus_utc();
+        let (off_sec, mark) = if off_sec < 0 {
+            (-off_sec, '-')
+        } else {
+            (off_sec, '+')
+        };
+        let (_, off_min) = (off_sec % 60, off_sec / 60);
+        let (off_min, off_hor) = (off_min % 60, off_min / 60);
+        let date_time = format!(
+            "D:{}{}{:02}'{:02}",
+            self.format("%Y%m%d%H%M%S"),
+            mark,
+            off_hor,
+            off_min
+        );
+        let st = PdfString::new(date_time.into_bytes());
+        f.needs_space = write_string(&st, &mut f.inner)?;
         Ok(())
     }
 }

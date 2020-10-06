@@ -1,7 +1,12 @@
-use std::{fmt, path::PathBuf, str::FromStr};
+use std::{borrow::Cow, fmt, io, path::PathBuf, str::FromStr};
 
 use sdo::font::FontKind;
+use serde::Deserialize;
 use structopt::StructOpt;
+use thiserror::*;
+
+mod de;
+use de::{deserialize_opt_i32, deserialize_opt_string};
 
 /// The format to export the document into
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -96,14 +101,70 @@ pub struct Options {
     #[structopt(default_value, long, short = "F")]
     pub format: Format,
 
-    /// HACK: fix horizontal offset
-    #[structopt(long)]
-    pub xoffset: Option<isize>,
-    /// HACK: fix horizontal offset
-    #[structopt(long)]
-    pub yoffset: Option<isize>,
+    /// Meta Parameters passed as command line args
+    #[structopt(flatten)]
+    pub cl_meta: Meta,
 
+    /// Meta parameter as a file
+    #[structopt(long)]
+    pub meta: Option<PathBuf>,
+}
+
+#[derive(Debug, Error)]
+pub enum MetaError {
+    #[error("IO Error")]
+    IO(#[from] io::Error),
+    #[error("Deserialize Error")]
+    Ron(#[from] ron::error::Error),
+}
+
+impl Options {
+    pub fn meta(&self) -> Result<Cow<Meta>, MetaError> {
+        if let Some(meta_path) = &self.meta {
+            let text = std::fs::read_to_string(meta_path)?;
+            let mut meta: Meta = ron::from_str(&text)?;
+            if let Some(xoffset) = self.cl_meta.xoffset {
+                meta.xoffset = Some(xoffset);
+            }
+            if let Some(yoffset) = self.cl_meta.yoffset {
+                meta.yoffset = Some(yoffset);
+            }
+            if let Some(author) = &self.cl_meta.author {
+                meta.author = Some(author.clone());
+            }
+            if let Some(title) = &self.cl_meta.title {
+                meta.title = Some(title.clone());
+            }
+            if let Some(subject) = &self.cl_meta.subject {
+                meta.subject = Some(subject.clone());
+            }
+            Ok(Cow::Owned(meta))
+        } else {
+            Ok(Cow::Borrowed(&self.cl_meta))
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, StructOpt, Deserialize)]
+pub struct Meta {
+    /// Horizontal offset
+    #[structopt(long)]
+    #[serde(default, deserialize_with = "deserialize_opt_i32")]
+    pub xoffset: Option<i32>,
+    /// Vertical offset
+    #[structopt(long)]
+    #[serde(default, deserialize_with = "deserialize_opt_i32")]
+    pub yoffset: Option<i32>,
     /// Author
     #[structopt(long)]
+    #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub author: Option<String>,
+    /// Title
+    #[structopt(long)]
+    #[serde(default, deserialize_with = "deserialize_opt_string")]
+    pub title: Option<String>,
+    /// Subject
+    #[structopt(long)]
+    #[serde(default, deserialize_with = "deserialize_opt_string")]
+    pub subject: Option<String>,
 }
