@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, io, ops::Add, ops::Deref, ops::DerefMut, ops::Mul};
+use std::{
+    collections::BTreeMap,
+    io,
+    ops::{Add, Deref, DerefMut, Mul},
+};
+
+use pdf::primitive::PdfString;
 
 use crate::write::{Formatter, PdfName, Serialize};
 
@@ -16,6 +22,102 @@ impl Serialize for BaseEncoding {
             Self::WinAnsiEncoding => PdfName("WinAnsiEncoding").write(f),
             Self::MacExpertEncoding => PdfName("MacExpertEncoding").write(f),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum PageLabelKind {
+    Decimal,
+    RomanLower,
+    RomanUpper,
+    AlphaLower,
+    AlphaUpper,
+}
+
+impl Serialize for PageLabelKind {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::Decimal => PdfName("D").write(f),
+            Self::RomanLower => PdfName("r").write(f),
+            Self::RomanUpper => PdfName("R").write(f),
+            Self::AlphaLower => PdfName("a").write(f),
+            Self::AlphaUpper => PdfName("A").write(f),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PageLabel {
+    pub prefix: PdfString,
+    pub kind: Option<PageLabelKind>,
+    pub start: u32,
+}
+
+impl Serialize for PageLabel {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut dict = f.pdf_dict();
+        dict.field("Type", &PdfName("PageLabel"))?;
+        dict.opt_field("S", &self.kind)?;
+        dict.field("St", &self.start)?;
+        if !self.prefix.as_bytes().is_empty() {
+            dict.field("P", &self.prefix)?;
+        }
+        dict.finish()
+    }
+}
+
+struct BTreeSer<'a, A, B>(&'a BTreeMap<A, B>);
+
+impl<'a, A, B> Serialize for BTreeSer<'a, A, B>
+where
+    A: Serialize,
+    B: Serialize,
+{
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut arr = f.pdf_arr();
+        for (key, value) in self.0 {
+            arr.entry(key)?;
+            arr.entry(value)?;
+        }
+        arr.finish()
+    }
+}
+
+pub struct NumberTree<T> {
+    inner: BTreeMap<usize, T>,
+}
+
+impl<T> Default for NumberTree<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> From<BTreeMap<usize, T>> for NumberTree<T> {
+    fn from(tree: BTreeMap<usize, T>) -> Self {
+        Self { inner: tree }
+    }
+}
+
+impl<T> NumberTree<T> {
+    pub fn new() -> Self {
+        Self {
+            inner: BTreeMap::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    pub fn insert(&mut self, key: usize, value: T) -> Option<T> {
+        self.inner.insert(key, value)
+    }
+}
+
+impl<T: Serialize> Serialize for NumberTree<T> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict().field("Nums", &BTreeSer(&self.inner))?.finish()
     }
 }
 

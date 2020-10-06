@@ -5,12 +5,10 @@ use io::Write;
 use pdf::{object::PlainRef, primitive::PdfString};
 
 use crate::{
-    common::{Dict, Encoding, Matrix, Point, ProcSet, Rectangle, Trapped},
+    common::{Dict, Encoding, Matrix, NumberTree, PageLabel, Point, ProcSet, Rectangle, Trapped},
     low,
-    util::NextID,
-    write::Formatter,
-    write::PdfName,
-    write::Serialize,
+    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
+    write::{Formatter, PdfName, Serialize},
 };
 
 pub struct Page<'a> {
@@ -84,6 +82,39 @@ impl Info {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Outline {
+    /// Immediate children of this item
+    pub children: Vec<OutlineItem>,
+}
+
+impl Default for Outline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Outline {
+    pub fn new() -> Self {
+        Self { children: vec![] }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OutlineItem {
+    /// The title of the outline item
+    pub title: PdfString,
+    /// The destination to navigate to
+    pub dest: Destination,
+    /// Immediate children of this item
+    pub children: Vec<OutlineItem>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Destination {
+    PageFitH(usize, usize),
+}
+
 /// This enum represents a resource of type T for use in a dictionary.
 ///
 /// It does not implement serialize, because it's possible that an index needs to be resolved
@@ -136,8 +167,8 @@ pub enum Font<'a> {
 #[derive(Debug)]
 pub enum XObject {}
 
-type DictResource<T> = Dict<Resource<T>>;
-type ResDictRes<T> = Resource<Dict<Resource<T>>>;
+pub type DictResource<T> = Dict<Resource<T>>;
+pub type ResDictRes<T> = Resource<Dict<Resource<T>>>;
 
 pub struct Resources<'a> {
     pub fonts: ResDictRes<Font<'a>>,
@@ -180,6 +211,8 @@ impl<'a> Default for Res<'a> {
 pub struct Handle<'a> {
     pub info: Info,
     pub pages: Vec<Page<'a>>,
+    pub page_labels: NumberTree<PageLabel>,
+    pub outline: Outline,
     pub res: Res<'a>,
 }
 
@@ -189,220 +222,16 @@ impl<'a> Default for Handle<'a> {
     }
 }
 
-trait Lowerable<'a> {
-    type Lower;
-    type Ctx;
-
-    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextID) -> Self::Lower;
-    fn name() -> &'static str;
-}
-
 #[derive(Debug, Clone)]
 pub struct CharProc<'a>(pub Cow<'a, [u8]>);
-
-type LowerFontCtx<'a> = (LowerBox<'a, CharProc<'a>>, LowerBox<'a, Encoding<'a>>);
-
-fn lower_font<'a>(
-    font: &'a Font<'a>,
-    (a, _b): &mut LowerFontCtx<'a>,
-    id_gen: &mut NextID,
-) -> low::Font<'a> {
-    match font {
-        Font::Type3(font) => {
-            let char_procs = font
-                .char_procs
-                .iter()
-                .map(|(key, proc)| {
-                    let re = a.put(proc, id_gen);
-                    (key.clone(), re)
-                })
-                .collect();
-            low::Font::Type3(low::Type3Font {
-                name: font.name,
-                font_bbox: font.font_bbox,
-                font_matrix: font.font_matrix,
-                first_char: font.first_char,
-                last_char: font.last_char,
-                encoding: low::Resource::Immediate(font.encoding.clone()),
-                char_procs,
-                widths: &font.widths,
-            })
-        }
-    }
-}
-
-impl<'a> Lowerable<'a> for Font<'a> {
-    type Lower = low::Font<'a>;
-    type Ctx = LowerFontCtx<'a>;
-
-    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextID) -> Self::Lower {
-        lower_font(self, ctx, id_gen)
-    }
-
-    fn name() -> &'static str {
-        "Font"
-    }
-}
-
-impl<'a> Lowerable<'a> for XObject {
-    type Lower = low::XObject;
-    type Ctx = ();
-
-    fn lower(&'a self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        todo!()
-    }
-
-    fn name() -> &'static str {
-        "XObject"
-    }
-}
-
-impl<'a> Lowerable<'a> for CharProc<'a> {
-    type Lower = low::CharProc<'a>;
-    type Ctx = ();
-
-    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        low::CharProc(self.0.clone())
-    }
-
-    fn name() -> &'static str {
-        "CharProc"
-    }
-}
-
-impl<'a> Lowerable<'a> for Encoding<'a> {
-    type Lower = Encoding<'a>;
-    type Ctx = ();
-
-    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        self.clone()
-    }
-
-    fn name() -> &'static str {
-        "CharProc"
-    }
-}
-
-struct LowerBox<'a, T> {
-    store: Vec<(PlainRef, &'a T)>,
-    res: &'a [T],
-}
-
-impl<'a, T> LowerBox<'a, T> {
-    fn new(res: &'a [T]) -> Self {
-        LowerBox { store: vec![], res }
-    }
-}
-
-fn lower_dict<'a, T: Lowerable<'a>>(
-    dict: &'a DictResource<T>,
-    inner: &mut LowerBox<'a, T>,
-    ctx: &mut T::Ctx,
-    id_gen: &mut NextID,
-) -> low::DictResource<T::Lower> {
-    dict.iter()
-        .map(|(key, res)| (key.clone(), inner.map(res, ctx, id_gen)))
-        .collect()
-}
-
-impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
-    fn map_dict(
-        &mut self,
-        res: &'a ResDictRes<T>,
-        inner: &mut LowerBox<'a, T>,
-        ctx: &mut T::Ctx,
-        id_gen: &mut NextID,
-    ) -> low::ResDictRes<T::Lower> {
-        match res {
-            Resource::Global { index } => {
-                if let Some((r, _)) = self.store.get(*index) {
-                    low::Resource::Ref(*r)
-                } else if let Some(font_dict) = self.res.get(*index) {
-                    let id = id_gen.next();
-                    let r = make_ref(id);
-                    self.store.push((r, font_dict));
-                    low::Resource::Ref(r)
-                } else {
-                    panic!("Couldn't find {} Dict #{}", T::name(), index);
-                }
-            }
-            Resource::Immediate(fonts) => {
-                let dict = lower_dict(fonts.as_ref(), inner, ctx, id_gen);
-                low::Resource::Immediate(dict)
-            }
-        }
-    }
-}
-
-impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
-    fn put(&mut self, val: &'a T, id_gen: &mut NextID) -> PlainRef {
-        let id = id_gen.next();
-        let r = make_ref(id);
-        self.store.push((r, val));
-        r
-    }
-
-    fn map(
-        &mut self,
-        res: &'a Resource<T>,
-        ctx: &mut T::Ctx,
-        id_gen: &mut NextID,
-    ) -> low::Resource<T::Lower> {
-        match res {
-            Resource::Global { index } => {
-                if let Some((r, _)) = self.store.get(*index) {
-                    low::Resource::Ref(*r)
-                } else if let Some(val) = self.res.get(*index) {
-                    let id = id_gen.next();
-                    let r = make_ref(id);
-                    self.store.push((r, val));
-                    low::Resource::Ref(r)
-                } else {
-                    panic!("Couldn't find {} #{}", T::name(), index);
-                }
-            }
-            Resource::Immediate(content) => {
-                let content_low = content.lower(ctx, id_gen);
-                low::Resource::Immediate(content_low)
-            }
-        }
-    }
-}
-
-struct Lowering<'a> {
-    id_gen: NextID,
-    x_objects: LowerBox<'a, XObject>,
-    x_object_dicts: LowerBox<'a, DictResource<XObject>>,
-    fonts: LowerBox<'a, Font<'a>>,
-    font_dicts: LowerBox<'a, DictResource<Font<'a>>>,
-    font_ctx: LowerFontCtx<'a>,
-}
-
-fn make_ref(id: u64) -> PlainRef {
-    PlainRef { id, gen: 0 }
-}
-
-impl<'a> Lowering<'a> {
-    fn new(doc: &'a Handle) -> Self {
-        Lowering {
-            id_gen: NextID::new(1),
-            x_objects: LowerBox::new(&doc.res.x_objects),
-            x_object_dicts: LowerBox::new(&doc.res.x_object_dicts),
-            fonts: LowerBox::new(&doc.res.fonts),
-            font_dicts: LowerBox::new(&doc.res.font_dicts),
-            font_ctx: (
-                LowerBox::new(&doc.res.char_procs),
-                LowerBox::new(&doc.res.encodings),
-            ),
-        }
-    }
-}
 
 impl<'a> Handle<'a> {
     pub fn new() -> Self {
         Self {
             info: Info::default(),
             res: Res::default(),
+            page_labels: NumberTree::new(),
+            outline: Outline::new(),
             pages: vec![],
         }
     }
@@ -492,9 +321,48 @@ impl<'a> Handle<'a> {
         let pages_ref = make_ref(pages_id);
         fmt.obj(pages_ref, &pages)?;
 
+        let pl_ref = if !self.page_labels.is_empty() {
+            let page_labels_id = lowering.id_gen.next();
+            let page_labels_ref = make_ref(page_labels_id);
+
+            fmt.obj(page_labels_ref, &self.page_labels)?;
+            Some(page_labels_ref)
+        } else {
+            None
+        };
+
+        let ol_ref = if !self.outline.children.is_empty() {
+            let mut ol_acc = Vec::new();
+            let outline_ref = make_ref(lowering.id_gen.next());
+            let (first, last) = lower_outline_items(
+                &mut ol_acc,
+                &pages.kids,
+                &self.outline.children,
+                outline_ref,
+                &mut lowering.id_gen,
+            )
+            .unwrap(); // safe because this will always return Some for non empty children
+            let outline = low::Outline {
+                first,
+                last,
+                count: self.outline.children.len(),
+            };
+
+            for (r, item) in ol_acc {
+                fmt.obj(r, &item)?;
+            }
+
+            fmt.obj(outline_ref, &outline)?;
+            Some(outline_ref)
+        } else {
+            None
+        };
+
         let catalog = low::Catalog {
             version: None,
             pages: pages_ref,
+            page_labels: pl_ref,
+            outline: ol_ref,
         };
         let catalog_ref = make_ref(catalog_id);
         fmt.obj(catalog_ref, &catalog)?;

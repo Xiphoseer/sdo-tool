@@ -54,11 +54,14 @@ impl UseTable {
     }
 }
 
+/// Matrix of character usage in a single document
 pub struct UseMatrix {
+    /// One entry for each charset
     pub csets: [UseTable; 8],
 }
 
 impl UseMatrix {
+    /// Creates a new matrix
     pub const fn new() -> Self {
         Self {
             csets: [UseTable::new(); 8],
@@ -66,9 +69,53 @@ impl UseMatrix {
     }
 }
 
+/// List of character usage tables, for use with font caches
+pub struct UseTableVec {
+    /// One entry for each charset
+    pub csets: Vec<UseTable>,
+}
+
+impl Default for UseTableVec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UseTableVec {
+    /// Creates a new list
+    pub fn new() -> Self {
+        UseTableVec {
+            csets: Vec::with_capacity(8),
+        }
+    }
+
+    pub fn append(&mut self, chsets: &[Option<usize>; 8], use_matrix: UseMatrix) {
+        for (cset, use_table) in use_matrix.csets.iter().enumerate() {
+            if let Some(index) = chsets.get(cset).and_then(|x| *x) {
+                while self.csets.len() + 1 < index {
+                    self.csets.push(UseTable::new());
+                }
+                if self.csets.len() == index {
+                    self.csets.push(*use_table);
+                } else {
+                    for (left, right) in self.csets[index]
+                        .chars
+                        .iter_mut()
+                        .zip(use_table.chars.iter())
+                    {
+                        *left += *right
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum FontKind {
+    /// Font used in the signum editor (`E24`)
     Editor,
+    /// Font used for printing signum documents
     Printer(PrinterKind),
 }
 
@@ -76,9 +123,7 @@ impl FontKind {
     pub fn scale_y(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units) * 2,
-            Self::Printer(PrinterKind::Needle9) => u32::from(units) * 4,
-            Self::Printer(PrinterKind::Needle24) => u32::from(units) * 20 / 3,
-            Self::Printer(PrinterKind::Laser30) => u32::from(units) * 50 / 9,
+            Self::Printer(pk) => pk.scale_y(units),
         }
     }
 

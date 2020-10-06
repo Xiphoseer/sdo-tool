@@ -40,7 +40,7 @@ fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<Pat
 fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPSet> {
     let extension = pk.extension();
     let printer_cset_file = editor_cset_file.with_extension(extension);
-    match OwnedPSet::load(&printer_cset_file, PrinterKind::Needle24) {
+    match OwnedPSet::load(&printer_cset_file, pk) {
         Ok(pset) => {
             println!("Loaded printer font file '{}'", printer_cset_file.display());
             Some(pset)
@@ -116,6 +116,10 @@ impl FontCache {
             names: HashMap::new(),
             chsets_folder,
         }
+    }
+
+    pub fn chsets(&self) -> &[CSet] {
+        &self.chsets
     }
 
     pub fn pset(&self, pk: PrinterKind, index: usize) -> Option<&PSet<'static>> {

@@ -1,5 +1,6 @@
-use std::{borrow::Cow, fmt, io, path::PathBuf, str::FromStr};
+use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromStr};
 
+use pdf_create::high;
 use sdo::font::FontKind;
 use serde::Deserialize;
 use structopt::StructOpt;
@@ -177,12 +178,76 @@ fn chsets_path() -> PathBuf {
 pub struct DocScript {
     /// The document meta information
     #[serde(default)]
-    meta: Meta,
+    pub meta: Meta,
 
     /// The files the constitute the document
-    files: Vec<PathBuf>,
+    pub files: Vec<PathBuf>,
+
+    /// The page labels
+    #[serde(default)]
+    pub page_labels: BTreeMap<usize, PageLabel>,
+
+    /// The root outline items
+    #[serde(default)]
+    pub outline: Vec<OutlineItem>,
 
     /// The path to the fonts folder
     #[serde(default = "chsets_path")]
-    chsets: PathBuf,
+    pub chsets: PathBuf,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OutlineItem {
+    /// The title of the outline item
+    pub title: String,
+    /// The destination to navigate to
+    pub dest: Destination,
+    /// Immediate children of this item
+    #[serde(default)]
+    pub children: Vec<OutlineItem>,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize)]
+pub enum Destination {
+    PageFitH(usize, usize),
+}
+
+impl Into<high::Destination> for Destination {
+    fn into(self) -> high::Destination {
+        use high::Destination::*;
+        match self {
+            Self::PageFitH(a, b) => PageFitH(a, b),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Deserialize)]
+pub enum PageLabelKind {
+    None,
+    Decimal,
+    RomanLower,
+    RomanUpper,
+    AlphaLower,
+    AlphaUpper,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PageLabel {
+    pub prefix: String,
+    pub kind: PageLabelKind,
+    pub start: u32,
+}
+
+impl Into<Option<pdf_create::common::PageLabelKind>> for PageLabelKind {
+    fn into(self) -> Option<pdf_create::common::PageLabelKind> {
+        use pdf_create::common::PageLabelKind::*;
+        match self {
+            Self::None => None,
+            Self::Decimal => Some(Decimal),
+            Self::RomanLower => Some(RomanLower),
+            Self::RomanUpper => Some(RomanUpper),
+            Self::AlphaLower => Some(AlphaLower),
+            Self::AlphaUpper => Some(AlphaUpper),
+        }
+    }
 }

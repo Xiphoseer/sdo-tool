@@ -374,45 +374,36 @@ pub fn write_stream<W: Write>(stream: &PdfStream, w: &mut W) -> io::Result<bool>
 }
 
 pub fn write_string<W: Write>(st: &PdfString, w: &mut W) -> io::Result<bool> {
-    match st.as_str() {
-        Ok(s) => {
-            let mut cpc = s.chars().filter(|c| *c == ')').count();
-            let mut opc = 0;
+    let bytes = st.as_bytes();
 
-            write!(w, "(")?;
-            for c in s.chars() {
-                match c {
-                    '\\' => write!(w, "\\\\")?,
-                    '(' => {
-                        if cpc == 0 {
-                            write!(w, "\\(")?
-                        } else {
-                            write!(w, "(")?;
-                            cpc -= 1;
-                            opc += 1;
-                        }
-                    }
-                    ')' => {
-                        if opc == 0 {
-                            write!(w, "\\)")?
-                        } else {
-                            write!(w, ")")?;
-                            opc -= 1;
-                        }
-                    }
-                    _ => write!(w, "{}", c)?,
+    let mut cpc = bytes.iter().copied().filter(|c| *c == 41 /* ')' */).count();
+    let mut opc = 0;
+    write!(w, "(")?;
+    for byte in st.as_bytes() {
+        match byte {
+            0..=31 | 127..=255 => write!(w, "\\{:03o}", byte)?,
+            92 => write!(w, "\\\\")?,
+            40 => {
+                if cpc == 0 {
+                    write!(w, "\\(")?
+                } else {
+                    write!(w, "(")?;
+                    cpc -= 1;
+                    opc += 1;
                 }
             }
-            write!(w, ")")?;
-        }
-        Err(_) => {
-            write!(w, "<")?;
-            for byte in st.as_bytes() {
-                write!(w, "{:02X}", byte)?;
+            41 => {
+                if opc == 0 {
+                    write!(w, "\\)")?
+                } else {
+                    write!(w, ")")?;
+                    opc -= 1;
+                }
             }
-            write!(w, ">")?;
+            _ => write!(w, "{}", *byte as char)?,
         }
     }
+    write!(w, ")")?;
     Ok(false)
 }
 

@@ -41,6 +41,14 @@ impl PrinterKind {
         }
     }
 
+    pub fn scale_y(&self, units: u16) -> u32 {
+        match self {
+            PrinterKind::Needle9 => u32::from(units) * 4,
+            PrinterKind::Needle24 => u32::from(units) * 20 / 3,
+            PrinterKind::Laser30 => u32::from(units) * 50 / 9,
+        }
+    }
+
     pub fn baseline(self) -> i16 {
         match self {
             Self::Needle9 => 36,

@@ -1,11 +1,92 @@
 use std::{borrow::Cow, io};
 
-use pdf::object::PlainRef;
+use pdf::{object::PlainRef, primitive::PdfString};
 
 use crate::{
     common::Dict, common::Encoding, common::Matrix, common::ProcSet, common::Rectangle,
     encoding::ascii_85_encode, write::Formatter, write::PdfName, write::Serialize,
 };
+
+#[derive(Debug, Clone)]
+pub enum Destination {
+    PageFitH(PlainRef, usize),
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    GoTo(Destination),
+}
+
+impl Serialize for Destination {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::PageFitH(r, top) => f
+                .pdf_arr()
+                .entry(r)?
+                .entry(&PdfName("FitH"))?
+                .entry(top)?
+                .finish(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Outline {
+    /// The first item
+    pub first: PlainRef,
+    /// The last item
+    pub last: PlainRef,
+    /// The total amount of items
+    pub count: usize,
+}
+
+impl Serialize for Outline {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict()
+            .field("Type", &PdfName("Outline"))?
+            .field("First", &self.first)?
+            .field("Last", &self.last)?
+            .field("Count", &self.count)?
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OutlineItem {
+    /// The title of the outline item
+    pub title: PdfString,
+    /// The parent of this item
+    pub parent: PlainRef,
+    /// The previous siblig
+    pub prev: Option<PlainRef>,
+    /// The next sibling
+    pub next: Option<PlainRef>,
+    /// The first child
+    pub first: Option<PlainRef>,
+    /// The last child
+    pub last: Option<PlainRef>,
+    /// The total amount of children
+    pub count: usize,
+    /// The destination to be used
+    pub action: Action,
+}
+
+impl Serialize for OutlineItem {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut dict = f.pdf_dict();
+        dict.field("Title", &self.title)?
+            .field("Parent", &self.parent)?
+            .opt_field("Prev", &self.prev)?
+            .opt_field("Next", &self.next)?
+            .opt_field("First", &self.first)?
+            .opt_field("Last", &self.last)?
+            .field("Count", &self.count)?;
+        match &self.action {
+            Action::GoTo(dest) => dict.field("Dest", dest),
+        }?;
+        dict.finish()
+    }
+}
 
 pub struct Page<'a> {
     /// Reference to the parent
@@ -183,6 +264,8 @@ pub struct Catalog {
     pub version: Option<PdfVersion>,
     // Extensions
     pub pages: PlainRef,
+    pub page_labels: Option<PlainRef>,
+    pub outline: Option<PlainRef>,
 }
 
 impl Serialize for Catalog {
@@ -191,6 +274,8 @@ impl Serialize for Catalog {
             .field("Type", &PdfName("Catalog"))?
             .opt_field("Version", &self.version)?
             .field("Pages", &self.pages)?
+            .opt_field("PageLabels", &self.page_labels)?
+            .opt_field("Outlines", &self.outline)?
             .finish()
     }
 }

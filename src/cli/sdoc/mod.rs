@@ -23,7 +23,7 @@ use super::font::cache::{CSet, FontCache};
 
 mod console;
 mod imgseq;
-mod pdf;
+pub mod pdf;
 mod pdraw;
 mod ps;
 mod ps_proc;
@@ -45,7 +45,7 @@ pub struct Document<'a> {
     opt: &'a Options,
     file: &'a Path,
     // cset
-    chsets: [Option<usize>; 8],
+    pub chsets: [Option<usize>; 8],
     // pbuf
     pages: Vec<Option<sdoc::Page>>,
     page_count: usize,
@@ -104,7 +104,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(&mut self, fc: &mut FontCache, part: Buf<'a>) -> eyre::Result<()> {
+    fn process_cset(&mut self, fc: &mut FontCache, part: Buf<'_>) -> eyre::Result<()> {
         let (_, charsets) = parse_cset(part.0).unwrap();
         println!("'cset': {:?}", charsets);
 
@@ -348,13 +348,35 @@ impl<'a> Document<'a> {
             }
         }
     }
+
+    pub fn process_sdoc(&mut self, input: &[u8], fc: &mut FontCache) -> eyre::Result<()> {
+        let (rest, sdoc) = parse_sdoc0001_container(input)
+            .finish()
+            .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
+
+        for (key, part) in sdoc.parts {
+            match key {
+                "cset" => self.process_cset(fc, part),
+                "sysp" => self.process_sysp(part),
+                "pbuf" => self.process_pbuf(part),
+                "tebu" => self.process_tebu(part),
+                "hcim" => self.process_hcim(part),
+                _ => {
+                    println!("'{}': {}", key, part.0.len());
+                    Ok(())
+                }
+            }?;
+        }
+
+        if !rest.is_empty() {
+            println!("remaining: {:#?}", Buf(rest));
+        }
+
+        Ok(())
+    }
 }
 
-pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()> {
-    let (rest, sdoc) = parse_sdoc0001_container(buffer)
-        .finish()
-        .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
-
+pub fn process_sdoc(input: &[u8], opt: Options, file: &Path) -> eyre::Result<()> {
     let mut document = Document::new(&opt, file);
 
     if opt.out != Path::new("-") {
@@ -364,25 +386,10 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()
     let folder = file.parent().unwrap();
     let chsets_folder = folder.join("CHSETS");
     let mut fc = FontCache::new(chsets_folder);
-    for (key, part) in sdoc.parts {
-        match key {
-            "cset" => document.process_cset(&mut fc, part),
-            "sysp" => document.process_sysp(part),
-            "pbuf" => document.process_pbuf(part),
-            "tebu" => document.process_tebu(part),
-            "hcim" => document.process_hcim(part),
-            _ => {
-                println!("'{}': {}", key, part.0.len());
-                Ok(())
-            }
-        }?;
-    }
+    document.process_sdoc(input, &mut fc)?;
 
     // Output the document
     document.output(&fc)?;
 
-    if !rest.is_empty() {
-        println!("remaining: {:#?}", Buf(rest));
-    }
     Ok(())
 }
