@@ -5,7 +5,7 @@ use nom::{
     combinator::verify,
     multi::count,
     number::complete::{be_u32, u8},
-    IResult,
+    Finish, IResult,
 };
 use std::{ops::Deref, path::Path};
 
@@ -127,7 +127,8 @@ impl OwnedPSet {
             PrinterKind::Laser30 => parse_ls30(input),
             PrinterKind::Needle9 => parse_ps09(input),
         }
-        .unwrap();
+        .finish()
+        .map_err(|e| LoadError::Parse(format!("{:?}", e)))?;
         Ok(Self { inner, buffer })
     }
 }

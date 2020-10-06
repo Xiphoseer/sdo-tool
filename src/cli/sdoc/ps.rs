@@ -3,11 +3,15 @@ use std::{fs::File, io::BufWriter, io::Write, path::Path};
 use color_eyre::eyre::{self, eyre};
 use sdo::{font::FontKind, ps::PSWriter};
 
-use crate::cli::font::ps::write_ls30_ps_bitmap;
+use crate::cli::font::{cache::FontCache, ps::write_ls30_ps_bitmap};
 
 use super::{ps_proc::prog_dict, Document};
 
-fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Result<()> {
+fn output_ps_writer(
+    doc: &Document,
+    fc: &FontCache,
+    pw: &mut PSWriter<impl Write>,
+) -> eyre::Result<()> {
     let pd = doc
         .print_driver
         .ok_or_else(|| eyre!("No printer type selected"))?;
@@ -45,14 +49,18 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
         pw.bytes(b"hello.dvi")?;
         pw.crlf()?;
         pw.name("@start")?;
-        for (cset, use_matrix) in use_matrix.csets.iter().enumerate() {
+        for cset in 0u8..8 {
+            let cau = cset as usize;
+            let use_table = &use_matrix.csets[cau];
             match pd {
                 FontKind::Printer(pk) => {
-                    if let Some(pset) = &doc.chset(&pk, cset) {
-                        let name = &doc.chsets[cset];
-                        pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
-                        write_ls30_ps_bitmap(FONTS[cset], name, pw, pset, Some(use_matrix))?;
-                        pw.write_comment("EndSignumBitmapFont")?;
+                    if let Some(cs) = doc.cset(fc, cset) {
+                        if let Some(pset) = cs.printer(pk) {
+                            let name = cs.name();
+                            pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
+                            write_ls30_ps_bitmap(FONTS[cau], name, pw, pset, Some(use_table))?;
+                            pw.write_comment("EndSignumBitmapFont")?;
+                        }
                     }
                 }
                 FontKind::Editor => {
@@ -162,11 +170,11 @@ fn output_ps_writer(doc: &Document, pw: &mut PSWriter<impl Write>) -> eyre::Resu
     Ok(())
 }
 
-pub fn output_postscript(doc: &Document) -> eyre::Result<()> {
+pub fn output_postscript(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     if doc.opt.out == Path::new("-") {
         println!("----------------------------- PostScript -----------------------------");
         let mut pw = PSWriter::new();
-        output_ps_writer(doc, &mut pw)?;
+        output_ps_writer(doc, fc, &mut pw)?;
         println!("----------------------------------------------------------------------");
         Ok(())
     } else {
@@ -180,7 +188,7 @@ pub fn output_postscript(doc: &Document) -> eyre::Result<()> {
         let out_buf = BufWriter::new(out_file);
         let mut pw = PSWriter::from(out_buf);
         print!("Writing `{}` ...", out.display());
-        output_ps_writer(doc, &mut pw)?;
+        output_ps_writer(doc, fc, &mut pw)?;
         println!(" Done!");
         Ok(())
     }

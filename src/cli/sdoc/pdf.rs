@@ -11,9 +11,11 @@ use pdf_create::{
 use sdo::font::FontKind;
 use sdo_pdf::{font::type3_font, sdoc::Contents};
 
+use crate::cli::font::cache::FontCache;
+
 use super::Document;
 
-pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
+pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
     let meta = &doc.opt.meta()?;
@@ -68,17 +70,20 @@ pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
     let mut first_chars: [u8; 8] = [0; 8];
 
     let mut fonts = BTreeMap::new();
-    for (cset, use_table) in use_matrix.csets.iter().enumerate() {
+    for cset in 0u8..8u8 {
+        let cau = cset as usize;
+        let use_table = &use_matrix.csets[cset as usize];
         match pd {
             FontKind::Printer(pk) => {
-                if let Some(pfont) = &doc.chset(&pk, cset) {
-                    let name = &doc.chsets[cset]; // FIXME: FontDescriptor
-                    let key = FONTS[cset];
-                    let efont = doc.chsets_e24[cset].as_deref();
-                    if let Some(font) = type3_font(efont, pfont, pk, use_table, Some(name)) {
+                if let Some(pfont) = &doc.pset(fc, cset, pk) {
+                    let cs = doc.cset(fc, cset).unwrap();
+                    // FIXME: FontDescriptor
+                    let key = FONTS[cset as usize];
+                    let efont = cs.e24();
+                    if let Some(font) = type3_font(efont, pfont, pk, use_table, Some(cs.name())) {
                         let index = hnd.res.fonts.len();
-                        widths[cset] = font.widths.clone();
-                        first_chars[cset] = font.first_char;
+                        widths[cau] = font.widths.clone();
+                        first_chars[cau] = font.first_char;
                         hnd.res.fonts.push(Font::Type3(font));
                         fonts.insert(key.to_owned(), Resource::Global { index });
                     }
@@ -140,8 +145,8 @@ pub fn process_doc<'a>(doc: &'a Document) -> eyre::Result<Handle<'a>> {
     Ok(hnd)
 }
 
-pub fn output_pdf(doc: &Document) -> eyre::Result<()> {
-    let hnd = process_doc(doc)?;
+pub fn output_pdf(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
+    let hnd = process_doc(doc, fc)?;
 
     if doc.opt.out == Path::new("-") {
         println!("----------------------------- PDF -----------------------------");

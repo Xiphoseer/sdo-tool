@@ -13,6 +13,7 @@ use sdo::{
 };
 use std::path::PathBuf;
 
+pub mod cache;
 pub mod ps;
 
 use ps::write_ls30_ps_bitmap;

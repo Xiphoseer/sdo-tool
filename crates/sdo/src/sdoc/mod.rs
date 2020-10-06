@@ -17,30 +17,7 @@ use crate::{
 use fmt::Debug;
 use std::{borrow::Cow, fmt};
 
-/// A Signum! document container
-#[derive(Debug)]
-pub struct SDocContainer<'a> {
-    pub parts: Vec<(&'a str, Buf<'a>)>,
-}
-
-fn take4<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
-    take(4usize)(input)
-}
-
-/// Parse a Signum! document
-pub fn parse_sdoc0001_container<'a>(input: &'a [u8]) -> IResult<&'a [u8], SDocContainer<'a>> {
-    let (input, _) = tag(b"sdoc")(input)?;
-    let mut parts = Vec::new();
-    let mut input = input;
-    while !input.is_empty() {
-        let (rest, key): (&[u8], &str) = map_res(take4, std::str::from_utf8)(input)?;
-        let (rest, data) = length_data(be_u32)(rest)?;
-        parts.push((key, Buf(data)));
-        input = rest;
-    }
-
-    Ok((input, SDocContainer { parts }))
-}
+pub mod container;
 
 #[derive(Debug)]
 struct SDoc<'a> {
@@ -82,12 +59,6 @@ pub fn bytes16(input: &[u8]) -> IResult<&[u8], Bytes16> {
 pub fn bytes32(input: &[u8]) -> IResult<&[u8], Bytes32> {
     map(be_u32, Bytes32)(input)
 }
-
-/*pub fn buffer(count: usize) -> impl FnMut(&[u8]) -> IResult<&[u8], Buf> {
-    move |input: &[u8]| {
-        map(take(count), Buf)(input)
-    }
-}*/
 
 pub fn parse_sysp(input: &[u8]) -> IResult<&[u8], SysP> {
     let (input, _) = take(0x50usize)(input)?;

@@ -3,15 +3,16 @@
 
 mod cli;
 
-use cli::{font::process_ps09, opt::Options};
-use sdo::font;
-
 use cli::{
-    font::ps::process_ps_font, keyboard, process_bimc, process_eset, process_ls30, process_ps24,
+    font::{process_eset, process_ls30, process_ps09, process_ps24, ps::process_ps_font},
+    keyboard::KBOptions,
+    opt::Options,
+    process_bimc,
+    script::RunOpts,
     sdoc::process_sdoc,
 };
-use color_eyre::eyre::{self, eyre};
-use keyboard::KBOptions;
+use color_eyre::eyre::{self, eyre, WrapErr};
+use sdo::font;
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -35,71 +36,80 @@ pub struct CLI {
 pub enum Command {
     /// Dump the content of this file
     Dump(Options),
+    /// Run a document script
+    Run(RunOpts),
     /// Options for decoding an ATARI String
     Decode,
     /// Print a keyboard for the given font
     Keyboard(KBOptions),
 }
 
+fn info(buffer: &[u8], opt: CLI) -> eyre::Result<()> {
+    match buffer.get(..4) {
+        Some(b"sdoc") => {
+            println!("Signum!2 Document");
+            let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sdo-tool"));
+            let name = exe.file_name().unwrap().to_string_lossy();
+            println!(
+                "Use `{} \"{}\" dump` to learn more",
+                name,
+                opt.file.display()
+            );
+            Ok(())
+        }
+        Some(b"eset") => {
+            println!("Signum!2 Editor Font");
+            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            Ok(())
+        }
+        Some(b"bimc") => {
+            println!("Signum!2 Compressed Image");
+            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            Ok(())
+        }
+        Some(b"/Fa ") => {
+            process_ps_font(&buffer)?;
+            Ok(())
+        }
+        Some(b"ls30") => {
+            println!("Signum!2 30-Point Laser Printer Font");
+            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            Ok(())
+        }
+        Some(b"ps24") => {
+            println!("Signum!2 24-Needle Printer Font");
+            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            Ok(())
+        }
+        Some(b"ps09") => {
+            println!("Signum!2 9-Needle Printer Font");
+            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            Ok(())
+        }
+        Some(b"cryp") => {
+            println!("Papyrus Encrypted Font (?)");
+            println!("Currently not supported!");
+            Ok(())
+        }
+        Some(t) => Err(eyre!("Unknown file type {:?}", t)),
+        None => Err(eyre!("File has less than 4 bytes")),
+    }
+}
+
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let opt = CLI::from_args();
 
-    let file = File::open(&opt.file)?;
+    let file_res = File::open(&opt.file);
+    let file = WrapErr::wrap_err_with(file_res, || {
+        format!("Failed to open file: `{}`", opt.file.display())
+    })?;
     let mut reader = BufReader::new(file);
     let mut buffer = Vec::new();
     reader.read_to_end(&mut buffer)?;
 
     match opt.cmd {
-        None => match buffer.get(..4) {
-            Some(b"sdoc") => {
-                println!("Signum!2 Document");
-                let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sdo-tool"));
-                let name = exe.file_name().unwrap().to_string_lossy();
-                println!(
-                    "Use `{} \"{}\" dump` to learn more",
-                    name,
-                    opt.file.display()
-                );
-                Ok(())
-            }
-            Some(b"eset") => {
-                println!("Signum!2 Editor Font");
-                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
-                Ok(())
-            }
-            Some(b"bimc") => {
-                println!("Signum!2 Compressed Image");
-                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
-                Ok(())
-            }
-            Some(b"/Fa ") => {
-                process_ps_font(&buffer)?;
-                Ok(())
-            }
-            Some(b"ls30") => {
-                println!("Signum!2 30-Point Laser Printer Font");
-                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
-                Ok(())
-            }
-            Some(b"ps24") => {
-                println!("Signum!2 24-Needle Printer Font");
-                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
-                Ok(())
-            }
-            Some(b"ps09") => {
-                println!("Signum!2 9-Needle Printer Font");
-                println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
-                Ok(())
-            }
-            Some(b"cryp") => {
-                println!("Papyrus Encrypted Font (?)");
-                println!("Currently not supported!");
-                Ok(())
-            }
-            Some(t) => Err(eyre!("Unknown file type {:?}", t)),
-            None => Err(eyre!("File has less than 4 bytes")),
-        },
+        None => info(&buffer, opt),
         Some(Command::Dump(dump_opt)) => match buffer.get(..4) {
             Some(b"sdoc") => process_sdoc(&buffer, dump_opt, &opt.file),
             Some(b"eset") => process_eset(&buffer, None, None),
@@ -119,6 +129,7 @@ fn main() -> eyre::Result<()> {
             print!("{}", decoded);
             Ok(())
         }
-        Some(Command::Keyboard(kbopt)) => keyboard::run(&opt.file, &buffer, kbopt),
+        Some(Command::Run(ropt)) => cli::script::run(opt.file, &buffer, ropt),
+        Some(Command::Keyboard(kbopt)) => cli::keyboard::run(&opt.file, &buffer, kbopt),
     }
 }

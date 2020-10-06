@@ -1,10 +1,79 @@
 use color_eyre::eyre;
 use image::ImageFormat;
-use sdo::raster::Page;
+use sdo::{font::FontKind, raster::Page, sdoc::Flags, sdoc::Line, sdoc::Te};
+
+use crate::cli::font::cache::FontCache;
 
 use super::{Document, Pos};
 
-pub fn output_print(doc: &Document) -> eyre::Result<()> {
+fn draw_chars(
+    doc: &Document,
+    fc: &FontCache,
+    data: &[Te],
+    page: &mut Page,
+    x: &mut u16,
+    y: u16,
+) -> eyre::Result<()> {
+    for te in data {
+        *x += te.offset;
+        match doc.print_driver {
+            Some(FontKind::Editor) => {
+                if let Some(eset) = doc.eset(fc, te.cset) {
+                    let ch = &eset.chars[te.cval as usize];
+                    let x = *x; // No skew compensation (18/15)
+                    let y = y * 2;
+                    match page.draw_echar(x, y, ch) {
+                        Ok(()) => {}
+                        Err(()) => {
+                            eprintln!("Char out of bounds {:?}", te);
+                        }
+                    }
+                }
+            }
+            Some(FontKind::Printer(pk)) => {
+                if let Some(eset) = doc.pset(fc, te.cset, pk) {
+                    let ch = &eset.chars[te.cval as usize];
+                    let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
+                    let x = fk.scale_x(*x);
+                    let y = fk.scale_y(y);
+                    match page.draw_printer_char(x, y, ch) {
+                        Ok(()) => {}
+                        Err(()) => {
+                            eprintln!("Char out of bounds {:?}", te);
+                        }
+                    }
+                }
+            }
+            None => {
+                continue;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn draw_line(
+    doc: &Document,
+    fc: &FontCache,
+    line: &Line,
+    skip: u16,
+    page: &mut Page,
+    pos: &mut Pos,
+) -> eyre::Result<()> {
+    pos.y += skip + 1;
+
+    if line.flags.contains(Flags::FLAG) {
+        println!("<F: {}>", line.extra);
+    }
+
+    if line.flags.contains(Flags::ALIG) {}
+
+    draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y)?;
+
+    Ok(())
+}
+
+pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     let out_path = &doc.opt.out;
 
     for page_text in &doc.tebu {
@@ -40,7 +109,7 @@ pub fn output_print(doc: &Document) -> eyre::Result<()> {
 
         for (skip, line) in &page_text.content {
             pos.x = 10;
-            doc.draw_line(line, *skip, &mut page, &mut pos)?;
+            draw_line(doc, fc, line, *skip, &mut page, &mut pos)?;
         }
 
         for site in doc.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {

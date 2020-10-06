@@ -5,26 +5,21 @@ use nom::Finish;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use sdo::{
     font::{
-        editor::OwnedESet,
-        printer::{OwnedPSet, PSet, PrinterKind},
+        editor::ESet,
+        printer::{PSet, PrinterKind},
         FontKind, UseMatrix,
     },
+    nom::{self, multi::count},
     raster::Page,
     sdoc::{
-        self, parse_cset, parse_hcim, parse_image, parse_pbuf, parse_sdoc0001_container,
-        parse_sysp, parse_tebu_header, Flags, Line, Te,
+        self, container::parse_sdoc0001_container, parse_cset, parse_hcim, parse_image,
+        parse_page_text, parse_pbuf, parse_sysp, parse_tebu_header, ImageSite, PageText,
     },
     util::Buf,
 };
-use sdo::{
-    nom::{self, multi::count},
-    sdoc::{parse_page_text, ImageSite, PageText},
-};
-use std::{
-    borrow::Cow,
-    fs::DirEntry,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
+
+use super::font::cache::{CSet, FontCache};
 
 mod console;
 mod imgseq;
@@ -50,11 +45,7 @@ pub struct Document<'a> {
     opt: &'a Options,
     file: &'a Path,
     // cset
-    chsets: Vec<Cow<'a, str>>,
-    chsets_e24: [Option<OwnedESet>; 8],
-    chsets_p9: [Option<OwnedPSet>; 8],
-    chsets_p24: [Option<OwnedPSet>; 8],
-    chsets_l30: [Option<OwnedPSet>; 8],
+    chsets: [Option<usize>; 8],
     // pbuf
     pages: Vec<Option<sdoc::Page>>,
     page_count: usize,
@@ -66,12 +57,21 @@ pub struct Document<'a> {
 }
 
 impl<'a> Document<'a> {
-    fn chset<'b>(&'b self, pk: &PrinterKind, cset: usize) -> Option<&'b PSet<'a>> {
-        match pk {
-            PrinterKind::Needle9 => self.chsets_p9[cset].as_deref(),
-            PrinterKind::Needle24 => self.chsets_p24[cset].as_deref(),
-            PrinterKind::Laser30 => self.chsets_l30[cset].as_deref(),
-        }
+    pub fn eset<'f>(&self, fc: &'f FontCache, cset: u8) -> Option<&'f ESet<'static>> {
+        self.chsets[cset as usize].and_then(|index| fc.eset(index))
+    }
+
+    pub fn pset<'f>(
+        &self,
+        fc: &'f FontCache,
+        cset: u8,
+        pk: PrinterKind,
+    ) -> Option<&'f PSet<'static>> {
+        self.chsets[cset as usize].and_then(|index| fc.pset(pk, index))
+    }
+
+    pub fn cset<'f>(&self, fc: &'f FontCache, cset: u8) -> Option<&'f CSet> {
+        self.chsets[cset as usize].and_then(|index| fc.cset(index))
     }
 
     pub fn use_matrix(&self) -> UseMatrix {
@@ -94,11 +94,7 @@ impl<'a> Document<'a> {
         Document {
             opt,
             file,
-            chsets: vec![],
-            chsets_e24: [None, None, None, None, None, None, None, None],
-            chsets_p9: [None, None, None, None, None, None, None, None],
-            chsets_p24: [None, None, None, None, None, None, None, None],
-            chsets_l30: [None, None, None, None, None, None, None, None],
+            chsets: [None; 8],
             pages: vec![],
             page_count: 0,
             print_driver: opt.print_driver,
@@ -108,137 +104,40 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
-        let cset_file = cset_folder.join(name);
-        let editor_cset_file = cset_file.with_extension(extension);
-
-        if editor_cset_file.exists() && editor_cset_file.is_file() {
-            return Some(editor_cset_file);
-        }
-
-        let mut dir_iter = match std::fs::read_dir(cset_folder) {
-            Ok(i) => i,
-            Err(e) => {
-                println!("Could not find CHSET folder: {}", e);
-                return None;
-            }
-        };
-
-        let file = dir_iter.find_map(|entry| {
-            entry
-                .ok()
-                .as_ref()
-                .map(DirEntry::path)
-                .filter(|p| p.is_dir())
-                .and_then(|cset_folder| Self::find_font_file(&cset_folder, name, extension))
-        });
-
-        if let Some(file) = file {
-            Some(file)
-        } else {
-            None
-        }
-    }
-
-    fn load_cset_editor(&mut self, index: usize, cset_folder: &Path, name: &str) -> bool {
-        let editor_cset_file = match Self::find_font_file(cset_folder, name, "E24") {
-            Some(f) => f,
-            None => {
-                println!("Editor font for `{}` not found!", name);
-                return false;
-            }
-        };
-
-        match OwnedESet::load(&editor_cset_file) {
-            Ok(eset) => {
-                self.chsets_e24[index] = Some(eset);
-                println!("Loaded font file '{}'", editor_cset_file.display());
-                true
-            }
-            Err(e) => {
-                println!("Failed to parse font file {}", editor_cset_file.display());
-                println!("Are you sure this is a valid Signum! editor font?");
-                println!("Error: {}", e);
-                false
-            }
-        }
-    }
-
-    fn load_cset_printer(
-        &mut self,
-        index: usize,
-        cset_folder: &Path,
-        name: &str,
-        kind: PrinterKind,
-    ) -> bool {
-        let extension = kind.extension();
-        let printer_cset_file = match Self::find_font_file(cset_folder, name, extension) {
-            Some(f) => f,
-            None => {
-                println!("Printer font file '{}.{}' not found", name, extension);
-                return false;
-            }
-        };
-
-        match (OwnedPSet::load(&printer_cset_file, kind), kind) {
-            (Ok(pset), PrinterKind::Needle24) => {
-                self.chsets_p24[index] = Some(pset);
-                println!("Loaded font file '{}'", printer_cset_file.display());
-                true
-            }
-            (Ok(pset), PrinterKind::Laser30) => {
-                self.chsets_l30[index] = Some(pset);
-                println!("Loaded font file '{}'", printer_cset_file.display());
-                true
-            }
-            (Ok(pset), PrinterKind::Needle9) => {
-                self.chsets_p9[index] = Some(pset);
-                println!("Loaded font file '{}'", printer_cset_file.display());
-                true
-            }
-            (Err(e), _) => {
-                println!("Failed to parse font file {}", printer_cset_file.display());
-                println!("Are you sure this is a valid Signum! editor font?");
-                println!("Error: {}", e);
-                false
-            }
-        }
-    }
-
-    fn process_cset(&mut self, part: Buf<'a>) -> eyre::Result<()> {
+    fn process_cset(&mut self, fc: &mut FontCache, part: Buf<'a>) -> eyre::Result<()> {
         let (_, charsets) = parse_cset(part.0).unwrap();
         println!("'cset': {:?}", charsets);
 
-        let folder = self.file.parent().unwrap();
-        let default_cset_folder = folder.join("CHSETS");
-
         let mut all_eset = true;
-        let mut all_pset = true;
-        let mut all_lset = true;
-        let mut all_p9 = true;
+        let mut all_p24 = true;
+        let mut all_l30 = true;
+        let mut all_p09 = true;
         for (index, name) in charsets.iter().enumerate() {
             if name.is_empty() {
                 continue;
             }
-            let cset_folder = default_cset_folder.as_path();
             let name_ref = name.as_ref();
-            all_eset &= self.load_cset_editor(index, cset_folder, name_ref);
-            all_pset &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Needle24);
-            all_lset &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Laser30);
-            all_p9 &= self.load_cset_printer(index, cset_folder, name_ref, PrinterKind::Needle9);
+
+            if let Some(cset_cache_index) = fc.load_cset(name_ref) {
+                let cset = fc.cset(cset_cache_index).unwrap();
+                self.chsets[index] = Some(cset_cache_index);
+                all_eset &= cset.e24().is_some();
+                all_p24 &= cset.p24().is_some();
+                all_l30 &= cset.l30().is_some();
+                all_p09 &= cset.p09().is_some();
+            }
         }
-        all_p9 = false;
         // Print info on which sets are available
         if all_eset {
             println!("Editor fonts available for all character sets");
         }
-        if all_pset {
+        if all_p24 {
             println!("Printer fonts (24-needle) available for all character sets");
         }
-        if all_lset {
+        if all_l30 {
             println!("Printer fonts (laser/30) available for all character sets");
         }
-        if all_p9 {
+        if all_p09 {
             println!("Printer fonts (9-needle) available for all character sets");
         }
 
@@ -251,33 +150,32 @@ impl<'a> Document<'a> {
                     }
                 }
                 FontKind::Printer(PrinterKind::Needle24) => {
-                    if !all_pset {
+                    if !all_p24 {
                         println!("WARNING: Explicitly chosen 24-needle print-driver but not all fonts are available");
                     }
                 }
                 FontKind::Printer(PrinterKind::Needle9) => {
-                    if !all_p9 {
+                    if !all_p09 {
                         println!("WARNING: Explicitly chosen 9-needle print-driver but not all fonts are available");
                     }
                 }
                 FontKind::Printer(PrinterKind::Laser30) => {
-                    if !all_lset {
+                    if !all_l30 {
                         println!("WARNING: Explicitly chosen laser/30 print-driver but not all fonts are available");
                     }
                 }
             }
-        } else if all_lset {
+        } else if all_l30 {
             self.print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
-        } else if all_pset {
+        } else if all_p24 {
             self.print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
-        } else if all_p9 {
+        } else if all_p09 {
             self.print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
         } else if all_eset {
             self.print_driver = Some(FontKind::Editor);
         } else {
             println!("No print-driver has all fonts available.");
         }
-        self.chsets = charsets;
         Ok(())
     }
 
@@ -340,65 +238,6 @@ impl<'a> Document<'a> {
 
         self.pages = pbuf.pages.into_iter().map(|f| f.map(|(p, _b)| p)).collect();
         self.page_count = pbuf.page_count as usize;
-
-        Ok(())
-    }
-
-    fn draw_chars(&self, data: &[Te], page: &mut Page, x: &mut u16, y: u16) -> eyre::Result<()> {
-        for te in data {
-            *x += te.offset;
-            match self.print_driver {
-                Some(FontKind::Editor) => {
-                    if let Some(eset) = &self.chsets_e24[te.cset as usize] {
-                        let ch = &eset.chars[te.cval as usize];
-                        let x = *x; // No skew compensation (18/15)
-                        let y = y * 2;
-                        match page.draw_echar(x, y, ch) {
-                            Ok(()) => {}
-                            Err(()) => {
-                                eprintln!("Char out of bounds {:?}", te);
-                            }
-                        }
-                    }
-                }
-                Some(FontKind::Printer(pk)) => {
-                    if let Some(eset) = self.chset(&pk, te.cset as usize) {
-                        let ch = &eset.chars[te.cval as usize];
-                        let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
-                        let x = fk.scale_x(*x);
-                        let y = fk.scale_y(y);
-                        match page.draw_printer_char(x, y, ch) {
-                            Ok(()) => {}
-                            Err(()) => {
-                                eprintln!("Char out of bounds {:?}", te);
-                            }
-                        }
-                    }
-                }
-                None => {
-                    continue;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn draw_line(
-        &self,
-        line: &Line,
-        skip: u16,
-        page: &mut Page,
-        pos: &mut Pos,
-    ) -> eyre::Result<()> {
-        pos.y += skip + 1;
-
-        if line.flags.contains(Flags::FLAG) {
-            println!("<F: {}>", line.extra);
-        }
-
-        if line.flags.contains(Flags::ALIG) {}
-
-        self.draw_chars(&line.data, page, &mut pos.x, pos.y)?;
 
         Ok(())
     }
@@ -497,13 +336,13 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self) -> eyre::Result<()> {
+    fn output(&self, fc: &FontCache) -> eyre::Result<()> {
         match self.opt.format {
-            Format::Html | Format::Plain => console::output_console(self),
-            Format::PostScript => ps::output_postscript(self),
+            Format::Html | Format::Plain => console::output_console(self, fc),
+            Format::PostScript => ps::output_postscript(self, fc),
             Format::PDraw => pdraw::output_pdraw(self),
-            Format::Png => imgseq::output_print(self),
-            Format::PDF => pdf::output_pdf(self),
+            Format::Png => imgseq::output_print(self, fc),
+            Format::PDF => pdf::output_pdf(self, fc),
             Format::DVIPSBitmapFont | Format::CCITTT6 => {
                 panic!("Document can't be formatted as a font")
             }
@@ -522,9 +361,12 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()
         std::fs::create_dir_all(&opt.out)?;
     }
 
+    let folder = file.parent().unwrap();
+    let chsets_folder = folder.join("CHSETS");
+    let mut fc = FontCache::new(chsets_folder);
     for (key, part) in sdoc.parts {
         match key {
-            "cset" => document.process_cset(part),
+            "cset" => document.process_cset(&mut fc, part),
             "sysp" => document.process_sysp(part),
             "pbuf" => document.process_pbuf(part),
             "tebu" => document.process_tebu(part),
@@ -537,7 +379,7 @@ pub fn process_sdoc(buffer: &[u8], opt: Options, file: &Path) -> eyre::Result<()
     }
 
     // Output the document
-    document.output()?;
+    document.output(&fc)?;
 
     if !rest.is_empty() {
         println!("remaining: {:#?}", Buf(rest));

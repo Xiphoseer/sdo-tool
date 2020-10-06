@@ -148,6 +148,6 @@ impl FromStr for FontKind {
 pub enum LoadError {
     #[error("Failed IO")]
     Io(#[from] io::Error),
-    #[error("Unimplemented")]
-    Unimplemented,
+    #[error("Parsing failed: {0}")]
+    Parse(String),
 }

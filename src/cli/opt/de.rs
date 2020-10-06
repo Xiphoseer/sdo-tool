@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{
     de::{Error, Visitor},
     Deserializer,
@@ -31,6 +33,37 @@ impl<'de> Visitor<'de> for OptStringVisitor {
         E: Error,
     {
         Ok(Some(v.to_owned()))
+    }
+}
+
+pub(super) fn _deserialize_opt_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_string(OptPathVisitor)
+}
+
+struct OptPathVisitor;
+
+impl<'de> Visitor<'de> for OptPathVisitor {
+    type Value = Option<PathBuf>;
+
+    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "a string")
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Some(PathBuf::from(v)))
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Some(PathBuf::from(v.to_owned())))
     }
 }
 

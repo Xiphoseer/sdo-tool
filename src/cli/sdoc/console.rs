@@ -4,11 +4,11 @@ use sdo::{
     sdoc::{Flags, Line, Style, Te},
 };
 
-use crate::cli::opt::Format;
+use crate::cli::{font::cache::FontCache, opt::Format};
 
 use super::Document;
 
-fn print_tebu_data(doc: &Document, data: &[Te]) {
+fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Te]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
@@ -74,7 +74,7 @@ fn print_tebu_data(doc: &Document, data: &[Te]) {
             print!("<b>");
         }
 
-        let width = if let Some(eset) = &doc.chsets_e24[k.cset as usize] {
+        let width = if let Some(eset) = &doc.eset(fc, k.cset) {
             eset.chars[k.cval as usize].width
         } else {
             // default for fonts that are missing
@@ -109,7 +109,7 @@ fn print_tebu_data(doc: &Document, data: &[Te]) {
     }
 }
 
-pub fn print_line(doc: &Document, line: &Line, skip: u16) {
+pub fn print_line(doc: &Document, fc: &FontCache, line: &Line, skip: u16) {
     if line.flags.contains(Flags::FLAG) && doc.opt.format == Format::Html {
         println!("<F: {}>", line.extra);
     }
@@ -118,7 +118,7 @@ pub fn print_line(doc: &Document, line: &Line, skip: u16) {
         print!("<p>");
     }
 
-    print_tebu_data(doc, &line.data);
+    print_tebu_data(doc, fc, &line.data);
 
     if line.flags.contains(Flags::ALIG) && doc.opt.format == Format::Html {
         print!("<A>");
@@ -135,7 +135,7 @@ pub fn print_line(doc: &Document, line: &Line, skip: u16) {
     }
 }
 
-pub fn output_console(doc: &Document) -> eyre::Result<()> {
+pub fn output_console(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     for page_text in &doc.tebu {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
@@ -144,7 +144,7 @@ pub fn output_console(doc: &Document) -> eyre::Result<()> {
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
         for (skip, line) in &page_text.content {
-            print_line(doc, line, *skip);
+            print_line(doc, fc, line, *skip);
         }
         println!(
             "{:04X} -------------- [END OF PAGE {} ({})] ---------------",

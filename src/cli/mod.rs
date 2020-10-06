@@ -6,9 +6,8 @@ use std::path::PathBuf;
 pub mod font;
 pub mod keyboard;
 pub mod opt;
+pub mod script;
 pub mod sdoc;
-
-pub use font::{process_eset, process_ls30, process_ps24};
 
 pub fn process_bimc(buffer: &[u8], out_path: PathBuf) -> eyre::Result<()> {
     let decoded = parse_imc(&buffer) //

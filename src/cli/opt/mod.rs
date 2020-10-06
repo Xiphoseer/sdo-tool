@@ -168,3 +168,21 @@ pub struct Meta {
     #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub subject: Option<String>,
 }
+
+fn chsets_path() -> PathBuf {
+    PathBuf::from("CHSETS")
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+pub struct DocScript {
+    /// The document meta information
+    #[serde(default)]
+    meta: Meta,
+
+    /// The files the constitute the document
+    files: Vec<PathBuf>,
+
+    /// The path to the fonts folder
+    #[serde(default = "chsets_path")]
+    chsets: PathBuf,
+}
