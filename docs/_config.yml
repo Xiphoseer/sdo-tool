@@ -17,8 +17,8 @@ title: Signum! Document Toolbox
 email: xiphoseer@mailbox.org
 description: >- # this means to ignore newlines until "baseurl:"
   Tool to process Signum! 1/2 document files (*.SDO)
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+#baseurl: "/sdo-tool" # the subpath of your site, e.g. /blog
+#url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: Xiphoseer
 github_username: Xiphoseer
 
