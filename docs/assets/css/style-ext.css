@@ -1,5 +1,215 @@
+:root {
+    --font-antikro: Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif;
+}
+
 p, li {
-    font-family: Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif
+    font-family: var(--font-antikro);
+}
+
+@font-face {
+    font-family: "AES Menu";
+    src: url("../font/atari-st.ttf");
+}
+
+code {
+    font-family: "AES Menu";
+}
+
+pre, code {
+    box-shadow: none;
+}
+
+pre {
+    background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    padding: 0 0 0 5px;
+    margin-left: -20px;
+}
+
+#main_content > p,
+#main_content > h1,
+#main_content > h2 {
+    background-image: linear-gradient(0deg, #000000 10%, transparent 10%);
+    background-repeat: repeat-y;
+    background-size: 10px 1.5em;
+    background-position: 0 -0.4em;
+    padding-left: 20px;
+    margin-left: -20px;
+}
+
+img {
+    box-sizing: border-box;
+}
+
+figure > figcaption, figure > img {
+    text-align: center;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+figure > figcaption {
+    font-family: var(--font-antikro);
+}
+
+figure > figcaption::before  {
+    content: "Figure: ";
+    font-weight: bold;
+}
+
+blockquote {
+    padding-left: 0;
+    border-left: none;
+}
+
+blockquote > p {
+    background: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+pre > code {
+    background: black;
+    color: #ddd;
+    border-left: 12px solid white;
+    margin-right: 0;
+    padding: 10px;
+}
+
+pre.highlight > code .o,
+pre.highlight > code .k {
+    color: white;
+}
+
+#main_content h1#signum-document-toolbox {
+    background-color: black;
+    color: white;
+    border: 3px solid white;
+    outline: 4px solid black;
+    text-align: center;
+    font-size: 30pt;
+    margin: 3px 3px 20px 3px;
+    overflow: hidden;
+    font-family: "AES Menu";
+    line-height: 1.3em;
+    padding: 1rem 0;
+}
+
+h1#signum-document-toolbox:after {
+    font-family: "AES Menu";
+    content: "Copyright (C) 2020 by Xiphoseer";
+    display: block;
+    font-size: 16pt;
+}
+
+img {
+    max-width: 100%;
+}
+
+#wrapper {
+    overflow-y: auto;
+    max-height: calc(100vh - 26px);
+}
+
+#main_content {
+    padding-top: 20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    background-color: white;
+    box-sizing: border-box;
+    max-width: 660px;
+}
+
+#main_menu {
+    /*position: sticky;
+    top: 0;*/
+    z-index: 2;
+}
+
+#main_content_wrap {
+    border-top: none;
+    padding-top: 10px;
+}
+
+ul#menu {
+    background-color: white;
+    padding: 0;
+    display: flex;
+    border: 1px solid black;
+    list-style-type: none;
+}
+
+ul#menu.inner {
+    max-width: 700px;
+}
+
+ul#menu li {
+    display: block;
+    transition-duration: 0.5s;
+}   
+
+ul#menu li ul {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    transition: all 0.5s ease;
+    margin-top: 0;
+    /*left: 0;*/
+    display: none;
+    z-index: 5;
+
+    background-color: white;
+    border: 1px solid black;
+    list-style-type: none;
+    padding-left: 0;
+}
+
+ul#menu li:hover > ul,
+ul#menu li ul:hover {
+  visibility: visible;
+  opacity: 1;
+  display: block;
+}
+
+ul#menu li ul li {
+  clear: both;
+  width: 100%;
+}
+
+ul#menu li ul li a {
+    box-sizing: border-box;
+    display: inline-block;
+    width: 100%;
+}
+
+ul#menu > li {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+#menu a {
+    vertical-align: middle;
+    font-family: "AES Menu", sans-serif;
+    color: black;
+    padding: 4px 8px;
+    white-space: nowrap;
+    line-height: 16px;
+}
+
+#menu a:hover {
+    background-color: black;
+    color: white;
+}
+
+#menu a:hover,
+#menu a:focus,
+#menu a:active {
+    text-decoration: none;
+}
+
+#menu a + a {
+    
 }
 
 p {

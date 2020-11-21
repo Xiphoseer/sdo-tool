@@ -15,7 +15,7 @@
   <body>
 
     <!-- HEADER -->
-    <div id="header_wrap" class="outer">
+    <!--<div id="header_wrap" class="outer">
         <header class="inner">
           {% if site.github.is_project_page %}
             <a id="forkme_banner" href="{{ site.github.repository_url }}">View on GitHub</a>
@@ -31,30 +31,55 @@
             </section>
           {% endif %}
         </header>
-    </div>
+    </div>-->
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <nav>
-          <a href="{{ site.github.url }}">Overview</a> |
-          <a href="{{ site.github.issues_url }}">Issues</a> |
-          <a href="{{ site.github.releases_url }}">Releases</a> |
-          <a href="{{ site.github.url }}/changelog.html">Changelog</a>
-        </nav>
+    <nav role="navigation" id="main_menu" class="outer">
+      <ul id="menu" class="inner">
+        <li><a href="{{ '/' | relative_url }}">SDO-Toolbox</a>
+          <ul class="dropdown">
+            <li><a href="{{ '/examples' | relative_url }}">Examples</a></li>
+            <li><a href="{{ '/documents' | relative_url }}">Documents</a></li>
+            <li><a href="{{ '/damaged' | relative_url }}">Damaged files</a></li>
+            <li><a href="{{ '/font-mappings' | relative_url }}">Font Mappings</a></li>
+            <li><a href="{{ '/font-other' | relative_url }}">Other Fonts</a></li>
+          </ul>
+        </li>
+        <li><a href="{{ '/changelog' | relative_url }}">Changelog</a></li>
+        <li>
+          <a href="{{ '/' | relative_url }}#format-documentation" >Formats</a>
+          <ul class="dropdown">
+            <li><a href="{{ '/format-sdoc' | relative_url }}">(sdoc) Document</a></li>
+            <li><a href="{{ '/format-eset' | relative_url }}">(eset) Editor Font</a></li>
+            <li><a href="{{ '/format-bimc' | relative_url }}">(bimc) Image</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="{{ site.github.repository_url }}">GitHub</a>
+          <ul class="dropdown">
+            <li><a href="{{ site.github.issues_url }}">Issues</a></li>
+            <li><a href="{{ site.github.releases_url }}">Releases</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
 
-        {{ content }}
-      </section>
-    </div>
+    <div id="wrapper">
+      <!-- MAIN CONTENT -->
+      <div id="main_content_wrap" class="outer">
+        <section id="main_content" class="inner">
+          {{ content }}
+        </section>
+      </div>
 
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        {% if site.github.is_project_page %}
-        <p class="copyright">{{ site.title | default: site.github.repository_name }} maintained by <a href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
-        {% endif %}
-        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
-      </footer>
+      <!-- FOOTER  -->
+      <div id="footer_wrap" class="outer">
+        <footer class="inner">
+          {% if site.github.is_project_page %}
+          <p class="copyright">{{ site.title | default: site.github.repository_name }} maintained by <a href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
+          {% endif %}
+          <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+        </footer>
+      </div>
     </div>
 
     {% if site.google_analytics %}

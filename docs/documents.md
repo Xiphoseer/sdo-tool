@@ -35,4 +35,7 @@ they have a vertical resolution of 6 pixels per line or 324 DPI. At this
 resolution, the mismatch between vertical and horizontal units is easily
 compensated for.
 
-![Layout Settings](img/layout-settings.png)
+<figure>
+    <img src="img/layout-settings.png">
+    <figcaption>Layout Settings</figcaption>
+</figure>

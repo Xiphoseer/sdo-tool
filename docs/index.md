@@ -1,6 +1,6 @@
 # Signum! Document Toolbox
 
-The *Signum!* program was a popular word-processor available for the ATARI AT line of
+The *Signum!* program was a popular word-processor available for the ATARI ST line of
 home computers and distributed by [Application Systems Heidelberg (ASH)][ASH]. While it
 could be used via the *MagicCMac* or *MagicCPC* emulators, it was never ported to newer
 systems. The file format (*.SDO for Signum! and Signum!2) was proprietary or at least
@@ -100,7 +100,7 @@ standard Signum! fonts to [Unicode](https://unicode.org) codepoints.
 You are free to download, and run this software for any personal and non-commercial reason,
 at your own risk and without claiming fitness for any particular purpose. If you want to
 contribute to this project or use it for any kind of distribution or commercial purpose,
-please file a github issue or send me an email at `ng5on06lc@relay.firefox.com`.
+please file a github issue or send me an email at `xiphoseer@mailbox.org`.
 
 ## Acknowledgements
 
