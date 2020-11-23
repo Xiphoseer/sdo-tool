@@ -226,7 +226,8 @@ impl<'a> Formatter<'a> {
             for elem in a {
                 let (offset, gen, free) = elem.unwrap();
                 let mark = if free { 'f' } else { 'n' };
-                writeln!(self.inner, "{:010} {:05} {}", offset, gen, mark)?;
+                // NOTE: the PDF spec requires the eol to be two bytes long (i.e. SP LF or CR LF)
+                writeln!(self.inner, "{:010} {:05} {} ", offset, gen, mark)?;
             }
 
             rest = b;
