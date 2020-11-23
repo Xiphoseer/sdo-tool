@@ -18,6 +18,16 @@ over the position of each character on the page.
 This also allows us to delay the conversion to Unicode codepoints
 to the PDF viewer and to keep the encoding of the Signum! fonts.
 
+### Links
+
+Source: <https://github.com/Xiphoseer/sdo-tool/tree/main/crates/pdf>  
+Crate: <https://crates.io/crates/pdf-create>  
+Docs: <https://docs.rs/pdf-create>
+
+### References
+
+PDF: <https://www.adobe.com/content/dam/acom/en/devnet/pdf/PDF32000_2008.pdf>
+
 [`pdf-rs`]: https://crates.io/crates/pdf
 
 ## CCITT-T.4-T.6
@@ -28,6 +38,13 @@ is used in PDFs to store small monochrome bitmap images. SDO-Toolbox
 uses that to transform an Signum! Printer font file into an Adobe Type3
 font to be used in generated PDF files.
 
-See also: <https://github.com/Xiphoseer/sdo-tool/tree/main/crates/ccitt>  
+### Links
+
+Source: <https://github.com/Xiphoseer/sdo-tool/tree/main/crates/ccitt>  
+Crate: <https://crates.io/crates/ccitt-t4-t6>  
+Docs: <https://docs.rs/ccitt-t4-t6>
+
+### References
+
 T.4: <https://www.itu.int/rec/T-REC-T.4>  
 T.6: <https://www.itu.int/rec/T-REC-T.6>
