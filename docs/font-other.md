@@ -10,37 +10,61 @@ These are some fonts I found in my collection
 
 ### BUBBLE
 
-![BUBBLE](img/kb/BUBBLE.png)
+<figure>
+    <img src="{{'img/kb/BUBBLE.png' | relative_url }}">
+    <figcaption>BUBBLE</figcaption>
+</figure>
 
 ### FUTUR_09
 
-![FUTUR_09](img/kb/FUTUR_09.png)
+<figure>
+    <img src="{{'img/kb/FUTUR_09.png' | relative_url }}">
+    <figcaption>FUTUR_09</figcaption>
+</figure>
 
 ### FUTUR_11
 
-![FUTUR_11](img/kb/FUTUR_11.png)
+<figure>
+    <img src="{{'img/kb/FUTUR_11.png' | relative_url }}">
+    <figcaption>FUTUR_11</figcaption>
+</figure>
 
 ### GRA
 
 Seems ot be an older version of the default `GRAPH1` font.
 
-![GRA](img/kb/GRA.png)
+<figure>
+    <img src="{{'img/kb/GRA.png' | relative_url }}">
+    <figcaption>GRA</figcaption>
+</figure>
 
 ### GROTMED
 
-![GROTMED](img/kb/GROTMED.png)
+<figure>
+    <img src="{{'img/kb/GROTMED.png' | relative_url }}">
+    <figcaption>GROTMED</figcaption>
+</figure>
 
 ### PRIS__11
 
-![PRIS__11](img/kb/PRIS__11.png)
+<figure>
+    <img src="{{'img/kb/PRIS__11.png' | relative_url }}">
+    <figcaption>PRIS__11</figcaption>
+</figure>
 
 ### SCRIBA
 
-![SCRIBA](img/kb/SCRIBA.png)
+<figure>
+    <img src="{{'img/kb/SCRIBA.png' | relative_url }}">
+    <figcaption>SCRIBA</figcaption>
+</figure>
 
 ### TIMES
 
-![TIMES](img/kb/TIMES.png)
+<figure>
+    <img src="{{'img/kb/TIMES.png' | relative_url }}">
+    <figcaption>TIMES</figcaption>
+</figure>
 
 ## Random unnamed fonts
 
@@ -50,197 +74,344 @@ Source: <http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/>
 
 ### FONT_001
 
-![FONT_001](img/kb/FONT_001.png)
+<figure>
+    <img src="{{'img/kb/FONT_001.png' | relative_url }}">
+    <figcaption>FONT_001</figcaption>
+</figure>
 
 ### FONT_002
 
-![FONT_002](img/kb/FONT_002.png)
+<figure>
+    <img src="{{'img/kb/FONT_002.png' | relative_url }}">
+    <figcaption>FONT_002</figcaption>
+</figure>
 
 ### FONT_003
 
-![FONT_003](img/kb/FONT_003.png)
+<figure>
+    <img src="{{'img/kb/FONT_003.png' | relative_url }}">
+    <figcaption>FONT_003</figcaption>
+</figure>
 
 ### FONT_004
 
-![FONT_004](img/kb/FONT_004.png)
+<figure>
+    <img src="{{'img/kb/FONT_004.png' | relative_url }}">
+    <figcaption>FONT_004</figcaption>
+</figure>
 
 ### FONT_005
 
-![FONT_005](img/kb/FONT_005.png)
+<figure>
+    <img src="{{'img/kb/FONT_005.png' | relative_url }}">
+    <figcaption>FONT_005</figcaption>
+</figure>
 
 ### FONT_006
 
-![FONT_006](img/kb/FONT_006.png)
+<figure>
+    <img src="{{'img/kb/FONT_006.png' | relative_url }}">
+    <figcaption>FONT_006</figcaption>
+</figure>
 
 ### FONT_007
 
-![FONT_007](img/kb/FONT_007.png)
+<figure>
+    <img src="{{'img/kb/FONT_007.png' | relative_url }}">
+    <figcaption>FONT_007</figcaption>
+</figure>
 
 ### FONT_008
 
-![FONT_008](img/kb/FONT_008.png)
+<figure>
+    <img src="{{'img/kb/FONT_008.png' | relative_url }}">
+    <figcaption>FONT_008</figcaption>
+</figure>
 
 ### FONT_009
 
-![FONT_009](img/kb/FONT_009.png)
+<figure>
+    <img src="{{'img/kb/FONT_009.png' | relative_url }}">
+    <figcaption>FONT_009</figcaption>
+</figure>
 
 ### FONT_010
 
-![FONT_010](img/kb/FONT_010.png)
+<figure>
+    <img src="{{'img/kb/FONT_010.png' | relative_url }}">
+    <figcaption>FONT_010</figcaption>
+</figure>
 
 ### FONT_011
 
-![FONT_011](img/kb/FONT_011.png)
+<figure>
+    <img src="{{'img/kb/FONT_011.png' | relative_url }}">
+    <figcaption>FONT_011</figcaption>
+</figure>
 
 ### FONT_012
 
-![FONT_012](img/kb/FONT_012.png)
+<figure>
+    <img src="{{'img/kb/FONT_012.png' | relative_url }}">
+    <figcaption>FONT_012</figcaption>
+</figure>
 
 ### FONT_013
 
-![FONT_013](img/kb/FONT_013.png)
+<figure>
+    <img src="{{'img/kb/FONT_013.png' | relative_url }}">
+    <figcaption>FONT_013</figcaption>
+</figure>
 
 ### FONT_014
 
-![FONT_014](img/kb/FONT_014.png)
+<figure>
+    <img src="{{'img/kb/FONT_014.png' | relative_url }}">
+    <figcaption>FONT_014</figcaption>
+</figure>
 
 ### FONT_015
 
-![FONT_015](img/kb/FONT_015.png)
+<figure>
+    <img src="{{'img/kb/FONT_015.png' | relative_url }}">
+    <figcaption>FONT_015</figcaption>
+</figure>
 
 ### FONT_016
 
-![FONT_016](img/kb/FONT_016.png)
+<figure>
+    <img src="{{'img/kb/FONT_016.png' | relative_url }}">
+    <figcaption>FONT_016</figcaption>
+</figure>
 
 ### FONT_017
 
-![FONT_017](img/kb/FONT_017.png)
+<figure>
+    <img src="{{'img/kb/FONT_017.png' | relative_url }}">
+    <figcaption>FONT_017</figcaption>
+</figure>
 
 ### FONT_018
 
-![FONT_018](img/kb/FONT_018.png)
+<figure>
+    <img src="{{'img/kb/FONT_018.png' | relative_url }}">
+    <figcaption>FONT_018</figcaption>
+</figure>
 
 ### FONT_019
 
-![FONT_019](img/kb/FONT_019.png)
+<figure>
+    <img src="{{'img/kb/FONT_019.png' | relative_url }}">
+    <figcaption>FONT_019</figcaption>
+</figure>
 
 ### FONT_020
 
-![FONT_020](img/kb/FONT_020.png)
+<figure>
+    <img src="{{'img/kb/FONT_020.png' | relative_url }}">
+    <figcaption>FONT_020</figcaption>
+</figure>
 
 ### FONT_021
 
-![FONT_021](img/kb/FONT_021.png)
+<figure>
+    <img src="{{'img/kb/FONT_021.png' | relative_url }}">
+    <figcaption>FONT_021</figcaption>
+</figure>
 
 ### FONT_022
 
-![FONT_022](img/kb/FONT_022.png)
+<figure>
+    <img src="{{'img/kb/FONT_022.png' | relative_url }}">
+    <figcaption>FONT_022</figcaption>
+</figure>
 
 ### FONT_023
 
-![FONT_023](img/kb/FONT_023.png)
+<figure>
+    <img src="{{'img/kb/FONT_023.png' | relative_url }}">
+    <figcaption>FONT_023</figcaption>
+</figure>
 
 ### FONT_024
 
-![FONT_024](img/kb/FONT_024.png)
+<figure>
+    <img src="{{'img/kb/FONT_024.png' | relative_url }}">
+    <figcaption>FONT_024</figcaption>
+</figure>
 
 ### FONT_025
 
-![FONT_025](img/kb/FONT_025.png)
+<figure>
+    <img src="{{'img/kb/FONT_025.png' | relative_url }}">
+    <figcaption>FONT_025</figcaption>
+</figure>
 
 ### FONT_026
 
-![FONT_026](img/kb/FONT_026.png)
+<figure>
+    <img src="{{'img/kb/FONT_026.png' | relative_url }}">
+    <figcaption>FONT_026</figcaption>
+</figure>
 
 ### FONT_027
 
-![FONT_027](img/kb/FONT_027.png)
+<figure>
+    <img src="{{'img/kb/FONT_027.png' | relative_url }}">
+    <figcaption>FONT_027</figcaption>
+</figure>
 
 ### FONT_028
 
-![FONT_028](img/kb/FONT_028.png)
+<figure>
+    <img src="{{'img/kb/FONT_028.png' | relative_url }}">
+    <figcaption>FONT_028</figcaption>
+</figure>
 
 ### FONT_029
 
-![FONT_029](img/kb/FONT_029.png)
+<figure>
+    <img src="{{'img/kb/FONT_029.png' | relative_url }}">
+    <figcaption>FONT_029</figcaption>
+</figure>
 
 ### FONT_030
 
-![FONT_030](img/kb/FONT_030.png)
+<figure>
+    <img src="{{'img/kb/FONT_030.png' | relative_url }}">
+    <figcaption>FONT_030</figcaption>
+</figure>
 
 ### FONT_031
 
-![FONT_031](img/kb/FONT_031.png)
+<figure>
+    <img src="{{'img/kb/FONT_031.png' | relative_url }}">
+    <figcaption>FONT_031</figcaption>
+</figure>
 
 ### FONT_032
 
-![FONT_032](img/kb/FONT_032.png)
+<figure>
+    <img src="{{'img/kb/FONT_032.png' | relative_url }}">
+    <figcaption>FONT_032</figcaption>
+</figure>
 
 ### FONT_033
 
-![FONT_033](img/kb/FONT_033.png)
+<figure>
+    <img src="{{'img/kb/FONT_033.png' | relative_url }}">
+    <figcaption>FONT_033</figcaption>
+</figure>
 
 ### FONT_034
 
-![FONT_034](img/kb/FONT_034.png)
+<figure>
+    <img src="{{'img/kb/FONT_034.png' | relative_url }}">
+    <figcaption>FONT_034</figcaption>
+</figure>
 
 ### FONT_035
 
-![FONT_035](img/kb/FONT_035.png)
+<figure>
+    <img src="{{'img/kb/FONT_035.png' | relative_url }}">
+    <figcaption>FONT_035</figcaption>
+</figure>
 
 ### FONT_036
 
-![FONT_036](img/kb/FONT_036.png)
+<figure>
+    <img src="{{'img/kb/FONT_036.png' | relative_url }}">
+    <figcaption>FONT_036</figcaption>
+</figure>
 
 ### FONT_037
 
-![FONT_037](img/kb/FONT_037.png)
+<figure>
+    <img src="{{'img/kb/FONT_037.png' | relative_url }}">
+    <figcaption>FONT_037</figcaption>
+</figure>
 
 ### FONT_038
 
-![FONT_038](img/kb/FONT_038.png)
+<figure>
+    <img src="{{'img/kb/FONT_038.png' | relative_url }}">
+    <figcaption>FONT_038</figcaption>
+</figure>
 
 ### FONT_039
 
-![FONT_039](img/kb/FONT_039.png)
+<figure>
+    <img src="{{'img/kb/FONT_039.png' | relative_url }}">
+    <figcaption>FONT_039</figcaption>
+</figure>
 
 ### FONT_040
 
-![FONT_040](img/kb/FONT_040.png)
+<figure>
+    <img src="{{'img/kb/FONT_040.png' | relative_url }}">
+    <figcaption>FONT_040</figcaption>
+</figure>
 
 ### FONT_041
 
-![FONT_041](img/kb/FONT_041.png)
+<figure>
+    <img src="{{'img/kb/FONT_041.png' | relative_url }}">
+    <figcaption>FONT_041</figcaption>
+</figure>
 
 ### FONT_042
 
-![FONT_042](img/kb/FONT_042.png)
+<figure>
+    <img src="{{'img/kb/FONT_042.png' | relative_url }}">
+    <figcaption>FONT_042</figcaption>
+</figure>
 
 ### FONT_043
 
-![FONT_043](img/kb/FONT_043.png)
+<figure>
+    <img src="{{'img/kb/FONT_043.png' | relative_url }}">
+    <figcaption>FONT_043</figcaption>
+</figure>
 
 ### FONT_044
 
-![FONT_044](img/kb/FONT_044.png)
+<figure>
+    <img src="{{'img/kb/FONT_044.png' | relative_url }}">
+    <figcaption>FONT_044</figcaption>
+</figure>
 
 ### FONT_045
 
-![FONT_045](img/kb/FONT_045.png)
+<figure>
+    <img src="{{'img/kb/FONT_045.png' | relative_url }}">
+    <figcaption>FONT_045</figcaption>
+</figure>
 
 ### FONT_046
 
-![FONT_046](img/kb/FONT_046.png)
+<figure>
+    <img src="{{'img/kb/FONT_046.png' | relative_url }}">
+    <figcaption>FONT_046</figcaption>
+</figure>
 
 ### FONT_047
 
-![FONT_047](img/kb/FONT_047.png)
+<figure>
+    <img src="{{'img/kb/FONT_047.png' | relative_url }}">
+    <figcaption>FONT_047</figcaption>
+</figure>
 
 ### FONT_048
 
-![FONT_048](img/kb/FONT_048.png)
+<figure>
+    <img src="{{'img/kb/FONT_048.png' | relative_url }}">
+    <figcaption>FONT_048</figcaption>
+</figure>
 
 ### FONT_049
 
-![FONT_049](img/kb/FONT_049.png)
+<figure>
+    <img src="{{'img/kb/FONT_049.png' | relative_url }}">
+    <figcaption>FONT_049</figcaption>
+</figure>
 
