@@ -20,13 +20,13 @@ to the PDF viewer and to keep the encoding of the Signum! fonts.
 
 ### Links
 
-Source: <https://github.com/Xiphoseer/sdo-tool/tree/main/crates/pdf>  
+Source: [Xiphoseer/sdo-tool:crates/pdf](https://github.com/Xiphoseer/sdo-tool/tree/main/crates/pdf)  
 Crate: <https://crates.io/crates/pdf-create>  
 Docs: <https://docs.rs/pdf-create>
 
 ### References
 
-PDF: <https://www.adobe.com/content/dam/acom/en/devnet/pdf/PDF32000_2008.pdf>
+Spec: [PDF 32000-1:2008 (v1.7)](https://www.adobe.com/content/dam/acom/en/devnet/pdf/PDF32000_2008.pdf)
 
 [`pdf-rs`]: https://crates.io/crates/pdf
 
@@ -40,7 +40,7 @@ font to be used in generated PDF files.
 
 ### Links
 
-Source: <https://github.com/Xiphoseer/sdo-tool/tree/main/crates/ccitt>  
+Source: [Xiphoseer/sdo-tool:crates/ccitt](https://github.com/Xiphoseer/sdo-tool/tree/main/crates/ccitt)  
 Crate: <https://crates.io/crates/ccitt-t4-t6>  
 Docs: <https://docs.rs/ccitt-t4-t6>
 
