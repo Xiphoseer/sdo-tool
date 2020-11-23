@@ -89,7 +89,7 @@ pub fn main() -> eyre::Result<()> {
     let page = Page {
         media_box: Rectangle::a4_media_box(),
         resources,
-        contents,
+        contents: contents.into_bytes(),
     };
     doc.pages.push(page);
 

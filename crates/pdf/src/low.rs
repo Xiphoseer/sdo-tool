@@ -1,3 +1,8 @@
+//! Low-Level API
+//!
+//! This module contains structs and enums for representing/creating a PDF
+//! that is already split up into objects with opaque reference IDs.
+
 use std::{borrow::Cow, io};
 
 use pdf::{object::PlainRef, primitive::PdfString};
@@ -7,13 +12,17 @@ use crate::{
     encoding::ascii_85_encode, write::Formatter, write::PdfName, write::Serialize,
 };
 
+/// Destination of a GoTo action
 #[derive(Debug, Clone)]
 pub enum Destination {
+    /// Page @0, fit the page into view and scroll to height {1}
     PageFitH(PlainRef, usize),
 }
 
+/// A PDF action
 #[derive(Debug, Clone)]
 pub enum Action {
+    /// Go to some destination within the document
     GoTo(Destination),
 }
 
@@ -30,6 +39,7 @@ impl Serialize for Destination {
     }
 }
 
+/// The root outline item
 #[derive(Debug, Clone)]
 pub struct Outline {
     /// The first item
@@ -51,6 +61,7 @@ impl Serialize for Outline {
     }
 }
 
+/// A child outline item
 #[derive(Debug, Clone)]
 pub struct OutlineItem {
     /// The title of the outline item
@@ -88,6 +99,7 @@ impl Serialize for OutlineItem {
     }
 }
 
+/// A page object
 pub struct Page<'a> {
     /// Reference to the parent
     pub parent: PlainRef,
@@ -112,8 +124,11 @@ impl Serialize for Page<'_> {
     }
 }
 
+/// A resource entry
 pub enum Resource<T> {
+    /// Reference to another object
     Ref(PlainRef),
+    /// A resource that is serialized in place
     Immediate(T),
 }
 
@@ -126,18 +141,29 @@ impl<T: Serialize> Serialize for Resource<T> {
     }
 }
 
+/// A type 3 font resource
 pub struct Type3Font<'a> {
+    /// The name of the object
     pub name: Option<PdfName<'a>>,
+    /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
+    /// The matrix to map glyph space into text space
     pub font_matrix: Matrix<f32>,
+    /// The first used char key
     pub first_char: u8,
+    /// The last used char key
     pub last_char: u8,
+    /// Dict of encoding value to char names
     pub encoding: Resource<Encoding<'a>>,
+    /// Dict of char names to drawing procedures
     pub char_procs: Dict<PlainRef>,
+    /// Width of every char between first and last
     pub widths: &'a [u32],
 }
 
+/// A font resource
 pub enum Font<'a> {
+    /// A type 3 font resource
     Type3(Type3Font<'a>),
 }
 
@@ -163,6 +189,7 @@ impl Serialize for Font<'_> {
     }
 }
 
+/// A character drawing procedure
 pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
 impl<'a> Serialize for CharProc<'a> {
@@ -179,7 +206,9 @@ impl<'a> Serialize for CharProc<'a> {
     }
 }
 
+/// An emedded object resource
 pub enum XObject {
+    /// An image object
     Image {},
 }
 
@@ -189,12 +218,18 @@ impl Serialize for XObject {
     }
 }
 
+/// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
+/// A referenced or immediate dict of resources
 pub type ResDictRes<T> = Resource<Dict<Resource<T>>>;
 
+/// The resources of a page
 pub struct Resources<'a> {
+    /// A dict of font resources
     pub font: ResDictRes<Font<'a>>,
+    /// A dict of embedded object resources
     pub x_object: ResDictRes<XObject>,
+    /// A set of valid procedures
     pub proc_set: &'a [ProcSet],
 }
 
@@ -208,7 +243,9 @@ impl Serialize for Resources<'_> {
     }
 }
 
+/// The list of pages
 pub struct Pages {
+    /// References to the individual pages
     pub kids: Vec<PlainRef>,
 }
 
@@ -222,7 +259,9 @@ impl Serialize for Pages {
     }
 }
 
+/// A data stream
 pub struct Stream {
+    /// The (unencoded) data
     pub data: Vec<u8>,
 }
 
@@ -234,14 +273,23 @@ impl Serialize for Stream {
     }
 }
 
+/// Well-known PDF Versions
 pub enum PdfVersion {
+    /// PDF-1.0
     V1_0,
+    /// PDF-1.1
     V1_1,
+    /// PDF-1.2
     V1_2,
+    /// PDF-1.3
     V1_3,
+    /// PDF-1.4
     V1_4,
+    /// PDF-1.5
     V1_5,
+    /// PDF-1.6
     V1_6,
+    /// PDF-1.7
     V1_7,
 }
 
@@ -260,11 +308,16 @@ impl Serialize for PdfVersion {
     }
 }
 
+/// The catalog/root of the document
 pub struct Catalog {
+    /// The PDF Version
     pub version: Option<PdfVersion>,
     // Extensions
+    /// Reference to the list of pages
     pub pages: PlainRef,
+    /// Optional reference to the page labels
     pub page_labels: Option<PlainRef>,
+    /// Optional reference to the outline
     pub outline: Option<PlainRef>,
 }
 
@@ -280,9 +333,13 @@ impl Serialize for Catalog {
     }
 }
 
+/// The trailer of the document
 pub struct Trailer {
+    /// The size of the document / number of objects
     pub size: usize,
+    /// Optional reference to the info struct
     pub info: Option<PlainRef>,
+    /// Refernce to the root/catalog
     pub root: PlainRef,
 }
 

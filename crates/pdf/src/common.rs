@@ -1,3 +1,5 @@
+//! Common structs and enums
+
 use std::{
     collections::BTreeMap,
     io,
@@ -8,10 +10,14 @@ use pdf::primitive::PdfString;
 
 use crate::write::{Formatter, PdfName, Serialize};
 
+/// The base encoding for a font
 #[derive(Debug, Copy, Clone)]
 pub enum BaseEncoding {
+    /// `MacRomanEncoding`
     MacRomanEncoding,
+    /// `WinAnsiEncoding`
     WinAnsiEncoding,
+    /// `MacExpertEncoding`
     MacExpertEncoding,
 }
 
@@ -25,12 +31,18 @@ impl Serialize for BaseEncoding {
     }
 }
 
+/// The style of a page label number
 #[derive(Debug, Clone)]
 pub enum PageLabelKind {
+    /// Arabic decimal numerals (1, 2, 3, 4, …)
     Decimal,
+    /// Lowercase roman numerals (i, ii, iii, iv, …)
     RomanLower,
+    /// Uppercase roman numerals (I, II, III, IV, …)
     RomanUpper,
+    /// Lowercase letters (a-z, aa-zz, …)
     AlphaLower,
+    /// Lowercase letters (a-z, aa-zz, …)
     AlphaUpper,
 }
 
@@ -46,10 +58,14 @@ impl Serialize for PageLabelKind {
     }
 }
 
+/// Specification for the labels of a sequence of pages
 #[derive(Debug, Clone)]
 pub struct PageLabel {
+    /// Fixed string prepended to every number
     pub prefix: PdfString,
+    /// The style of the number
     pub kind: Option<PageLabelKind>,
+    /// The value for the number on the first page of the group
     pub start: u32,
 }
 
@@ -83,6 +99,7 @@ where
     }
 }
 
+/// A tree of numbers
 pub struct NumberTree<T> {
     inner: BTreeMap<usize, T>,
 }
@@ -100,16 +117,19 @@ impl<T> From<BTreeMap<usize, T>> for NumberTree<T> {
 }
 
 impl<T> NumberTree<T> {
+    /// Creates a new tree
     pub fn new() -> Self {
         Self {
             inner: BTreeMap::new(),
         }
     }
 
+    /// Checks whether the tree is empty
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
+    /// Inserts a node into the tree
     pub fn insert(&mut self, key: usize, value: T) -> Option<T> {
         self.inner.insert(key, value)
     }
@@ -122,6 +142,7 @@ impl<T: Serialize> Serialize for NumberTree<T> {
 }
 
 #[derive(Debug, Clone)]
+/// A vector of options
 pub struct SparseSet<T> {
     inner: Vec<Option<T>>,
 }
@@ -147,12 +168,14 @@ impl<T> DerefMut for SparseSet<T> {
 }
 
 impl<T> SparseSet<T> {
+    /// Creates a new sparse set
     pub fn new() -> Self {
         Self { inner: vec![] }
     }
 }
 
 impl<T: Clone> SparseSet<T> {
+    /// Creates a new set
     pub fn with_size(size: usize) -> Self {
         Self {
             inner: vec![None; size],
@@ -179,9 +202,12 @@ impl<T: Serialize> Serialize for SparseSet<T> {
     }
 }
 
+/// A font encoding
 #[derive(Debug, Clone)]
 pub struct Encoding<'a> {
+    /// The base encoding
     pub base_encoding: Option<BaseEncoding>,
+    /// The differences from the base encoding
     pub differences: Option<SparseSet<PdfName<'a>>>,
 }
 
@@ -195,9 +221,12 @@ impl Serialize for Encoding<'_> {
     }
 }
 
+/// A simple two-dimensional coordinate
 #[derive(Debug, Copy, Clone)]
 pub struct Point<P> {
+    /// Horizontal offset
     pub x: P,
+    /// Vertical offset
     pub y: P,
 }
 
@@ -249,11 +278,17 @@ impl<P: Serialize> Serialize for Rectangle<P> {
 /// </pre>
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Matrix<P> {
+    /// M<sub>1,1</sub>
     pub a: P,
+    /// M<sub>1,2</sub>
     pub b: P,
+    /// M<sub>2,1</sub>
     pub c: P,
+    /// M<sub>2,2</sub>
     pub d: P,
+    /// M<sub>3,1</sub>
     pub e: P,
+    /// M<sub>3,2</sub>
     pub f: P,
 }
 
@@ -308,6 +343,7 @@ impl Matrix<f32> {
         Self::scale(-1.0, 1.0)
     }
 
+    /// Inverts both coordinates
     pub fn inverse_xy() -> Self {
         Self::scale(-1.0, -1.0)
     }
@@ -333,6 +369,7 @@ impl Matrix<f32> {
         }
     }
 
+    /// Create a scaling matrix
     pub fn scale(x: f32, y: f32) -> Self {
         Self {
             a: x,
@@ -344,6 +381,7 @@ impl Matrix<f32> {
         }
     }
 
+    /// Create a default 1:1000 glyph matrix
     pub fn default_glyph() -> Self {
         Self::scale(0.0001, 0.0001)
     }
@@ -362,6 +400,7 @@ impl<P: Serialize> Serialize for Matrix<P> {
     }
 }
 
+/// A dict is a map from strings to a type P
 pub type Dict<P> = BTreeMap<String, P>;
 
 impl<P: Serialize> Serialize for Dict<P> {
@@ -374,11 +413,17 @@ impl<P: Serialize> Serialize for Dict<P> {
     }
 }
 
+/// Valid `ProcSet`s for PDF files
 pub enum ProcSet {
+    /// General PDFs procs
     PDF,
+    /// Text procs
     Text,
+    /// Black/White Images
     ImageB,
+    /// Color Images
     ImageC,
+    /// TODO: Check Docs
     ImageI,
 }
 
@@ -394,7 +439,9 @@ impl Serialize for ProcSet {
     }
 }
 
+/// Indicates whether the PDF is trapped
 #[derive(Debug, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub enum Trapped {
     True,
     False,

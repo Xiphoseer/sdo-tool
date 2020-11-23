@@ -25,7 +25,7 @@ pub const DEFAULT_NAMES: [&str; 128] = [
     "zfive",       "zsix",       "zseven",      "zeight",     "znine",     "zplus",     "zminus",      "zperiod",
     // 32
     "section",     "exclam",     "quotedbl",    "numbersign", "dollar",    "percent",   "ampersand",   "quotesingle",
-    "parenleft",   "parenright", "asterisk",    "plus",       "comma",     "minus",     "period",      "slash",
+    "parenleft",   "parenright", "asterisk",    "plus",       "comma",     "hyphen",     "period",      "slash",
     // 48
     "zero",        "one",        "two",         "three",      "four",      "five",      "six",         "seven",
     "eight",       "nine",       "colon",       "semicolon",  "less",      "equal",     "greater",     "question",
@@ -40,13 +40,13 @@ pub const DEFAULT_NAMES: [&str; 128] = [
     "h",           "i",          "j",           "k",          "l",         "m",         "n",           "o",
     // 112
     "p",           "q",          "r",           "s",          "t",         "u",         "v",           "w",
-    "x",           "y",          "z",           "Adieresis",  "bar",       "Odieresis", "asciitilde",  "germandbls",
+    "x",           "y",          "z",           "Odieresis",  "bar",       "Adieresis", "asciitilde",  "germandbls",
 ];
 
 /// Charcodes of all characters that have a different name compared to the `WinAnsiEncoding`
 pub const DIFFERENCES: &[u8] = &[
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32, 45, 64, 91, 92, 93, 123, 125, 127,
+    26, 27, 28, 29, 30, 31, 32, 64, 91, 92, 93, 123, 125, 127,
 ];
 
 pub fn write_char_stream<W: Write>(

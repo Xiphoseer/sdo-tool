@@ -1,3 +1,5 @@
+//! Helpers to turn *high* types into *low* types
+
 use pdf::object::PlainRef;
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
     util::NextID,
 };
 
+/// Make a PlainRef for an original document (generation 0)
 pub fn make_ref(id: u64) -> PlainRef {
     PlainRef { id, gen: 0 }
 }

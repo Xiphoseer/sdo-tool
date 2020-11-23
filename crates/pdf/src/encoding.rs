@@ -1,3 +1,5 @@
+//! Text encodings
+
 use std::{
     error::Error,
     fmt,
@@ -67,8 +69,10 @@ pub fn ascii_85_encode<W: Write>(data: &[u8], w: &mut W) -> io::Result<usize> {
 }
 
 #[derive(Debug)]
+/// Codepoint U+{0:04x} is not valid in PDFDocEncoding
 pub struct PDFDocEncodingError(char);
 
+impl Error for PDFDocEncodingError {}
 impl fmt::Display for PDFDocEncodingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -78,8 +82,6 @@ impl fmt::Display for PDFDocEncodingError {
         )
     }
 }
-
-impl Error for PDFDocEncodingError {}
 
 fn pdf_char_encode(chr: char) -> Result<u8, PDFDocEncodingError> {
     match u32::from(chr) {
@@ -132,6 +134,7 @@ fn pdf_char_encode(chr: char) -> Result<u8, PDFDocEncodingError> {
     }
 }
 
+/// Encode a string as PDFDocEncoding
 pub fn pdf_doc_encode(input: &str) -> Result<Vec<u8>, PDFDocEncodingError> {
     input.chars().map(pdf_char_encode).collect()
 }

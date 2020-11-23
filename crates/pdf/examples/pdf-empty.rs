@@ -64,7 +64,7 @@ pub fn main() -> eyre::Result<()> {
             ur: Point { x: 592, y: 842 },
         },
         resources,
-        contents,
+        contents: contents.into_bytes(),
     };
     doc.pages.push(page);
 

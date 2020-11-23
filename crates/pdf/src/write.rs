@@ -1,3 +1,5 @@
+//! Methods to produce a binary file
+
 use std::io::{self, Write};
 
 use chrono::{DateTime, Local};
@@ -8,6 +10,7 @@ use pdf::{
 
 use crate::{common::Dict, low, util::ByteCounter};
 
+/// API to serialize a dict
 #[must_use]
 pub struct PdfDict<'a, 'b> {
     first: bool,
@@ -27,6 +30,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(())
     }
 
+    /// Write a field
     pub fn field(&mut self, name: &str, value: &dyn Serialize) -> io::Result<&mut Self> {
         self.check_first()?;
         self.f.indent += 2;
@@ -38,6 +42,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(self)
     }
 
+    /// Write an optional field, if it is not `None`
     pub fn opt_field<X: Serialize>(
         &mut self,
         name: &str,
@@ -50,6 +55,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         }
     }
 
+    /// Write a dict-valued field if it is not empty
     pub fn dict_field<X: Serialize>(
         &mut self,
         name: &str,
@@ -62,6 +68,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         }
     }
 
+    /// Write a dict-valued field wrapped in a resource
     pub fn dict_res_field<X: Serialize>(
         &mut self,
         name: &str,
@@ -73,6 +80,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         }
     }
 
+    /// Write a slice-valued field
     pub fn arr_field<X: Serialize>(&mut self, name: &str, array: &[X]) -> io::Result<&mut Self> {
         self.check_first()?;
         self.f.indent += 2;
@@ -86,6 +94,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(self)
     }
 
+    /// Close the dict
     pub fn finish(&mut self) -> io::Result<()> {
         if self.first {
             write!(self.f.inner, "<< >>")?;
@@ -101,6 +110,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
     }
 }
 
+/// API to serialize an array
 #[must_use]
 pub struct PdfArr<'a, 'b> {
     first: bool,
@@ -117,12 +127,14 @@ impl<'a, 'b> PdfArr<'a, 'b> {
         Ok(())
     }
 
+    /// Write the next entry
     pub fn entry(&mut self, value: &dyn Serialize) -> io::Result<&mut Self> {
         self.check_first()?;
         value.write(&mut self.f)?;
         Ok(self)
     }
 
+    /// Write entries from an iterator
     pub fn entries<X: Serialize>(
         &mut self,
         i: impl IntoIterator<Item = X>,
@@ -133,6 +145,7 @@ impl<'a, 'b> PdfArr<'a, 'b> {
         Ok(self)
     }
 
+    /// Close the array
     pub fn finish(&mut self) -> io::Result<()> {
         if self.first {
             write!(self.f.inner, "[]")?;
@@ -143,6 +156,7 @@ impl<'a, 'b> PdfArr<'a, 'b> {
     }
 }
 
+/// Formatter for a PDF document
 pub struct Formatter<'a> {
     pub(super) inner: ByteCounter<&'a mut dyn Write>,
     indent: usize,
@@ -151,6 +165,7 @@ pub struct Formatter<'a> {
 }
 
 impl<'a> Formatter<'a> {
+    /// Create a new formatter
     pub fn new(w: &'a mut dyn Write) -> Self {
         Self {
             inner: ByteCounter::new(w),
@@ -160,6 +175,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Start writing a PDF dict
     pub fn pdf_dict(&mut self) -> PdfDict<'a, '_> {
         PdfDict {
             first: true,
@@ -167,6 +183,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Start writing a PDF array
     pub fn pdf_arr(&mut self) -> PdfArr<'a, '_> {
         PdfArr {
             first: true,
@@ -174,6 +191,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Start writing a stream
     pub fn pdf_stream(&mut self, data: &[u8]) -> io::Result<()> {
         writeln!(self.inner, "stream")?;
         self.inner.write_all(data)?;
@@ -181,6 +199,7 @@ impl<'a> Formatter<'a> {
         Ok(())
     }
 
+    /// Start writing an object
     pub fn obj(&mut self, r#ref: PlainRef, obj: &dyn Serialize) -> io::Result<()> {
         let offset = self.inner.bytes_written();
         writeln!(self.inner, "{} {} obj", r#ref.id, r#ref.gen)?;
@@ -194,6 +213,7 @@ impl<'a> Formatter<'a> {
         Ok(())
     }
 
+    /// Write a classic xref section
     pub fn xref(&mut self) -> io::Result<usize> {
         let offset = self.inner.bytes_written();
         writeln!(self.inner, "xref")?;
@@ -226,7 +246,9 @@ impl<'a> Formatter<'a> {
     }
 }
 
+/// Trait to serialize some PDF object
 pub trait Serialize {
+    /// Write the object to a stream
     fn write(&self, f: &mut Formatter) -> io::Result<()>;
 }
 
@@ -238,7 +260,7 @@ impl<X: Serialize> Serialize for &'_ X {
 
 impl Serialize for PdfString {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        f.needs_space = write_string(self, &mut f.inner)?;
+        f.needs_space = write_string(self.as_bytes(), &mut f.inner)?;
         Ok(())
     }
 }
@@ -298,6 +320,7 @@ impl Serialize for PlainRef {
     }
 }
 
+/// A borrowed PDF name (e.g. `/Info`)
 #[derive(Debug, Copy, Clone)]
 pub struct PdfName<'a>(pub &'a str);
 
@@ -326,12 +349,13 @@ impl Serialize for DateTime<Local> {
             off_hor,
             off_min
         );
-        let st = PdfString::new(date_time.into_bytes());
+        let st = date_time.into_bytes();
         f.needs_space = write_string(&st, &mut f.inner)?;
         Ok(())
     }
 }
 
+/// Writes a complete PDF array to a writer
 pub fn write_array<W: Write>(array: &[Primitive], w: &mut W) -> io::Result<bool> {
     if array.len() > 19 {
         writeln!(w, "[")?;
@@ -354,6 +378,7 @@ pub fn write_array<W: Write>(array: &[Primitive], w: &mut W) -> io::Result<bool>
     Ok(false)
 }
 
+/// Writes a complete dict to a writer
 pub fn write_dict<W: Write>(dict: &Dictionary, w: &mut W) -> io::Result<bool> {
     writeln!(w, "<<")?;
     for (k, v) in dict {
@@ -365,6 +390,7 @@ pub fn write_dict<W: Write>(dict: &Dictionary, w: &mut W) -> io::Result<bool> {
     Ok(false)
 }
 
+/// Writes a complete stream to a writer
 pub fn write_stream<W: Write>(stream: &PdfStream, w: &mut W) -> io::Result<bool> {
     write_dict(&stream.info, w)?;
     writeln!(w, "stream")?;
@@ -373,13 +399,12 @@ pub fn write_stream<W: Write>(stream: &PdfStream, w: &mut W) -> io::Result<bool>
     Ok(true)
 }
 
-pub fn write_string<W: Write>(st: &PdfString, w: &mut W) -> io::Result<bool> {
-    let bytes = st.as_bytes();
-
+/// Writes a complete string to a writer
+pub fn write_string<W: Write>(bytes: &[u8], w: &mut W) -> io::Result<bool> {
     let mut cpc = bytes.iter().copied().filter(|c| *c == 41 /* ')' */).count();
     let mut opc = 0;
     write!(w, "(")?;
-    for byte in st.as_bytes() {
+    for byte in bytes.iter().copied() {
         match byte {
             0..=31 | 127..=255 => write!(w, "\\{:03o}", byte)?,
             92 => write!(w, "\\\\")?,
@@ -400,23 +425,28 @@ pub fn write_string<W: Write>(st: &PdfString, w: &mut W) -> io::Result<bool> {
                     opc -= 1;
                 }
             }
-            _ => write!(w, "{}", *byte as char)?,
+            _ => write!(w, "{}", byte as char)?,
         }
     }
     write!(w, ")")?;
     Ok(false)
 }
 
+/// Write a borrowed string as a PDF name
+///
+/// FIXME: Probably not all unicode strings allowed
 pub fn write_name<W: Write>(name: &str, w: &mut W) -> io::Result<bool> {
     write!(w, "/{}", name)?;
     Ok(true)
 }
 
+/// Write a plain reference
 pub fn write_ref<W: Write>(plain_ref: PlainRef, w: &mut W) -> io::Result<bool> {
     write!(w, "{} {} R", plain_ref.id, plain_ref.gen)?;
     Ok(true)
 }
 
+/// Write a pdf-rs primitive
 pub fn write_primitive<W: Write>(prim: &Primitive, w: &mut W) -> io::Result<bool> {
     match prim {
         Primitive::Null => {
@@ -435,7 +465,7 @@ pub fn write_primitive<W: Write>(prim: &Primitive, w: &mut W) -> io::Result<bool
             write!(w, "{}", b)?;
             Ok(true)
         }
-        Primitive::String(st) => write_string(st, w),
+        Primitive::String(st) => write_string(st.as_bytes(), w),
         Primitive::Stream(stream) => write_stream(stream, w),
         Primitive::Dictionary(dict) => write_dict(dict, w),
         Primitive::Array(array) => write_array(array, w),

@@ -1,3 +1,5 @@
+//! Generic utilities
+
 use std::io::{self, Write};
 
 /// Source: <https://stackoverflow.com/questions/42187591/>
@@ -10,14 +12,17 @@ impl<W> ByteCounter<W>
 where
     W: Write,
 {
+    /// Create a new byte counter
     pub fn new(inner: W) -> Self {
         ByteCounter { inner, count: 0 }
     }
 
+    /// Return the inner writer
     pub fn into_inner(self) -> W {
         self.inner
     }
 
+    /// Get the number of bytes written
     pub fn bytes_written(&self) -> usize {
         self.count
     }

@@ -1,3 +1,5 @@
+//! High-Level API
+
 use std::{borrow::Cow, io};
 
 use chrono::{DateTime, Local};
@@ -11,24 +13,38 @@ use crate::{
     write::{Formatter, PdfName, Serialize},
 };
 
+/// A single page
 pub struct Page<'a> {
+    /// The dimensions of the page
     pub media_box: Rectangle<i32>,
+    /// The resource used within the page
     pub resources: Resources<'a>,
-    pub contents: String,
+    /// The content stream of the page
+    pub contents: Vec<u8>,
 }
 
+/// The Metadata/Info
 #[derive(Debug, Default)]
 pub struct Info {
+    /// The title
     pub title: Option<PdfString>,
+    /// The author
     pub author: Option<PdfString>,
+    /// The subject
     pub subject: Option<PdfString>,
+    /// A list of keywords
     pub keywords: Option<PdfString>,
+    /// The program used to create the source
     pub creator: Option<PdfString>,
+    /// The program that produced the file (this library)
     pub producer: Option<PdfString>,
 
+    /// The date of creation
     pub creation_date: Option<DateTime<Local>>,
+    /// The date of the last modification
     pub mod_date: Option<DateTime<Local>>,
 
+    /// Whether the PDF is *trapped*
     pub trapped: Option<Trapped>,
 }
 
@@ -69,6 +85,7 @@ impl Serialize for Info {
 }
 
 impl Info {
+    /// Check whether the info contains any meaningful data
     pub fn is_empty(&self) -> bool {
         self.title.is_none()
             && self.author.is_none()
@@ -83,6 +100,7 @@ impl Info {
 }
 
 #[derive(Debug, Clone)]
+/// Information for the Outline of the document
 pub struct Outline {
     /// Immediate children of this item
     pub children: Vec<OutlineItem>,
@@ -95,11 +113,13 @@ impl Default for Outline {
 }
 
 impl Outline {
+    /// Creates a new outline struct
     pub fn new() -> Self {
         Self { children: vec![] }
     }
 }
 
+/// One item in the outline
 #[derive(Debug, Clone)]
 pub struct OutlineItem {
     /// The title of the outline item
@@ -110,8 +130,10 @@ pub struct OutlineItem {
     pub children: Vec<OutlineItem>,
 }
 
+/// A destination of a GoTo Action
 #[derive(Debug, Copy, Clone)]
 pub enum Destination {
+    /// Scroll to page {0} at height {1} while fitting the page to the viewer
     PageFitH(usize, usize),
 }
 
@@ -120,20 +142,35 @@ pub enum Destination {
 /// It does not implement serialize, because it's possible that an index needs to be resolved
 #[derive(Debug)]
 pub enum Resource<T> {
-    Global { index: usize },
+    /// Use the resource at {index} from the global list
+    Global {
+        /// The index into the global list
+        index: usize
+    },
+    /// Use the value in the box
     Immediate(Box<T>),
 }
 
 #[derive(Debug)]
+/// A type 3 font
 pub struct Type3Font<'a> {
+    /// The name of the font
     pub name: Option<PdfName<'a>>,
+    /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
+    /// The matrix to map glyph space into text space
     pub font_matrix: Matrix<f32>,
+    /// The first used char key
     pub first_char: u8,
+    /// The last used char key
     pub last_char: u8,
+    /// Dict of char names to drawing procedures
     pub char_procs: Dict<CharProc<'a>>,
+    /// Dict of encoding value to char names
     pub encoding: Encoding<'a>,
+    /// Width of every char between first and last
     pub widths: Vec<u32>,
+    /// TODO
     pub to_unicode: (),
 }
 
@@ -160,19 +197,37 @@ impl<'a> Default for Type3Font<'a> {
 }
 
 #[derive(Debug)]
+/// A Font resource
 pub enum Font<'a> {
+    /// A type 3 font i.e. arbitrary glyph drawings
     Type3(Type3Font<'a>),
 }
 
+/// An embedded object resource
 #[derive(Debug)]
-pub enum XObject {}
+pub enum XObject {
+    /// An image
+    Image(Image),
+}
 
+#[derive(Debug)]
+/// An Image resource
+pub struct Image {
+
+}
+
+/// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
+/// A referenced or immediate dict of resources
 pub type ResDictRes<T> = Resource<Dict<Resource<T>>>;
 
+/// The resources of a page
 pub struct Resources<'a> {
+    /// A dict of font resources
     pub fonts: ResDictRes<Font<'a>>,
+    /// A dict of embedded object resources
     pub x_objects: ResDictRes<XObject>,
+    /// A set of valid procedures
     pub proc_sets: Vec<ProcSet>,
 }
 
@@ -185,13 +240,20 @@ impl<'a> Default for Resources<'a> {
         }
     }
 }
+/// The global context for lowering
 #[derive(Debug)]
 pub struct Res<'a> {
+    /// Font resources
     pub fonts: Vec<Font<'a>>,
+    /// Font dict resources
     pub font_dicts: Vec<DictResource<Font<'a>>>,
+    /// Embedded object resources
     pub x_objects: Vec<XObject>,
+    /// Embedded object dict resources
     pub x_object_dicts: Vec<DictResource<XObject>>,
+    /// Char Procedure resources
     pub char_procs: Vec<CharProc<'a>>,
+    /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
 }
 
@@ -208,11 +270,19 @@ impl<'a> Default for Res<'a> {
     }
 }
 
+/// Entrypoint to the high-level API
+///
+/// Create a new handle to start creating a PDF document
 pub struct Handle<'a> {
+    /// The info/metadata
     pub info: Info,
+    /// The pages
     pub pages: Vec<Page<'a>>,
+    /// The settings for page numbering for a PDF viewer
     pub page_labels: NumberTree<PageLabel>,
+    /// The outline for a PDF viewer
     pub outline: Outline,
+    /// The global resource struct
     pub res: Res<'a>,
 }
 
@@ -223,9 +293,11 @@ impl<'a> Default for Handle<'a> {
 }
 
 #[derive(Debug, Clone)]
+/// A character drawing procedure
 pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
 impl<'a> Handle<'a> {
+    /// Creates a new handle
     pub fn new() -> Self {
         Self {
             info: Info::default(),
@@ -236,9 +308,9 @@ impl<'a> Handle<'a> {
         }
     }
 
+    /// Write the whole PDF to the given writer
     pub fn write<W: Write>(&self, w: &mut W) -> io::Result<()> {
         let mut fmt = Formatter::new(w);
-        //let mut id_gen = NextID::new(1);
 
         let gen = 0;
         let make_ref = move |id: u64| PlainRef { id, gen };
@@ -268,7 +340,7 @@ impl<'a> Handle<'a> {
             let contents_ref = make_ref(contents_id);
 
             let contents = low::Stream {
-                data: page.contents.as_bytes().to_vec(),
+                data: page.contents.clone(),
             };
             fmt.obj(contents_ref, &contents)?;
 

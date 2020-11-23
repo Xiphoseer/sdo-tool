@@ -1,12 +1,14 @@
-use std::fmt::Write;
+use std::io::Write;
+
+use pdf_create::write::write_string;
 
 pub struct Contents {
     buf: Vec<u8>,
-    inner: String,
+    inner: Vec<u8>,
     cset: u8,
     open: bool,
     needs_space: bool,
-    is_ascii: bool,
+    //is_ascii: bool,
     line_started: bool,
     line_y: f32,
     line_x: f32,
@@ -14,6 +16,8 @@ pub struct Contents {
 
 impl Contents {
     pub fn new(left: f32, top: f32) -> Self {
+        let inner = format!("0 g\nBT\n1 0 0 -1 {} {} Tm\n", left, top);
+        let inner = inner.into_bytes();
         Contents {
             line_started: false,
             line_y: 0.0,
@@ -21,9 +25,9 @@ impl Contents {
             buf: vec![],
             open: false,
             needs_space: false,
-            is_ascii: true,
+            //is_ascii: true,
             cset: 0xff,
-            inner: format!("0 g\nBT\n1 0 0 -1 {} {} Tm\n", left, top),
+            inner,
         }
     }
 
@@ -62,14 +66,14 @@ impl Contents {
     pub fn byte(&mut self, byte: u8) {
         self.open();
         self.buf.push(byte);
-        self.is_ascii = self.is_ascii && (byte > 31) && (byte < 127);
+        //self.is_ascii = self.is_ascii && (byte > 31) && (byte < 127);
     }
 
     fn buf_flush(&mut self) {
         if self.buf.is_empty() {
             return;
         }
-        if self.is_ascii {
+        /*if self.is_ascii {
             self.inner.push('(');
             for b in self.buf.drain(..) {
                 if matches!(b, 0x28 | 0x29 | 0x5c) {
@@ -84,8 +88,10 @@ impl Contents {
                 write!(self.inner, "{:02X}", byte).unwrap();
             }
             write!(self.inner, ">").unwrap();
-        }
-        self.is_ascii = true;
+        }*/
+        write_string(&self.buf, &mut self.inner).unwrap();
+        self.buf.clear();
+        //self.is_ascii = true;
         self.needs_space = false;
     }
 
@@ -106,8 +112,8 @@ impl Contents {
         }
     }
 
-    pub fn into_inner(mut self) -> String {
-        self.inner.push_str("ET\n");
+    pub fn into_inner(mut self) -> Vec<u8> {
+        self.inner.extend_from_slice(b"ET\n");
         self.inner
     }
 }

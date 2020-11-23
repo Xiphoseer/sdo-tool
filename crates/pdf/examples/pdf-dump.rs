@@ -225,7 +225,7 @@ fn main() -> io::Result<()> {
         writeln!(of, "endobj")?;
     }
 
-    assert_eq!(next_ref as usize, xref.len() + 1);
+    //assert_eq!(next_ref as usize, xref.len() + 1);
 
     let startxref = of.bytes_written();
     writeln!(of, "xref")?;

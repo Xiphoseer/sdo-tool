@@ -1,3 +1,8 @@
+#![warn(missing_docs)]
+//! # pdf-create
+//!
+//! Library to create a PDF file with a rustic API
+
 pub mod common;
 pub mod encoding;
 pub mod high;
