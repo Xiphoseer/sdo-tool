@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (`main` branch)
+## Unreleased (main)
 
 ### 15.09.2020
 
@@ -14,7 +14,7 @@
   routine creates a PS file with embedded bitmap fonts (Adobe Type 3). You can
   use this to create a PDF using the `ps2pdf` program from `ghostscript`.
 
-### 12.09.2020
+### 12.09.2020 (Preview v0.2)
 
 - Added `--plain` option to the `dump` command to skip printing
   tags that provide debugging information on lines and paragraphs.
