@@ -13,7 +13,10 @@ Some non-standard fonts that I came across are listed [here](font-other.html).
 
 ## ANTIKRO
 
-![KBANTIK](img/kb/ANTIKRO.png)
+<figure>
+    <img src="{{'img/kb/ANTIKRO.png' | relative_url }}">
+    <figcaption>ANTIKRO</figcaption>
+</figure>
 
 <https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/ANTIKRO.TXT>
 
@@ -21,15 +24,24 @@ Some non-standard fonts that I came across are listed [here](font-other.html).
 
 ## FRAKTUR1
 
-![FRAKTUR1](img/kb/FRAKTUR1.png)
+<figure>
+    <img src="{{'img/kb/FRAKTUR1.png' | relative_url }}">
+    <figcaption>FRAKTUR1</figcaption>
+</figure>
 
 ## GRAPH1
 
-![GRAPH1](img/kb/GRAPH1.png)
+<figure>
+    <img src="{{'img/kb/GRAPH1.png' | relative_url }}">
+    <figcaption>GRAPH1</figcaption>
+</figure>
 
 ## GRIECH
 
-![KBGRIECH](img/kb/GRIECH.png)
+<figure>
+    <img src="{{'img/kb/GRIECH.png' | relative_url }}">
+    <figcaption>GRIECH</figcaption>
+</figure>
 
 <https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/GRIECH.TXT>
 
@@ -39,24 +51,42 @@ Some non-standard fonts that I came across are listed [here](font-other.html).
 
 ## GROTFE
 
-![GROTFE](img/kb/GROTFE.png)
+<figure>
+    <img src="{{'img/kb/GROTFE.png' | relative_url }}">
+    <figcaption>GROTFE</figcaption>
+</figure>
 
 ## GROTLT
 
-![GROTLT](img/kb/GROTLT.png)
+<figure>
+    <img src="{{'img/kb/GROTLT.png' | relative_url }}">
+    <figcaption>GROTLT</figcaption>
+</figure>
 
 ## GROTMIKR
 
-![GROTMIKR](img/kb/GROTMIKR.png)
+<figure>
+    <img src="{{'img/kb/GROTMIKR.png' | relative_url }}">
+    <figcaption>GROTMIKR</figcaption>
+</figure>
 
 ## MATHEM
 
-![MATHEM](img/kb/MATHEM.png)
+<figure>
+    <img src="{{'img/kb/MATHEM.png' | relative_url }}">
+    <figcaption>MATHEM</figcaption>
+</figure>
 
 ## NORMANDE
 
-![NORMANDE](img/kb/NORMANDE.png)
+<figure>
+    <img src="{{'img/kb/NORMANDE.png' | relative_url }}">
+    <figcaption>NORMANDE</figcaption>
+</figure>
 
 ## PINSEL
 
-![PINSEL](img/kb/PINSEL.png)
+<figure>
+    <img src="{{'img/kb/PINSEL.png' | relative_url }}">
+    <figcaption>PINSEL</figcaption>
+</figure>
