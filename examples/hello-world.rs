@@ -3,9 +3,8 @@ use std::{collections::BTreeMap, path::PathBuf};
 use structopt::StructOpt;
 
 use color_eyre::eyre::{self, eyre};
-use pdf::primitive::PdfString;
 use pdf_create::{
-    common::Rectangle,
+    common::{PdfString, Rectangle},
     high::{Font, Handle, Page, Resource, Resources},
 };
 use sdo::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind, UseTable};

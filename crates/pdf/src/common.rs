@@ -1,14 +1,48 @@
 //! Common structs and enums
 
-use std::{
-    collections::BTreeMap,
-    io,
-    ops::{Add, Deref, DerefMut, Mul},
-};
+use std::{collections::BTreeMap, fmt, io, ops::{Add, Deref, DerefMut, Mul}};
 
-use pdf::primitive::PdfString;
+//use pdf::primitive::PdfString;
 
 use crate::write::{Formatter, PdfName, Serialize};
+
+/// A PDF Byte string
+#[derive(Clone, Eq, PartialEq)]
+pub struct PdfString(Vec<u8>);
+
+impl PdfString {
+    /// Create a new string
+    pub fn new<S: AsRef<[u8]>>(string: S) -> Self {
+        Self(string.as_ref().to_vec())
+    }
+}
+
+impl PdfString {
+    /// Get a slice to the contained bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+
+    /// Get the contained byte buffer
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+impl fmt::Debug for PdfString {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+/// A reference to an object
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ObjRef {
+    /// The index within the file
+    pub id: u64,
+    /// The generation number 
+    pub gen: u16,
+}
 
 /// The base encoding for a font
 #[derive(Debug, Copy, Clone)]

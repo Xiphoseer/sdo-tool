@@ -4,10 +4,12 @@ use std::{borrow::Cow, io};
 
 use chrono::{DateTime, Local};
 use io::Write;
-use pdf::{object::PlainRef, primitive::PdfString};
 
 use crate::{
-    common::{Dict, Encoding, Matrix, NumberTree, PageLabel, Point, ProcSet, Rectangle, Trapped},
+    common::{
+        Dict, Encoding, Matrix, NumberTree, ObjRef, PageLabel, PdfString, Point, ProcSet,
+        Rectangle, Trapped,
+    },
     low,
     lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
     write::{Formatter, PdfName, Serialize},
@@ -145,7 +147,7 @@ pub enum Resource<T> {
     /// Use the resource at {index} from the global list
     Global {
         /// The index into the global list
-        index: usize
+        index: usize,
     },
     /// Use the value in the box
     Immediate(Box<T>),
@@ -212,9 +214,7 @@ pub enum XObject {
 
 #[derive(Debug)]
 /// An Image resource
-pub struct Image {
-
-}
+pub struct Image {}
 
 /// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
@@ -313,7 +313,7 @@ impl<'a> Handle<'a> {
         let mut fmt = Formatter::new(w);
 
         let gen = 0;
-        let make_ref = move |id: u64| PlainRef { id, gen };
+        let make_ref = move |id: u64| ObjRef { id, gen };
 
         writeln!(fmt.inner, "%PDF-1.5")?;
         writeln!(fmt.inner)?;

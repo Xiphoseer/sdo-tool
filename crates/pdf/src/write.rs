@@ -3,12 +3,8 @@
 use std::io::{self, Write};
 
 use chrono::{DateTime, Local};
-use pdf::{
-    object::PlainRef,
-    primitive::{Dictionary, PdfStream, PdfString, Primitive},
-};
 
-use crate::{common::Dict, low, util::ByteCounter};
+use crate::{common::{Dict, ObjRef, PdfString}, low, util::ByteCounter};
 
 /// API to serialize a dict
 #[must_use]
@@ -200,7 +196,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Start writing an object
-    pub fn obj(&mut self, r#ref: PlainRef, obj: &dyn Serialize) -> io::Result<()> {
+    pub fn obj(&mut self, r#ref: ObjRef, obj: &dyn Serialize) -> io::Result<()> {
         let offset = self.inner.bytes_written();
         writeln!(self.inner, "{} {} obj", r#ref.id, r#ref.gen)?;
         obj.write(self)?;
@@ -310,7 +306,7 @@ impl<X: Serialize> Serialize for [X] {
     }
 }
 
-impl Serialize for PlainRef {
+impl Serialize for ObjRef {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         if f.needs_space {
             write!(f.inner, " ")?;
@@ -355,50 +351,6 @@ impl Serialize for DateTime<Local> {
     }
 }
 
-/// Writes a complete PDF array to a writer
-pub fn write_array<W: Write>(array: &[Primitive], w: &mut W) -> io::Result<bool> {
-    if array.len() > 19 {
-        writeln!(w, "[")?;
-    } else {
-        write!(w, "[")?;
-    }
-    for chunk in array.chunks(20) {
-        let mut needs_space = false;
-        for elem in chunk {
-            if needs_space {
-                write!(w, " ")?;
-            }
-            needs_space = write_primitive(elem, w)?;
-        }
-        if chunk.len() == 20 {
-            writeln!(w)?;
-        }
-    }
-    write!(w, "]")?;
-    Ok(false)
-}
-
-/// Writes a complete dict to a writer
-pub fn write_dict<W: Write>(dict: &Dictionary, w: &mut W) -> io::Result<bool> {
-    writeln!(w, "<<")?;
-    for (k, v) in dict {
-        write!(w, "/{} ", k)?;
-        write_primitive(v, w)?;
-        writeln!(w)?;
-    }
-    writeln!(w, ">>")?;
-    Ok(false)
-}
-
-/// Writes a complete stream to a writer
-pub fn write_stream<W: Write>(stream: &PdfStream, w: &mut W) -> io::Result<bool> {
-    write_dict(&stream.info, w)?;
-    writeln!(w, "stream")?;
-    w.write_all(&stream.data)?;
-    writeln!(w, "\nendstream")?;
-    Ok(true)
-}
-
 /// Writes a complete string to a writer
 pub fn write_string<W: Write>(bytes: &[u8], w: &mut W) -> io::Result<bool> {
     let mut cpc = bytes.iter().copied().filter(|c| *c == 41 /* ')' */).count();
@@ -441,35 +393,7 @@ pub fn write_name<W: Write>(name: &str, w: &mut W) -> io::Result<bool> {
 }
 
 /// Write a plain reference
-pub fn write_ref<W: Write>(plain_ref: PlainRef, w: &mut W) -> io::Result<bool> {
+pub fn write_ref<W: Write>(plain_ref: ObjRef, w: &mut W) -> io::Result<bool> {
     write!(w, "{} {} R", plain_ref.id, plain_ref.gen)?;
     Ok(true)
-}
-
-/// Write a pdf-rs primitive
-pub fn write_primitive<W: Write>(prim: &Primitive, w: &mut W) -> io::Result<bool> {
-    match prim {
-        Primitive::Null => {
-            write!(w, "null")?;
-            Ok(true)
-        }
-        Primitive::Integer(x) => {
-            write!(w, "{}", x)?;
-            Ok(true)
-        }
-        Primitive::Number(x) => {
-            write!(w, "{}", x)?;
-            Ok(true)
-        }
-        Primitive::Boolean(b) => {
-            write!(w, "{}", b)?;
-            Ok(true)
-        }
-        Primitive::String(st) => write_string(st.as_bytes(), w),
-        Primitive::Stream(stream) => write_stream(stream, w),
-        Primitive::Dictionary(dict) => write_dict(dict, w),
-        Primitive::Array(array) => write_array(array, w),
-        Primitive::Reference(plain_ref) => write_ref(*plain_ref, w),
-        Primitive::Name(name) => write_name(name, w),
-    }
 }

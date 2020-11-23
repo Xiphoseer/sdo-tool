@@ -1,12 +1,7 @@
 use std::collections::BTreeMap;
 
 use color_eyre::eyre;
-use pdf::primitive::PdfString;
-use pdf_create::{
-    common::Point,
-    common::Rectangle,
-    high::{Font, Handle, Page, Resource, Resources, Type3Font},
-};
+use pdf_create::{common::Point, common::{PdfString, Rectangle}, high::{Font, Handle, Page, Resource, Resources, Type3Font}};
 
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;

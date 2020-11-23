@@ -1,19 +1,13 @@
 //! Helpers to turn *high* types into *low* types
 
-use pdf::object::PlainRef;
+use crate::{common::Encoding, high::CharProc, high::Destination, high::DictResource, high::Font, high::Handle, common::ObjRef, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject, low, util::NextID};
 
-use crate::{
-    common::Encoding, high::CharProc, high::Destination, high::DictResource, high::Font,
-    high::Handle, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject, low,
-    util::NextID,
-};
-
-/// Make a PlainRef for an original document (generation 0)
-pub fn make_ref(id: u64) -> PlainRef {
-    PlainRef { id, gen: 0 }
+/// Make a ObjRef for an original document (generation 0)
+pub fn make_ref(id: u64) -> ObjRef {
+    ObjRef { id, gen: 0 }
 }
 
-fn lower_dest(pages: &[PlainRef], dest: Destination) -> low::Action {
+fn lower_dest(pages: &[ObjRef], dest: Destination) -> low::Action {
     use low::Action::*;
     use low::Destination::*;
     match dest {
@@ -25,12 +19,12 @@ fn lower_dest(pages: &[PlainRef], dest: Destination) -> low::Action {
 }
 
 pub(super) fn lower_outline_items(
-    acc: &mut Vec<(PlainRef, low::OutlineItem)>,
-    pages: &[PlainRef],
+    acc: &mut Vec<(ObjRef, low::OutlineItem)>,
+    pages: &[ObjRef],
     items: &[OutlineItem],
-    parent: PlainRef,
+    parent: ObjRef,
     id_gen: &mut NextID,
-) -> Option<(PlainRef, PlainRef)> {
+) -> Option<(ObjRef, ObjRef)> {
     if let Some((last, rest)) = items.split_last() {
         let mut prev = None;
         let first_ref = make_ref(id_gen.next());
@@ -178,7 +172,7 @@ impl<'a> Lowerable<'a> for Encoding<'a> {
 }
 
 pub(crate) struct LowerBox<'a, T> {
-    pub store: Vec<(PlainRef, &'a T)>,
+    pub store: Vec<(ObjRef, &'a T)>,
     res: &'a [T],
 }
 
@@ -229,7 +223,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
 }
 
 impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
-    fn put(&mut self, val: &'a T, id_gen: &mut NextID) -> PlainRef {
+    fn put(&mut self, val: &'a T, id_gen: &mut NextID) -> ObjRef {
         let id = id_gen.next();
         let r = make_ref(id);
         self.store.push((r, val));

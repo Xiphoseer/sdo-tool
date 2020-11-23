@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::{self, WrapErr};
-use pdf::primitive::PdfString;
 use pdf_create::{
-    common::PageLabel,
+    common::{PageLabel, PdfString},
     encoding::pdf_doc_encode,
     high::{self, Handle},
 };

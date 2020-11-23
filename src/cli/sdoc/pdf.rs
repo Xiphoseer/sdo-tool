@@ -1,10 +1,9 @@
 use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre};
-use pdf::primitive::PdfString;
 use pdf_create::{
     chrono::Local,
-    common::Rectangle,
+    common::{Rectangle, PdfString},
     encoding::pdf_doc_encode,
     high::{Font, Handle, Page, Resource, Resources},
 };

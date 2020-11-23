@@ -5,18 +5,13 @@
 
 use std::{borrow::Cow, io};
 
-use pdf::{object::PlainRef, primitive::PdfString};
-
-use crate::{
-    common::Dict, common::Encoding, common::Matrix, common::ProcSet, common::Rectangle,
-    encoding::ascii_85_encode, write::Formatter, write::PdfName, write::Serialize,
-};
+use crate::{common::Dict, common::Encoding, common::Matrix, common::ObjRef, common::ProcSet, common::Rectangle, encoding::ascii_85_encode, write::Formatter, write::PdfName, common::PdfString, write::Serialize};
 
 /// Destination of a GoTo action
 #[derive(Debug, Clone)]
 pub enum Destination {
     /// Page @0, fit the page into view and scroll to height {1}
-    PageFitH(PlainRef, usize),
+    PageFitH(ObjRef, usize),
 }
 
 /// A PDF action
@@ -43,9 +38,9 @@ impl Serialize for Destination {
 #[derive(Debug, Clone)]
 pub struct Outline {
     /// The first item
-    pub first: PlainRef,
+    pub first: ObjRef,
     /// The last item
-    pub last: PlainRef,
+    pub last: ObjRef,
     /// The total amount of items
     pub count: usize,
 }
@@ -67,15 +62,15 @@ pub struct OutlineItem {
     /// The title of the outline item
     pub title: PdfString,
     /// The parent of this item
-    pub parent: PlainRef,
+    pub parent: ObjRef,
     /// The previous siblig
-    pub prev: Option<PlainRef>,
+    pub prev: Option<ObjRef>,
     /// The next sibling
-    pub next: Option<PlainRef>,
+    pub next: Option<ObjRef>,
     /// The first child
-    pub first: Option<PlainRef>,
+    pub first: Option<ObjRef>,
     /// The last child
-    pub last: Option<PlainRef>,
+    pub last: Option<ObjRef>,
     /// The total amount of children
     pub count: usize,
     /// The destination to be used
@@ -102,9 +97,9 @@ impl Serialize for OutlineItem {
 /// A page object
 pub struct Page<'a> {
     /// Reference to the parent
-    pub parent: PlainRef,
+    pub parent: ObjRef,
     /// The content stream of the page
-    pub contents: PlainRef,
+    pub contents: ObjRef,
     /// The resources of this page
     pub resources: Resources<'a>,
     /// (required, inheritable) describes the bound of the physical page
@@ -127,7 +122,7 @@ impl Serialize for Page<'_> {
 /// A resource entry
 pub enum Resource<T> {
     /// Reference to another object
-    Ref(PlainRef),
+    Ref(ObjRef),
     /// A resource that is serialized in place
     Immediate(T),
 }
@@ -156,7 +151,7 @@ pub struct Type3Font<'a> {
     /// Dict of encoding value to char names
     pub encoding: Resource<Encoding<'a>>,
     /// Dict of char names to drawing procedures
-    pub char_procs: Dict<PlainRef>,
+    pub char_procs: Dict<ObjRef>,
     /// Width of every char between first and last
     pub widths: &'a [u32],
 }
@@ -246,7 +241,7 @@ impl Serialize for Resources<'_> {
 /// The list of pages
 pub struct Pages {
     /// References to the individual pages
-    pub kids: Vec<PlainRef>,
+    pub kids: Vec<ObjRef>,
 }
 
 impl Serialize for Pages {
@@ -314,11 +309,11 @@ pub struct Catalog {
     pub version: Option<PdfVersion>,
     // Extensions
     /// Reference to the list of pages
-    pub pages: PlainRef,
+    pub pages: ObjRef,
     /// Optional reference to the page labels
-    pub page_labels: Option<PlainRef>,
+    pub page_labels: Option<ObjRef>,
     /// Optional reference to the outline
-    pub outline: Option<PlainRef>,
+    pub outline: Option<ObjRef>,
 }
 
 impl Serialize for Catalog {
@@ -338,9 +333,9 @@ pub struct Trailer {
     /// The size of the document / number of objects
     pub size: usize,
     /// Optional reference to the info struct
-    pub info: Option<PlainRef>,
+    pub info: Option<ObjRef>,
     /// Refernce to the root/catalog
-    pub root: PlainRef,
+    pub root: ObjRef,
 }
 
 impl Serialize for Trailer {

@@ -1,3 +1,5 @@
+//! Tool that uses pdf-rs to dump some low-level metadata about PDFs
+//! and creates an equivalent copy.
 use ccitt_t4_t6::{
     bit_iter::{BitIter, BitWriter},
     g42d::encode::Encoder,
@@ -15,10 +17,12 @@ use pdf::{
     primitive::Primitive,
 };
 use pdf_create::{
-    encoding::ascii_85_encode, util::ByteCounter, write::write_dict, write::write_primitive,
+    encoding::ascii_85_encode, util::ByteCounter,
 };
 
 use std::{env::args, fs::File, io};
+
+mod compat;
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack
@@ -114,7 +118,7 @@ fn main() -> io::Result<()> {
                     data: new_data,
                 };
                 let new_stream_prim = Primitive::Stream(new_stream);
-                write_primitive(&new_stream_prim, &mut of)?;
+                compat::write_primitive(&new_stream_prim, &mut of)?;
 
                 println!("Stream({:?})", pdf_stream.info);
                 let stream =
@@ -197,16 +201,16 @@ fn main() -> io::Result<()> {
                     }));
                     next_ref += 1;
 
-                    write_dict(&new_dict, &mut of)?;
+                    compat::write_dict(&new_dict, &mut of)?;
                     println!("{:?}", new_dict);
                 }
                 _ => {
-                    write_dict(&dict, &mut of)?;
+                    compat::write_dict(&dict, &mut of)?;
                     println!("Dictionary({:?})", dict);
                 }
             },
             _ => {
-                if write_primitive(&prim, &mut of)? {
+                if compat::write_primitive(&prim, &mut of)? {
                     writeln!(of)?;
                 }
                 println!("{:?}", prim);
@@ -219,7 +223,7 @@ fn main() -> io::Result<()> {
         let offset = of.bytes_written();
         xref.push((id, offset));
         writeln!(of, "{} 0 obj", id)?;
-        if write_primitive(&obj, &mut of)? {
+        if compat::write_primitive(&obj, &mut of)? {
             writeln!(of)?;
         }
         writeln!(of, "endobj")?;
@@ -237,7 +241,7 @@ fn main() -> io::Result<()> {
     writeln!(of, "trailer")?;
     new_trailer_dict.insert(String::from("Size"), Primitive::Integer(next_ref as i32));
 
-    write_dict(&new_trailer_dict, &mut of)?;
+    compat::write_dict(&new_trailer_dict, &mut of)?;
     writeln!(of, "startxref")?;
     writeln!(of, "{}", startxref)?;
     writeln!(of, "%%EOF")?;
