@@ -1,13 +1,18 @@
 [package]
 name = "pdf-create"
 version = "0.1.0"
-authors = ["Xiphoseer <Xiphoseer@users.noreply.github.com>"]
+authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
+license = "MPL-2.0"
+readme = "README.md"
+description = "low-level, strongly-typed PDF creation library"
+repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/pdf"
+homepage = "https://xiphoseer.github.io/sdo-tool/implementation#pdf-create"
 
 [dependencies]
 chrono = "0.4"
-ccitt-t4-t6 = { path = "../ccitt" }
 
 [dev-dependencies]
 color-eyre = { version = "0.5", default-features = false }
+ccitt-t4-t6 = { version = "0.1", path = "../ccitt" }
 pdf = "0.7"
