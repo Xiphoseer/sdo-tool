@@ -1,6 +1,11 @@
+//! Common structs and enums
+
+/// Black or White Color
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Color {
+    /// No-Ink
     White,
+    /// Ink
     Black,
 }
 
@@ -15,6 +20,7 @@ impl From<bool> for Color {
 }
 
 impl Color {
+    /// Print a monochrome scanline
     pub fn _print_row(row: &[Color]) {
         print!("|");
         for pixel in row {
@@ -30,6 +36,7 @@ impl Color {
         println!("|");
     }
 
+    /// Print a monochrome bitmap
     pub fn _print_vec(vec: &[Color], width: usize) {
         print!("+");
         for _ in 0..width {
@@ -48,6 +55,7 @@ impl Color {
 }
 
 impl Color {
+    /// Invert a color
     pub fn invert(&mut self) {
         match self {
             Color::White => {

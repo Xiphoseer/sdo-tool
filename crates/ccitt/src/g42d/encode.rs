@@ -1,7 +1,9 @@
-use crate::bit_iter::{BitIter, BitWriter};
+//! Encoder implementation
 
+use crate::bit_iter::{BitIter, BitWriter};
 use super::common::Color;
 
+/// The encoder
 pub struct Encoder<'a> {
     iter: BitIter<'a>,
     width: usize,
@@ -13,12 +15,16 @@ pub struct Encoder<'a> {
     ref_color: Color,
     ref_pos: usize,
     done: bool,
+    /// How many bits of the source image to skip at the start of each line
     pub skip_lead: usize,
+    /// How many bits of the source image to skip at the end of each line
     pub skip_tail: usize,
+    /// Whether to print debug info
     pub debug: bool,
 }
 
 impl<'a> Encoder<'a> {
+    /// Create a new encoder for the given input and bit width
     pub fn new(width: usize, input: &'a [u8]) -> Self {
         Self {
             iter: BitIter::new(input),
@@ -102,6 +108,7 @@ impl<'a> Encoder<'a> {
         }
     }
 
+    /// Encode the bitmap
     pub fn encode(mut self) -> Vec<u8> {
         let mut color = Color::White;
 

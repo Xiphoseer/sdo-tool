@@ -1,3 +1,5 @@
+//! A bit iterator
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
 #[repr(u8)]
@@ -39,6 +41,7 @@ impl State {
     }
 }
 
+/// A bitwise writer
 #[derive(Debug)]
 pub struct BitWriter {
     buffer: Vec<u8>,
@@ -53,6 +56,7 @@ impl Default for BitWriter {
 }
 
 impl BitWriter {
+    /// Creates a new instance
     pub fn new() -> Self {
         Self {
             buffer: vec![],
@@ -61,6 +65,7 @@ impl BitWriter {
         }
     }
 
+    /// Creates a new instance with the given capacity of bits
     pub fn _with_capacity(capacity: usize) -> Self {
         Self {
             buffer: Vec::with_capacity(capacity / 8 + (capacity % 8).min(1)),
@@ -69,6 +74,7 @@ impl BitWriter {
         }
     }
 
+    /// Write a single bit
     pub fn write(&mut self, b: bool) {
         self.curr <<= 1;
         if b {
@@ -80,6 +86,7 @@ impl BitWriter {
         }
     }
 
+    /// Write {off} bits of {val}
     pub fn write_bits(&mut self, val: usize, off: u8) {
         let avail = self.state.as_usize() + 1;
         let mut todo = off as usize;
@@ -118,6 +125,7 @@ impl BitWriter {
         };
     }
 
+    /// flush the output buffer
     pub fn flush(&mut self) {
         let offset = self.state.as_usize() + 1;
         if offset < 8 {
@@ -128,12 +136,14 @@ impl BitWriter {
         }
     }
 
+    /// Flush and return the buffer
     pub fn done(mut self) -> Vec<u8> {
         self.flush();
         self.buffer
     }
 }
 
+/// Read bits from a slice
 #[derive(Debug, Clone)]
 pub struct BitIter<'a> {
     state: State,
@@ -142,6 +152,7 @@ pub struct BitIter<'a> {
 }
 
 impl<'a> BitIter<'a> {
+    /// Creates a new instance
     pub fn new(bytes: &'a [u8]) -> BitIter<'a> {
         BitIter {
             state: State::default(),
@@ -150,6 +161,7 @@ impl<'a> BitIter<'a> {
         }
     }
 
+    /// Get the next two bits
     pub fn next_2(&mut self) -> Option<(bool, bool)> {
         let a = self.next()?;
         let b = self.next()?;
@@ -173,6 +185,7 @@ impl<'a> BitIter<'a> {
         true
     }
 
+    /// Draw the image to the console
     pub fn cli_image(mut self, width: usize) {
         print!("+");
         for _ in 0..width {

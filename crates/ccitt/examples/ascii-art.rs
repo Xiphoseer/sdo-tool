@@ -31,28 +31,28 @@ fn main() -> eyre::Result<()> {
     let width = opt.width;
     let height = bitmap.len() * 8 / width;
 
-    print!("+");
+    print!("╔");
     for _ in 0..opt.width {
-        print!("-");
+        print!("═");
     }
-    println!("+");
+    println!("╗");
     for _ in 0..height {
-        print!("|");
+        print!("║");
         for _ in 0..width {
             let bit = iter.next().unwrap();
             if bit ^ opt.invert {
-                print!("#");
+                print!("█");
             } else {
                 print!(" ");
             }
         }
-        println!("|");
+        println!("║");
     }
-    print!("+");
+    print!("╚");
     for _ in 0..opt.width {
-        print!("-");
+        print!("═");
     }
-    println!("+");
+    println!("╝");
 
     Ok(())
 }

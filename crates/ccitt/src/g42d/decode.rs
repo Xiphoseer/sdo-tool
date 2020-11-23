@@ -1,3 +1,5 @@
+//! Decoder implementation
+
 use crate::bit_iter::BitWriter;
 use thiserror::Error;
 
@@ -128,16 +130,24 @@ const TABLE: [[Bits; 3]; 256] = {
     ]
 };
 
+/// This struct can represents a scanline
 pub trait ColorLine {
+    /// Get the color at index i
     fn color_at(&self, i: usize) -> Color;
+    /// Set the color at index i
     fn set_color(&mut self, i: usize, color: Color);
 }
 
+/// This struct can store a bitmap
 pub trait Store {
+    /// The type of scanline
     type Row: ColorLine;
 
+    /// Create a new struct
     fn new() -> Self;
+    /// Create the next row
     fn new_row(width: usize) -> Self::Row;
+    /// Add a row to the bitmap
     fn extend(&mut self, row: &Self::Row);
 }
 
@@ -237,7 +247,9 @@ enum NextBits {
     A2(Bits, Bits),
 }
 
+/// The decoder
 pub struct Decoder<S: Store> {
+    /// Whether to print debug info
     pub debug: bool,
     stack: Stack,
     next_bits: NextBits,
@@ -250,6 +262,7 @@ pub struct Decoder<S: Store> {
 }
 
 impl<S: Store> Decoder<S> {
+    /// Create a new decoder instance
     pub fn new(width: usize) -> Self {
         use Cmd::*;
         Decoder {
@@ -456,10 +469,12 @@ impl<S: Store> Decoder<S> {
         Ok(rest)
     }
 
+    /// Turn the decoder into it's result store
     pub fn into_store(self) -> S {
         self.store
     }
 
+    /// Decode some input
     pub fn decode(&mut self, mut input: &[u8]) -> Result<(), Err> {
         loop {
             let cmd = self.stack.peek();
@@ -560,16 +575,26 @@ enum ModePrefix {
     M000001,
 }
 
+/// The error struct
 #[derive(Debug, Error)]
 pub enum Err {
+    
+    /// Out of bounds ({0})
     #[error("Out of bounds ({0})")]
     OutOfBounds(usize),
+    
+    /// End of Stream
     #[error("End of Stream")]
     EOS,
+
+    /// Invalid EOFB, at -{0}
     #[error("Invalid EOFB, at -{0}")]
     EOFB(u8),
+    
+    /// Extensions are not supported
     #[error("Extensions are not supported")]
     ExtNotSupported,
+    
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -1,3 +1,5 @@
+//! CCITT Group 4 2D-encoding
+
 use terminals::{fax_decode_h_black, fax_decode_h_white};
 
 use super::bit_iter::BitIter;
@@ -17,9 +19,10 @@ struct FaxDecode {
     first: bool,
 }
 
+/// Decode a bitmap and print it to the console
+///
+/// **Note**: This does not use [`decode::Decoder`]!
 pub fn fax_decode(glyph_data: &[u8], width: usize) {
-    //decode(glyph_data);
-
     let mut bit_iter = BitIter::new(glyph_data);
     let mut fax_decode = FaxDecode::new(width);
 
