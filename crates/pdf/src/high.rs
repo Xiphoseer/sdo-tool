@@ -5,15 +5,7 @@ use std::{borrow::Cow, io};
 use chrono::{DateTime, Local};
 use io::Write;
 
-use crate::{
-    common::{
-        Dict, Encoding, Matrix, NumberTree, ObjRef, PageLabel, PdfString, Point, ProcSet,
-        Rectangle, Trapped,
-    },
-    low,
-    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
-    write::{Formatter, PdfName, Serialize},
-};
+use crate::{common::{Dict, Encoding, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel, PdfString, Point, ProcSet, Rectangle, Trapped}, low::{self, ID}, lowering::{lower_dict, lower_outline_items, Lowerable, Lowering}, write::{Formatter, PdfName, Serialize}};
 
 /// A single page
 pub struct Page<'a> {
@@ -284,6 +276,8 @@ pub struct Handle<'a> {
     pub outline: Outline,
     /// The global resource struct
     pub res: Res<'a>,
+    /// The output intents
+    pub output_intents: Vec<OutputIntent>,
 }
 
 impl<'a> Default for Handle<'a> {
@@ -305,6 +299,7 @@ impl<'a> Handle<'a> {
             page_labels: NumberTree::new(),
             outline: Outline::new(),
             pages: vec![],
+            output_intents: vec![],
         }
     }
 
@@ -316,7 +311,7 @@ impl<'a> Handle<'a> {
         let make_ref = move |id: u64| ObjRef { id, gen };
 
         writeln!(fmt.inner, "%PDF-1.5")?;
-        writeln!(fmt.inner)?;
+        fmt.inner.write_all(&[b'%', 180, 200, 220, 240, b'\n'])?;
 
         let mut lowering = Lowering::new(self);
 
@@ -430,16 +425,48 @@ impl<'a> Handle<'a> {
             None
         };
 
+        let mut output_intents = Vec::with_capacity(self.output_intents.len());
+        for oi in &self.output_intents {
+            let r = make_ref(lowering.id_gen.next());
+            fmt.obj(r, &oi)?;
+            output_intents.push(r);
+        }
+
         let catalog = low::Catalog {
             version: None,
             pages: pages_ref,
             page_labels: pl_ref,
             outline: ol_ref,
+            output_intents,
         };
         let catalog_ref = make_ref(catalog_id);
         fmt.obj(catalog_ref, &catalog)?;
 
         let startxref = fmt.xref()?;
+
+        let mut id_ctx = md5::Context::new();
+
+        // Consume for the ID
+
+        // - The current time
+        let now = chrono::Local::now().to_string();
+        id_ctx.consume(now);
+
+        // - A string representation of the file’s location, usually a pathname
+        // TODO
+
+        // - The size of the file in bytes
+        let len = fmt.inner.bytes_written();
+        id_ctx.consume(len.to_ne_bytes());
+        
+        // - The values of all entries in the file’s document information dictionary
+        // TODO
+
+        let digest = id_ctx.compute();
+        let id = ID {
+            original: digest,
+            current: digest,
+        };
 
         writeln!(fmt.inner, "trailer")?;
 
@@ -447,6 +474,7 @@ impl<'a> Handle<'a> {
             size: fmt.xref.len(),
             root: make_ref(catalog_id),
             info: info_id,
+            id,
         };
         trailer.write(&mut fmt)?;
 

@@ -27,8 +27,10 @@ pub fn main() -> eyre::Result<()> {
 
     doc.res.font_dicts.push(fonts);
 
-    let mut resources = Resources::default();
-    resources.fonts = Resource::Global { index: 0 };
+    let resources = Resources {
+        fonts: Resource::Global { index: 0 },
+        ..Default::default()
+    };
 
     let lines = [
         "q 0.1 0 0 0.1 0 0 cm",

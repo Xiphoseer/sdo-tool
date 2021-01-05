@@ -5,7 +5,11 @@
 
 use std::{borrow::Cow, io};
 
-use crate::{common::Dict, common::Encoding, common::Matrix, common::ObjRef, common::ProcSet, common::Rectangle, encoding::ascii_85_encode, write::Formatter, write::PdfName, common::PdfString, write::Serialize};
+use crate::{
+    common::Dict, common::Encoding, common::Matrix, common::ObjRef, common::PdfString,
+    common::ProcSet, common::Rectangle, encoding::ascii_85_encode, write::Formatter,
+    write::PdfName, write::Serialize,
+};
 
 /// Destination of a GoTo action
 #[derive(Debug, Clone)]
@@ -189,13 +193,13 @@ pub struct CharProc<'a>(pub Cow<'a, [u8]>);
 
 impl<'a> Serialize for CharProc<'a> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut buf = Vec::new();
+        let len = ascii_85_encode(self.0.as_ref(), &mut buf)?;
+        buf.push(10);
         f.pdf_dict()
-            .field("Length", &self.0.len())?
+            .field("Length", &len)?
             .field("Filter", &PdfName("ASCII85Decode"))?
             .finish()?;
-        let mut buf = Vec::new();
-        ascii_85_encode(self.0.as_ref(), &mut buf)?;
-        buf.push(10);
         f.pdf_stream(&buf)?;
         Ok(())
     }
@@ -262,7 +266,11 @@ pub struct Stream {
 
 impl Serialize for Stream {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        f.pdf_dict().field("Length", &self.data.len())?.finish()?;
+        let mut len = self.data.len();
+        if self.data.ends_with(&[0x0a]) {
+            len -= 1;
+        }
+        f.pdf_dict().field("Length", &len)?.finish()?;
         f.pdf_stream(&self.data)?;
         Ok(())
     }
@@ -314,6 +322,8 @@ pub struct Catalog {
     pub page_labels: Option<ObjRef>,
     /// Optional reference to the outline
     pub outline: Option<ObjRef>,
+    /// Optional List of output intents
+    pub output_intents: Vec<ObjRef>,
 }
 
 impl Serialize for Catalog {
@@ -324,6 +334,24 @@ impl Serialize for Catalog {
             .field("Pages", &self.pages)?
             .opt_field("PageLabels", &self.page_labels)?
             .opt_field("Outlines", &self.outline)?
+            .opt_arr_field("OutputIntents", &self.output_intents)?
+            .finish()
+    }
+}
+
+/// The structure that holds the document IDs.
+pub struct ID {
+    /// The ID for the original (gen 0) document
+    pub original: md5::Digest,
+    /// The ID for the current generation of the document
+    pub current: md5::Digest,
+}
+
+impl Serialize for ID {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_arr()
+            .entry(&self.original)?
+            .entry(&self.current)?
             .finish()
     }
 }
@@ -336,6 +364,8 @@ pub struct Trailer {
     pub info: Option<ObjRef>,
     /// Refernce to the root/catalog
     pub root: ObjRef,
+    /// The ID String
+    pub id: ID,
 }
 
 impl Serialize for Trailer {
@@ -344,6 +374,7 @@ impl Serialize for Trailer {
             .field("Size", &self.size)?
             .opt_field("Info", &self.info)?
             .field("Root", &self.root)?
+            .field("ID", &self.id)?
             .finish()
     }
 }

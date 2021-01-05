@@ -1,6 +1,6 @@
 //! Raster/Bitmap image processing
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt};
 
 use crate::{
     font::{editor::EChar, printer::PSetChar},
@@ -203,6 +203,20 @@ fn print(bytes_per_line: u32, width: u32, buffer: &[u8]) {
     border();
 }
 
+#[derive(Debug)]
+pub enum DrawPrintErr {
+    OutOfBounds,
+}
+
+impl std::error::Error for DrawPrintErr {}
+impl fmt::Display for DrawPrintErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OutOfBounds => write!(f, "Failed to draw character: out of bounds"),
+        }
+    }
+}
+
 impl Page {
     pub fn new(width: u32, height: u32) -> Self {
         let bytes_per_line = (width - 1) / 8 + 1;
@@ -221,7 +235,7 @@ impl Page {
         print(self.bytes_per_line, self.width, &self.buffer);
     }
 
-    pub fn draw_printer_char(&mut self, x: u32, y: u32, ch: &PSetChar) -> Result<(), ()> {
+    pub fn draw_printer_char(&mut self, x: u32, y: u32, ch: &PSetChar) -> Result<(), DrawPrintErr> {
         let width = usize::from(ch.width);
         let height = usize::from(ch.height);
         let top = usize::from(ch.top);
@@ -234,11 +248,11 @@ impl Page {
         let uy = y as usize;
 
         if ux + width + 1 > (self.width as usize) {
-            return Err(());
+            return Err(DrawPrintErr::OutOfBounds);
         }
 
         if uy + height + top + 1 > (self.height as usize) {
-            return Err(());
+            return Err(DrawPrintErr::OutOfBounds);
         }
 
         let ubpl = self.bytes_per_line as usize;
@@ -271,13 +285,13 @@ impl Page {
         Ok(())
     }
 
-    pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), ()> {
+    pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), DrawPrintErr> {
         if u32::from(x + u16::from(ch.width)) + 2 >= self.width {
-            return Err(());
+            return Err(DrawPrintErr::OutOfBounds);
         }
 
         if u32::from(y + u16::from(ch.height + ch.top)) + 2 >= self.height {
-            return Err(());
+            return Err(DrawPrintErr::OutOfBounds);
         }
 
         let y_byte = u32::from(y + ch.top as u16) * self.bytes_per_line;

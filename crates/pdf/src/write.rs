@@ -90,6 +90,15 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(self)
     }
 
+    /// Write a slice-valued field, skip if empty
+    pub fn opt_arr_field<X: Serialize>(&mut self, name: &str, array: &[X]) -> io::Result<&mut Self> {
+        if array.is_empty() {
+            Ok(self)
+        } else {
+            self.arr_field(name, array)
+        }
+    }
+
     /// Close the dict
     pub fn finish(&mut self) -> io::Result<()> {
         if self.first {
@@ -191,6 +200,9 @@ impl<'a> Formatter<'a> {
     pub fn pdf_stream(&mut self, data: &[u8]) -> io::Result<()> {
         writeln!(self.inner, "stream")?;
         self.inner.write_all(data)?;
+        if !data.ends_with(&[0x0a]) {
+            writeln!(self.inner)?;
+        }
         writeln!(self.inner, "endstream")?;
         Ok(())
     }
@@ -259,6 +271,13 @@ impl Serialize for PdfString {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.needs_space = write_string(self.as_bytes(), &mut f.inner)?;
         Ok(())
+    }
+}
+
+impl Serialize for md5::Digest {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.needs_space = false;
+        write!(f.inner, "<{:?}>", self)
     }
 }
 

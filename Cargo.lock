@@ -469,6 +469,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e6bcd6433cff03a4bfc3d9834d504467db1f1cf6d0ea765d37d330249ed629d"
 
 [[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+
+[[package]]
 name = "memchr"
 version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -628,7 +634,7 @@ dependencies = [
  "jpeg-decoder",
  "log",
  "lzw",
- "md5",
+ "md5 0.6.1",
  "num-traits 0.1.43",
  "once_cell 0.2.4",
  "ordermap",
@@ -643,6 +649,7 @@ dependencies = [
  "ccitt-t4-t6",
  "chrono",
  "color-eyre",
+ "md5 0.7.0",
  "pdf",
 ]
 

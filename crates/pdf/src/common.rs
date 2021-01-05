@@ -1,6 +1,10 @@
 //! Common structs and enums
 
-use std::{collections::BTreeMap, fmt, io, ops::{Add, Deref, DerefMut, Mul}};
+use std::{
+    collections::BTreeMap,
+    fmt, io,
+    ops::{Add, Deref, DerefMut, Mul},
+};
 
 //use pdf::primitive::PdfString;
 
@@ -40,7 +44,7 @@ impl fmt::Debug for PdfString {
 pub struct ObjRef {
     /// The index within the file
     pub id: u64,
-    /// The generation number 
+    /// The generation number
     pub gen: u16,
 }
 
@@ -491,5 +495,52 @@ impl Default for Trapped {
 impl Serialize for Trapped {
     fn write(&self, _f: &mut Formatter) -> io::Result<()> {
         todo!()
+    }
+}
+
+#[allow(missing_docs, non_camel_case_types)]
+#[derive(Debug, Copy, Clone)]
+pub enum OutputIntentSubtype {
+    GTS_PDFX,
+    GTS_PDFA1,
+    ISO_PDFE1,
+}
+
+impl Serialize for OutputIntentSubtype {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::GTS_PDFX => PdfName("GTS_PDFX").write(f),
+            Self::GTS_PDFA1 => PdfName("GTS_PDFA1").write(f),
+            Self::ISO_PDFE1 => PdfName("ISO_PDFE1").write(f),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+/// An output intent
+pub struct OutputIntent {
+    /// The subtype / spec
+    pub subtype: OutputIntentSubtype,
+    /// ???
+    pub output_condition: Option<PdfString>,
+    /// ???
+    pub output_condition_identifier: PdfString,
+    /// ???
+    pub registry_name: Option<PdfString>,
+    /// ???
+    pub info: Option<PdfString>,
+    // TODO: DestOutputProfile stream
+}
+
+impl Serialize for OutputIntent {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict()
+            .field("Type", &PdfName("OutputIntent"))?
+            .field("S", &self.subtype)?
+            .opt_field("OutputCondition", &self.output_condition)?
+            .field("OutputConditionIdentifier", &self.output_condition_identifier)?
+            .opt_field("RegistryName", &self.registry_name)?
+            .opt_field("Info", &self.info)?
+            .finish()
     }
 }

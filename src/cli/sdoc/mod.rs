@@ -384,7 +384,7 @@ pub fn process_sdoc(input: &[u8], opt: Options, file: &Path) -> eyre::Result<()>
     }
 
     let folder = file.parent().unwrap();
-    let chsets_folder = folder.join("CHSETS");
+    let chsets_folder = folder.join(&opt.chsets_path);
     let mut fc = FontCache::new(chsets_folder);
     document.process_sdoc(input, &mut fc)?;
 

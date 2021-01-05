@@ -14,12 +14,12 @@ pub struct SDocContainer<'a> {
     pub parts: Vec<(&'a str, Buf<'a>)>,
 }
 
-fn take4<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+fn take4(input: &[u8]) -> IResult<&[u8], &[u8]> {
     take(4usize)(input)
 }
 
 /// Parse a Signum! document
-pub fn parse_sdoc0001_container<'a>(input: &'a [u8]) -> IResult<&'a [u8], SDocContainer<'a>> {
+pub fn parse_sdoc0001_container(input: &[u8]) -> IResult<&[u8], SDocContainer> {
     let (input, _) = tag(b"sdoc")(input)?;
     let mut parts = Vec::new();
     let mut input = input;

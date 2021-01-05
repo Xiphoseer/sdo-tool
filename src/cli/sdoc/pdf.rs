@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Pat
 use color_eyre::eyre::{self, eyre};
 use pdf_create::{
     chrono::Local,
-    common::{Rectangle, PdfString},
+    common::{OutputIntent, OutputIntentSubtype, PdfString, Rectangle},
     encoding::pdf_doc_encode,
     high::{Font, Handle, Page, Resource, Resources},
 };
@@ -66,6 +66,7 @@ impl Fonts {
 }
 
 pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
+    // Metadata
     if let Some(author) = &meta.author {
         let author = pdf_doc_encode(author)?;
         hnd.info.author = Some(PdfString::new(author));
@@ -86,6 +87,16 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     let now = Local::now();
     hnd.info.creation_date = Some(now);
     hnd.info.mod_date = Some(now);
+
+    // Output intents
+    hnd.output_intents.push(OutputIntent {
+        subtype: OutputIntentSubtype::GTS_PDFA1,
+        output_condition: None,
+        output_condition_identifier: PdfString::new("FOO"),
+        registry_name: None,
+        info: None,
+    });
+
     Ok(())
 }
 
@@ -129,8 +140,10 @@ pub fn prepare_document(
     for (_index, page) in doc.tebu.iter().enumerate() {
         let _page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
-        let mut resources = Resources::default();
-        resources.fonts = Resource::Global { index: 0 };
+        let resources = Resources {
+            fonts: Resource::Global { index: 0 },
+            ..Default::default()
+        };
 
         let mut contents = Contents::new(left, top);
 

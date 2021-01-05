@@ -155,7 +155,7 @@ pub struct CacheDevice {
 
 impl From<CharHeader> for CacheDevice {
     fn from(c: CharHeader) -> CacheDevice {
-        let ll_x = (128 as i16) - (c.x_offset as i16);
+        let ll_x = 128i16 - (c.x_offset as i16);
         let ur_y = (c.y_offset as i16) - 127;
         CacheDevice {
             w_x: c.delta_x as i16,

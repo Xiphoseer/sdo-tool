@@ -97,6 +97,7 @@ pub fn write_char_stream<W: Write>(
     writeln!(w, "  /BPC 1")?;
     writeln!(w, "  /D[0 1]")?;
     writeln!(w, "  /F/CCF")?;
+    writeln!(w, "  /CS/CalGray")?;
     writeln!(w, "  /DP<</K -1/Columns {}>>", box_width)?;
     writeln!(w, "ID")?;
 

@@ -37,7 +37,7 @@ pub struct FormatError {}
 
 impl fmt::Display for FormatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Use one of `plain`, `html`, `ps`, `png` or `pdraw`")?;
+        write!(f, "Use one of `plain`, `html`, `pdf`, `ps`, `png` or `pdraw`")?;
         Ok(())
     }
 }
@@ -93,6 +93,8 @@ pub struct Options {
     /// May fail, if the fonts are not available.
     #[structopt(long = "print-driver", short = "P")]
     pub print_driver: Option<FontKind>,
+    #[structopt(long, short = "C", default_value = "CHSETS")]
+    pub chsets_path: PathBuf,
     /// If specified, limits the pages that are printed
     #[structopt(long = "page", short = "#")]
     pub page: Option<Vec<usize>>,

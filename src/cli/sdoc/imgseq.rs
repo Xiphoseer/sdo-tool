@@ -1,6 +1,12 @@
 use color_eyre::eyre;
 use image::ImageFormat;
-use sdo::{font::FontKind, raster::Page, sdoc::Flags, sdoc::Line, sdoc::Te};
+use sdo::{
+    font::FontKind,
+    raster::{DrawPrintErr, Page},
+    sdoc::Flags,
+    sdoc::Line,
+    sdoc::Te,
+};
 
 use crate::cli::font::cache::FontCache;
 
@@ -24,7 +30,7 @@ fn draw_chars(
                     let y = y * 2;
                     match page.draw_echar(x, y, ch) {
                         Ok(()) => {}
-                        Err(()) => {
+                        Err(DrawPrintErr::OutOfBounds) => {
                             eprintln!("Char out of bounds {:?}", te);
                         }
                     }
@@ -38,7 +44,7 @@ fn draw_chars(
                     let y = fk.scale_y(y);
                     match page.draw_printer_char(x, y, ch) {
                         Ok(()) => {}
-                        Err(()) => {
+                        Err(DrawPrintErr::OutOfBounds) => {
                             eprintln!("Char out of bounds {:?}", te);
                         }
                     }

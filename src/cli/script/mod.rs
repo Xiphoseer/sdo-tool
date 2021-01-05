@@ -50,6 +50,7 @@ pub fn run(file: PathBuf, buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         format: Format::PDF,
         cl_meta: Meta::default(),
         meta: None,
+        chsets_path: script.chsets.clone(),
     };
 
     // Set-Up font cache
