@@ -49,14 +49,14 @@ impl fmt::Display for Time {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DateTime(pub u32); /* {
-                                  pub date: Date,
-                                  pub time: Time,
-                              } */
+pub struct DateTime {
+    pub date: Date,
+    pub time: Time,
+}
 
 impl fmt::Display for DateTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{} {}", self.date, self.time)
     }
 }
 
@@ -68,7 +68,7 @@ pub struct Header<'a> {
     pub trail: &'a [u8],
 }
 
-/*/// Parse the time as a 16 bit integer
+/// Parse the time as a 16 bit integer
 pub fn p_time(input: &[u8]) -> IResult<&[u8], Time> {
     map(be_u16, Time)(input)
 }
@@ -76,11 +76,15 @@ pub fn p_time(input: &[u8]) -> IResult<&[u8], Time> {
 /// Parse the time as a 16 bit integer
 pub fn p_date(input: &[u8]) -> IResult<&[u8], Date> {
     map(be_u16, Date)(input)
-}*/
+}
 
 /// Parse the time as a 16 bit integer
 pub fn p_datetime(input: &[u8]) -> IResult<&[u8], DateTime> {
-    map(be_u32, DateTime)(input)
+    //map(be_u32, DateTime)(input)
+    map(tuple((p_date, p_time)), |(date, time)| DateTime {
+        date,
+        time,
+    })(input)
 }
 
 pub fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
