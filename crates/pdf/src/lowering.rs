@@ -1,6 +1,10 @@
 //! Helpers to turn *high* types into *low* types
 
-use crate::{common::Encoding, high::CharProc, high::Destination, high::DictResource, high::Font, high::Handle, common::ObjRef, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject, low, util::NextID};
+use crate::{
+    common::Encoding, common::ObjRef, high::CharProc, high::Destination, high::DictResource,
+    high::Font, high::Handle, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject,
+    low, util::NextID,
+};
 
 /// Make a ObjRef for an original document (generation 0)
 pub fn make_ref(id: u64) -> ObjRef {

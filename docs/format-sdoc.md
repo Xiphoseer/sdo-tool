@@ -191,15 +191,44 @@ selected charset.
 - X: *unknown* (mark 3 ?)
 - Y: footnote
 
-### (ST High) Compressed Images `hcim`
+### Hardcopy Images `hcim`
 
 This sections contains information on the images embedded in the document.
 
+```rust
+site_tbl_len = be_u32(); // == offset to image table
+img_count = be_u16();
+site_count = be_u16();
+take(8)
+for i in 0..=site_count {
+  site[i].page = be_u16();
+  site[i].pos_x = be_u16();
+  site[i].pos_y = be_u16();
+  site[i].site_w = be_u16();
+  site[i].site_h = be_u16();
+  be_u16();
+  site[i].sel_x = be_u16();
+  site[i].sel_y = be_u16();
+  site[i].sel_w = be_u16();
+  site[i].sel_h = be_u16();
+  be_u16();
+  be_u16();
+  be_u16();
+  site[i].img = be_u16();
+  be_u16();
+  bytes16();
+}
+for i in 0..=img_count {
+  buf_len = be_u32()
+  img[i].name = fixed_width_null_terminated_str(28);
+  img[i].bytes = take(buf_len - 32)
+}
+```
 
+The `bytes` of an image correspond to a `bimc` encoded file without the leading `bimc0002`
+magic bytes.
 
 This section seems optional
-
-*(This is partially known and will be documented in the future)*
 
 This section is usually 16 bytes long
 

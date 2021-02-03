@@ -2,7 +2,10 @@
 use std::io;
 
 use pdf::primitive::{Dictionary, PdfStream, Primitive};
-use pdf_create::{common::ObjRef, write::{write_name, write_ref, write_string}};
+use pdf_create::{
+    common::ObjRef,
+    write::{write_name, write_ref, write_string},
+};
 
 /// Writes a complete PDF array to a writer
 pub fn write_array<W: io::Write>(array: &[Primitive], w: &mut W) -> io::Result<bool> {
@@ -71,10 +74,13 @@ pub fn write_primitive<W: io::Write>(prim: &Primitive, w: &mut W) -> io::Result<
         Primitive::Stream(stream) => write_stream(stream, w),
         Primitive::Dictionary(dict) => write_dict(dict, w),
         Primitive::Array(array) => write_array(array, w),
-        Primitive::Reference(plain_ref) => write_ref(ObjRef {
-            id: plain_ref.id,
-            gen: plain_ref.gen,
-        }, w),
+        Primitive::Reference(plain_ref) => write_ref(
+            ObjRef {
+                id: plain_ref.id,
+                gen: plain_ref.gen,
+            },
+            w,
+        ),
         Primitive::Name(name) => write_name(name, w),
     }
 }

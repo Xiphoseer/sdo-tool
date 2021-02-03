@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use nom::{
     bytes::complete::{tag, take, take_until, take_while},
     combinator::iterator,
-    combinator::{map, map_parser, map_res},
+    combinator::{map, map_parser, map_res, rest},
     error::ErrorKind,
     multi::{count, length_data, many0},
     number::complete::{be_u16, be_u32},
@@ -22,6 +22,79 @@ pub mod container;
 #[derive(Debug)]
 struct SDoc<'a> {
     charsets: Vec<Cow<'a, str>>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Date(pub u16);
+
+impl fmt::Display for Date {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let year = (self.0 >> 9) + 1980;
+        let month = (self.0 >> 5) & 0b1111;
+        let day = self.0 & 0b11111;
+        write!(f, "{:02}.{:02}.{:04}", day, month, year)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Time(pub u16);
+
+impl fmt::Display for Time {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let hours = self.0 >> 11;
+        let minutes = (self.0 >> 5) & 0b111111;
+        let seconds = (self.0 & 0b11111) << 1;
+        write!(f, "{:02}:{:02}:{:02}", hours, minutes, seconds)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DateTime(pub u32); /* {
+                                  pub date: Date,
+                                  pub time: Time,
+                              } */
+
+impl fmt::Display for DateTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct Header<'a> {
+    pub lead: &'a [u8],
+    pub ctime: DateTime,
+    pub mtime: DateTime,
+    pub trail: &'a [u8],
+}
+
+/*/// Parse the time as a 16 bit integer
+pub fn p_time(input: &[u8]) -> IResult<&[u8], Time> {
+    map(be_u16, Time)(input)
+}
+
+/// Parse the time as a 16 bit integer
+pub fn p_date(input: &[u8]) -> IResult<&[u8], Date> {
+    map(be_u16, Date)(input)
+}*/
+
+/// Parse the time as a 16 bit integer
+pub fn p_datetime(input: &[u8]) -> IResult<&[u8], DateTime> {
+    map(be_u32, DateTime)(input)
+}
+
+pub fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
+    let (rest, (lead, ctime, mtime, trail)) =
+        tuple((take(0x48usize), p_datetime, p_datetime, rest))(input)?;
+    Ok((
+        rest,
+        Header {
+            lead,
+            ctime,
+            mtime,
+            trail,
+        },
+    ))
 }
 
 fn parse_cset_str(input: &[u8]) -> IResult<&[u8], Cow<str>> {

@@ -37,7 +37,10 @@ pub struct FormatError {}
 
 impl fmt::Display for FormatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Use one of `plain`, `html`, `pdf`, `ps`, `png` or `pdraw`")?;
+        write!(
+            f,
+            "Use one of `plain`, `html`, `pdf`, `ps`, `png` or `pdraw`"
+        )?;
         Ok(())
     }
 }

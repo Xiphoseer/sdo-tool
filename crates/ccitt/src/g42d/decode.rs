@@ -578,11 +578,10 @@ enum ModePrefix {
 /// The error struct
 #[derive(Debug, Error)]
 pub enum Err {
-    
     /// Out of bounds ({0})
     #[error("Out of bounds ({0})")]
     OutOfBounds(usize),
-    
+
     /// End of Stream
     #[error("End of Stream")]
     EOS,
@@ -590,11 +589,10 @@ pub enum Err {
     /// Invalid EOFB, at -{0}
     #[error("Invalid EOFB, at -{0}")]
     EOFB(u8),
-    
+
     /// Extensions are not supported
     #[error("Extensions are not supported")]
     ExtNotSupported,
-    
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -16,9 +16,7 @@ use pdf::{
     primitive::PdfStream,
     primitive::Primitive,
 };
-use pdf_create::{
-    encoding::ascii_85_encode, util::ByteCounter,
-};
+use pdf_create::{encoding::ascii_85_encode, util::ByteCounter};
 
 use std::{env::args, fs::File, io};
 

@@ -4,7 +4,11 @@ use std::io::{self, Write};
 
 use chrono::{DateTime, Local};
 
-use crate::{common::{Dict, ObjRef, PdfString}, low, util::ByteCounter};
+use crate::{
+    common::{Dict, ObjRef, PdfString},
+    low,
+    util::ByteCounter,
+};
 
 /// API to serialize a dict
 #[must_use]
@@ -91,7 +95,11 @@ impl<'a, 'b> PdfDict<'a, 'b> {
     }
 
     /// Write a slice-valued field, skip if empty
-    pub fn opt_arr_field<X: Serialize>(&mut self, name: &str, array: &[X]) -> io::Result<&mut Self> {
+    pub fn opt_arr_field<X: Serialize>(
+        &mut self,
+        name: &str,
+        array: &[X],
+    ) -> io::Result<&mut Self> {
         if array.is_empty() {
             Ok(self)
         } else {

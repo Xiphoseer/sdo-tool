@@ -5,7 +5,15 @@ use std::{borrow::Cow, io};
 use chrono::{DateTime, Local};
 use io::Write;
 
-use crate::{common::{Dict, Encoding, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel, PdfString, Point, ProcSet, Rectangle, Trapped}, low::{self, ID}, lowering::{lower_dict, lower_outline_items, Lowerable, Lowering}, write::{Formatter, PdfName, Serialize}};
+use crate::{
+    common::{
+        Dict, Encoding, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel, PdfString, Point,
+        ProcSet, Rectangle, Trapped,
+    },
+    low::{self, ID},
+    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
+    write::{Formatter, PdfName, Serialize},
+};
 
 /// A single page
 pub struct Page<'a> {
@@ -458,7 +466,7 @@ impl<'a> Handle<'a> {
         // - The size of the file in bytes
         let len = fmt.inner.bytes_written();
         id_ctx.consume(len.to_ne_bytes());
-        
+
         // - The values of all entries in the file’s document information dictionary
         // TODO
 

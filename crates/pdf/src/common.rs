@@ -538,7 +538,10 @@ impl Serialize for OutputIntent {
             .field("Type", &PdfName("OutputIntent"))?
             .field("S", &self.subtype)?
             .opt_field("OutputCondition", &self.output_condition)?
-            .field("OutputConditionIdentifier", &self.output_condition_identifier)?
+            .field(
+                "OutputConditionIdentifier",
+                &self.output_condition_identifier,
+            )?
             .opt_field("RegistryName", &self.registry_name)?
             .opt_field("Info", &self.info)?
             .finish()

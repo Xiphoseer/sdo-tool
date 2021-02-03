@@ -17,6 +17,7 @@ use sdo::{
     },
     util::Buf,
 };
+use sdoc::parse_header;
 use std::path::Path;
 
 use super::font::cache::{CSet, FontCache};
@@ -349,6 +350,14 @@ impl<'a> Document<'a> {
         }
     }
 
+    pub fn process_0001(&mut self, part: Buf) -> eyre::Result<()> {
+        let (_, header) = parse_header(part.0).unwrap();
+        println!("'0001':");
+        println!("ctime: {}", header.ctime);
+        println!("mtime: {}", header.mtime);
+        Ok(())
+    }
+
     pub fn process_sdoc(&mut self, input: &[u8], fc: &mut FontCache) -> eyre::Result<()> {
         let (rest, sdoc) = parse_sdoc0001_container(input)
             .finish()
@@ -356,6 +365,7 @@ impl<'a> Document<'a> {
 
         for (key, part) in sdoc.parts {
             match key {
+                "0001" => self.process_0001(part),
                 "cset" => self.process_cset(fc, part),
                 "sysp" => self.process_sysp(part),
                 "pbuf" => self.process_pbuf(part),
