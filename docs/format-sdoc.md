@@ -36,6 +36,22 @@ The sections are:
 
 ### Version 1 Header `0001`
 
+This section is mostly zeros, with the creation date at offset 72 (`$48`) and the modified
+date at offset 76 (`$4c`). Both are given as two `WORD`s (i.e. `u16` / 2 bytes) representing
+date and time respectively, that have the same layout as returned by the GEMDOS functions
+[`Tgetdate`] and [`Tgettime`].
+
+[`Tgetdate`]: https://freemint.github.io/tos.hyp/en/gemdos_datetime.html#Tgetdate
+[`Tgettime`]: https://freemint.github.io/tos.hyp/en/gemdos_datetime.html#Tgettime
+
+```rust
+take(72)
+created.date = be_u16()
+created.time = be_u16()
+modified.date = be_u16()
+modified.time = be_u16()
+```
+
 This section is usually 128 bytes long
 
 ### Character Sets `cset`
