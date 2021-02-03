@@ -220,7 +220,8 @@ for i in 0..site_count {
 }
 for i in 0..img_count {
   buf_len = be_u32()
-  img[i].name = fixed_width_null_terminated_str(28);
+  name_bytes = take(28);
+  img[i].name = zt_string(name_bytes);
   img[i].bytes = take(buf_len - 32)
 }
 ```
