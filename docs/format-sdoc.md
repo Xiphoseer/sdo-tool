@@ -200,7 +200,7 @@ site_tbl_len = be_u32(); // == offset to image table
 img_count = be_u16();
 site_count = be_u16();
 take(8)
-for i in 0..=site_count {
+for i in 0..site_count {
   site[i].page = be_u16();
   site[i].pos_x = be_u16();
   site[i].pos_y = be_u16();
@@ -218,7 +218,7 @@ for i in 0..=site_count {
   be_u16();
   bytes16();
 }
-for i in 0..=img_count {
+for i in 0..img_count {
   buf_len = be_u32()
   img[i].name = fixed_width_null_terminated_str(28);
   img[i].bytes = take(buf_len - 32)
