@@ -1,3 +1,9 @@
+//! # Static lookup tables
+//!
+//! This module contains static lookup tables that make printing black/white
+//! bitmaps like glyphs in a charset a little easier.
+
+/// Lookup table for bytes as a string of ` ` (0) and `#` (1)
 pub const BIT_STRING: [&str; 256] = [
     "        ", "       #", "      # ", "      ##", "     #  ", "     # #", "     ## ", "     ###",
     "    #   ", "    #  #", "    # # ", "    # ##", "    ##  ", "    ## #", "    ### ", "    ####",
@@ -33,6 +39,7 @@ pub const BIT_STRING: [&str; 256] = [
     "#####   ", "#####  #", "##### # ", "##### ##", "######  ", "###### #", "####### ", "########",
 ];
 
+/// Lookup table for bytes as a byte array of `0xFF` / white / no-ink (0) and `0x00` / black / ink (1)
 pub const BIT_PROJECTION: [[u8; 8]; 256] = [
     [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
     [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00],

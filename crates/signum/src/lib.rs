@@ -1,0 +1,20 @@
+#![warn(missing_docs)]
+//! # The Signum!2 document format
+//!
+//! This crate is an implementation of the document file format (`*.SDO`)
+//! and related formats that were used by the word processor [Signum!]
+//! published in 1986 by [Application Systems Heidelberg][ASH] (Germany).
+//!
+//! At the moment, only reading the files is supported.
+//!
+//! [Signum!]: https://de.wikipedia.org/wiki/Signum_(Textverarbeitungsprogramm)
+//! [ASH]: https://application-systems.de
+
+pub mod font;
+pub mod images;
+pub mod raster;
+pub mod sdoc;
+pub mod util;
+
+#[doc(hidden)]
+pub use nom;

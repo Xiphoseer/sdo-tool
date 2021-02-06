@@ -9,8 +9,8 @@ use pdf_create::{
     high::{CharProc, Type3Font},
     write::PdfName,
 };
-use sdo::font::{
-    dvips::CacheDevice,
+use sdo_ps::dvips::CacheDevice;
+use signum::font::{
     editor::ESet,
     printer::{PSet, PSetChar, PrinterKind},
     UseTable,

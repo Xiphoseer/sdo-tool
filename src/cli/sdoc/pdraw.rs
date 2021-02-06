@@ -1,9 +1,9 @@
 use color_eyre::eyre;
-use sdo::sdoc::{Line, Te};
+use signum::sdoc::tebu::{Char, Line};
 
 use super::{Document, Pos};
 
-fn print_char_cmds(data: &[Te], x: &mut u16, y: u16) {
+fn print_char_cmds(data: &[Char], x: &mut u16, y: u16) {
     for te in data {
         *x += te.offset;
         println!("({}, {}, {},  {}),", *x, y, te.cval, te.cset);

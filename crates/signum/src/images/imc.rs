@@ -1,7 +1,12 @@
-use super::BitIter;
+//! # The `*.IMC` file format
+//!
+//! This is an custom ASH format for storing screenshots and images. The magic bytes
+//! are `bimc0002`. Its full name likely somewhere between "bitmap in-memory copy"
+//! and "black/white image compressed".
+
 use crate::{
     sdoc::{bytes16, bytes32},
-    util::{Bytes16, Bytes32},
+    util::{bit_iter::BitIter, Bytes16, Bytes32},
 };
 use nom::{
     bytes::complete::{tag, take},
@@ -84,14 +89,23 @@ impl<'src> IMCState<'src> {
 }
 
 #[derive(Debug)]
+/// A fixed size 600x420 pixel screen buffer
 pub struct MonochromeScreen(Vec<u8>);
 
 impl MonochromeScreen {
+    /// Return the underlying buffer
+    ///
+    /// The buffer is ordered in scanlines, with one byte representing 8 consecutive pixels.
+    ///
+    /// Note: 0 means white (no ink) and 1 means black (ink)
     pub fn into_inner(self) -> Vec<u8> {
         self.0
     }
 }
 
+/// Parse a plain IMC file to a screen buffer.
+///
+/// This method checks for the magic bytes `bimc0002`
 pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<nom::error::Error<&[u8]>>> {
     let (input, _) = tag(b"bimc0002")(input)?;
     let (_input, image) = decode_imc(input)?;

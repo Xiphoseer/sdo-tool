@@ -12,7 +12,7 @@ use cli::{
     sdoc::process_sdoc,
 };
 use color_eyre::eyre::{self, eyre, WrapErr};
-use sdo::font;
+use signum::font;
 use std::{
     fs::File,
     io::{BufReader, Read},

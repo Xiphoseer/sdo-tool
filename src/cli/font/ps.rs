@@ -2,11 +2,11 @@ use std::io::{self, Write};
 
 use color_eyre::eyre::{self, eyre};
 use nom::Finish;
-use sdo::{
-    font::dvips::parse_char_header, font::dvips::parse_dvips_bitmap_font, font::dvips::CacheDevice,
-    font::dvips::CharHeader, font::printer::PSet, font::UseTable, nom, ps::PSWriter,
-    util::data::BIT_STRING,
+use sdo_ps::{
+    dvips::{parse_char_header, parse_dvips_bitmap_font, CacheDevice, CharHeader},
+    out::PSWriter,
 };
+use signum::{font::printer::PSet, font::UseTable, nom, util::data::BIT_STRING};
 
 pub fn write_ls30_ps_bitmap(
     key: &str,

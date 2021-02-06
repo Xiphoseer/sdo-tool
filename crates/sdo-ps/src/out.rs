@@ -1,3 +1,5 @@
+//! # A simple post script writer
+
 use std::io::{self, Stdout, Write};
 
 pub struct PSWriter<W: Write> {

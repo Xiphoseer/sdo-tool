@@ -12,7 +12,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                 root_ref = Some(
                     value
                         .clone()
-                        .to_reference()
+                        .into_reference()
                         .expect("Expect `Root` to be reference"),
                 );
             }
@@ -20,7 +20,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                 info_ref = Some(
                     value
                         .clone()
-                        .to_reference()
+                        .into_reference()
                         .expect("Expect `Info` to be reference"),
                 );
             }
@@ -35,12 +35,12 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
     let root = storage
         .resolve(root_ref)
         .expect("Expected `Root` reference to be valid")
-        .to_dictionary(&storage)
+        .into_dictionary(&storage)
         .expect("Expected `Root` to be a dictionary");
     let info = storage
         .resolve(info_ref)
         .expect("Expected `Info` reference to be valid")
-        .to_dictionary(&storage)
+        .into_dictionary(&storage)
         .expect("Expected `Info` to be a dictionary");
     println!("root: {:?}", root);
     println!("info: {:?}", info);
@@ -54,7 +54,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                 pages_ref = Some(
                     value
                         .clone()
-                        .to_reference()
+                        .into_reference()
                         .expect("Expected `Pages` to be a reference"),
                 );
             }
@@ -62,7 +62,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                 metadata_ref = Some(
                     value
                         .clone()
-                        .to_reference()
+                        .into_reference()
                         .expect("Expected `Metadata` to be a reference"),
                 );
             }
@@ -78,13 +78,13 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
     let pages = storage
         .resolve(pages_ref)
         .expect("Expected `Pages` reference to be valid")
-        .to_dictionary(&storage)
+        .into_dictionary(&storage)
         .expect("Expected `Pages` to be a dictionary");
 
     let metadata = storage
         .resolve(metadata_ref)
         .expect("Expected `Metadata` reference to be valid")
-        .to_stream(&storage)
+        .into_stream(&storage)
         .expect("Expected `Metadata` to be a dictionary");
 
     println!("metadata: {:?}", &metadata.info);
@@ -100,7 +100,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
             pages_kids = Some(
                 value
                     .clone()
-                    .to_array(&storage)
+                    .into_array(&storage)
                     .expect("Expect `Pages`.`Kids` to be an array"),
             );
         }
@@ -110,7 +110,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
     for kid_ref in pages_kids {
         println!("{:?}", kid_ref);
         let kid = kid_ref
-            .to_dictionary(&storage)
+            .into_dictionary(&storage)
             .expect("Expect `Kids` entry to be a dictionary");
 
         println!("{:?}", kid);
@@ -123,7 +123,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                     contents_ref = Some(
                         value
                             .clone()
-                            .to_reference()
+                            .into_reference()
                             .expect("Expect `Contents` to be a reference"),
                     );
                 }
@@ -131,7 +131,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                     resources = Some(
                         value
                             .clone()
-                            .to_dictionary(&storage)
+                            .into_dictionary(&storage)
                             .expect("Expected `Metadata` to be a reference"),
                     );
                 }
@@ -152,7 +152,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                     font = Some(
                         value
                             .clone()
-                            .to_dictionary(&storage)
+                            .into_dictionary(&storage)
                             .expect("Expect `Contents` to be a reference"),
                     );
                 }
@@ -160,7 +160,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                     ext_g_state = Some(
                         value
                             .clone()
-                            .to_dictionary(&storage)
+                            .into_dictionary(&storage)
                             .expect("Expected `Metadata` to be a reference"),
                     );
                 }
@@ -176,7 +176,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
         for (key, value_ref) in &font {
             let value = value_ref
                 .clone()
-                .to_dictionary(&storage)
+                .into_dictionary(&storage)
                 .expect("Expect `Font` entry to be dictionary");
             println!("{}: {:#?}", key, value);
 
@@ -189,7 +189,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                         encoding = Some(
                             value
                                 .clone()
-                                .to_dictionary(&storage)
+                                .into_dictionary(&storage)
                                 .expect("Expect `Encoding` to be a dictionary"),
                         );
                     }
@@ -197,7 +197,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                         to_unicode_ref = Some(
                             value
                                 .clone()
-                                .to_reference()
+                                .into_reference()
                                 .expect("Expected `ToUnicode` to be a reference"),
                         );
                     }
@@ -205,7 +205,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
                         char_procs = Some(
                             value
                                 .clone()
-                                .to_dictionary(&storage)
+                                .into_dictionary(&storage)
                                 .expect("Expected `CharProcs` to be a dictionary"),
                         );
                     }
@@ -226,7 +226,7 @@ fn _test(trailer: Dictionary, storage: Storage<Vec<u8>>) {
             .resolve(contents_ref)
             .expect("Expect `Contents` ref to be valid");
         let contents = contents
-            .to_stream(&storage)
+            .into_stream(&storage)
             .expect("Expected `Contents` to be stream");
         println!("contents.info{:?}", &contents.info);
 

@@ -1,5 +1,8 @@
+//! # Mapping charsets to unicode
+
 use std::char::REPLACEMENT_CHARACTER;
 
+/// The unicode characters for legacy computing 7-segment digits 0 through 9
 pub const LEGACY_7SEG_DIGITS: (char, char, char, char, char, char, char, char, char, char) = (
     '\u{1FBF0}',
     '\u{1FBF1}',
@@ -82,6 +85,7 @@ pub const ATARI_CHAR_MAP_UPPER: [char; 128] = [
     '\u{207F}', '\u{00B2}', '\u{00B3}', '\u{00AF}', //
 ];
 
+/// Decode the ATARI char map to unicode
 pub fn decode_atari(byte: u8) -> char {
     match byte {
         0..=13 => ATARI_CHAR_MAP_0[byte as usize],
@@ -99,9 +103,9 @@ pub mod antikro {
     use super::LEGACY_7SEG_DIGITS as S;
     use std::char::REPLACEMENT_CHARACTER as RCH;
 
-    pub const TIC: char = '\'';
-    pub const NUL: char = '\0';
-    pub const LFD: char = '\n';
+    const TIC: char = '\'';
+    const NUL: char = '\0';
+    const LFD: char = '\n';
 
     /// Private use characters for missing chars
     pub const A: (char, char, char, char, char, char, char, char) = (
@@ -126,6 +130,7 @@ pub mod antikro {
     ];
 
     #[rustfmt::skip]
+    /// The width of the characters in the ANTIKRO editor charset file
     pub const WIDTH: [u8; 128] = [
         0,   5,   5,   0,   0,   0,   0,   8,   0,  11,   0,  11,   0,   8,   0,   6,
         6,   8,   8,   6,   5,   6,   6,   6,   6,   6,   6,   6,   6,   0,   0,   7,
@@ -138,6 +143,7 @@ pub mod antikro {
     ];
 
     #[rustfmt::skip]
+    /// The skip ??? (top?) of the characters in the ANTIKRO editor charset file
     pub const SKIP: [u8; 128] = [
         0,   6,   6,   0,   0,   0,   0,   6,   0,   9,   0,   9,   0,   6,   0,   6,
         6,   6,   6,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   0,   0,   0,
@@ -149,6 +155,7 @@ pub mod antikro {
        10,  10,  10,  10,   8,  10,  10,  10,  10,  10,  10,   4,   6,   4,  12,   6,
     ];
 
+    /// Decode a single ANTIKRO byte to a unicode char
     pub fn decode(byte: u8) -> char {
         match byte {
             0x00..=0x7f => MAP[byte as usize],
@@ -157,14 +164,16 @@ pub mod antikro {
     }
 }
 
+/// The PRIS_11 charset
 pub mod pris_11 {
     #![allow(dead_code)]
     use std::char::REPLACEMENT_CHARACTER as RCH;
 
-    pub const TIC: char = '\'';
-    pub const NUL: char = '\0';
+    const TIC: char = '\'';
+    const NUL: char = '\0';
 
     #[rustfmt::skip]
+    /// The map of numbers to unicode characters
     pub const MAP: [char; 128] = [
         NUL, '{', '}', RCH, RCH, RCH, RCH, RCH, RCH, RCH, '⏎', RCH, RCH, RCH, RCH, '[',
         ']', '⟨', '⟩', '▒', '📧', '🤠', RCH, RCH, ' ', RCH, RCH, RCH, RCH, RCH, RCH, '☎',
@@ -177,6 +186,7 @@ pub mod pris_11 {
     ];
 
     #[rustfmt::skip]
+    /// The width of the individual character
     pub const WIDTH: [u8; 128] = [
         0,   8,   8,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   8,
         8,   8,   8,  14,  13,  15,   0,   0,  10,   0,   0,   0,   0,   0,   0,  15,
@@ -189,6 +199,7 @@ pub mod pris_11 {
     ];
 
     #[rustfmt::skip]
+    /// FIXME: The skip (top?)
     pub const SKIP: [u8; 128] = [
         0,   6,   6,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   6,
         6,   6,   6,   1,   8,   2,   0,   0,   0,   0,   0,   0,   0,   0,   0,   7,
@@ -200,6 +211,7 @@ pub mod pris_11 {
        10,  10,  10,  10,   8,  10,  10,  10,  10,  10,  10,   6,   6,   6,  12,   6,
     ];
 
+    /// Decode a single character
     pub fn decode(byte: u8) -> char {
         match byte {
             0x00..=0x7f => MAP[byte as usize],

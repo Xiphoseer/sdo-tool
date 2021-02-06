@@ -1,8 +1,8 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromStr};
 
 use pdf_create::high;
-use sdo::font::FontKind;
 use serde::Deserialize;
+use signum::font::FontKind;
 use structopt::StructOpt;
 use thiserror::*;
 

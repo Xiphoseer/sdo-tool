@@ -1,7 +1,11 @@
+//! # General utilities
+
 use std::fmt::{Debug, Display};
 
+pub mod bit_iter;
 pub mod data;
 
+/// A `u16` that does not encode an integer
 pub struct Bytes16(pub u16);
 
 impl<'a> Debug for Bytes16 {
@@ -16,6 +20,7 @@ impl<'a> Display for Bytes16 {
     }
 }
 
+/// A `u32` that does not encode an integer
 pub struct Bytes32(pub u32);
 
 impl<'a> Debug for Bytes32 {

@@ -1,12 +1,12 @@
-//! Raster/Bitmap image processing
+//! # Raster/Bitmap image processing
 
 use std::{cmp::Ordering, fmt};
 
 use crate::{
     font::{editor::EChar, printer::PSetChar},
     images::imc::MonochromeScreen,
-    images::BitIter,
-    sdoc::ImageArea,
+    sdoc::hcim::ImageArea,
+    util::bit_iter::BitIter,
     util::data::{BIT_PROJECTION, BIT_STRING},
 };
 use image::GrayImage;
@@ -172,6 +172,7 @@ impl<'a, 'b> HScaler<'a, 'b> {
 }
 
 impl Page {
+    /// Turn a (fixed-size) screen into a (variable-sized) page
     pub fn from_screen(screen: MonochromeScreen) -> Self {
         Page {
             bytes_per_line: 80,
@@ -204,7 +205,9 @@ fn print(bytes_per_line: u32, width: u32, buffer: &[u8]) {
 }
 
 #[derive(Debug)]
+/// Drawing Error
 pub enum DrawPrintErr {
+    /// The specified position was out of bounds
     OutOfBounds,
 }
 
@@ -218,6 +221,7 @@ impl fmt::Display for DrawPrintErr {
 }
 
 impl Page {
+    /// Create a new page with the given dimensions
     pub fn new(width: u32, height: u32) -> Self {
         let bytes_per_line = (width - 1) / 8 + 1;
         Page {
@@ -235,6 +239,7 @@ impl Page {
         print(self.bytes_per_line, self.width, &self.buffer);
     }
 
+    /// Draw a single printer char on the page
     pub fn draw_printer_char(&mut self, x: u32, y: u32, ch: &PSetChar) -> Result<(), DrawPrintErr> {
         let width = usize::from(ch.width);
         let height = usize::from(ch.height);
@@ -285,6 +290,7 @@ impl Page {
         Ok(())
     }
 
+    /// Draw a single editor char on the page
     pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), DrawPrintErr> {
         if u32::from(x + u16::from(ch.width)) + 2 >= self.width {
             return Err(DrawPrintErr::OutOfBounds);
@@ -323,6 +329,7 @@ impl Page {
         Ok(())
     }
 
+    /// Draw an image on the page
     pub fn draw_image(&mut self, px: u32, py: u32, w: u32, h: u32, image: &Self, sel: ImageArea) {
         let ubpl = self.bytes_per_line as usize;
         let mut byte_index = (py as usize) * ubpl + (px as usize) / 8;
@@ -423,6 +430,7 @@ impl Page {
         }
     }
 
+    /// Turn the page into a `GrayImage` from the `image` crate
     pub fn to_image(&self) -> GrayImage {
         let mut buffer = Vec::with_capacity(self.buffer.len() * 8);
         for byte in self.buffer.iter().map(|b| *b as usize) {

@@ -34,8 +34,8 @@ fn main() -> io::Result<()> {
     println!("Reading: {}", path);
 
     let data = std::fs::read(path).expect("could not open file");
-    let (xref_tab, trailer_dict) = data.read_xref_table_and_trailer().unwrap();
-    let storage = Storage::new(data, xref_tab);
+    let (xref_tab, trailer_dict) = data.read_xref_table_and_trailer(0).unwrap();
+    let storage = Storage::new(data, xref_tab, 0);
 
     let output = File::create(out)?;
     let of = BufWriter::new(output);

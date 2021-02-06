@@ -1,23 +1,26 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use nom::Finish;
 use prettytable::{cell, format, row, Cell, Row, Table};
-use sdo::{
+use signum::{
     font::{
         editor::ESet,
         printer::{PSet, PrinterKind},
         FontKind, UseMatrix,
     },
-    nom::{self, multi::count},
+    nom::{multi::count, Finish},
     raster::Page,
     sdoc::{
-        self, container::parse_sdoc0001_container, parse_cset, parse_hcim, parse_image,
-        parse_page_text, parse_pbuf, parse_sysp, parse_tebu_header, ImageSite, PageText,
+        container::{parse_sdoc0001_container, Chunk},
+        cset::parse_cset,
+        hcim::{parse_hcim, parse_image, ImageSite},
+        header::parse_header,
+        pbuf::{self, parse_pbuf},
+        sysp::parse_sysp,
+        tebu::{parse_page_text, parse_tebu_header, PageText},
     },
     util::Buf,
 };
-use sdoc::parse_header;
 use std::path::Path;
 
 use super::font::cache::{CSet, FontCache};
@@ -48,7 +51,7 @@ pub struct Document<'a> {
     // cset
     pub chsets: [Option<usize>; 8],
     // pbuf
-    pages: Vec<Option<sdoc::Page>>,
+    pages: Vec<Option<pbuf::Page>>,
     page_count: usize,
     // tebu
     tebu: Vec<PageText>,
@@ -277,17 +280,17 @@ impl<'a> Document<'a> {
 
         // Add a row per time
         image_table.set_titles(row![
-            "page", "pos_x", "pos_y", "[3]", "[4]", "[5]", "sel_x", "sel_y", "sel_w", "sel_h",
-            "[A]", "[B]", "[C]", "img", "[E]", "[F]",
+            "page", "pos_x", "pos_y", "site_w", "site_h", "[5]", "sel_x", "sel_y", "sel_w",
+            "sel_h", "[A]", "[B]", "[C]", "img", "[E]", "[F]",
         ]);
 
         for isite in &hcim.sites {
             image_table.add_row(Row::new(vec![
                 Cell::new(&format!("{}", isite.page)),
-                Cell::new(&format!("{}", isite.pos_x)),
-                Cell::new(&format!("{}", isite.pos_y)),
-                Cell::new(&format!("{}", isite._3)),
-                Cell::new(&format!("{}", isite._4)),
+                Cell::new(&format!("{}", isite.site.x)),
+                Cell::new(&format!("{}", isite.site.y)),
+                Cell::new(&format!("{}", isite.site.w)),
+                Cell::new(&format!("{}", isite.site.h)),
                 Cell::new(&format!("{}", isite._5)),
                 Cell::new(&format!("{}", isite.sel.x)),
                 Cell::new(&format!("{}", isite.sel.y)),
@@ -363,16 +366,16 @@ impl<'a> Document<'a> {
             .finish()
             .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
 
-        for (key, part) in sdoc.parts {
-            match key {
-                "0001" => self.process_0001(part),
-                "cset" => self.process_cset(fc, part),
-                "sysp" => self.process_sysp(part),
-                "pbuf" => self.process_pbuf(part),
-                "tebu" => self.process_tebu(part),
-                "hcim" => self.process_hcim(part),
+        for Chunk { tag, buf } in sdoc.chunks {
+            match tag {
+                "0001" => self.process_0001(buf),
+                "cset" => self.process_cset(fc, buf),
+                "sysp" => self.process_sysp(buf),
+                "pbuf" => self.process_pbuf(buf),
+                "tebu" => self.process_tebu(buf),
+                "hcim" => self.process_hcim(buf),
                 _ => {
-                    println!("'{}': {}", key, part.0.len());
+                    println!("'{}': {}", tag, buf.0.len());
                     Ok(())
                 }
             }?;

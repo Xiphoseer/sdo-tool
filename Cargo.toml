@@ -14,7 +14,8 @@ thiserror = "1.0"
 ccitt-t4-t6 = { path = "crates/ccitt" }
 pdf-create = { path = "crates/pdf" }
 sdo-pdf = { path = "crates/sdo-pdf" }
-sdo = { path = "crates/sdo" }
+sdo-ps = { path = "crates/sdo-ps" }
+signum = { path = "crates/signum" }
 pdf = "0.7"
 ron = "0.6"
 serde = "1.0"

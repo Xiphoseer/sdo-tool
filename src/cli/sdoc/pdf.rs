@@ -7,8 +7,8 @@ use pdf_create::{
     encoding::pdf_doc_encode,
     high::{Font, Handle, Page, Resource, Resources},
 };
-use sdo::font::{printer::PrinterKind, FontKind, UseTableVec};
 use sdo_pdf::{font::type3_font, sdoc::Contents};
+use signum::font::{printer::PrinterKind, FontKind, UseTableVec};
 
 use crate::cli::{font::cache::FontCache, opt::Meta};
 

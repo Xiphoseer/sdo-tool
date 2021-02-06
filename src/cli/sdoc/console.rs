@@ -1,14 +1,14 @@
 use color_eyre::eyre;
-use sdo::{
+use signum::{
     font::encoding::antikro,
-    sdoc::{Flags, Line, Style, Te},
+    sdoc::tebu::{Char, Flags, Line, Style},
 };
 
 use crate::cli::{font::cache::FontCache, opt::Format};
 
 use super::Document;
 
-fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Te]) {
+fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 

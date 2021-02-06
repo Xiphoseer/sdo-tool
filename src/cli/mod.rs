@@ -1,6 +1,6 @@
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use sdo::{images::imc::parse_imc, raster::Page};
+use signum::{images::imc::parse_imc, raster::Page};
 use std::path::PathBuf;
 
 pub mod font;

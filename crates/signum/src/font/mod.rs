@@ -1,16 +1,23 @@
-#![allow(dead_code)]
+//! # The font file formats
+//!
+//! Every font or more specifically **charset** in Signum used a group of font files that
+//! described the font at different resolutions. There was the `*.E24` file format used
+//! for text in the editor, the `*.P24` format for 24-needle printers, the `*.P09` format
+//! for 9-needle printers and the `*.L30` format for laser printers.
+
 use std::{io, str::FromStr};
 
 use printer::PrinterKind;
 use thiserror::*;
 
-pub mod dvips;
 pub mod editor;
 pub mod encoding;
 pub mod printer;
 
 #[derive(Copy, Clone)]
+/// A table stores which characters of a charset are used
 pub struct UseTable {
+    /// The number of uses per char
     pub chars: [usize; 128],
 }
 
@@ -49,6 +56,7 @@ impl From<&str> for UseTable {
 }
 
 impl UseTable {
+    /// Create a new usage table
     pub const fn new() -> Self {
         Self { chars: [0; 128] }
     }
@@ -89,6 +97,7 @@ impl UseTableVec {
         }
     }
 
+    /// Integrate a UseMatrix (from a document) to this vector
     pub fn append(&mut self, chsets: &[Option<usize>; 8], use_matrix: UseMatrix) {
         for (cset, use_table) in use_matrix.csets.iter().enumerate() {
             if let Some(index) = chsets.get(cset).and_then(|x| *x) {
@@ -112,6 +121,7 @@ impl UseTableVec {
 }
 
 #[derive(Debug, Copy, Clone)]
+/// A kind of font
 pub enum FontKind {
     /// Font used in the signum editor (`E24`)
     Editor,
@@ -120,6 +130,7 @@ pub enum FontKind {
 }
 
 impl FontKind {
+    /// Return the number of device points corresponding to the given vertical units.
     pub fn scale_y(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units) * 2,
@@ -127,6 +138,7 @@ impl FontKind {
         }
     }
 
+    /// Return the number of device points corresponding to the given horizontal units.
     pub fn scale_x(&self, units: u16) -> u32 {
         match self {
             Self::Editor => u32::from(units),
@@ -143,6 +155,7 @@ impl FontKind {
         }
     }
 
+    /// Return the resolution (in DPI per direction)
     pub fn resolution(&self) -> (isize, isize) {
         match self {
             Self::Editor => (104, 90),
@@ -163,6 +176,7 @@ impl FontKind {
         }
     }
 
+    /// Get the file extension use for this format
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Editor => "E24",
@@ -173,6 +187,7 @@ impl FontKind {
 
 #[derive(Debug, Error)]
 #[error("Unknown print driver!")]
+/// Error for font kinds
 pub struct UnknownFontKind {}
 
 impl FromStr for FontKind {
@@ -190,9 +205,12 @@ impl FromStr for FontKind {
 }
 
 #[derive(Debug, Error)]
+/// Error when loading
 pub enum LoadError {
+    /// The IO failed
     #[error("Failed IO")]
     Io(#[from] io::Error),
+    /// The parsing failed
     #[error("Parsing failed: {0}")]
     Parse(String),
 }

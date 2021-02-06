@@ -1,11 +1,9 @@
 use color_eyre::eyre;
 use image::ImageFormat;
-use sdo::{
+use signum::{
     font::FontKind,
     raster::{DrawPrintErr, Page},
-    sdoc::Flags,
-    sdoc::Line,
-    sdoc::Te,
+    sdoc::tebu::{Char, Flags, Line},
 };
 
 use crate::cli::font::cache::FontCache;
@@ -15,7 +13,7 @@ use super::{Document, Pos};
 fn draw_chars(
     doc: &Document,
     fc: &FontCache,
-    data: &[Te],
+    data: &[Char],
     page: &mut Page,
     x: &mut u16,
     y: u16,
@@ -121,14 +119,14 @@ pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
         for site in doc.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
             println!(
                 "{}x{}+{},{} of {} at {},{}",
-                site.sel.w, site.sel.h, site.sel.x, site.sel.y, site.img, site.pos_x, site.pos_y
+                site.sel.w, site.sel.h, site.sel.x, site.sel.y, site.img, site.site.x, site.site.y
             );
 
             if let Some(pd) = doc.print_driver {
-                let px = pd.scale_x(10 + site.pos_x);
-                let w = pd.scale_x(site._3);
-                let py = pd.scale_y(10 + site.pos_y - site._5 / 2);
-                let h = pd.scale_y(site._4 / 2);
+                let px = pd.scale_x(10 + site.site.x);
+                let w = pd.scale_x(site.site.w);
+                let py = pd.scale_y(10 + site.site.y - site._5 / 2);
+                let h = pd.scale_y(site.site.h / 2);
                 let image = &doc.images[site.img as usize];
                 page.draw_image(px, py, w, h, image, site.sel);
             }

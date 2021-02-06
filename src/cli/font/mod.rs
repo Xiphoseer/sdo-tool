@@ -2,16 +2,16 @@ use crate::cli::opt::{Format, Options};
 use ccitt_t4_t6::g42d::encode::Encoder;
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use sdo::{
+use sdo_ps::out::PSWriter;
+use signum::{
     font::{
         editor::parse_eset,
         printer::{parse_ls30, parse_ps09, parse_ps24, PSet},
     },
-    ps::PSWriter,
     raster::Page,
     util::{data::BIT_STRING, Buf},
 };
-use std::path::PathBuf;
+use std::{io::Stdout, path::PathBuf};
 
 pub mod cache;
 pub mod ps;
@@ -155,7 +155,7 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
     }
 
     if opt.format == Format::DVIPSBitmapFont {
-        let mut writer = PSWriter::new();
+        let mut writer: PSWriter<Stdout> = PSWriter::new();
         write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
         return Ok(());
     } else if opt.format == Format::CCITTT6 {

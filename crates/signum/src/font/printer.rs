@@ -1,3 +1,5 @@
+//! # The printer charsets
+
 use super::LoadError;
 use crate::util::Buf;
 use nom::{
@@ -10,13 +12,18 @@ use nom::{
 use std::{ops::Deref, path::Path};
 
 #[derive(Debug, Copy, Clone)]
+/// The supported kinds of printers
 pub enum PrinterKind {
+    /// A 24-needle printer
     Needle24,
+    /// A 9-needle printer
     Needle9,
+    /// A laser printer
     Laser30,
 }
 
 impl PrinterKind {
+    /// Get the extension used for charset files for this printer kind
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Needle24 => "P24",
@@ -25,6 +32,7 @@ impl PrinterKind {
         }
     }
 
+    /// Get the scale factor
     pub fn scale(&self) -> f32 {
         match self {
             Self::Needle9 => todo!(),
@@ -33,6 +41,9 @@ impl PrinterKind {
         }
     }
 
+    /// Get the number of dots for the given amount of horizontal units
+    ///
+    /// FIXME: this introduces rounding errors
     pub fn scale_x(self, units: u16) -> u32 {
         match self {
             Self::Needle9 => u32::from(units) * 12 / 5,
@@ -41,6 +52,9 @@ impl PrinterKind {
         }
     }
 
+    /// Get the number of dots for the given amount of vertical units
+    ///
+    /// FIXME: this introduces rounding errors
     pub fn scale_y(&self, units: u16) -> u32 {
         match self {
             PrinterKind::Needle9 => u32::from(units) * 4,
@@ -49,6 +63,7 @@ impl PrinterKind {
         }
     }
 
+    /// Get the position of the character baseline from the top of the glyph bounding box
     pub fn baseline(self) -> i16 {
         match self {
             Self::Needle9 => 36,
@@ -59,25 +74,37 @@ impl PrinterKind {
 }
 
 #[derive(Debug)]
+/// A complete printer charset
 pub struct PSet<'a> {
+    /// The header
     pub header: Buf<'a>,
+    /// The list of characters
     pub chars: Vec<PSetChar<'a>>,
 }
 
 #[derive(Debug)]
+/// A single printer character
 pub struct PSetChar<'a> {
+    /// The distance to the top of the line box
     pub top: u8,
+    /// The height of the character in pixels
     pub height: u8,
+    /// The width of the character in bytes
     pub width: u8,
+    /// The pixel data
     pub bitmap: &'a [u8],
 }
 
+/// A struct to hold information on computed character dimensions
 pub struct HBounds {
+    /// The number of bits that are zero in every line from the left
     pub max_lead: usize,
+    /// The number of bits that are zero in every line from the right
     pub max_tail: usize,
 }
 
 impl PSetChar<'_> {
+    /// Compute the horizontal bounds of the char
     pub fn hbounds(&self) -> HBounds {
         let width = self.width as usize * 8;
         let mut max_lead = width;
@@ -111,8 +138,10 @@ impl PSetChar<'_> {
     }
 }
 
+/// An owned printer character set
 pub struct OwnedPSet {
     inner: PSet<'static>,
+    #[allow(unused)]
     buffer: Vec<u8>,
 }
 
@@ -125,6 +154,7 @@ impl Deref for OwnedPSet {
 }
 
 impl OwnedPSet {
+    /// Load a character set
     pub fn load(path: &Path, kind: PrinterKind) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
         // SAFETY: this is safe, because `buffer` is plain data and
@@ -141,7 +171,8 @@ impl OwnedPSet {
     }
 }
 
-pub fn parse_ps24_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
+/// Parse a single P24 character
+pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
     let (input, top) = u8(input)?;
     let (input, height) = u8(input)?;
     let (input, width) = u8(input)?;
@@ -162,6 +193,9 @@ pub fn parse_ps24_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
     ))
 }
 
+/// Parse a a font file
+///
+/// This method only checks the `0001` part of the magic bytes
 pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"0001")(input)?;
     let (input, _) = verify(be_u32, |x| *x == 128)(input)?;
@@ -170,7 +204,7 @@ pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _len) = be_u32(input)?;
 
     let (input, _offset_buf) = take(127usize * 4)(input)?;
-    let (input, chars) = count(parse_ps24_char, 128usize)(input)?;
+    let (input, chars) = count(parse_char, 128usize)(input)?;
 
     Ok((
         input,
@@ -181,16 +215,19 @@ pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
     ))
 }
 
+/// Parse a P24 file
 pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ps24")(input)?;
     parse_font(input)
 }
 
+/// Parse a P09 file
 pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ps09")(input)?;
     parse_font(input)
 }
 
+/// Parse a L30 file
 pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ls30")(input)?;
     parse_font(input)

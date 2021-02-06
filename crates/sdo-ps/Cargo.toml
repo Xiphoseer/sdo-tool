@@ -1,0 +1,9 @@
+[package]
+name = "sdo-ps"
+version = "0.1.0"
+authors = ["xiphoseer <xiphoseer@mailbox.org>"]
+edition = "2018"
+
+[dependencies]
+nom = "6.1.0"
+signum = { path = "../signum" }

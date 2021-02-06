@@ -1,7 +1,7 @@
 #![allow(unused)]
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use sdo::{
+use signum::{
     font::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
     raster::Page,
 };

@@ -1,3 +1,5 @@
+//! # The editor fonts
+
 use super::LoadError;
 use crate::util::{data::BIT_STRING, Buf};
 use nom::{
@@ -28,13 +30,18 @@ const BORDER: [&str; 17] = [
 ];
 
 #[derive(Debug)]
+/// A single editor font
 pub struct ESet<'a> {
+    /// The leading buffer / header
     pub buf1: Buf<'a>,
+    /// The chars in this charset
     pub chars: Vec<EChar<'a>>,
 }
 
+/// An owned version of the editor font
 pub struct OwnedESet {
     inner: ESet<'static>,
+    #[allow(unused)]
     buffer: Vec<u8>,
 }
 
@@ -47,6 +54,7 @@ impl Deref for OwnedESet {
 }
 
 impl OwnedESet {
+    /// Load an editor charset
     pub fn load(path: &Path) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
         // SAFETY: this is safe, because `buffer` is plain data and
@@ -58,13 +66,19 @@ impl OwnedESet {
 }
 
 #[derive(Debug)]
+/// A single editor charset character
 pub struct EChar<'a> {
+    /// The width of the glyph (in document coordinates)
     pub width: u8,
+    /// The height of the glyph
     pub height: u8,
+    /// The distance of the top edge of the stored glyph from the top of the available box
     pub top: u8,
+    /// The buffer that contains the pixels
     pub buf: &'a [u8],
 }
 
+/// The special NULL char
 pub const ECHAR_NULL: EChar<'static> = EChar {
     width: 0,
     height: 0,
@@ -73,6 +87,9 @@ pub const ECHAR_NULL: EChar<'static> = EChar {
 };
 
 impl<'a> ESet<'a> {
+    /// Print a representation of the charset to the console
+    ///
+    /// FIXME: make this generic over `io::Write` or `fmt::Write`?
     pub fn print(&self) {
         let capacity = self.chars.len();
         let mut widths = Vec::with_capacity(capacity);
@@ -136,6 +153,7 @@ impl<'a> ESet<'a> {
     }
 }
 
+/// Parse a single editor char
 pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
     let (input, top) = u8(input)?;
     let (input, height) = u8(input)?;
@@ -153,6 +171,9 @@ pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
     ))
 }
 
+/// Parse a full editor charset file.
+///
+/// This method checks for the magic bytes `eset0001`
 pub fn parse_eset(input: &[u8]) -> IResult<&[u8], ESet> {
     let (input, _) = tag(b"eset")(input)?;
     let (input, _) = tag(b"0001")(input)?;

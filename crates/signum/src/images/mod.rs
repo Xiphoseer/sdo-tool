@@ -1,6 +1,7 @@
 //! # Image formats
 pub mod imc;
 
+/// A bit iterator
 pub struct BitIter<'a> {
     state: u8,
     buffer: u8,
@@ -8,6 +9,7 @@ pub struct BitIter<'a> {
 }
 
 impl<'a> BitIter<'a> {
+    /// Create a new bit iter from a byte slice
     pub fn new(bytes: &'a [u8]) -> BitIter<'a> {
         BitIter {
             state: 0,
