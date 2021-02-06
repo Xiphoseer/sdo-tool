@@ -904,7 +904,6 @@ name = "signum"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "ccitt-t4-t6",
  "image",
  "nom",
  "thiserror",

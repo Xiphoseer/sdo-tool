@@ -15,7 +15,7 @@ ccitt-t4-t6 = { path = "crates/ccitt" }
 pdf-create = { path = "crates/pdf" }
 sdo-pdf = { path = "crates/sdo-pdf" }
 sdo-ps = { path = "crates/sdo-ps" }
-signum = { path = "crates/signum" }
+signum = { path = "crates/signum", features = ["image"] }
 pdf = "0.7"
 ron = "0.6"
 serde = "1.0"

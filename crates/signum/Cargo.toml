@@ -3,14 +3,22 @@ name = "signum"
 version = "0.1.0"
 authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
+license = "MPL-2.0"
+readme = "README.md"
+description = "Implementation of Signum! (1986) file formats"
+repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/signum"
+homepage = "https://xiphoseer.github.io/sdo-tool/implementation#signum"
 
 [dependencies]
 nom = "6.1.0"
 thiserror = "1.0"
 bitflags = "1.2"
-ccitt-t4-t6 = { path = "../ccitt" }
 
 [dependencies.image]
+optional = true
 default-features = false
 version = "0.23"
 features = ["png"]
+
+[package.metadata.docs.rs]
+features = ["image"]

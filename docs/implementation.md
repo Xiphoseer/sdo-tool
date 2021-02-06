@@ -30,6 +30,22 @@ Spec: [PDF 32000-1:2008 (v1.7)](https://www.adobe.com/content/dam/acom/en/devnet
 
 [`pdf-rs`]: https://crates.io/crates/pdf
 
+## Signum
+
+The code that is used to load the signum files into memory does not depend
+on the rest of the system. This crate contains the datastructures and parser
+code for Signum!-related file formats.
+
+There is no definitive spec for that file format and the implementation is
+*best-effort* and may not always work correctly. It also requires some
+driver like sdo-tool to be really useful as it does not attempt to combine
+the formats. For example, it does not attempt to load charset files to get
+a glyph for some letter in the text.
+
+Source: [Xiphoseer/sdo-tool:crates/signum](https://github.com/Xiphoseer/sdo-tool/tree/main/crates/signum)  
+Crate: <https://crates.io/crates/signum>  
+Docs: <https://docs.rs/signum>
+
 ## CCITT-T.4-T.6
 
 Part of the SDO-Toolbox is an encoder (and decoder) for the CCITT Group 4

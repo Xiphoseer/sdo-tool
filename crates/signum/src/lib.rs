@@ -1,8 +1,8 @@
 #![warn(missing_docs)]
-//! # The Signum!2 document format
+//! # File formats from *Signum!*
 //!
 //! This crate is an implementation of the document file format (`*.SDO`)
-//! and related formats that were used by the word processor [Signum!]
+//! and related formats, that were used by the word processor [Signum!]
 //! published in 1986 by [Application Systems Heidelberg][ASH] (Germany).
 //!
 //! At the moment, only reading the files is supported.

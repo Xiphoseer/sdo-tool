@@ -7,9 +7,10 @@ use crate::{
     docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
     util::bit_iter::BitIter,
-    util::data::{BIT_PROJECTION, BIT_STRING},
+    util::data::BIT_STRING,
 };
-use image::GrayImage;
+#[cfg(feature = "image")]
+use {crate::util::data::BIT_PROJECTION, image::GrayImage};
 
 /// A virtual page that works just like the atari monochrome screen
 ///
@@ -430,6 +431,7 @@ impl Page {
         }
     }
 
+    #[cfg(feature = "image")]
     /// Turn the page into a `GrayImage` from the `image` crate
     pub fn to_image(&self) -> GrayImage {
         let mut buffer = Vec::with_capacity(self.buffer.len() * 8);
