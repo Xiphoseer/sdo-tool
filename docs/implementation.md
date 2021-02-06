@@ -42,6 +42,8 @@ driver like sdo-tool to be really useful as it does not attempt to combine
 the formats. For example, it does not attempt to load charset files to get
 a glyph for some letter in the text.
 
+### Links
+
 Source: [Xiphoseer/sdo-tool:crates/signum](https://github.com/Xiphoseer/sdo-tool/tree/main/crates/signum)  
 Crate: <https://crates.io/crates/signum>  
 Docs: <https://docs.rs/signum>
