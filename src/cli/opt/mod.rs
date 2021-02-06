@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromS
 
 use pdf_create::high;
 use serde::Deserialize;
-use signum::font::FontKind;
+use signum::chsets::FontKind;
 use structopt::StructOpt;
 use thiserror::*;
 

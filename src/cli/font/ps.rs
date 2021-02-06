@@ -6,7 +6,7 @@ use sdo_ps::{
     dvips::{parse_char_header, parse_dvips_bitmap_font, CacheDevice, CharHeader},
     out::PSWriter,
 };
-use signum::{font::printer::PSet, font::UseTable, nom, util::data::BIT_STRING};
+use signum::{chsets::printer::PSet, chsets::UseTable, nom, util::data::BIT_STRING};
 
 pub fn write_ls30_ps_bitmap(
     key: &str,

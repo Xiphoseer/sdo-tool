@@ -20,7 +20,7 @@ use nom::{
     IResult,
 };
 
-use signum::font::printer::PSetChar;
+use signum::chsets::printer::PSetChar;
 
 #[derive(Debug)]
 pub struct Font {

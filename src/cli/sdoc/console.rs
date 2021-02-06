@@ -1,7 +1,7 @@
 use color_eyre::eyre;
 use signum::{
-    font::encoding::antikro,
-    sdoc::tebu::{Char, Flags, Line, Style},
+    chsets::encoding::antikro,
+    docs::tebu::{Char, Flags, Line, Style},
 };
 
 use crate::cli::{font::cache::FontCache, opt::Format};

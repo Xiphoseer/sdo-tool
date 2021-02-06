@@ -6,7 +6,7 @@ use pdf_create::{
     encoding::pdf_doc_encode,
     high::{self, Handle},
 };
-use signum::font::{printer::PrinterKind, UseTableVec};
+use signum::chsets::{printer::PrinterKind, UseTableVec};
 use structopt::StructOpt;
 
 use super::{

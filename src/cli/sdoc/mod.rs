@@ -3,14 +3,12 @@ use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::{
-    font::{
+    chsets::{
         editor::ESet,
         printer::{PSet, PrinterKind},
         FontKind, UseMatrix,
     },
-    nom::{multi::count, Finish},
-    raster::Page,
-    sdoc::{
+    docs::{
         container::{parse_sdoc0001_container, Chunk},
         cset::parse_cset,
         hcim::{parse_hcim, parse_image, ImageSite},
@@ -19,6 +17,8 @@ use signum::{
         sysp::parse_sysp,
         tebu::{parse_page_text, parse_tebu_header, PageText},
     },
+    nom::{multi::count, Finish},
+    raster::Page,
     util::Buf,
 };
 use std::path::Path;

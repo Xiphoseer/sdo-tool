@@ -1,9 +1,9 @@
 use color_eyre::eyre;
 use image::ImageFormat;
 use signum::{
-    font::FontKind,
+    chsets::FontKind,
+    docs::tebu::{Char, Flags, Line},
     raster::{DrawPrintErr, Page},
-    sdoc::tebu::{Char, Flags, Line},
 };
 
 use crate::cli::font::cache::FontCache;

@@ -8,7 +8,7 @@ use pdf_create::{
     high::{Font, Handle, Page, Resource, Resources},
 };
 use sdo_pdf::font::type3_font;
-use signum::font::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind, UseTable};
+use signum::chsets::{editor::parse_eset, printer::parse_ls30, printer::PrinterKind, UseTable};
 use signum::nom::Finish;
 
 #[derive(StructOpt)]

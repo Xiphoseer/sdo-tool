@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
 
-use signum::font::{
+use signum::chsets::{
     editor::ESet, editor::OwnedESet, printer::OwnedPSet, printer::PSet, printer::PrinterKind,
     LoadError,
 };

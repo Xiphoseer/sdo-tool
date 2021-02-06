@@ -3,9 +3,9 @@
 use std::{cmp::Ordering, fmt};
 
 use crate::{
-    font::{editor::EChar, printer::PSetChar},
+    chsets::{editor::EChar, printer::PSetChar},
+    docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
-    sdoc::hcim::ImageArea,
     util::bit_iter::BitIter,
     util::data::{BIT_PROJECTION, BIT_STRING},
 };

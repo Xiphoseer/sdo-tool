@@ -12,7 +12,7 @@ use cli::{
     sdoc::process_sdoc,
 };
 use color_eyre::eyre::{self, eyre, WrapErr};
-use signum::font;
+use signum::chsets;
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -123,7 +123,7 @@ fn main() -> eyre::Result<()> {
         Some(Command::Decode) => {
             let mut decoded = String::with_capacity(buffer.len());
             for byte in buffer {
-                let ch = font::encoding::decode_atari(byte);
+                let ch = chsets::encoding::decode_atari(byte);
                 decoded.push(ch);
             }
             print!("{}", decoded);

@@ -1,5 +1,5 @@
 use color_eyre::eyre;
-use signum::sdoc::tebu::{Char, Line};
+use signum::docs::tebu::{Char, Line};
 
 use super::{Document, Pos};
 

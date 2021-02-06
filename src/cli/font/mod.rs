@@ -4,7 +4,7 @@ use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use sdo_ps::out::PSWriter;
 use signum::{
-    font::{
+    chsets::{
         editor::parse_eset,
         printer::{parse_ls30, parse_ps09, parse_ps24, PSet},
     },

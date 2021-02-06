@@ -2,7 +2,7 @@
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use signum::{
-    font::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
+    chsets::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
     raster::Page,
 };
 use std::{

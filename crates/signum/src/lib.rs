@@ -10,10 +10,10 @@
 //! [Signum!]: https://de.wikipedia.org/wiki/Signum_(Textverarbeitungsprogramm)
 //! [ASH]: https://application-systems.de
 
-pub mod font;
+pub mod chsets;
+pub mod docs;
 pub mod images;
 pub mod raster;
-pub mod sdoc;
 pub mod util;
 
 #[doc(hidden)]

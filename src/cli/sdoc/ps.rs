@@ -2,7 +2,7 @@ use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use color_eyre::eyre::{self, eyre};
 use sdo_ps::out::PSWriter;
-use signum::font::FontKind;
+use signum::chsets::FontKind;
 
 use crate::cli::font::{cache::FontCache, ps::write_ls30_ps_bitmap};
 

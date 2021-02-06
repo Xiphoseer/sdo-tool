@@ -10,7 +10,7 @@ use pdf_create::{
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
-use signum::font::{
+use signum::chsets::{
     editor::ESet,
     printer::{PSet, PSetChar, PrinterKind},
     UseTable,

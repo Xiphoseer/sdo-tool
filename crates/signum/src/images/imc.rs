@@ -5,7 +5,7 @@
 //! and "black/white image compressed".
 
 use crate::{
-    sdoc::{bytes16, bytes32},
+    docs::{bytes16, bytes32},
     util::{bit_iter::BitIter, Bytes16, Bytes32},
 };
 use nom::{
