@@ -128,7 +128,7 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
     let (rest, header) = parse_imc_header(src).unwrap();
 
-    println!("{:#?}", header);
+    // println!("{:#?}", header);
 
     // Is this really 80, or should this be hchunks * 2?
     let bytes_per_line = header.hchunks * 2;
@@ -160,7 +160,7 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
                     if next!(bit_iter, state)? {
                         d3 += 1;
                     }
-                    print!("{}", d3);
+                    //print!("{}", d3);
 
                     if d3 == 3 {
                         // subroutine E
@@ -223,13 +223,13 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
                         dest[offset + 1] = temp[i * 2 + 1];
                     }
                 } else {
-                    print!("_");
+                    //print!("_");
                 }
             }
-            println!();
+        //println!();
         } else {
             // TODO: this assumes that hchunks is always 40
-            println!("________________________________________");
+            //println!("________________________________________");
         }
         dest = &mut dest[bytes_per_group..];
     }
