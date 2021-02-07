@@ -432,6 +432,7 @@ impl Page {
     }
 
     #[cfg(feature = "image")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     /// Turn the page into a `GrayImage` from the `image` crate
     pub fn to_image(&self) -> GrayImage {
         let mut buffer = Vec::with_capacity(self.buffer.len() * 8);

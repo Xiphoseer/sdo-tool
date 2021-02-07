@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! # File formats from *Signum!*
 //!
 //! This crate is an implementation of the document file format (`*.SDO`)
