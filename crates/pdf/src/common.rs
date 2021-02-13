@@ -336,6 +336,7 @@ where
 {
     type Output = Self;
 
+    #[allow(clippy::suspicious_operation_groupings)]
     fn mul(self, rhs: Self) -> Self::Output {
         Self {
             a: self.a * rhs.a + self.b * rhs.c,

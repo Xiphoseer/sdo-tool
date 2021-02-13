@@ -8,6 +8,7 @@ pub mod keyboard;
 pub mod opt;
 pub mod script;
 pub mod sdoc;
+mod util;
 
 pub fn process_bimc(buffer: &[u8], out_path: PathBuf) -> eyre::Result<()> {
     let decoded = parse_imc(&buffer) //

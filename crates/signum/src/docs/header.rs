@@ -5,6 +5,7 @@ use std::fmt;
 use nom::{
     bytes::streaming::take,
     combinator::{map, rest},
+    error::ParseError,
     number::complete::be_u16,
     sequence::tuple,
     IResult,
@@ -65,17 +66,17 @@ pub struct Header<'a> {
 }
 
 /// Parse the time as a 16 bit integer
-pub fn p_time(input: &[u8]) -> IResult<&[u8], Time> {
+pub fn p_time<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Time, E> {
     map(be_u16, Time)(input)
 }
 
 /// Parse the time as a 16 bit integer
-pub fn p_date(input: &[u8]) -> IResult<&[u8], Date> {
+pub fn p_date<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Date, E> {
     map(be_u16, Date)(input)
 }
 
 /// Parse the time as a 16 bit integer
-pub fn p_datetime(input: &[u8]) -> IResult<&[u8], DateTime> {
+pub fn p_datetime<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], DateTime, E> {
     //map(be_u32, DateTime)(input)
     map(tuple((p_date, p_time)), |(date, time)| DateTime {
         date,
@@ -84,7 +85,7 @@ pub fn p_datetime(input: &[u8]) -> IResult<&[u8], DateTime> {
 }
 
 /// Parse the header (`0001`) chunk
-pub fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
+pub fn parse_header<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Header, E> {
     let (rest, (lead, ctime, mtime, trail)) =
         tuple((take(0x48usize), p_datetime, p_datetime, rest))(input)?;
     Ok((

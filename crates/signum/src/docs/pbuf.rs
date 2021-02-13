@@ -2,6 +2,7 @@
 
 use nom::{
     bytes::{complete::tag, streaming::take},
+    error::ParseError,
     number::complete::{be_u16, be_u32},
     IResult,
 };
@@ -56,7 +57,7 @@ pub struct Page {
     pub intern: Bytes16,
 }
 
-fn parse_margin(input: &[u8]) -> IResult<&[u8], Margin> {
+fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Margin, E> {
     let (input, left) = be_u16(input)?;
     let (input, right) = be_u16(input)?;
     let (input, top) = be_u16(input)?;
@@ -73,7 +74,9 @@ fn parse_margin(input: &[u8]) -> IResult<&[u8], Margin> {
     ))
 }
 
-fn parse_page(input: &[u8]) -> IResult<&[u8], (Page, Buf)> {
+fn parse_page<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], (Page, Buf<'a>), E> {
     let (input, phys_pnr) = be_u16(input)?;
     let (input, log_pnr) = be_u16(input)?;
 
@@ -104,7 +107,7 @@ fn parse_page(input: &[u8]) -> IResult<&[u8], (Page, Buf)> {
 }
 
 /// Parse a `pbuf` chunk
-pub fn parse_pbuf(input: &[u8]) -> IResult<&[u8], PBuf> {
+pub fn parse_pbuf<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PBuf<'a>, E> {
     let (input, page_count) = be_u32(input)?;
     let (input, kl) = be_u32(input)?;
     let (input, first_page_nr) = be_u32(input)?;

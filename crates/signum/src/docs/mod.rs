@@ -4,6 +4,7 @@
 
 use nom::{
     combinator::map,
+    error::ParseError,
     number::complete::{be_u16, be_u32},
     IResult,
 };
@@ -26,11 +27,11 @@ struct SDoc<'a> {
 }
 
 /// Take the next 16 bytes
-pub fn bytes16(input: &[u8]) -> IResult<&[u8], Bytes16> {
+pub fn bytes16<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Bytes16, E> {
     map(be_u16, Bytes16)(input)
 }
 
 /// Take the next 32 bytes
-pub fn bytes32(input: &[u8]) -> IResult<&[u8], Bytes32> {
+pub fn bytes32<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Bytes32, E> {
     map(be_u32, Bytes32)(input)
 }

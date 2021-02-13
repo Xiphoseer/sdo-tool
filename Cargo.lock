@@ -897,6 +897,7 @@ dependencies = [
  "ccitt-t4-t6",
  "color-eyre",
  "image",
+ "nom-supreme",
  "pdf",
  "pdf-create",
  "prettytable-rs",

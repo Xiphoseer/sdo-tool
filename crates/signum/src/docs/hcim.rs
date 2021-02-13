@@ -7,6 +7,7 @@ use nom::{
         complete::{tag, take_until},
         streaming::take,
     },
+    error::ParseError,
     multi::count,
     number::complete::{be_u16, be_u32},
     IResult,
@@ -87,7 +88,9 @@ pub struct HCIM<'a> {
 }
 
 /// Parse an entry in the images table
-pub fn parse_image_buf(input: &[u8]) -> IResult<&[u8], Buf> {
+pub fn parse_image_buf<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Buf<'a>, E> {
     let (input, length2) = be_u32(input)?;
     let (input, buf2) = take((length2 - 4) as usize)(input)?;
     Ok((input, Buf(buf2)))
@@ -120,7 +123,9 @@ pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
 }
 
 /// Parse the `hcim` header
-pub fn parse_hcim_header(input: &[u8]) -> IResult<&[u8], HCIMHeader> {
+pub fn parse_hcim_header<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], HCIMHeader, E> {
     let (input, header_length) = be_u32(input)?;
     let (input, img_count) = be_u16(input)?;
     let (input, site_count) = be_u16(input)?;
@@ -141,7 +146,9 @@ pub fn parse_hcim_header(input: &[u8]) -> IResult<&[u8], HCIMHeader> {
 
 #[allow(non_snake_case, clippy::just_underscores_and_digits)]
 /// Parse a site table entry
-pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], ImageSite> {
+pub fn parse_hcim_img_ref<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], ImageSite, E> {
     let (input, page) = be_u16(input)?;
     let (input, site_x) = be_u16(input)?;
     let (input, site_y) = be_u16(input)?;
@@ -186,7 +193,7 @@ pub fn parse_hcim_img_ref(input: &[u8]) -> IResult<&[u8], ImageSite> {
 }
 
 /// Parse a `hcim` chunk
-pub fn parse_hcim(input: &[u8]) -> IResult<&[u8], HCIM> {
+pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], HCIM, E> {
     let (input, header) = parse_hcim_header(input)?;
     let (input, buf) = take(header.header_length as usize)(input)?;
     let (_, sites) = count(parse_hcim_img_ref, header.site_count as usize)(buf)?;

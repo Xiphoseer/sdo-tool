@@ -1,6 +1,6 @@
 //! # (`sysp`) The system parameters
 
-use nom::{bytes::streaming::take, number::complete::be_u16, IResult};
+use nom::{bytes::streaming::take, error::ParseError, number::complete::be_u16, IResult};
 
 use crate::util::{Bytes16, Bytes32};
 
@@ -26,7 +26,7 @@ pub struct SysP {
 }
 
 /// Parse the `sysp` chunk
-pub fn parse_sysp(input: &[u8]) -> IResult<&[u8], SysP> {
+pub fn parse_sysp<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], SysP, E> {
     let (input, _) = take(0x50usize)(input)?;
 
     // Standartseitenformat

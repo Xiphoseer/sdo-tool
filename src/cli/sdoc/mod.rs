@@ -22,8 +22,12 @@ use signum::{
     util::Buf,
 };
 use std::path::Path;
+use util::to_err_tree;
 
-use super::font::cache::{CSet, FontCache};
+use super::{
+    font::cache::{CSet, FontCache},
+    util,
+};
 
 mod console;
 mod imgseq;
@@ -108,8 +112,8 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(&mut self, fc: &mut FontCache, part: Buf<'_>) -> eyre::Result<()> {
-        let (_, charsets) = parse_cset(part.0).unwrap();
+    fn process_cset<'x>(&mut self, fc: &mut FontCache, part: Buf<'x>) -> eyre::Result<()> {
+        let charsets = util::load(parse_cset, part.0)?;
         println!("'cset': {:?}", charsets);
 
         let mut all_eset = true;
@@ -184,24 +188,18 @@ impl<'a> Document<'a> {
     }
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
-        let (_, sysp) = parse_sysp(part.0)
-            .finish()
-            .map_err(|e| eyre!("Failed to parse `sysp`: {:?}", e))?;
+        let sysp = util::load(parse_sysp, part.0)?;
         println!("'sysp': {:#?}", sysp);
         Ok(())
     }
 
-    fn process_pbuf(&mut self, part: Buf) -> eyre::Result<()> {
-        let (rest, pbuf) = parse_pbuf(part.0).unwrap();
+    fn process_pbuf(&mut self, part: Buf<'_>) -> eyre::Result<()> {
+        let pbuf = util::load(parse_pbuf, part.0)?;
 
         println!(
             "Page Buffer ('pbuf')\n  page_count: {}\n  kl: {}\n  first_page_nr: {}",
             pbuf.page_count, pbuf.kl, pbuf.first_page_nr
         );
-
-        if !rest.is_empty() {
-            println!("  rest: {:+?}", Buf(rest));
-        }
 
         // Create the table
         let mut page_table = Table::new();
@@ -266,7 +264,7 @@ impl<'a> Document<'a> {
     }
 
     fn process_hcim(&mut self, part: Buf) -> eyre::Result<()> {
-        let (rest, hcim) = parse_hcim(part.0).unwrap();
+        let (rest, hcim) = parse_hcim(part.0).finish().map_err(to_err_tree(part.0))?;
         println!("'hcim':");
         println!("  {:?}", hcim.header);
 
@@ -354,7 +352,7 @@ impl<'a> Document<'a> {
     }
 
     pub fn process_0001(&mut self, part: Buf) -> eyre::Result<()> {
-        let (_, header) = parse_header(part.0).unwrap();
+        let header = util::load(parse_header, part.0)?;
         println!("'0001':");
         println!("ctime: {}", header.ctime);
         println!("mtime: {}", header.mtime);

@@ -10,14 +10,7 @@ use crate::cli::font::cache::FontCache;
 
 use super::{Document, Pos};
 
-fn draw_chars(
-    doc: &Document,
-    fc: &FontCache,
-    data: &[Char],
-    page: &mut Page,
-    x: &mut u16,
-    y: u16,
-) -> eyre::Result<()> {
+fn draw_chars(doc: &Document, fc: &FontCache, data: &[Char], page: &mut Page, x: &mut u16, y: u16) {
     for te in data {
         *x += te.offset;
         match doc.print_driver {
@@ -53,7 +46,6 @@ fn draw_chars(
             }
         }
     }
-    Ok(())
 }
 
 fn draw_line(
@@ -63,7 +55,7 @@ fn draw_line(
     skip: u16,
     page: &mut Page,
     pos: &mut Pos,
-) -> eyre::Result<()> {
+) {
     pos.y += skip + 1;
 
     if line.flags.contains(Flags::FLAG) {
@@ -72,9 +64,7 @@ fn draw_line(
 
     if line.flags.contains(Flags::ALIG) {}
 
-    draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y)?;
-
-    Ok(())
+    draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y);
 }
 
 pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
@@ -113,7 +103,7 @@ pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
 
         for (skip, line) in &page_text.content {
             pos.x = 10;
-            draw_line(doc, fc, line, *skip, &mut page, &mut pos)?;
+            draw_line(doc, fc, line, *skip, &mut page, &mut pos);
         }
 
         for site in doc.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
