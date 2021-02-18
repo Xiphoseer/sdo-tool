@@ -72,17 +72,56 @@ so you still end up needing to find a perfect match for your font for newer syst
     - Produce a PNG for monochrome images exported from a document
     - NOTE: It's a tiny step from there to exporting images from a document on the fly.
 
-## Usage
+## Installation
+
+This project is implemented in the [Rust][Rust] programming language. You can either
+download the compiled executables (recommended) or build the program from source using
+`cargo`.
+
+### Download (recommended)
+
+1. Go to <https://github.com/Xiphoseer/sdo-tool/releases>
+2. Download "sdo-toolbox-XXX.zip" where XXX is your operating system
+3. Unzip the archive to `sdo-toolbox-XXX`
+4. Use/Copy `sdo-toolbox/sdo-tool` (Linux/OSX) or `sdo-toolbox/sdo-tool.exe` (Windows)
+
+### From Source
 
 1. Install [Rust][Rust]
-2. Download/Clone this repository
-3. In the folder that contains `Cargo.toml` run `cargo build --release` / `cargo.exe build --release`
-4. Use/Copy `target/release/sdo-tool` (Linux/OSX) or `target/release/sdo-tool.exe` (Windows)
-5. Run:
-  1. `sdo-tool SOMEFILE.SDO --format pdf` to get a PDF file
-  2. `sdo-tool SOMEFILE.SDO --format png` to get a sequence of PNG files
-  3. `sdo-tool SOMEFILE.E24` to print all characters in the font to the console
-  4. `sdo-tool SOMEFILE.IMC` to convert an IMC image file to a PNG file
+2. Clone this repository (`git clone git@github.com:Xiphoseer/sdo-tool.git`)
+3. OR download it from <https://github.com/Xiphoseer/sdo-tool/archive/main.zip>
+4. In the folder that contains `Cargo.toml` run `cargo build --release` / `cargo.exe build --release`
+5. Use/Copy `target/release/sdo-tool` (Linux/OSX) or `target/release/sdo-tool.exe` (Windows)
+
+### Adding to the path
+
+On Linux and MacOS, you can copy `sdo-tool` to `/usr/local/bin` to have it available everywhere.
+On all operating systems, you can add the `sdo-toolbox` or `release` folder to the `PATH` environment variable (See [this guide](https://www3.ntu.edu.sg/home/ehchua/programming/howto/Environment_Variables.html)) for the same result.
+
+### From crates.io
+
+At the moment, this program is not released on <https://crates.io>, so it cannot be installed using `cargo install` yet.
+
+## Usage
+
+1. `sdo-tool --format pdf SOMEFILE.SDO` to get a PDF file
+2. `sdo-tool --format png SOMEFILE.SDO` to get a sequence of PNG files
+3. `sdo-tool SOMEFILE.SDO` to print some text to the console
+4. `sdo-tool SOMEFILE.E24` to print all characters in the font to the console
+5. `sdo-tool SOMEFILE.IMC` to convert an IMC image file to a PNG file
+
+## Example
+
+```sh
+$ ls
+FILE.SDO
+CHSETS
+sdo-toolbox
+$ cd sdo-toolbox
+$ ./sdo-tool --format pdf ../FILE.SDO
+...
+$ open ../FILE.pdf
+```
 
 ## Examples
 
