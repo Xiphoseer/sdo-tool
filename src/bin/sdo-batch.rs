@@ -1,4 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+    path::{Path, PathBuf},
+};
 
 use color_eyre::eyre::{self, WrapErr};
 use pdf_create::{
@@ -9,14 +13,18 @@ use pdf_create::{
 use signum::chsets::{printer::PrinterKind, UseTableVec};
 use structopt::StructOpt;
 
-use super::{
+use sdo_tool::cli::{
     font::cache::FontCache, opt::DocScript, opt::Format, opt::Meta, opt::Options, opt::OutlineItem,
     sdoc::pdf::handle_out, sdoc::pdf::prepare_document, sdoc::pdf::prepare_meta, sdoc::pdf::Fonts,
     sdoc::Document,
 };
 
 #[derive(StructOpt, Debug)]
+/// Run a document script
 pub struct RunOpts {
+    /// A document script
+    file: PathBuf,
+    /// The output folder
     out: PathBuf,
 }
 
@@ -33,7 +41,7 @@ fn map_outline_items(items: &[OutlineItem]) -> eyre::Result<Vec<high::OutlineIte
     Ok(result)
 }
 
-pub fn run(file: PathBuf, buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
+pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let script_str_res = std::str::from_utf8(buffer);
     let script_str = WrapErr::wrap_err(script_str_res, "Failed to parse as string")?;
     let script_res = ron::from_str(script_str);
@@ -43,7 +51,7 @@ pub fn run(file: PathBuf, buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     println!("opt: {:?}", opt);
 
     let doc_opt = Options {
-        out: opt.out.clone(),
+        out: Some(opt.out.clone()),
         with_images: None,
         print_driver: None,
         page: None,
@@ -54,7 +62,7 @@ pub fn run(file: PathBuf, buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     };
 
     // Set-Up font cache
-    let folder = file.parent().unwrap();
+    let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&script.chsets);
     let chsets_folder: PathBuf = chsets_folder.canonicalize().wrap_err_with(|| {
         format!(
@@ -132,6 +140,21 @@ pub fn run(file: PathBuf, buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     hnd.outline.children = map_outline_items(&script.outline)?;
 
-    handle_out(&opt.out, &file, hnd)?;
+    handle_out(Some(&opt.out), &opt.file, hnd)?;
     Ok(())
+}
+
+fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
+    let opt: RunOpts = RunOpts::from_args();
+
+    let file_res = File::open(&opt.file);
+    let file = WrapErr::wrap_err_with(file_res, || {
+        format!("Failed to open file: `{}`", opt.file.display())
+    })?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = Vec::new();
+    reader.read_to_end(&mut buffer)?;
+
+    run(&buffer, opt)
 }

@@ -11,7 +11,10 @@ use signum::{
     raster::Page,
     util::{data::BIT_STRING, Buf},
 };
-use std::{io::Stdout, path::PathBuf};
+use std::{
+    io::Stdout,
+    path::{Path, PathBuf},
+};
 
 pub mod cache;
 pub mod ps;
@@ -58,8 +61,16 @@ pub fn process_eset(
     Ok(())
 }
 
-fn save_as_ccitt(pset: &PSet, opt: &Options) -> eyre::Result<()> {
-    std::fs::create_dir_all(&opt.out)?;
+fn save_as_ccitt(pset: &PSet, opt: &Options, file: &Path) -> eyre::Result<()> {
+    let out_dir = if let Some(path) = &opt.out {
+        path.clone()
+    } else {
+        let mut file_name = file.file_name().unwrap().to_os_string();
+        file_name.push(".out");
+        file.with_file_name(file_name)
+    };
+    std::fs::create_dir_all(&out_dir)?;
+
     for (cval, chr) in pset.chars.iter().enumerate() {
         if chr.width > 0 {
             // TODO
@@ -75,7 +86,7 @@ fn save_as_ccitt(pset: &PSet, opt: &Options) -> eyre::Result<()> {
             //encoder.debug = cval == 87;
             let contents = encoder.encode();
             let file = format!("char-{}.{}.bin", cval, width);
-            let path = opt.out.join(file);
+            let path = out_dir.join(file);
             std::fs::write(path, contents)?;
         }
     }
@@ -142,7 +153,7 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
     Ok(())
 }
 
-pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
+pub fn process_ls30(buffer: &[u8], file: &Path, opt: &Options) -> eyre::Result<()> {
     let (rest, lset) = match parse_ls30(buffer) {
         Ok(result) => result,
         Err(e) => {
@@ -159,7 +170,7 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
         write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
         return Ok(());
     } else if opt.format == Format::CCITTT6 {
-        save_as_ccitt(&lset, opt)?;
+        save_as_ccitt(&lset, opt, file)?;
         return Ok(());
     }
 

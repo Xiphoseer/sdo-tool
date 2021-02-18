@@ -53,6 +53,7 @@ pub struct Document<'a> {
     opt: &'a Options,
     file: &'a Path,
     // cset
+    pub cset: [Option<String>; 8],
     pub chsets: [Option<usize>; 8],
     // pbuf
     pages: Vec<Option<pbuf::Page>>,
@@ -102,6 +103,7 @@ impl<'a> Document<'a> {
         Document {
             opt,
             file,
+            cset: [None, None, None, None, None, None, None, None],
             chsets: [None; 8],
             pages: vec![],
             page_count: 0,
@@ -124,6 +126,7 @@ impl<'a> Document<'a> {
             if name.is_empty() {
                 continue;
             }
+            self.cset[index] = Some(name.to_string());
             let name_ref = name.as_ref();
 
             if let Some(cset_cache_index) = fc.load_cset(name_ref) {
@@ -390,9 +393,9 @@ impl<'a> Document<'a> {
 pub fn process_sdoc(input: &[u8], opt: Options, file: &Path) -> eyre::Result<()> {
     let mut document = Document::new(&opt, file);
 
-    if opt.out != Path::new("-") {
+    /*if opt.out != Path::new("-") {
         std::fs::create_dir_all(&opt.out)?;
-    }
+    }*/
 
     let folder = file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);

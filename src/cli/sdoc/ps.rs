@@ -172,16 +172,21 @@ fn output_ps_writer(
 }
 
 pub fn output_postscript(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
-    if doc.opt.out == Path::new("-") {
+    if doc.opt.out.as_deref() == Some(Path::new("-")) {
         println!("----------------------------- PostScript -----------------------------");
         let mut pw = PSWriter::new();
         output_ps_writer(doc, fc, &mut pw)?;
         println!("----------------------------------------------------------------------");
         Ok(())
     } else {
+        let out = doc
+            .opt
+            .out
+            .as_deref()
+            .unwrap_or_else(|| doc.file.parent().unwrap());
         let file = doc.file.file_stem().unwrap();
         let out = {
-            let mut buf = doc.opt.out.join(file);
+            let mut buf = out.join(file);
             buf.set_extension("ps");
             buf
         };

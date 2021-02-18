@@ -1051,6 +1051,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "texfonts"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "color-eyre",
+ "nom",
+ "nom-supreme",
+ "structopt",
+ "thiserror",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

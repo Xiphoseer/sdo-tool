@@ -87,7 +87,7 @@ impl fmt::Display for Format {
 #[derive(StructOpt)]
 pub struct Options {
     /// Where to store the output
-    pub out: PathBuf,
+    pub out: Option<PathBuf>,
     /// If specified, extract all embedded images to that folder
     #[structopt(long = "with-images", short = "I")]
     pub with_images: Option<PathBuf>,

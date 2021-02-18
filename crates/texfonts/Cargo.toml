@@ -1,0 +1,15 @@
+[package]
+name = "texfonts"
+version = "0.1.0"
+authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
+edition = "2018"
+
+[dependencies]
+nom = "6.1.0"
+thiserror = "1.0"
+bitflags = "1.2"
+
+[dev-dependencies]
+color-eyre = { version = "0.5", default-features = false }
+structopt = "0.3"
+nom-supreme = "0.4"

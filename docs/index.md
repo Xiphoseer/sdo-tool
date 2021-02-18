@@ -78,7 +78,11 @@ so you still end up needing to find a perfect match for your font for newer syst
 2. Download/Clone this repository
 3. In the folder that contains `Cargo.toml` run `cargo build --release` / `cargo.exe build --release`
 4. Use/Copy `target/release/sdo-tool` (Linux/OSX) or `target/release/sdo-tool.exe` (Windows)
-5. Run `sdo-tool SOMEFILE.SDO`, `sdo-tool SOMEFILE.E24`, `sdo-tool SOMEFILE.IMC`
+5. Run:
+  1. `sdo-tool SOMEFILE.SDO --format pdf` to get a PDF file
+  2. `sdo-tool SOMEFILE.SDO --format png` to get a sequence of PNG files
+  3. `sdo-tool SOMEFILE.E24` to print all characters in the font to the console
+  4. `sdo-tool SOMEFILE.IMC` to convert an IMC image file to a PNG file
 
 ## Examples
 

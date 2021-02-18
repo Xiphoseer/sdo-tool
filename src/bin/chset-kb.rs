@@ -1,5 +1,5 @@
 #![allow(unused)]
-use color_eyre::eyre::{self, eyre};
+use color_eyre::eyre::{self, eyre, WrapErr};
 use image::ImageFormat;
 use signum::{
     chsets::editor::{parse_eset, EChar, ESet, OwnedESet, ECHAR_NULL},
@@ -7,6 +7,8 @@ use signum::{
 };
 use std::{
     collections::HashSet,
+    fs::File,
+    io::{BufReader, Read},
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
@@ -719,7 +721,11 @@ pub const CHARS_LABEL: [u8; 25] = [
 ];
 
 #[derive(StructOpt)]
+/// Print a keyboard for the given font
 pub struct KBOptions {
+    /// An .E24 file
+    file: PathBuf,
+    /// The output image
     out: PathBuf,
 }
 
@@ -983,7 +989,7 @@ fn _run_stage_2() -> eyre::Result<()> {
     Ok(())
 }
 
-pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> eyre::Result<()> {
+pub fn run(buffer: &[u8], opt: KBOptions) -> eyre::Result<()> {
     let (_, eset) = parse_eset(buffer) //
         .map_err(|e| eyre!("Could not load editor charset:\n{}", e))?;
     let mut page = Page::new(730, 175);
@@ -999,13 +1005,28 @@ pub fn run(file: &Path, buffer: &[u8], kbopt: KBOptions) -> eyre::Result<()> {
 
     let img = page.to_image();
 
-    let mut out = kbopt.out;
+    let mut out = opt.out;
     if out.exists() && out.is_dir() {
-        out.push(file.file_name().unwrap());
+        out.push(opt.file.file_name().unwrap());
         out.set_extension("png");
     }
 
     img.save_with_format(&out, ImageFormat::Png)?;
 
     Ok(())
+}
+
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+    let opt: KBOptions = KBOptions::from_args();
+
+    let file_res = File::open(&opt.file);
+    let file = WrapErr::wrap_err_with(file_res, || {
+        format!("Failed to open file: `{}`", opt.file.display())
+    })?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = Vec::new();
+    reader.read_to_end(&mut buffer)?;
+
+    run(&buffer, opt)
 }

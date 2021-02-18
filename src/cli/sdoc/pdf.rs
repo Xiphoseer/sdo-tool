@@ -110,13 +110,7 @@ pub fn prepare_document(
     pk: PrinterKind,
 ) -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
-    let info_empty = FontInfo {
-        widths: Vec::new(),
-        first_char: 0,
-        index: 0xFF,
-    };
-
-    let mut infos = [&info_empty; 8];
+    let mut infos = [None; 8];
     for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
         if let Some(fc_index) = fc_index {
             let key = FONTS[cset].to_owned();
@@ -124,7 +118,7 @@ pub fn prepare_document(
                 let index = font_info.base + info.index;
                 let value = Resource::Global { index };
                 fonts.insert(key, value);
-                infos[cset] = info;
+                infos[cset] = Some(info);
             }
         }
     }
@@ -163,7 +157,10 @@ pub fn prepare_document(
                 contents.byte(te.cval);
 
                 let csu = te.cset as usize;
-                let fi = infos[csu];
+                let fi = infos[csu].ok_or_else(|| {
+                    let font_name = doc.cset[csu].as_deref().unwrap_or("");
+                    eyre!("Missing font #{}: {:?}", csu, font_name)
+                })?;
                 let fc = fi.first_char;
                 let wi = (te.cval - fc) as usize;
                 prev_width = fi.widths[wi] as isize;
@@ -233,12 +230,12 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Han
 
 pub fn output_pdf(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     let hnd = process_doc(doc, fc)?;
-    handle_out(&doc.opt.out, &doc.file, hnd)?;
+    handle_out(doc.opt.out.as_deref(), &doc.file, hnd)?;
     Ok(())
 }
 
-pub fn handle_out(out: &Path, file: &Path, hnd: Handle) -> eyre::Result<()> {
-    if out == Path::new("-") {
+pub fn handle_out(out: Option<&Path>, file: &Path, hnd: Handle) -> eyre::Result<()> {
+    if out == Some(Path::new("-")) {
         println!("----------------------------- PDF -----------------------------");
         let stdout = std::io::stdout();
         let mut stdolock = stdout.lock();
@@ -246,6 +243,7 @@ pub fn handle_out(out: &Path, file: &Path, hnd: Handle) -> eyre::Result<()> {
         println!("---------------------------------------------------------------");
         Ok(())
     } else {
+        let out = out.unwrap_or_else(|| file.parent().unwrap());
         let file = file.file_stem().unwrap();
         let out = {
             let mut buf = out.join(file);
