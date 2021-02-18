@@ -82,10 +82,11 @@ impl fmt::Display for Format {
         }
     }
 }
-
-/// OPTIONS
 #[derive(StructOpt)]
+/// Convert a Signum file to another format
 pub struct Options {
+    /// The file to be processed (e.g. *.SDO, *.E24, *.IMC)
+    pub file: PathBuf,
     /// Where to store the output
     pub out: Option<PathBuf>,
     /// If specified, extract all embedded images to that folder

@@ -153,7 +153,7 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
     Ok(())
 }
 
-pub fn process_ls30(buffer: &[u8], file: &Path, opt: &Options) -> eyre::Result<()> {
+pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
     let (rest, lset) = match parse_ls30(buffer) {
         Ok(result) => result,
         Err(e) => {
@@ -170,7 +170,7 @@ pub fn process_ls30(buffer: &[u8], file: &Path, opt: &Options) -> eyre::Result<(
         write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
         return Ok(());
     } else if opt.format == Format::CCITTT6 {
-        save_as_ccitt(&lset, opt, file)?;
+        save_as_ccitt(&lset, opt, &opt.file)?;
         return Ok(());
     }
 

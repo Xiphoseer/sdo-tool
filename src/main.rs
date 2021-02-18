@@ -11,24 +11,12 @@ use sdo_tool::cli::{
 use std::{
     fs::File,
     io::{BufReader, Read},
-    path::PathBuf,
 };
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-/// The options for this CLI
-pub struct CLI {
-    /// The file to be processed
-    file: PathBuf,
-
-    /// How to process that file
-    #[structopt(flatten)]
-    dump_opt: Options,
-}
-
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    let opt = CLI::from_args();
+    let opt = Options::from_args();
 
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {
@@ -39,12 +27,12 @@ fn main() -> eyre::Result<()> {
     reader.read_to_end(&mut buffer)?;
 
     match buffer.get(..4) {
-        Some(b"sdoc") => process_sdoc(&buffer, opt.dump_opt, &opt.file),
+        Some(b"sdoc") => process_sdoc(&buffer, opt),
         Some(b"eset") => process_eset(&buffer, None, None),
-        Some(b"ps09") => process_ps09(&buffer, &opt.dump_opt),
-        Some(b"ps24") => process_ps24(&buffer, &opt.dump_opt),
-        Some(b"ls30") => process_ls30(&buffer, &opt.file, &opt.dump_opt),
-        Some(b"bimc") => process_bimc(&buffer, &opt.file, opt.dump_opt.out),
+        Some(b"ps09") => process_ps09(&buffer, &opt),
+        Some(b"ps24") => process_ps24(&buffer, &opt),
+        Some(b"ls30") => process_ls30(&buffer, &opt),
+        Some(b"bimc") => process_bimc(&buffer, opt),
         Some(t) => Err(eyre!("Unknown file type {:?}", t)),
         None => Err(eyre!("File has less than 4 bytes")),
     }

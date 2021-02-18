@@ -184,7 +184,7 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
     let meta = doc.opt.meta()?;
     if meta.title.is_none() {
         let mut meta = meta.into_owned();
-        let file_name = doc.file.file_name().unwrap();
+        let file_name = doc.opt.file.file_name().unwrap();
         let title = file_name
             .to_str()
             .ok_or_else(|| eyre!("File name contains invalid characters"))?;
@@ -230,7 +230,7 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Han
 
 pub fn output_pdf(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     let hnd = process_doc(doc, fc)?;
-    handle_out(doc.opt.out.as_deref(), &doc.file, hnd)?;
+    handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
     Ok(())
 }
 

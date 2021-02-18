@@ -20,7 +20,7 @@ fn output_ps_writer(
 
     pw.write_magic()?;
     pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
-    let file_name = doc.file.file_name().unwrap().to_string_lossy();
+    let file_name = doc.opt.file.file_name().unwrap().to_string_lossy();
     pw.write_meta_field("Title", file_name.as_ref())?;
     //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
     pw.write_meta_field("Pages", &format!("{}", doc.page_count))?;
@@ -183,8 +183,8 @@ pub fn output_postscript(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
             .opt
             .out
             .as_deref()
-            .unwrap_or_else(|| doc.file.parent().unwrap());
-        let file = doc.file.file_stem().unwrap();
+            .unwrap_or_else(|| doc.opt.file.parent().unwrap());
+        let file = doc.opt.file.file_stem().unwrap();
         let out = {
             let mut buf = out.join(file);
             buf.set_extension("ps");

@@ -73,7 +73,7 @@ pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
     let out_path: PathBuf = if let Some(path) = &doc.opt.out {
         path.clone()
     } else {
-        let dir = doc.file.with_extension("sdo.out");
+        let dir = doc.opt.file.with_extension("sdo.out");
         std::fs::create_dir(&dir)?;
         dir
     };

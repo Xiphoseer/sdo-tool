@@ -21,7 +21,6 @@ use signum::{
     raster::Page,
     util::Buf,
 };
-use std::path::Path;
 use util::to_err_tree;
 
 use super::{
@@ -51,7 +50,7 @@ pub struct Document<'a> {
     // Configuration
     print_driver: Option<FontKind>,
     opt: &'a Options,
-    file: &'a Path,
+    //file: &'a Path,
     // cset
     pub cset: [Option<String>; 8],
     pub chsets: [Option<usize>; 8],
@@ -99,10 +98,9 @@ impl<'a> Document<'a> {
         use_matrix
     }
 
-    pub fn new(opt: &'a Options, file: &'a Path) -> Self {
+    pub fn new(opt: &'a Options) -> Self {
         Document {
             opt,
-            file,
             cset: [None, None, None, None, None, None, None, None],
             chsets: [None; 8],
             pages: vec![],
@@ -390,14 +388,14 @@ impl<'a> Document<'a> {
     }
 }
 
-pub fn process_sdoc(input: &[u8], opt: Options, file: &Path) -> eyre::Result<()> {
-    let mut document = Document::new(&opt, file);
+pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
+    let mut document = Document::new(&opt);
 
     /*if opt.out != Path::new("-") {
         std::fs::create_dir_all(&opt.out)?;
     }*/
 
-    let folder = file.parent().unwrap();
+    let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);
     let mut fc = FontCache::new(chsets_folder);
     document.process_sdoc(input, &mut fc)?;

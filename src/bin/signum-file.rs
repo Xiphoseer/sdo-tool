@@ -19,27 +19,27 @@ fn info(buffer: &[u8], opt: Options) -> color_eyre::Result<()> {
         }
         Some(b"eset") => {
             println!("Signum!2 Editor Font");
-            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            println!("Use `sdo-tool {}` to learn more", opt.file.display());
             Ok(())
         }
         Some(b"bimc") => {
             println!("Signum!2 Compressed Image");
-            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            println!("Use `sdo-tool {}` to learn more", opt.file.display());
             Ok(())
         }
         Some(b"ls30") => {
             println!("Signum!2 30-Point Laser Printer Font");
-            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            println!("Use `sdo-tool {}` to learn more", opt.file.display());
             Ok(())
         }
         Some(b"ps24") => {
             println!("Signum!2 24-Needle Printer Font");
-            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            println!("Use `sdo-tool {}` to learn more", opt.file.display());
             Ok(())
         }
         Some(b"ps09") => {
             println!("Signum!2 9-Needle Printer Font");
-            println!("Use `sdo-tool {} dump` to learn more", opt.file.display());
+            println!("Use `sdo-tool {}` to learn more", opt.file.display());
             Ok(())
         }
         Some(b"cryp") => {

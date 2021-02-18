@@ -41,63 +41,27 @@ jobs:
       run: cargo test --verbose
     - name: Build
       run: cargo build --verbose --release
-    - name: Upload sdo-tool.exe
+    - name: Upload files (windows)
       uses: actions/upload-artifact@v2.1.4
       if: matrix.os == 'windows'
       with:
-        name: sdo-tool-windows.exe
-        path: target/release/sdo-tool.exe
-    - name: Upload sdo-tool
+        name: sdo-toolbox-windows
+        path: |
+          target/release/sdo-tool.exe
+          target/release/chset-kb.exe
+          target/release/dvips-font.exe
+          target/release/sdo-batch.exe
+          target/release/signum-file.exe
+          target/release/st-decode.exe
+    - name: Upload files (*nix)
       uses: actions/upload-artifact@v2.1.4
       if: matrix.os != 'windows'
       with:
-        name: sdo-tool-${{ matrix.os }}
-        path: target/release/sdo-tool
-    - name: Upload signum-file.exe
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os == 'windows'
-      with:
-        name: signum-file-windows.exe
-        path: target/release/signum-file.exe
-    - name: Upload signum-file
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os != 'windows'
-      with:
-        name: signum-file-${{ matrix.os }}
-        path: target/release/signum-file
-    - name: Upload sdo-batch.exe
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os == 'windows'
-      with:
-        name: sdo-batch-windows.exe
-        path: target/release/sdo-batch.exe
-    - name: Upload sdo-batch
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os != 'windows'
-      with:
-        name: sdo-batch-${{ matrix.os }}
-        path: target/release/sdo-batch
-    - name: Upload chset-kb.exe
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os == 'windows'
-      with:
-        name: chset-kb-windows.exe
-        path: target/release/chset-kb.exe
-    - name: Upload chset-kb
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os != 'windows'
-      with:
-        name: chset-kb-${{ matrix.os }}
-        path: target/release/chset-kb
-    - name: Upload st-decode.exe
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os == 'windows'
-      with:
-        name: st-decode-windows.exe
-        path: target/release/st-decode.exe
-    - name: Upload st-decode
-      uses: actions/upload-artifact@v2.1.4
-      if: matrix.os != 'windows'
-      with:
-        name: st-decode-${{ matrix.os }}
-        path: target/release/st-decode
+        name: sdo-toolbox-${{ matrix.os }}
+        path: |
+          target/release/sdo-tool
+          target/release/chset-kb
+          target/release/dvips-font
+          target/release/sdo-batch
+          target/release/signum-file
+          target/release/st-decode

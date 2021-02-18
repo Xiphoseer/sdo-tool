@@ -51,6 +51,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     println!("opt: {:?}", opt);
 
     let doc_opt = Options {
+        file: PathBuf::from("SDO-TOOL-BUG"),
         out: Some(opt.out.clone()),
         with_images: None,
         print_driver: None,
@@ -94,8 +95,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     }
 
     let mut documents = Vec::with_capacity(capacity);
-    for (doc_file, input) in &doc_files {
-        let mut document = Document::new(&doc_opt, doc_file);
+    for (_doc_file, input) in &doc_files {
+        let mut document = Document::new(&doc_opt);
 
         document.process_sdoc(&input, &mut fc)?;
         documents.push(document);
