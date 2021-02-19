@@ -1,11 +1,10 @@
-use nom::{Finish, IResult};
 use nom_supreme::{
     error::ErrorTree,
     final_parser::{ByteOffset, ExtractContext},
 };
 use std::path::PathBuf;
 use structopt::StructOpt;
-use texfonts::p_pk;
+use texfonts::{Decoder, Event};
 
 #[derive(Debug, StructOpt)]
 /// Prints information about a X11 PCF file
@@ -23,13 +22,13 @@ fn to_err_tree<'a>(
     }
 }
 
-fn load<'a, F, T>(fun: F, input: &'a [u8]) -> Result<T, ErrorTree<usize>>
+/*fn load<'a, F, T>(fun: F, input: &'a [u8]) -> Result<T, ErrorTree<usize>>
 where
     F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,
 {
     let (_, result) = fun(input).finish().map_err(to_err_tree(input))?;
     Ok(result)
-}
+}*/
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -37,8 +36,32 @@ fn main() -> color_eyre::Result<()> {
     let opts: Opts = Opts::from_args();
     let buffer = std::fs::read(&opts.file)?;
 
-    let font = load(p_pk, &buffer)?;
-    println!("{:?}", font);
+    let decoder: Decoder<'_, ErrorTree<&[u8]>> = Decoder::new(&buffer);
+    for event in decoder {
+        match event {
+            Ok(Event::Command(cmd)) => println!("{:?}", cmd),
+            Ok(Event::Character(chr)) => {
+                println!(
+                    "Character {{ dyn_f: {}, frb: {:?}, cc: {}, fl: {:?} }}",
+                    chr.dyn_f, chr.first_run_black, chr.cc, chr.fl
+                );
+                for row in chr.bytes.chunks(16) {
+                    print!("   ");
+                    for byte in row {
+                        print!(" {:02x}", byte);
+                    }
+                    println!();
+                }
+            }
+            Err(e) => {
+                let map_err = to_err_tree(&buffer);
+                return Err(match e {
+                    nom::Err::Incomplete(_) => panic!(),
+                    nom::Err::Error(e) | nom::Err::Failure(e) => map_err(e).into(),
+                });
+            }
+        }
+    }
 
     Ok(())
 }
