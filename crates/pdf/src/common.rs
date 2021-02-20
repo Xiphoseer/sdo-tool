@@ -289,9 +289,17 @@ pub struct Rectangle<P> {
 impl Rectangle<i32> {
     /// The media box for A4 Paper (Portrait)
     pub fn a4_media_box() -> Self {
+        Self::media_box(592, 842)
+    }
+
+    /// The media box for A4 Paper (Portrait)
+    pub fn media_box(width: i32, height: i32) -> Self {
         Rectangle {
             ll: Point { x: 0, y: 0 },
-            ur: Point { x: 592, y: 842 },
+            ur: Point {
+                x: width,
+                y: height,
+            },
         }
     }
 }

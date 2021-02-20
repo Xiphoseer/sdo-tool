@@ -1,3 +1,4 @@
+use nom::{Finish, Parser};
 use nom_supreme::{
     error::ErrorTree,
     final_parser::{ByteOffset, ExtractContext},
@@ -22,13 +23,12 @@ fn to_err_tree<'a>(
     }
 }
 
-/*fn load<'a, F, T>(fun: F, input: &'a [u8]) -> Result<T, ErrorTree<usize>>
+fn load<'a, F, T>(mut fun: F, input: &'a [u8]) -> Result<(&'a [u8], T), ErrorTree<usize>>
 where
-    F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,
+    F: Parser<&'a [u8], T, ErrorTree<&'a [u8]>>,
 {
-    let (_, result) = fun(input).finish().map_err(to_err_tree(input))?;
-    Ok(result)
-}*/
+    fun.parse(input).finish().map_err(to_err_tree(input))
+}
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -45,7 +45,10 @@ fn main() -> color_eyre::Result<()> {
                     "Character {{ dyn_f: {}, frb: {:?}, cc: {}, fl: {:?} }}",
                     chr.dyn_f, chr.first_run_black, chr.cc, chr.fl
                 );
-                for row in chr.bytes.chunks(16) {
+                let (raster, pre) = load(chr.fl, chr.bytes)?;
+                println!("{:?}", pre);
+
+                for row in raster.chunks(16) {
                     print!("   ");
                     for byte in row {
                         print!(" {:02x}", byte);

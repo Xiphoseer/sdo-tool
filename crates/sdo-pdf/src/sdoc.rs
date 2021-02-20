@@ -2,6 +2,7 @@ use std::io::Write;
 
 use pdf_create::write::write_string;
 
+/// Helper to create a valid `/Contents` stream
 pub struct Contents {
     buf: Vec<u8>,
     inner: Vec<u8>,
@@ -10,18 +11,23 @@ pub struct Contents {
     needs_space: bool,
     //is_ascii: bool,
     line_started: bool,
-    line_y: f32,
-    line_x: f32,
+
+    /// The vertical position in 1/216 == 1/(18*3*4) inches
+    pos_y: u32,
+
+    line_y: u32,
+    line_x: u32,
 }
 
 impl Contents {
-    pub fn new(left: f32, top: f32) -> Self {
-        let inner = format!("0 g\nBT\n1 0 0 -1 {} {} Tm\n", left, top);
+    pub fn new(scale_x: f32, scale_y: f32, left: f32, top: f32) -> Self {
+        let inner = format!("0 g\nBT\n{} 0 0 {} {} {} Tm\n", scale_x, scale_y, left, top);
         let inner = inner.into_bytes();
         Contents {
             line_started: false,
-            line_y: 0.0,
-            line_x: 0.0,
+            pos_y: 0,
+            line_y: 0,
+            line_x: 0,
             buf: vec![],
             open: false,
             needs_space: false,
@@ -31,17 +37,21 @@ impl Contents {
         }
     }
 
-    pub fn next_line(&mut self, x: f32, y: f32) {
+    /// Moves to the next line.
+    ///
+    /// `x` and `y` are in Signum coordinate units, i.e. `x` uses 1/90th of a inch and `y` uses 1/54th of an inch.
+    pub fn next_line(&mut self, x: u32, y: u32) {
         self.line_x += x;
-        self.line_y += y;
+        self.line_y += y * 4;
         self.line_started = false;
     }
 
     fn start_line(&mut self) {
         if !self.line_started {
             self.line_started = true;
-            writeln!(self.inner, "{} {} Td", self.line_x, self.line_y).unwrap();
-            self.line_y = 0.0;
+            let diff_y = (self.line_y - self.pos_y) as f32;
+            writeln!(self.inner, "{} {} Td", self.line_x, diff_y / 3.0).unwrap();
+            self.pos_y = self.line_y;
         }
     }
 
@@ -49,11 +59,12 @@ impl Contents {
         if self.cset != cset {
             self.cset = cset;
             self.flush();
-            writeln!(self.inner, "/C{} 2 Tf", cset).unwrap();
+            writeln!(self.inner, "/C{} 1 Tf", cset).unwrap();
         }
     }
 
-    pub fn xoff(&mut self, xoff: isize) {
+    /// xoff in font-units (1/72000)
+    pub fn xoff(&mut self, xoff: i32) {
         self.open();
         self.buf_flush();
         if self.needs_space {

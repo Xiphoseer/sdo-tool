@@ -107,7 +107,6 @@ pub fn prepare_document(
     doc: &Document,
     meta: &Meta,
     font_info: &Fonts,
-    pk: PrinterKind,
 ) -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
@@ -125,34 +124,49 @@ pub fn prepare_document(
 
     hnd.res.font_dicts.push(fonts);
 
-    let media_box = Rectangle::a4_media_box();
-    let fscale = (pk.scale() * 500.0) as isize;
-    let left = meta.xoffset.unwrap_or(0) as f32;
-    let top = 842.0 - meta.yoffset.unwrap_or(0) as f32;
-    //100.0 - (pd.scale_x(page_info.margin.left) as f32 * 0.2);
+    // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
+    //
+    // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
 
     for (_index, page) in doc.tebu.iter().enumerate() {
-        let _page_info = doc.pages[page.index as usize].as_ref().unwrap();
+        let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
         let resources = Resources {
             fonts: Resource::Global { index: 0 },
             ..Default::default()
         };
 
-        let mut contents = Contents::new(left, top);
+        let a4_width = 592;
+        let a4_height = 842;
+
+        let width = page_info.format.width() * 72 / 90;
+        let height = page_info.format.length as i32 * 72 / 54;
+
+        assert!(width as i32 <= a4_width, "Please file a bug!");
+
+        let xmargin = (a4_width - width as i32) / 2;
+        let ymargin = (a4_height - height as i32) / 2;
+
+        let left = xmargin as f32 + meta.xoffset.unwrap_or(0) as f32;
+        let left = left - page_info.format.left as f32 * 8.0 / 10.0;
+        let top = ymargin as f32 + meta.yoffset.unwrap_or(0) as f32;
+        let top = a4_height as f32 - top - 8.0;
+        let media_box = Rectangle::media_box(a4_width, a4_height);
+
+        let mut contents = Contents::new(1.0, -1.0, left, top);
 
         for (skip, line) in &page.content {
-            contents.next_line(0.0, pk.scale_y(1 + skip) as f32 * pk.scale());
+            contents.next_line(0, *skip as u32 + 1);
 
+            const FONTUNITS_PER_SIGNUM_X: i32 = 800;
             let mut prev_width = 0;
             for te in &line.data {
-                let x = te.offset;
+                let x = te.offset as i32;
                 contents.cset(te.cset);
 
-                let diff = pk.scale_x(x) as isize - prev_width;
+                let diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
                 if diff != 0 {
-                    let xoff = -diff * fscale;
-                    contents.xoff(xoff);
+                    contents.xoff(-diff);
                 }
                 contents.byte(te.cval);
 
@@ -163,7 +177,7 @@ pub fn prepare_document(
                 })?;
                 let fc = fi.first_char;
                 let wi = (te.cval - fc) as usize;
-                prev_width = fi.widths[wi] as isize;
+                prev_width = fi.widths[wi] as i32;
             }
 
             contents.flush();
@@ -224,7 +238,7 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Han
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, &meta, &font_info, pk)?;
+    prepare_document(&mut hnd, doc, &meta, &font_info)?;
     Ok(hnd)
 }
 

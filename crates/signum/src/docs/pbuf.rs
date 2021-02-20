@@ -26,15 +26,24 @@ pub struct PBuf<'a> {
 
 #[derive(Debug)]
 /// The margins of a page
-pub struct Margin {
-    /// Width of the left margin
+pub struct PageFormat {
+    /// The total length in vertical units (1/54th of an inch)
+    pub length: u16,
+    /// Position of the left text margin on the horizontal axis in 1/90th of an inch
     pub left: u16,
-    /// Distance of the right text margin from the left edge of the paper
+    /// Position of the right text margin on the horizontal axis in 1/90th of an inch
     pub right: u16,
-    /// Height of the header
-    pub top: u16,
-    /// Height of the footer
-    pub bottom: u16,
+    /// Height of the header in vertical units (1/54th of an inch)
+    pub header: u16,
+    /// Height of the footer in vertical units (1/54th of an inch)
+    pub footer: u16,
+}
+
+impl PageFormat {
+    /// Return the width specified by this format
+    pub fn width(&self) -> u16 {
+        self.right - self.left
+    }
 }
 
 #[derive(Debug)]
@@ -45,10 +54,8 @@ pub struct Page {
     /// Page number within the current file / document
     pub log_pnr: u16,
 
-    /// The total number of lines (?)
-    pub lines: u16,
     /// The margins of this page
-    pub margin: Margin,
+    pub format: PageFormat,
     /// Specifies the position of the page number
     pub numbpos: Bytes16,
     /// May specify the current chapter (?)
@@ -57,19 +64,21 @@ pub struct Page {
     pub intern: Bytes16,
 }
 
-fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Margin, E> {
+fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PageFormat, E> {
+    let (input, length) = be_u16(input)?;
     let (input, left) = be_u16(input)?;
     let (input, right) = be_u16(input)?;
-    let (input, top) = be_u16(input)?;
-    let (input, bottom) = be_u16(input)?;
+    let (input, header) = be_u16(input)?;
+    let (input, footer) = be_u16(input)?;
 
     Ok((
         input,
-        Margin {
+        PageFormat {
+            length,
             left,
             right,
-            top,
-            bottom,
+            header,
+            footer,
         },
     ))
 }
@@ -80,8 +89,7 @@ fn parse_page<'a, E: ParseError<&'a [u8]>>(
     let (input, phys_pnr) = be_u16(input)?;
     let (input, log_pnr) = be_u16(input)?;
 
-    let (input, lines) = be_u16(input)?;
-    let (input, margin) = parse_margin(input)?;
+    let (input, format) = parse_margin(input)?;
     let (input, numbpos) = bytes16(input)?;
     let (input, kapitel) = bytes16(input)?;
     let (input, intern) = bytes16(input)?;
@@ -94,9 +102,7 @@ fn parse_page<'a, E: ParseError<&'a [u8]>>(
                 phys_pnr,
                 log_pnr,
 
-                lines,
-
-                margin,
+                format,
                 numbpos,
                 kapitel,
                 intern,

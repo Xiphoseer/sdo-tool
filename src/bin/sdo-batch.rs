@@ -124,7 +124,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     }
 
     for doc in &documents {
-        prepare_document(&mut hnd, doc, &script.meta, &font_info, pk)?;
+        prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {

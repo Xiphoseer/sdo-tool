@@ -147,22 +147,22 @@ impl CharHeader {
 pub struct CacheDevice {
     pub w_x: i16,
     pub w_y: i16,
-    pub ll_x: i16,
-    pub ll_y: i16,
-    pub ur_x: i16,
-    pub ur_y: i16,
+    pub ll_x: i32,
+    pub ll_y: i32,
+    pub ur_x: i32,
+    pub ur_y: i32,
 }
 
 impl From<CharHeader> for CacheDevice {
     fn from(c: CharHeader) -> CacheDevice {
-        let ll_x = 128i16 - (c.x_offset as i16);
-        let ur_y = (c.y_offset as i16) - 127;
+        let ll_x = 128i32 - (c.x_offset as i32);
+        let ur_y = (c.y_offset as i32) - 127;
         CacheDevice {
             w_x: c.delta_x as i16,
             w_y: 0,
             ll_x,
-            ll_y: ur_y - (c.height as i16),
-            ur_x: ll_x + (c.width as i16),
+            ll_y: ur_y - (c.height as i32),
+            ur_x: ll_x + (c.width as i32),
             ur_y,
         }
     }

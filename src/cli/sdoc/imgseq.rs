@@ -91,9 +91,9 @@ pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
         }
 
         let (mut page, mut pos) = if let Some(print_driver) = doc.print_driver {
-            let width_units: u16 = pbuf_entry.margin.left + pbuf_entry.margin.right + 20;
+            let width_units: u16 = pbuf_entry.format.left + pbuf_entry.format.right + 20;
             let height_units: u16 =
-                pbuf_entry.margin.top + pbuf_entry.lines + pbuf_entry.margin.bottom;
+                pbuf_entry.format.header + pbuf_entry.format.length + pbuf_entry.format.footer;
 
             let width = print_driver.scale_x(width_units);
             let height = print_driver.scale_y(height_units);

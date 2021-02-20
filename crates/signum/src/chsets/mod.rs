@@ -148,7 +148,7 @@ impl FontKind {
 
     /// Returns the amount of pixels from the top of the box to
     /// the baseline of the font.
-    pub fn baseline(&self) -> i16 {
+    pub fn baseline(&self) -> i32 {
         match self {
             Self::Editor => 18,
             Self::Printer(pk) => pk.baseline(),
@@ -156,12 +156,10 @@ impl FontKind {
     }
 
     /// Return the resolution (in DPI per direction)
-    pub fn resolution(&self) -> (isize, isize) {
+    pub fn resolution(&self) -> (u32, u32) {
         match self {
             Self::Editor => (104, 90),
-            Self::Printer(PrinterKind::Needle9) => (216, 216),
-            Self::Printer(PrinterKind::Needle24) => (360, 360),
-            Self::Printer(PrinterKind::Laser30) => (300, 300),
+            Self::Printer(p) => p.resolution(),
         }
     }
 

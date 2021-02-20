@@ -45,8 +45,8 @@ fn output_ps_writer(
         pw.isize(39158280)?;
         pw.isize(55380996)?;
         pw.isize(1000)?;
-        pw.isize(hdpi)?;
-        pw.isize(vdpi)?;
+        pw.u32(hdpi)?;
+        pw.u32(vdpi)?;
         pw.bytes(b"hello.dvi")?;
         pw.crlf()?;
         pw.name("@start")?;

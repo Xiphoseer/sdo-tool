@@ -5,9 +5,9 @@ use nom::{
     bytes::complete::take,
     combinator::map,
     error::ParseError,
-    number::complete::{be_u16, be_u32, be_u8, le_u8},
+    number::complete::{be_i16, be_i32, be_i8, be_u16, be_u32, be_u8, le_u8},
     sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 #[derive(Debug)]
@@ -62,20 +62,13 @@ where
     ))
 }
 
-#[allow(non_camel_case_types)]
-pub struct u24(u8, u16);
-
-pub fn be_u24<'i, E>(input: &'i [u8]) -> IResult<&'i [u8], u24, E>
+pub fn be_u24<'i, E>(input: &'i [u8]) -> IResult<&'i [u8], u32, E>
 where
     E: ParseError<&'i [u8]>,
 {
-    map(tuple((be_u8, be_u16)), |(high, low)| u24(high, low))(input)
-}
-
-impl fmt::Debug for u24 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (u32::from(self.1) + (u32::from(self.0) << 16)).fmt(f)
-    }
+    map(tuple((be_u8, be_u16)), |(high, low)| {
+        (u32::from(high) << 16) + u32::from(low)
+    })(input)
 }
 
 #[derive(Debug)]
@@ -85,31 +78,73 @@ pub enum Flag {
     Long,
 }
 
-#[derive(Debug)]
-pub struct CharPreamble {
-    pl: u8,
-    cc: u8,
-    tfm: u24, // u24
-    dm: u8,
-    w: u8,
-    h: u8,
+impl<'i, E> Parser<&'i [u8], CharPreamble, E> for Flag
+where
+    E: ParseError<&'i [u8]> + 'i,
+{
+    fn parse(&mut self, input: &'i [u8]) -> IResult<&'i [u8], CharPreamble, E> {
+        match self {
+            Self::Short => {
+                let (input, (tfm, dm, w, h, hoff, voff)) =
+                    tuple((be_u24, be_u8, be_u8, be_u8, be_i8, be_i8))(input)?;
+                Ok((
+                    input,
+                    CharPreamble {
+                        tfm,
+                        dx: u32::from(dm) << 16,
+                        dy: 0,
+                        w: u32::from(w),
+                        h: u32::from(h),
+                        hoff: hoff.into(),
+                        voff: voff.into(),
+                    },
+                ))
+            }
+            Self::Extended => {
+                let (input, (tfm, dm, w, h, hoff, voff)) =
+                    tuple((be_u24, be_u16, be_u16, be_u16, be_i16, be_i16))(input)?;
+                Ok((
+                    input,
+                    CharPreamble {
+                        tfm,
+                        dx: u32::from(dm) << 16,
+                        dy: 0,
+                        w: u32::from(w),
+                        h: u32::from(h),
+                        hoff: hoff.into(),
+                        voff: voff.into(),
+                    },
+                ))
+            }
+            Self::Long => {
+                let (input, (tfm, dx, dy, w, h, hoff, voff)) =
+                    tuple((be_u32, be_u32, be_u32, be_u32, be_u32, be_i32, be_i32))(input)?;
+                Ok((
+                    input,
+                    CharPreamble {
+                        tfm,
+                        dx,
+                        dy,
+                        w,
+                        h,
+                        hoff,
+                        voff,
+                    },
+                ))
+            }
+        }
+    }
 }
 
-pub fn p_char_preamble_short<'i, E>(input: &'i [u8]) -> IResult<&'i [u8], CharPreamble, E>
-where
-    E: ParseError<&'i [u8]>,
-{
-    map(
-        tuple((be_u8, be_u8, be_u24, be_u8, be_u8, be_u8)),
-        |(pl, cc, tfm, dm, w, h)| CharPreamble {
-            pl,
-            cc,
-            tfm,
-            dm,
-            w,
-            h,
-        },
-    )(input)
+#[derive(Debug)]
+pub struct CharPreamble {
+    tfm: u32,
+    dx: u32,
+    dy: u32,
+    w: u32,
+    h: u32,
+    hoff: i32,
+    voff: i32,
 }
 
 #[derive(Debug)]

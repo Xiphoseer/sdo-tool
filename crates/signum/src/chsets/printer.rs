@@ -64,11 +64,20 @@ impl PrinterKind {
     }
 
     /// Get the position of the character baseline from the top of the glyph bounding box
-    pub fn baseline(self) -> i16 {
+    pub fn baseline(self) -> i32 {
         match self {
             Self::Needle9 => 36,
             Self::Needle24 => 58,
             Self::Laser30 => 48,
+        }
+    }
+
+    /// Get the resolution of this printer font in dots per inch
+    pub fn resolution(&self) -> (u32, u32) {
+        match self {
+            Self::Needle9 => (240, 216),
+            Self::Needle24 => (360, 360),
+            Self::Laser30 => (300, 300),
         }
     }
 }

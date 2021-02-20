@@ -49,12 +49,49 @@ pub const DIFFERENCES: &[u8] = &[
     26, 27, 28, 29, 30, 31, 32, 64, 91, 92, 93, 123, 125, 127,
 ];
 
+pub struct FontMetrics {
+    pub baseline: i32,
+    pub pixels_per_inch_x: u32,
+    pub pixels_per_inch_y: u32,
+    pub pixels_per_pdfunit_x: u32,
+    pub pixels_per_pdfunit_y: u32,
+    pub fontunits_per_pixel_x: u32,
+    pub fontunits_per_pixel_y: u32,
+}
+
+impl From<PrinterKind> for FontMetrics {
+    fn from(pk: PrinterKind) -> Self {
+        let pdfunits_per_inch = 72;
+        let fontunits_per_inch = pdfunits_per_inch * 1000;
+        let (pixels_per_inch_x, pixels_per_inch_y) = pk.resolution();
+
+        let pixels_per_pdfunit_x = pixels_per_inch_x / pdfunits_per_inch;
+        let pixels_per_pdfunit_y = pixels_per_inch_y / pdfunits_per_inch;
+
+        let fontunits_per_pixel_x = fontunits_per_inch / pixels_per_inch_x;
+        let fontunits_per_pixel_y = fontunits_per_inch / pixels_per_inch_y;
+        Self {
+            baseline: pk.baseline(),
+
+            pixels_per_inch_x,
+            pixels_per_inch_y,
+
+            pixels_per_pdfunit_x,
+            pixels_per_pdfunit_y,
+
+            fontunits_per_pixel_x,
+            fontunits_per_pixel_y,
+        }
+    }
+}
+
 pub fn write_char_stream<W: Write>(
     w: &mut W,
     pchar: &PSetChar,
     dx: u32,
-    pk: PrinterKind,
+    font_metrics: &FontMetrics,
 ) -> io::Result<()> {
+    // This is all in pixels
     let hb = pchar.hbounds();
     let ur_x = (pchar.width as usize) * 8 - hb.max_tail;
     let ll_x = hb.max_lead;
@@ -65,30 +102,32 @@ pub fn write_char_stream<W: Write>(
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
 
-    let top = pk.baseline();
-    let ur_y = top - (pchar.top as i16);
-    let ll_y = ur_y - (pchar.height as i16);
+    // This is all in font units
+    let top = font_metrics.baseline;
+    let ur_y = top - (pchar.top as i32);
+    let ll_y = ur_y - pchar.height as i32;
 
     let cd = CacheDevice {
         w_x: dx as i16,
         w_y: 0,
-        ll_x: ll_x as i16,
-        ll_y,
-        ur_x: ur_x as i16,
-        ur_y,
+        ll_x: ll_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
+        ll_y: ll_y * font_metrics.fontunits_per_pixel_y as i32,
+        ur_x: ur_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
+        ur_y: ur_y * font_metrics.fontunits_per_pixel_y as i32,
     };
     writeln!(
         w,
         "{} {} {} {} {} {} d1",
         cd.w_x, cd.w_y, cd.ll_x, cd.ll_y, cd.ur_x, cd.ur_y
     )?;
-    writeln!(w, "0.01 0 0 0.01 0 0 cm")?;
-    //writeln!(w, "q")?;
 
-    let gc_w = box_width * 100;
-    let gc_h = box_height * 100;
-    let gc_y = ll_y * 100;
-    let gc_x = ll_x * 100;
+    let fpx = font_metrics.fontunits_per_pixel_x;
+    let fpy = font_metrics.fontunits_per_pixel_y;
+
+    let gc_w = box_width as i32 * fpx as i32;
+    let gc_h = box_height as i32 * fpy as i32;
+    let gc_x = ll_x as i32 * fpx as i32;
+    let gc_y = ll_y as i32 * fpy as i32;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;
@@ -104,7 +143,6 @@ pub fn write_char_stream<W: Write>(
     w.write_all(&buf)?;
 
     writeln!(w, "EI")?;
-    //writeln!(w, "Q")?;
     Ok(())
 }
 
@@ -116,10 +154,12 @@ pub fn type3_font<'a>(
     name: Option<&'a str>,
 ) -> Option<Type3Font<'a>> {
     let font_bbox = Rectangle {
-        ll: Point::default(),
-        ur: Point { x: 0, y: 0 },
+        ll: Point { x: 0, y: 0 },
+        // FIXME: find correct values, this works ok for PDFjs
+        ur: Point { x: 0, y: 800 * 8 },
     };
-    let font_matrix = Matrix::scale(pk.scale() / 2.0, -pk.scale() / 2.0);
+    let font_metrics = FontMetrics::from(pk);
+    let font_matrix = Matrix::scale(0.001, -0.001); //Matrix::scale(pk.scale() / 2.0, -pk.scale() / 2.0)
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
@@ -134,13 +174,13 @@ pub fn type3_font<'a>(
             todo!();
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
-            let width = pk.scale_x(ewidth.into());
+            let width = u32::from(ewidth) * 800;
             widths.push(width);
 
             let pchar = &pfont.chars[cvu];
             if pchar.width > 0 {
                 let mut cproc = Vec::new();
-                write_char_stream(&mut cproc, pchar, width, pk).unwrap();
+                write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
             } else {
                 // FIXME: empty glyph for non-printable character?

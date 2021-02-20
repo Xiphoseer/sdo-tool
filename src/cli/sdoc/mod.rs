@@ -208,7 +208,7 @@ impl<'a> Document<'a> {
 
         // Add a row per time
         page_table.set_titles(row![
-            "idx", "#phys", "#log", "lines", "m-l", "m-r", "m-t", "m-b", "numbpos", "kapitel",
+            "idx", "#phys", "#log", "len", "left", "right", "head", "foot", "numbpos", "kapitel",
             "intern", "rest",
         ]);
 
@@ -218,11 +218,11 @@ impl<'a> Document<'a> {
                     index,
                     page.phys_pnr,
                     page.log_pnr,
-                    page.lines,
-                    page.margin.left,
-                    page.margin.right,
-                    page.margin.top,
-                    page.margin.bottom,
+                    page.format.length,
+                    page.format.left,
+                    page.format.right,
+                    page.format.header,
+                    page.format.footer,
                     page.numbpos,
                     page.kapitel,
                     page.intern,
