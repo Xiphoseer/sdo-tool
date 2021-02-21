@@ -5,6 +5,7 @@
 ### 21.02.2021
 
 - Added visible page number column to `pbuf` table
+- Initial HTML export (use `--format html`)
 
 ### 20.02.2021
 

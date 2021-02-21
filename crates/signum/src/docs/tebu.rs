@@ -18,14 +18,14 @@ pub struct Style {
     pub underlined: bool,
     /// Whether the char is a footnote
     pub footnote: bool,
-    /// ????
-    pub sth1: bool,
+    /// Whether the character is double width
+    pub wide: bool,
     /// Whether the char is bold
     pub bold: bool,
     /// Whether the char is italic
     pub italic: bool,
-    /// ????
-    pub sth2: bool,
+    /// Whether the character is tall
+    pub tall: bool,
     /// Whether the char is small
     pub small: bool,
 }
@@ -35,10 +35,10 @@ impl Default for Style {
         Style {
             underlined: false,
             footnote: false,
-            sth1: false,
+            wide: false,
             bold: false,
             italic: false,
-            sth2: false,
+            tall: false,
             small: false,
         }
     }
@@ -159,10 +159,10 @@ fn te(input: &[u8]) -> IResult<&[u8], Char> {
                 style: Style {
                     underlined,
                     footnote,
-                    sth1,
+                    wide: sth1,
                     bold,
                     italic,
-                    sth2,
+                    tall: sth2,
                     small,
                 },
             },

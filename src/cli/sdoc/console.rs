@@ -27,12 +27,12 @@ fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
             style.italic = false;
             print!("</i>");
         }
-        if !k.style.sth2 && style.sth2 {
-            style.sth2 = false;
+        if !k.style.tall && style.tall {
+            style.tall = false;
             print!("</sth2>");
         }
-        if !k.style.sth1 && style.sth1 {
-            style.sth1 = false;
+        if !k.style.wide && style.wide {
+            style.wide = false;
             print!("</sth1>");
         }
         if !k.style.small && style.small {
@@ -57,12 +57,12 @@ fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
             style.small = true;
             print!("<small>");
         }
-        if k.style.sth1 && !style.sth1 {
-            style.sth1 = true;
+        if k.style.wide && !style.wide {
+            style.wide = true;
             print!("<sth1>");
         }
-        if k.style.sth2 && !style.sth2 {
-            style.sth2 = true;
+        if k.style.tall && !style.tall {
+            style.tall = true;
             print!("<sth2>");
         }
         if k.style.italic && !style.italic {
@@ -98,10 +98,10 @@ fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
     if style.italic {
         print!("</i>");
     }
-    if style.sth2 {
+    if style.tall {
         print!("</sth2>");
     }
-    if style.sth1 {
+    if style.wide {
         print!("</sth1>");
     }
     if style.small {

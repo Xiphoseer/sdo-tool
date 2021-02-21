@@ -1,6 +1,11 @@
 //! # (`pbuf`) The page buffer
 
-use nom::{IResult, bytes::{complete::tag, streaming::take}, error::ParseError, number::complete::{be_u16, be_u32, be_u8}};
+use nom::{
+    bytes::{complete::tag, streaming::take},
+    error::ParseError,
+    number::complete::{be_u16, be_u32, be_u8},
+    IResult,
+};
 
 use crate::util::{Buf, Bytes16};
 

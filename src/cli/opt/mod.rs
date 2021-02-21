@@ -47,7 +47,7 @@ impl fmt::Display for FormatError {
 
 impl Default for Format {
     fn default() -> Self {
-        Format::Html
+        Format::Plain
     }
 }
 

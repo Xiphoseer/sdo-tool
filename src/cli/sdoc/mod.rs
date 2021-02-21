@@ -29,6 +29,7 @@ use super::{
 };
 
 mod console;
+mod html;
 mod imgseq;
 pub mod pdf;
 mod pdraw;
@@ -342,7 +343,8 @@ impl<'a> Document<'a> {
 
     fn output(&self, fc: &FontCache) -> eyre::Result<()> {
         match self.opt.format {
-            Format::Html | Format::Plain => console::output_console(self, fc),
+            Format::Html => html::output_html(self, fc),
+            Format::Plain => console::output_console(self, fc),
             Format::PostScript => ps::output_postscript(self, fc),
             Format::PDraw => pdraw::output_pdraw(self),
             Format::Png => imgseq::output_print(self, fc),
