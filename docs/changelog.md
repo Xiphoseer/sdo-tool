@@ -2,6 +2,29 @@
 
 ## Unreleased (main)
 
+### 21.02.2021
+
+- Added visible page number column to `pbuf` table
+
+### 20.02.2021
+
+- Re-work PDF font generation and positioning
+
+## 19.02.2021
+
+- Add initial PK-Font decoder library
+
+## Version 0.2
+
+### 18.02.2021
+
+- Split out sub-commands into separate executables:
+    - `<file> keyboard` &rarr; `chset-kb <file>`
+    - `<file> run` &rarr; `sdo-batch <file>`
+    - `<file> info` &rarr; `signum-file <file>`
+    - `<file> decode` &rarr; `st-decode <file>`
+- Improve `--help` descriptions
+
 ### 15.09.2020
 
 - The output folder parameter on `dump` was changed from a long argument `--out`

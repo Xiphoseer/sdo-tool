@@ -1,11 +1,6 @@
 //! # (`pbuf`) The page buffer
 
-use nom::{
-    bytes::{complete::tag, streaming::take},
-    error::ParseError,
-    number::complete::{be_u16, be_u32},
-    IResult,
-};
+use nom::{IResult, bytes::{complete::tag, streaming::take}, error::ParseError, number::complete::{be_u16, be_u32, be_u8}};
 
 use crate::util::{Buf, Bytes16};
 
@@ -61,7 +56,9 @@ pub struct Page {
     /// May specify the current chapter (?)
     pub kapitel: Bytes16,
     /// Unknown
-    pub intern: Bytes16,
+    pub intern: u8,
+    /// The page number that is printed on that page
+    pub vis_pnr: u8,
 }
 
 fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PageFormat, E> {
@@ -92,7 +89,8 @@ fn parse_page<'a, E: ParseError<&'a [u8]>>(
     let (input, format) = parse_margin(input)?;
     let (input, numbpos) = bytes16(input)?;
     let (input, kapitel) = bytes16(input)?;
-    let (input, intern) = bytes16(input)?;
+    let (input, intern) = be_u8(input)?;
+    let (input, vis_pnr) = be_u8(input)?;
 
     let (input, rest) = take(12usize)(input)?;
     Ok((
@@ -106,6 +104,7 @@ fn parse_page<'a, E: ParseError<&'a [u8]>>(
                 numbpos,
                 kapitel,
                 intern,
+                vis_pnr,
             },
             Buf(rest),
         ),

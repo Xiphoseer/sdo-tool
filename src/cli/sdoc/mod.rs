@@ -209,7 +209,7 @@ impl<'a> Document<'a> {
         // Add a row per time
         page_table.set_titles(row![
             "idx", "#phys", "#log", "len", "left", "right", "head", "foot", "numbpos", "kapitel",
-            "intern", "rest",
+            "???", "#vi", "rest",
         ]);
 
         for (index, pbuf_entry) in pbuf.pages.iter().enumerate() {
@@ -226,12 +226,13 @@ impl<'a> Document<'a> {
                     page.numbpos,
                     page.kapitel,
                     page.intern,
+                    page.vis_pnr,
                     buf,
                 ]);
             } else {
                 page_table.add_row(row![
                     index, "---", "---", "---", "---", "---", "---", "---", "---", "---", "---",
-                    "---"
+                    "---", "---"
                 ]);
             }
         }
