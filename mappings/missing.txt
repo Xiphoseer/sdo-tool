@@ -1,0 +1,3 @@
+Missing Unicode Characters:
+
+- AXE WITH TWO BLADES (ANTI_CS 0x47)
