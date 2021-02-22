@@ -32,15 +32,6 @@ impl PrinterKind {
         }
     }
 
-    /// Get the scale factor
-    pub fn scale(&self) -> f32 {
-        match self {
-            Self::Needle9 => todo!(),
-            Self::Needle24 => 0.2,
-            Self::Laser30 => 0.24,
-        }
-    }
-
     /// Get the number of dots for the given amount of horizontal units
     ///
     /// FIXME: this introduces rounding errors
@@ -69,6 +60,15 @@ impl PrinterKind {
             Self::Needle9 => 36,
             Self::Needle24 => 58,
             Self::Laser30 => 48,
+        }
+    }
+
+    /// Get maximum height of a character
+    pub fn line_height(self) -> u32 {
+        match self {
+            Self::Needle9 => 48,
+            Self::Needle24 => 64,
+            Self::Laser30 => 52,
         }
     }
 

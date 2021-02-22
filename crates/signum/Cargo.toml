@@ -13,6 +13,7 @@ homepage = "https://xiphoseer.github.io/sdo-tool/implementation#signum"
 nom = "6.1.0"
 thiserror = "1.0"
 bitflags = "1.2"
+displaydoc = "0.1"
 
 [dependencies.image]
 optional = true
@@ -23,6 +24,7 @@ features = ["png"]
 [dev-dependencies]
 color-eyre = { version = "0.5", default-features = false }
 structopt = "0.3"
+prettytable-rs = "0.8"
 
 [package.metadata.docs.rs]
 all-features = true

@@ -1,12 +1,13 @@
 use crate::cli::opt::{Format, Options};
 use ccitt_t4_t6::g42d::encode::Encoder;
 use color_eyre::eyre::{self, eyre};
+use eyre::Context;
 use image::ImageFormat;
 use sdo_ps::out::PSWriter;
 use signum::{
     chsets::{
         editor::parse_eset,
-        printer::{parse_ls30, parse_ps09, parse_ps24, PSet},
+        printer::{parse_ls30, parse_ps09, parse_ps24, PSet, PrinterKind},
     },
     raster::Page,
     util::{data::BIT_STRING, Buf},
@@ -119,11 +120,28 @@ fn print_pset(pset: &PSet) {
     }
 }
 
-pub fn process_ps09(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
+fn save_pset_png(pset: &PSet, pk: PrinterKind, out: &Path) -> eyre::Result<()> {
+    for (index, glyph) in pset.chars.iter().enumerate() {
+        let mut page = Page::new((glyph.width as u32 + 1) * 8, 8 + pk.line_height());
+        if glyph.width > 0 {
+            page.draw_printer_char(4, 4, glyph)?;
+        }
+
+        let image = page.to_image();
+        let name = format!("{:02x}.png", index);
+        let out_path = out.join(name);
+        image
+            .save_with_format(out_path, ImageFormat::Png)
+            .with_context(|| "Failed to save the glyph image")?;
+    }
+    Ok(())
+}
+
+pub fn process_ps09(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
     let (rest, pset) = match parse_ps09(buffer) {
         Ok(result) => result,
         Err(e) => {
-            return Err(eyre!("Failed to parse Editor Charset: \n{}", e));
+            return Err(eyre!("Failed to parse 9-needle printer charset: \n{}", e));
         }
     };
 
@@ -131,7 +149,24 @@ pub fn process_ps09(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
         println!("Unconsumed input: {:#?}", Buf(rest));
     }
 
-    print_pset(&pset);
+    match opt.format {
+        Format::Png => {
+            let out = opt
+                .out
+                .as_ref()
+                .cloned()
+                .unwrap_or_else(|| opt.file.with_extension("out"));
+            if !out.is_dir() {
+                if !out.exists() {
+                    std::fs::create_dir(&out).with_context(|| "Failed to create output folder")?;
+                } else {
+                    return Err(eyre!("'{}' is a file", out.display()));
+                }
+            }
+            save_pset_png(&pset, PrinterKind::Needle9, &out)?;
+        }
+        _ => print_pset(&pset),
+    }
 
     Ok(())
 }
@@ -140,7 +175,7 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
     let (rest, pset) = match parse_ps24(buffer) {
         Ok(result) => result,
         Err(e) => {
-            return Err(eyre!("Failed to parse Editor Charset: \n{}", e));
+            return Err(eyre!("Failed to parse 24-needle printer charset: \n{}", e));
         }
     };
 
@@ -165,15 +200,17 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
         println!("Unconsumed input: {:#?}", Buf(rest));
     }
 
-    if opt.format == Format::DVIPSBitmapFont {
-        let mut writer: PSWriter<Stdout> = PSWriter::new();
-        write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
-        return Ok(());
-    } else if opt.format == Format::CCITTT6 {
-        save_as_ccitt(&lset, opt, &opt.file)?;
-        return Ok(());
+    match opt.format {
+        Format::DVIPSBitmapFont => {
+            let mut writer: PSWriter<Stdout> = PSWriter::new();
+            write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
+        }
+        Format::CCITTT6 => {
+            save_as_ccitt(&lset, opt, &opt.file)?;
+        }
+        _ => {
+            print_pset(&lset);
+        }
     }
-
-    print_pset(&lset);
     Ok(())
 }

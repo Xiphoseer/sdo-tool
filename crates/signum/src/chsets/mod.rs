@@ -163,7 +163,7 @@ impl FontKind {
         }
     }
 
-    /// Get the scale that needs to be applied to the font to
+    /*/// Get the scale that needs to be applied to the font to
     /// get the correct resoltion.
     ///
     /// FIXME: Make this part of the font matrix?
@@ -172,7 +172,7 @@ impl FontKind {
             Self::Printer(pk) => pk.scale(),
             Self::Editor => todo!(),
         }
-    }
+    }*/
 
     /// Get the file extension use for this format
     pub fn extension(&self) -> &'static str {

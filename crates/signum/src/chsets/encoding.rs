@@ -1,6 +1,69 @@
 //! # Mapping charsets to unicode
+use displaydoc::Display;
+use nom::{
+    bytes::complete::tag,
+    character::complete::{hex_digit1, space1},
+    combinator::map_res,
+    error::ErrorKind,
+    sequence::{preceded, tuple},
+    Finish, IResult, Offset,
+};
+use thiserror::Error;
 
 use std::char::REPLACEMENT_CHARACTER;
+
+/// A mapping table for a charset
+#[derive(Debug)]
+pub struct Mapping {
+    /// The corresponding unicode characters
+    pub chars: [char; 128],
+}
+
+/// Error when parsing a mapping
+#[derive(Debug, Display, Error)]
+pub enum MappingError {
+    /// This is not implemented
+    Unimplemented,
+    /// Failed to parse ({2:?} at {0}:{1})
+    Problem(usize, usize, ErrorKind),
+}
+
+fn hex_u8(input: &str) -> IResult<&str, u8> {
+    preceded(
+        tag("0x"),
+        map_res(hex_digit1, |src| u8::from_str_radix(src, 16)),
+    )(input)
+}
+
+fn hex_u32(input: &str) -> IResult<&str, u32> {
+    preceded(
+        tag("0x"),
+        map_res(hex_digit1, |src| u32::from_str_radix(src, 16)),
+    )(input)
+}
+
+fn p_mapping_line(input: &str) -> IResult<&str, (u8, u32)> {
+    tuple((hex_u8, preceded(space1, hex_u32)))(input)
+}
+
+/// Parse a mapping file to a mapping struct
+pub fn p_mapping_file(input: &str) -> Result<Mapping, MappingError> {
+    let mut chars = ['\0'; 128];
+    for (num, line) in input.lines().enumerate() {
+        let valid = line.split('#').next().unwrap().trim();
+        if !valid.is_empty() {
+            let (_, (key, value)) = p_mapping_line(valid)
+                .finish()
+                .map_err(|e| MappingError::Problem(num, line.offset(e.input), e.code))?;
+            if key > 127 {
+                eprintln!("[signum.chsets.encoding] Invalid key {}, ignoring!", key);
+            } else if let Some(chr) = std::char::from_u32(value) {
+                chars[key as usize] = chr;
+            }
+        }
+    }
+    Ok(Mapping { chars })
+}
 
 /// The unicode characters for legacy computing 7-segment digits 0 through 9
 pub const LEGACY_7SEG_DIGITS: (char, char, char, char, char, char, char, char, char, char) = (
@@ -108,15 +171,15 @@ pub mod antikro {
     const LFD: char = '\n';
 
     /// Private use characters for missing chars
-    pub const A: (char, char, char, char, char, char, char, char) = (
+    const A: (char, char, char, char, char, char, char, char) = (
         '\u{E003}', '\u{E004}', '\u{E005}', '\u{E006}', '\u{E008}', '\u{E00A}', '\u{E00C}',
         '\u{E00E}',
     );
 
     /// Private use characters for missing chars
-    pub const B: (char, char, char) = ('\u{E01D}', '\u{E01E}', '\u{E01F}');
+    const B: (char, char, char) = ('\u{E01D}', '\u{E01E}', '\u{E01F}');
 
-    /// The ANTIKRO encoding row 0
+    /// The ANTIKRO encoding
     #[rustfmt::skip]
     pub const MAP: [char; 128] = [
         NUL, '{', '}', A.0, A.1, A.2, A.3, '↓', A.4, '←', A.5, '→', A.6, '↑', A.7, '[',
