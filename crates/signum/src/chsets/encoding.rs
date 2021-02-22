@@ -19,6 +19,24 @@ pub struct Mapping {
     pub chars: [char; 128],
 }
 
+impl Mapping {
+    /// Decodes a single character value
+    pub fn decode(&self, cval: u8) -> char {
+        self.chars[cval as usize]
+    }
+}
+
+/// The mapping for ANTIKRO
+pub const ANTIKRO_MAP: Mapping = Mapping {
+    chars: antikro::MAP,
+};
+
+impl<'a> Default for &'a Mapping {
+    fn default() -> Self {
+        &ANTIKRO_MAP
+    }
+}
+
 /// Error when parsing a mapping
 #[derive(Debug, Display, Error)]
 pub enum MappingError {

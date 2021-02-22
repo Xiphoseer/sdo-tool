@@ -1,0 +1,84 @@
+# File encoding:    UTF-8
+# Name:             Signum! MATHEM to Unicode
+# Unicode version:  13.0
+# Table version:    1.0
+# Table format:     Format A
+# Date:             2021 February 22
+# Authors:          Xiphoseer <xiphoseer AT mailbox.org>
+
+0x00	0x0000	# NULL                                      	# <NUL> ISO646
+0x01	0x27E8	# MATHEMATICAL LEFT ANGLE BRACKET           	# ⟨
+0x02	0x27E9	# MATHEMATICAL RIGHT ANGLE BRACKET          	# ⟩
+0x03	0x007B	# LEFT CURLY BRACKET                        	# {
+0x04	0x007D	# RIGHT CURLY BRACKET                       	# }
+0x05	0x2571	# BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT	# ╱
+0x06	0x2321	# BOTTOM HALF INTEGRAL                      	# ⌡
+0x07	0x23B3	# SUMMATION BOTTOM                          	# ⎳
+
+0x09	0x23A0	# RIGHT PARENTHESIS LOWER HOOK              	# ⎠
+0x0A	0x23A6	# RIGHT SQUARE BRACKET LOWER CORNER         	# ⎦
+0x0B	0x222B	# INTEGRAL                                  	# ∫
+0x0C	0x239D	# LEFT PARENTHESIS LOWER HOOK               	# ⎝
+0x0D	0x23A6	# LEFT SQUARE BRACKET LOWER CORNER          	# ⎣
+0x0E	0x0285	# REVERSED INTEGRAL                         	# ʅ
+0x0F	0x003C	# LESS-THAN SIGN                            	# <
+0x10	0x003E	# GREATER-THAN SIGN                         	# >
+0x11	0x007B	# LEFT CURLY BRACKET                        	# {
+0x12	0x007D	# RIGHT CURLY BRACKET                       	# }
+0x13	0x221A	# SQUARE ROOT                               	# √
+0x14	0x2320	# TOP HALF INTEGRAL                         	# ⌠
+0x15	0x23B2	# SUMMATION TOP                             	# ⎲
+
+0x17	0x239E	# RIGHT PARENTHESIS UPPER HOOK              	# ⎞
+0x18	0x23A4	# RIGHT SQUARE BRACKET UPPER CORNER         	# ⎤
+0x19	0x0285	# REVERSED INTEGRAL                         	# ʅ
+0x1a	0x239B	# LEFT PARENTHESIS UPPER HOOK               	# ⎛
+0x1b	0x23A1	# LEFT SQUARE BRACKET UPPER CORNER          	# ⎡
+0x1c	0x222B	# INTEGRAL                                  	# ∫
+
+0x20	0x22C1	# N-ARY LOGICAL OR                          	# ⋁
+0x21	0x007C	# VERTICAL LINE                             	# |
+0x22	0x2016	# DOUBLE VERTICAL LINE                      	# ‖
+0x23	0x2021	# DOUBLE DAGGER                             	# ‡
+0x24	0x22C0	# N-ARY LOGICAL AND                         	# ⋀
+0x25	0x22C3	# N-ARY UNION                               	# ⋃
+0x26	0x22C2	# N-ARY INTERSECTION                        	# ⋂
+
+0x28	0x27EE	# LEFT PARENTHESIS                          	# (
+0x29	0x27EF	# RIGHT PARENTHESIS                         	# )
+0x2a	0x2733	# EIGHT SPOKED ASTERISK                     	# ✳
+0x2b	0x002b	# PLUS SIGN                                 	# + ASCII
+
+0x2d	0x002d	# HYPHEN-MINUS                                 	# - ASCII
+0x2e	0x00b7	# MIDDLE DOT                                 	# ·
+0x2f	0x002F	# SOLIDUS                                   	# / ASCII
+0x30	0x2261	# IDENTICAL TO                              	# ≡
+0x31	0x007C	# VERTICAL LINE                             	# |
+0x32	0x2225	# PARALLEL TO                               	# ∥
+0x33	0x2227	# LOGICAL AND                                	# ∧
+0x34	0x2228	# LOGICAL OR                                	# ∨
+0x35	0x222A	# UNION                                     	# ∪
+0x36	0x2229	# INTERSECTION                              	# ∩
+0x37	0x2215	# DIVISION SLASH                              	# ∕
+0x38	0x27EE	# MATHEMATICAL LEFT FLATTENED PARENTHESIS   	# ⟮
+0x39	0x27EF	# MATHEMATICAL RIGHT FLATTENED PARENTHESIS  	# ⟯
+0x3A	0x003A	# COLON                                     	# : ASCII
+
+0x3C	0x2264	# LESS-THAN OR EQUAL TO                     	# ≤
+0x3D	0x003D	# EQUALS SIGN                               	# = ASCII
+0x3E	0x2265	# GREATER-THAN OR EQUAL TO                  	# ≥
+
+0x40	0x005C	# REVERSE SOLIDUS                           	# \
+0x41	0x2200	# FOR ALL                                   	# ∀
+0x42	0x2283	# SUPERSET OF                               	# ⊃
+0x43	0x2102	# DOUBLE-STRUCK CAPITAL C                   	# ℂ
+0x44	0x0394	# GREEK CAPITAL LETTER DELTA                	# Δ
+0x45	0x2203	# THERE EXISTS                              	# ∃
+
+0x49	0x222B	# INTEGRAL                                  	# ∫
+
+0x4c	0x222B	# APL FUNCTIONAL SYMBOL CIRCLE STILE        	# ⌽
+
+0x4e	0x2115	# DOUBLE-STRUCK CAPITAL N                   	# ℕ
+0x4f	0x22A5	# UP TACK                                   	# ⊥
+# TODO: 0x50 to 0x7f

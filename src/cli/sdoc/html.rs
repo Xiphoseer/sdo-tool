@@ -72,9 +72,12 @@ impl<'a> HtmlGen<'a> {
         let mut style = Style::default();
 
         for (_index, k) in data.iter().copied().enumerate() {
-            let chr = antikro::decode(k.cval);
+            let cset = self.fc.cset(k.cset as usize);
+            let mapping = cset.and_then(|c| c.map()).unwrap_or_default();
+            let chr = mapping.decode(k.cval);
+
             if chr == '\0' {
-                writeln!(self.out, "<!-- NUL:{} -->", k.offset)?;
+                writeln!(self.out, "<!-- NUL -->")?;
                 continue;
             }
 

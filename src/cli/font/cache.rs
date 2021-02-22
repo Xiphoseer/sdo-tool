@@ -1,7 +1,12 @@
 use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
 
 use signum::chsets::{
-    editor::ESet, editor::OwnedESet, printer::OwnedPSet, printer::PSet, printer::PrinterKind,
+    editor::ESet,
+    editor::OwnedESet,
+    encoding::{p_mapping_file, Mapping},
+    printer::OwnedPSet,
+    printer::PSet,
+    printer::PrinterKind,
     LoadError,
 };
 
@@ -53,6 +58,33 @@ fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPS
     }
 }
 
+fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
+    let cset_mapping_file = editor_cset_file.with_extension("txt");
+    if cset_mapping_file.is_file() {
+        let input = std::fs::read_to_string(&cset_mapping_file).unwrap();
+        match p_mapping_file(&input) {
+            Ok(mapping) => {
+                eprintln!("Loaded cset mapping file '{}'", cset_mapping_file.display());
+                Some(mapping)
+            }
+            Err(err) => {
+                eprintln!(
+                    "[cli::font::cache] Failed to parse mapping file '{}': {}",
+                    cset_mapping_file.display(),
+                    err
+                );
+                None
+            }
+        }
+    } else {
+        eprintln!(
+            "[cli::font::cache] missing mapping for font '{}",
+            editor_cset_file.file_stem().unwrap().to_string_lossy()
+        );
+        None
+    }
+}
+
 fn load_editor_font(editor_cset_file: &Path) -> Option<OwnedESet> {
     match OwnedESet::load(&editor_cset_file) {
         Ok(eset) => {
@@ -85,11 +117,13 @@ pub struct CSet {
     p24: Option<OwnedPSet>,
     p09: Option<OwnedPSet>,
     e24: Option<OwnedESet>,
+    map: Option<Mapping>,
 }
 
 #[rustfmt::skip]
 impl CSet {
     pub fn name(&self) -> &str { &self.name }
+    pub fn map(&self) -> Option<&Mapping> { self.map.as_ref() }
     pub fn l30(&self) -> Option<&PSet<'static>> { self.l30.as_deref() }
     pub fn p24(&self) -> Option<&PSet<'static>> { self.p24.as_deref() }
     pub fn p09(&self) -> Option<&PSet<'static>> { self.p09.as_deref() }
@@ -154,6 +188,7 @@ impl FontCache {
             p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
             p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
             l30: load_printer_font(&editor_cset_file, PrinterKind::Laser30),
+            map: load_mapping_file(&editor_cset_file),
         };
 
         // Get index and push
