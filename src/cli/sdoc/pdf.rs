@@ -163,10 +163,26 @@ pub fn prepare_document(
             let mut prev_width = 0;
             for te in &line.data {
                 let x = te.offset as i32;
-                contents.cset(te.cset);
 
-                let diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
+                let is_wide = te.style.wide;
+                let is_tall = te.style.tall;
+
+                let font_size = if is_tall { 2 } else { 1 };
+                let font_width = match (is_tall, is_wide) {
+                    (true, true) => 100,
+                    (true, false) => 50,
+                    (false, true) => 200,
+                    (false, false) => 100,
+                };
+
+                contents.cset(te.cset, font_size);
+                contents.fwidth(font_width);
+
+                let mut diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
                 if diff != 0 {
+                    if is_wide {
+                        diff /= 2;
+                    }
                     contents.xoff(-diff);
                 }
                 contents.byte(te.cval);
@@ -179,6 +195,9 @@ pub fn prepare_document(
                 let fc = fi.first_char;
                 let wi = (te.cval - fc) as usize;
                 prev_width = fi.widths[wi] as i32;
+                if is_wide {
+                    prev_width *= 2;
+                }
             }
 
             contents.flush();

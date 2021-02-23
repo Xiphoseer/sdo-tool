@@ -184,7 +184,7 @@ pub fn type3_font<'a>(
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
-                max_height = max_height.max(pchar.height as i32 * 800);
+                max_height = max_height.max(pchar.height as i32 * 200);
             } else {
                 // FIXME: empty glyph for non-printable characters?
             }

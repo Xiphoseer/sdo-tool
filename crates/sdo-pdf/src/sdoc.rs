@@ -7,6 +7,10 @@ pub struct Contents {
     buf: Vec<u8>,
     inner: Vec<u8>,
     cset: u8,
+    /// The current font size
+    fs: u8,
+    /// The current horizontal scaling
+    fw: u8,
     open: bool,
     needs_space: bool,
     //is_ascii: bool,
@@ -33,6 +37,8 @@ impl Contents {
             needs_space: false,
             //is_ascii: true,
             cset: 0xff,
+            fs: 0,
+            fw: 100,
             inner,
         }
     }
@@ -55,11 +61,20 @@ impl Contents {
         }
     }
 
-    pub fn cset(&mut self, cset: u8) {
-        if self.cset != cset {
+    pub fn cset(&mut self, cset: u8, font_size: u8) {
+        if self.cset != cset || self.fs != font_size {
             self.cset = cset;
+            self.fs = font_size;
             self.flush();
-            writeln!(self.inner, "/C{} 1 Tf", cset).unwrap();
+            writeln!(self.inner, "/C{} {} Tf", cset, font_size).unwrap();
+        }
+    }
+
+    pub fn fwidth(&mut self, font_width: u8) {
+        if self.fw != font_width {
+            self.fw = font_width;
+            self.flush();
+            writeln!(self.inner, " {} Tz", font_width).unwrap();
         }
     }
 
@@ -77,7 +92,6 @@ impl Contents {
     pub fn byte(&mut self, byte: u8) {
         self.open();
         self.buf.push(byte);
-        //self.is_ascii = self.is_ascii && (byte > 31) && (byte < 127);
     }
 
     fn buf_flush(&mut self) {
