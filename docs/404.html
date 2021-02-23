@@ -18,11 +18,15 @@ layout: default
 
 <script>
   let url = window.location.pathname.replace(/^\/xiphoseer/, '').replace(/.html$/, '');
+  console.log("url:", redirect);
   let redirect = {
     '/foo': '/format-sdoc'
   }[url];
+  console.log("redirect:", redirect);
   if (redirect) {
-    window.location.pathname = window.location.pathname.replace(url, redirect);
+    let next = window.location.href.replace(url, redirect);
+    console.log("next location:", redirect);
+    window.location.replace(next);
   }
 </script>
 
