@@ -59,7 +59,7 @@ fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPS
 }
 
 fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
-    let cset_mapping_file = editor_cset_file.with_extension("txt");
+    let cset_mapping_file = editor_cset_file.with_extension("TXT");
     if cset_mapping_file.is_file() {
         let input = std::fs::read_to_string(&cset_mapping_file).unwrap();
         match p_mapping_file(&input) {

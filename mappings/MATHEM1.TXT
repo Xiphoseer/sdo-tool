@@ -74,7 +74,9 @@
 0x43	0x2102	# DOUBLE-STRUCK CAPITAL C                   	# ℂ
 0x44	0x0394	# GREEK CAPITAL LETTER DELTA                	# Δ
 0x45	0x2203	# THERE EXISTS                              	# ∃
-
+0x46	0x21E8	# RIGHTWARDS WHITE ARROW                    	# ⇨
+0x47	0x21A6	# RIGHTWARDS ARROW FROM BAR                 	# ↦
+0x48	0x00A2	# CENT SIGN                                 	# ¢
 0x49	0x222B	# INTEGRAL                                  	# ∫
 
 0x4c	0x222B	# APL FUNCTIONAL SYMBOL CIRCLE STILE        	# ⌽
@@ -104,8 +106,11 @@
 
 0x64	0x2202	# PARTIAL DIFFFERENTIAL                     	# ∂
 0x65	0x2203	# THERE EXISTS                              	# ∃
-
+0x66	0x2B04	# LEFT RIGHT WHITE ARROW                    	# ⬄
+0x67	0x2192	# RIGHTWARDS ARROW                          	# →
+0x68	0x2209	# NOT AN ELEMENT OF                         	# ∉
 0x69	0x222B	# INTEGRAL                                  	# ∫
+0x6a	0x2234	# THEREFORE                                  	# ∴
 
 0x6e	0x2207	# NABLA                                     	# ∇
 0x6f	0x22A5	# UP TACK                                   	# ⊥
