@@ -1,19 +1,32 @@
 # Changelog
 
+This page lists updates to the SDO-Toolbox.
+The name in brackets indicates the relevant crate.
+
 ## Unreleased (main)
+
+### 23.02.2021
+
+- &#91;sdo-pdf&#93; Added a proper `FontBBox` to resolve issues with Acrobat Reader
+- &#91;sdo-pdf&#93; Added Adobe CMap generation
+
+### 22.02.2021
+
+- &#91;sdo-tool&#93; Use mapping files in HTML export
+- &#91;signum&#93; Added Unicode mapping files (Table A) parsing
 
 ### 21.02.2021
 
-- Added visible page number column to `pbuf` table
-- Initial HTML export (use `--format html`)
+- &#91;signum&#93; Added visible page number column to `pbuf` table
+- &#91;signum&#93; Initial HTML export (use `--format html`)
 
 ### 20.02.2021
 
-- Re-work PDF font generation and positioning
+- &#91;sdo-pdf&#93; Re-work PDF font generation and positioning
 
 ## 19.02.2021
 
-- Add initial PK-Font decoder library
+- &#91;texfonts&#93; Add initial PK-Font decoder library
 
 ## Version 0.2
 

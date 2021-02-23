@@ -66,7 +66,7 @@ fn p_mapping_line(input: &str) -> IResult<&str, (u8, u32)> {
 
 /// Parse a mapping file to a mapping struct
 pub fn p_mapping_file(input: &str) -> Result<Mapping, MappingError> {
-    let mut chars = ['\0'; 128];
+    let mut chars = [REPLACEMENT_CHARACTER; 128];
     for (num, line) in input.lines().enumerate() {
         let valid = line.split('#').next().unwrap().trim();
         if !valid.is_empty() {

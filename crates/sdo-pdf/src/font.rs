@@ -136,7 +136,7 @@ pub fn write_char_stream<W: Write>(
     writeln!(w, "  /BPC 1")?;
     writeln!(w, "  /D[0 1]")?;
     writeln!(w, "  /F/CCF")?;
-    writeln!(w, "  /CS/CalGray")?;
+    //writeln!(w, "  /CS/CalGray")?;
     writeln!(w, "  /DP<</K -1/Columns {}>>", box_width)?;
     writeln!(w, "ID")?;
 
@@ -153,11 +153,6 @@ pub fn type3_font<'a>(
     use_table: &UseTable,
     name: Option<&'a str>,
 ) -> Option<Type3Font<'a>> {
-    let font_bbox = Rectangle {
-        ll: Point { x: 0, y: 0 },
-        // FIXME: find correct values, this works ok for PDFjs
-        ur: Point { x: 0, y: 800 * 8 },
-    };
     let font_metrics = FontMetrics::from(pk);
     let font_matrix = Matrix::scale(0.001, -0.001); //Matrix::scale(pk.scale() / 2.0, -pk.scale() / 2.0)
 
@@ -166,29 +161,42 @@ pub fn type3_font<'a>(
     let mut widths = Vec::with_capacity(capacity);
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
+    let mut max_width = 0;
+    let mut max_height = 0;
+
     for cval in first_char..=last_char {
         let cvu = cval as usize;
         let ewidth = if let Some(efont) = efont {
             efont.chars[cvu].width
         } else {
-            todo!();
+            todo!("missing character #{} in editor font", cvu);
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
             let width = u32::from(ewidth) * 800;
             widths.push(width);
+            max_width = max_width.max(width as i32);
 
             let pchar = &pfont.chars[cvu];
             if pchar.width > 0 {
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
+                max_height = max_height.max(pchar.height as i32 * 800);
             } else {
-                // FIXME: empty glyph for non-printable character?
+                // FIXME: empty glyph for non-printable characters?
             }
         } else {
             widths.push(0);
         }
     }
+
+    let font_bbox = Rectangle {
+        ll: Point { x: 0, y: 0 },
+        ur: Point {
+            x: max_width,
+            y: max_height,
+        },
+    };
 
     let mut char_procs = Dict::new();
     for (name, cproc) in procs {

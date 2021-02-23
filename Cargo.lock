@@ -887,9 +887,11 @@ name = "sdo-pdf"
 version = "0.1.0"
 dependencies = [
  "ccitt-t4-t6",
+ "color-eyre",
  "pdf-create",
  "sdo-ps",
  "signum",
+ "structopt",
 ]
 
 [[package]]
