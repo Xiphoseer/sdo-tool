@@ -16,6 +16,16 @@ layout: default
   }
 </style>
 
+<script>
+  let url = window.location.pathname.replace(/^\/xiphoseer/, '').replace(/.html$/, '');
+  let redirect = {
+    '/foo': '/format-sdoc'
+  }[url];
+  if (redirect) {
+    window.location.pathname = window.location.pathname.replace(url, redirect);
+  }
+</script>
+
 <div class="container">
   <h1>404</h1>
 

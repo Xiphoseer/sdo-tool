@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths-ignore:
     - 'docs/**'
+    - 'mappings/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
     - 'docs/**'
+    - 'mappings/**'
 
 env:
   CARGO_TERM_COLOR: always
