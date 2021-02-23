@@ -31,10 +31,10 @@
 
 0x17	0x239E	# RIGHT PARENTHESIS UPPER HOOK              	# ⎞
 0x18	0x23A4	# RIGHT SQUARE BRACKET UPPER CORNER         	# ⎤
-0x19	0x0285	# REVERSED INTEGRAL                         	# ʅ
+0x19	0x23B1	# UPPER RIGHT OR LOWER LEFT CURLY BRACKET SECTION	# ⎱
 0x1a	0x239B	# LEFT PARENTHESIS UPPER HOOK               	# ⎛
 0x1b	0x23A1	# LEFT SQUARE BRACKET UPPER CORNER          	# ⎡
-0x1c	0x222B	# INTEGRAL                                  	# ∫
+0x1c	0x23B0	# UPPER LEFT OR LOWER RIGHT CURLY BRACKET SECTION	# ⎰
 
 0x20	0x22C1	# N-ARY LOGICAL OR                          	# ⋁
 0x21	0x007C	# VERTICAL LINE                             	# |
@@ -80,8 +80,46 @@
 0x4c	0x222B	# APL FUNCTIONAL SYMBOL CIRCLE STILE        	# ⌽
 
 0x4e	0x2115	# DOUBLE-STRUCK CAPITAL N                   	# ℕ
-0x4f	0x22A5	# UP TACK                                   	# ⊥
+0x4f	0x27D8	# LARGE UP TACK                             	# ⟘
 
-# TODO: 0x50 to 0x7f
+0x50	0x220F	# N-ARY PRODUCT                             	# ∏
+0x51	0x211A	# DOUBLE-STRUCK CAPITAL Q                   	# ℚ
+0x52	0x211D	# DOUBLE-STRUCK CAPITAL R                   	# ℝ
+0x53	0x2211	# N-ARY SUMMATION                           	# ∑
+0x54	0x27D9	# LARGE DOWN TACK                           	# ⟙
 
+0x56	0x2282	# SUBSET OF                                   	# ⊂
+0x57	0x23B7	# RADICAL SYMBOL BOTTOM                     	# ⎷
+0x58	0x2A09	# N-ARY TIMES OPERATOR                      	# ⨉
+
+0x5a	0x2124	# DOUBLE-STRUCK CAPITAL Z                   	# ℤ
+0x5b	0x005b	# LEFT SQUARE BRACKET                       	# [
 0x5c	0x29F9	# BIG REVERSE SOLIDUS                       	# ⧹
+0x5d	0x005d	# RIGHT SQUARE BRACKET                      	# ]
+
+0x5f	0x2014	# EM DASH                                   	# —
+
+0x61	0x2200	# FOR ALL                                   	# ∀
+0x62	0x2283	# SUPERSET OF                               	# ⊃
+
+0x64	0x2202	# PARTIAL DIFFFERENTIAL                     	# ∂
+0x65	0x2203	# THERE EXISTS                              	# ∃
+
+0x69	0x222B	# INTEGRAL                                  	# ∫
+
+0x6e	0x2207	# NABLA                                     	# ∇
+0x6f	0x22A5	# UP TACK                                   	# ⊥
+0x70	0x03A0	# GREEK CAPITAL LETTER PI                   	# Π
+0x71	0x220A	# SMALL ELEMENT OF                          	# ∊
+
+0x73	0x03A3	# GREEK CAPITAL LETTER SIGMA                	# Σ
+0x74	0x22A4	# DOWN TACK                                   	# ⊤
+0x75	0x221E	# INFINITY                                   	# ∞
+0x76	0x2282	# SUBSET OF                                 	# ⊂
+0x77	0x221A	# SQUARE ROOT                               	# √
+0x78	0x00D7	# MULTIPLICATION SIGN                       	# ×
+
+0x7b	0xFF3B	# FULLWIDTH LEFT SQUARE BRACKET             	# ［
+0x7c	0x2248	# ALMOST EQUAL TO                           	# ≈
+0x7d	0xFF3D	# FULLWIDTH RIGHT SQUARE BRACKET             	# ］
+0x7e	0x007E	# TILDE                                     	# ~ ASCII

@@ -9,6 +9,7 @@ The name in brackets indicates the relevant crate.
 
 - &#91;sdo-pdf&#93; Added a proper `FontBBox` to resolve issues with Acrobat Reader
 - &#91;sdo-pdf&#93; Added Adobe CMap generation
+- &#91;mappings&#93; Completed `MATHEM` mapping
 
 ### 22.02.2021
 
