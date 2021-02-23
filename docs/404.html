@@ -18,12 +18,17 @@ layout: default
 
 <script>
   let url = window.location.pathname.replace(/^\/xiphoseer/, '').replace(/.html$/, '');
-  console.log("url:", redirect);
+  console.log("url:", url);
   let redirect = {
-    '/foo': '/format-sdoc'
+    '/foo': '/format-sdoc',
+    '/font-mappings': '/chsets/mappings',
+    '/font-other': '/chsets/other',
+    '/format-sdoc': '/formats/sdoc0001',
+    '/format-bimc': '/formats/bimc0002',
+    '/format-eset': '/formats/eset0001',
   }[url];
-  console.log("redirect:", redirect);
   if (redirect) {
+    console.log("redirect:", redirect);
     let next = window.location.href.replace(url, redirect);
     console.log("next location:", redirect);
     window.location.replace(next);

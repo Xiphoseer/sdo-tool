@@ -11,7 +11,7 @@
 0x02	0x27E9	# MATHEMATICAL RIGHT ANGLE BRACKET          	# ⟩
 0x03	0x007B	# LEFT CURLY BRACKET                        	# {
 0x04	0x007D	# RIGHT CURLY BRACKET                       	# }
-0x05	0x2571	# BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT	# ╱
+0x05	0x29F8	# BIG SOLIDUS                               	# ⧸
 0x06	0x2321	# BOTTOM HALF INTEGRAL                      	# ⌡
 0x07	0x23B3	# SUMMATION BOTTOM                          	# ⎳
 
@@ -20,7 +20,7 @@
 0x0B	0x222B	# INTEGRAL                                  	# ∫
 0x0C	0x239D	# LEFT PARENTHESIS LOWER HOOK               	# ⎝
 0x0D	0x23A6	# LEFT SQUARE BRACKET LOWER CORNER          	# ⎣
-0x0E	0x0285	# REVERSED INTEGRAL                         	# ʅ
+0x0E	0x23B1	# UPPER RIGHT OR LOWER LEFT CURLY BRACKET SECTION	# ⎱
 0x0F	0x003C	# LESS-THAN SIGN                            	# <
 0x10	0x003E	# GREATER-THAN SIGN                         	# >
 0x11	0x007B	# LEFT CURLY BRACKET                        	# {
@@ -51,7 +51,7 @@
 
 0x2d	0x002d	# HYPHEN-MINUS                                 	# - ASCII
 0x2e	0x00b7	# MIDDLE DOT                                 	# ·
-0x2f	0x002F	# SOLIDUS                                   	# / ASCII
+0x2f	0x29F8	# BIG SOLIDUS                               	# ⧸
 0x30	0x2261	# IDENTICAL TO                              	# ≡
 0x31	0x007C	# VERTICAL LINE                             	# |
 0x32	0x2225	# PARALLEL TO                               	# ∥
@@ -59,7 +59,7 @@
 0x34	0x2228	# LOGICAL OR                                	# ∨
 0x35	0x222A	# UNION                                     	# ∪
 0x36	0x2229	# INTERSECTION                              	# ∩
-0x37	0x2215	# DIVISION SLASH                              	# ∕
+0x37	0x002F	# SOLIDUS                                   	# /
 0x38	0x27EE	# MATHEMATICAL LEFT FLATTENED PARENTHESIS   	# ⟮
 0x39	0x27EF	# MATHEMATICAL RIGHT FLATTENED PARENTHESIS  	# ⟯
 0x3A	0x003A	# COLON                                     	# : ASCII
@@ -81,4 +81,7 @@
 
 0x4e	0x2115	# DOUBLE-STRUCK CAPITAL N                   	# ℕ
 0x4f	0x22A5	# UP TACK                                   	# ⊥
+
 # TODO: 0x50 to 0x7f
+
+0x5c	0x29F9	# BIG REVERSE SOLIDUS                       	# ⧹
