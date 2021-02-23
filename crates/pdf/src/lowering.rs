@@ -1,7 +1,7 @@
 //! Helpers to turn *high* types into *low* types
 
 use crate::{
-    common::Encoding, common::ObjRef, high::CharProc, high::Destination, high::DictResource,
+    common::Encoding, common::ObjRef, high::Ascii85Stream, high::Destination, high::DictResource,
     high::Font, high::Handle, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject,
     low, util::NextID,
 };
@@ -92,11 +92,14 @@ pub(crate) trait Lowerable<'a> {
     fn name() -> &'static str;
 }
 
-type LowerFontCtx<'a> = (LowerBox<'a, CharProc<'a>>, LowerBox<'a, Encoding<'a>>);
+pub(crate) struct LowerFontCtx<'a> {
+    pub text_streams: LowerBox<'a, Ascii85Stream<'a>>,
+    pub encodings: LowerBox<'a, Encoding<'a>>,
+}
 
 fn lower_font<'a>(
     font: &'a Font<'a>,
-    (a, _b): &mut LowerFontCtx<'a>,
+    ctx: &mut LowerFontCtx<'a>,
     id_gen: &mut NextID,
 ) -> low::Font<'a> {
     match font {
@@ -105,10 +108,14 @@ fn lower_font<'a>(
                 .char_procs
                 .iter()
                 .map(|(key, proc)| {
-                    let re = a.put(proc, id_gen);
+                    let re = ctx.text_streams.put(proc, id_gen);
                     (key.clone(), re)
                 })
                 .collect();
+            let to_unicode = font
+                .to_unicode
+                .as_ref()
+                .map(|stream| ctx.text_streams.put(&stream, id_gen));
             low::Font::Type3(low::Type3Font {
                 name: font.name,
                 font_bbox: font.font_bbox,
@@ -118,6 +125,7 @@ fn lower_font<'a>(
                 encoding: low::Resource::Immediate(font.encoding.clone()),
                 char_procs,
                 widths: &font.widths,
+                to_unicode,
             })
         }
     }
@@ -149,12 +157,12 @@ impl<'a> Lowerable<'a> for XObject {
     }
 }
 
-impl<'a> Lowerable<'a> for CharProc<'a> {
-    type Lower = low::CharProc<'a>;
+impl<'a> Lowerable<'a> for Ascii85Stream<'a> {
+    type Lower = low::Ascii85Stream<'a>;
     type Ctx = ();
 
     fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        low::CharProc(self.0.clone())
+        low::Ascii85Stream(self.0.clone())
     }
 
     fn name() -> &'static str {
@@ -278,10 +286,10 @@ impl<'a> Lowering<'a> {
             x_object_dicts: LowerBox::new(&doc.res.x_object_dicts),
             fonts: LowerBox::new(&doc.res.fonts),
             font_dicts: LowerBox::new(&doc.res.font_dicts),
-            font_ctx: (
-                LowerBox::new(&doc.res.char_procs),
-                LowerBox::new(&doc.res.encodings),
-            ),
+            font_ctx: LowerFontCtx {
+                text_streams: LowerBox::new(&doc.res.char_procs),
+                encodings: LowerBox::new(&doc.res.encodings),
+            },
         }
     }
 }

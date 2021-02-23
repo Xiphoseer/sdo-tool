@@ -167,13 +167,13 @@ pub struct Type3Font<'a> {
     /// The last used char key
     pub last_char: u8,
     /// Dict of char names to drawing procedures
-    pub char_procs: Dict<CharProc<'a>>,
+    pub char_procs: Dict<Ascii85Stream<'a>>,
     /// Dict of encoding value to char names
     pub encoding: Encoding<'a>,
     /// Width of every char between first and last
     pub widths: Vec<u32>,
-    /// TODO
-    pub to_unicode: (),
+    /// ToUnicode CMap stream
+    pub to_unicode: Option<Ascii85Stream<'a>>,
 }
 
 impl<'a> Default for Type3Font<'a> {
@@ -193,7 +193,7 @@ impl<'a> Default for Type3Font<'a> {
                 differences: None,
             },
             widths: vec![],
-            to_unicode: (),
+            to_unicode: None,
         }
     }
 }
@@ -252,7 +252,7 @@ pub struct Res<'a> {
     /// Embedded object dict resources
     pub x_object_dicts: Vec<DictResource<XObject>>,
     /// Char Procedure resources
-    pub char_procs: Vec<CharProc<'a>>,
+    pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
 }
@@ -295,8 +295,8 @@ impl<'a> Default for Handle<'a> {
 }
 
 #[derive(Debug, Clone)]
-/// A character drawing procedure
-pub struct CharProc<'a>(pub Cow<'a, [u8]>);
+/// A text stream in the PDF
+pub struct Ascii85Stream<'a>(pub Cow<'a, [u8]>);
 
 impl<'a> Handle<'a> {
     /// Creates a new handle
@@ -388,7 +388,7 @@ impl<'a> Handle<'a> {
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in &lowering.font_ctx.0.store {
+        for (cproc_ref, char_proc) in &lowering.font_ctx.text_streams.store {
             let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
             fmt.obj(*cproc_ref, &cp)?;
         }

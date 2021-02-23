@@ -85,6 +85,8 @@ impl PrinterKind {
 #[derive(Debug)]
 /// A complete printer charset
 pub struct PSet<'a> {
+    /// The kind
+    pub pk: PrinterKind,
     /// The header
     pub header: Buf<'a>,
     /// The list of characters
@@ -205,7 +207,7 @@ pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
 /// Parse a a font file
 ///
 /// This method only checks the `0001` part of the magic bytes
-pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
+pub fn parse_font(input: &[u8], pk: PrinterKind) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"0001")(input)?;
     let (input, _) = verify(be_u32, |x| *x == 128)(input)?;
 
@@ -218,6 +220,7 @@ pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
     Ok((
         input,
         PSet {
+            pk,
             header: Buf(header),
             chars,
         },
@@ -227,17 +230,17 @@ pub fn parse_font(input: &[u8]) -> IResult<&[u8], PSet> {
 /// Parse a P24 file
 pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ps24")(input)?;
-    parse_font(input)
+    parse_font(input, PrinterKind::Needle24)
 }
 
 /// Parse a P09 file
 pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ps09")(input)?;
-    parse_font(input)
+    parse_font(input, PrinterKind::Needle9)
 }
 
 /// Parse a L30 file
 pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ls30")(input)?;
-    parse_font(input)
+    parse_font(input, PrinterKind::Laser30)
 }

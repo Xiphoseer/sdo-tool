@@ -48,7 +48,8 @@ impl Fonts {
                 // FIXME: FontDescriptor
 
                 let efont = cs.e24();
-                if let Some(font) = type3_font(efont, pfont, pk, use_table, Some(cs.name())) {
+                let mappings = cs.map();
+                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,

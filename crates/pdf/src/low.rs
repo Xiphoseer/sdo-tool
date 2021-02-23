@@ -158,6 +158,8 @@ pub struct Type3Font<'a> {
     pub char_procs: Dict<ObjRef>,
     /// Width of every char between first and last
     pub widths: &'a [u32],
+    /// Optional reference to a CMap stream
+    pub to_unicode: Option<ObjRef>,
 }
 
 /// A font resource
@@ -180,7 +182,8 @@ impl Serialize for Font<'_> {
                     .field("LastChar", &font.last_char)?
                     .field("Encoding", &font.encoding)?
                     .field("CharProcs", &font.char_procs)?
-                    .arr_field("Widths", &font.widths)?;
+                    .arr_field("Widths", &font.widths)?
+                    .opt_field("ToUnicode", &font.to_unicode)?;
             }
         }
         dict.finish()?;
@@ -189,9 +192,9 @@ impl Serialize for Font<'_> {
 }
 
 /// A character drawing procedure
-pub struct CharProc<'a>(pub Cow<'a, [u8]>);
+pub struct Ascii85Stream<'a>(pub Cow<'a, [u8]>);
 
-impl<'a> Serialize for CharProc<'a> {
+impl<'a> Serialize for Ascii85Stream<'a> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut buf = Vec::new();
         let len = ascii_85_encode(self.0.as_ref(), &mut buf)?;

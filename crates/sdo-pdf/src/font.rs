@@ -6,15 +6,18 @@ use std::{
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
     common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet},
-    high::{CharProc, Type3Font},
+    high::{Ascii85Stream, Type3Font},
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::chsets::{
     editor::ESet,
+    encoding::Mapping,
     printer::{PSet, PSetChar, PrinterKind},
     UseTable,
 };
+
+use crate::cmap::write_cmap;
 
 #[rustfmt::skip]
 pub const DEFAULT_NAMES: [&str; 128] = [
@@ -149,12 +152,12 @@ pub fn write_char_stream<W: Write>(
 pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
     pfont: &'a PSet,
-    pk: PrinterKind,
     use_table: &UseTable,
+    mappings: Option<&Mapping>,
     name: Option<&'a str>,
 ) -> Option<Type3Font<'a>> {
-    let font_metrics = FontMetrics::from(pk);
-    let font_matrix = Matrix::scale(0.001, -0.001); //Matrix::scale(pk.scale() / 2.0, -pk.scale() / 2.0)
+    let font_metrics = FontMetrics::from(pfont.pk);
+    let font_matrix = Matrix::scale(0.001, -0.001);
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
@@ -200,7 +203,10 @@ pub fn type3_font<'a>(
 
     let mut char_procs = Dict::new();
     for (name, cproc) in procs {
-        char_procs.insert(String::from(name), CharProc(Cow::Owned(cproc.to_owned())));
+        char_procs.insert(
+            String::from(name),
+            Ascii85Stream(Cow::Owned(cproc.to_owned())),
+        );
     }
 
     let mut differences = SparseSet::with_size(256);
@@ -211,6 +217,12 @@ pub fn type3_font<'a>(
             differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
         }
     }
+
+    let to_unicode = mappings.map(|mapping| {
+        let mut out = String::new();
+        write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
+        Ascii85Stream(Cow::Owned(out.into_bytes()))
+    });
 
     Some(Type3Font {
         name: name.map(|name| PdfName(name)),
@@ -224,6 +236,6 @@ pub fn type3_font<'a>(
             differences: Some(differences),
         },
         widths,
-        to_unicode: (),
+        to_unicode,
     })
 }
