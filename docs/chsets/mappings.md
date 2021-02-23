@@ -9,12 +9,12 @@ for each character that can be mapped with its name and the character itself.
 
 See also: [E24 Charset Format](format-eset.html)
 
-Some non-standard fonts that I came across are listed [here](font-other.html).
+Some non-standard fonts that I came across are listed [here](other.html).
 
 ## ANTIKRO
 
 <figure>
-    <img src="{{'img/kb/ANTIKRO.png' | relative_url }}">
+    <img src="{{'../img/kb/ANTIKRO.png' | relative_url }}">
     <figcaption>ANTIKRO</figcaption>
 </figure>
 
@@ -25,21 +25,21 @@ Some non-standard fonts that I came across are listed [here](font-other.html).
 ## FRAKTUR1
 
 <figure>
-    <img src="{{'img/kb/FRAKTUR1.png' | relative_url }}">
+    <img src="{{'../img/kb/FRAKTUR1.png' | relative_url }}">
     <figcaption>FRAKTUR1</figcaption>
 </figure>
 
 ## GRAPH1
 
 <figure>
-    <img src="{{'img/kb/GRAPH1.png' | relative_url }}">
+    <img src="{{'../img/kb/GRAPH1.png' | relative_url }}">
     <figcaption>GRAPH1</figcaption>
 </figure>
 
 ## GRIECH
 
 <figure>
-    <img src="{{'img/kb/GRIECH.png' | relative_url }}">
+    <img src="{{'../img/kb/GRIECH.png' | relative_url }}">
     <figcaption>GRIECH</figcaption>
 </figure>
 
@@ -52,41 +52,41 @@ Some non-standard fonts that I came across are listed [here](font-other.html).
 ## GROTFE
 
 <figure>
-    <img src="{{'img/kb/GROTFE.png' | relative_url }}">
+    <img src="{{'../img/kb/GROTFE.png' | relative_url }}">
     <figcaption>GROTFE</figcaption>
 </figure>
 
 ## GROTLT
 
 <figure>
-    <img src="{{'img/kb/GROTLT.png' | relative_url }}">
+    <img src="{{'../img/kb/GROTLT.png' | relative_url }}">
     <figcaption>GROTLT</figcaption>
 </figure>
 
 ## GROTMIKR
 
 <figure>
-    <img src="{{'img/kb/GROTMIKR.png' | relative_url }}">
+    <img src="{{'../img/kb/GROTMIKR.png' | relative_url }}">
     <figcaption>GROTMIKR</figcaption>
 </figure>
 
 ## MATHEM
 
 <figure>
-    <img src="{{'img/kb/MATHEM.png' | relative_url }}">
+    <img src="{{'../img/kb/MATHEM.png' | relative_url }}">
     <figcaption>MATHEM</figcaption>
 </figure>
 
 ## NORMANDE
 
 <figure>
-    <img src="{{'img/kb/NORMANDE.png' | relative_url }}">
+    <img src="{{'../img/kb/NORMANDE.png' | relative_url }}">
     <figcaption>NORMANDE</figcaption>
 </figure>
 
 ## PINSEL
 
 <figure>
-    <img src="{{'img/kb/PINSEL.png' | relative_url }}">
+    <img src="{{'../img/kb/PINSEL.png' | relative_url }}">
     <figcaption>PINSEL</figcaption>
 </figure>

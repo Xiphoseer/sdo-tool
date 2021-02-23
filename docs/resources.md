@@ -14,6 +14,4 @@ This section is a collection of magazine
 
 ### SDO-Kollektion
 
-
-
 Link: <http://www.stcarchiv.de/stc1992/01/sdo-kollektion>

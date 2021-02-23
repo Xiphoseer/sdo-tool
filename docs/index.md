@@ -169,5 +169,5 @@ please file a github issue or send me an email at `xiphoseer@mailbox.org`.
 [ZERO-WHITE]: https://en.wikipedia.org/wiki/List_of_monochrome_and_RGB_color_formats#Monochrome_(1-bit)
 [1stWord]: http://stcarchiv.de/stc1989/02/von-1stword-zu-signum2
 
-[font-mappings]: https://xiphoseer.github.io/sdo-tool/font-mappings.html
+[font-mappings]: https://xiphoseer.github.io/sdo-tool/chsets/mappings.html
 [examples]: https://xiphoseer.github.io/sdo-tool/examples.html
