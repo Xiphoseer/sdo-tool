@@ -7,7 +7,7 @@ for each character that can be mapped with its name and the character itself.
 
 [Unicode]: https://unicode.org
 
-See also: [E24 Charset Format](format-eset.html)
+See also: [E24 Charset Format]({{ 'format-eset.html' | relative_url}})
 
 Some non-standard fonts that I came across are listed [here](other.html).
 
