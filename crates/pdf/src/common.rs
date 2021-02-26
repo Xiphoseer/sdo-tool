@@ -509,6 +509,33 @@ impl Serialize for ColorSpace {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// Specifies which value draws a color for an `ImageMask`
+///
+/// This serializes to the array parameter for `Decode`
+pub enum ColorIs {
+    /// 0 means the color is drawn
+    Zero,
+    /// 1 means the color is drawn
+    One,
+}
+
+impl Default for ColorIs {
+    fn default() -> Self {
+        Self::Zero
+    }
+}
+
+impl Serialize for ColorIs {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let (color, no) = match self {
+            Self::Zero => (0, 1),
+            Self::One => (1, 0),
+        };
+        f.pdf_arr().entry(&color)?.entry(&no)?.finish()
+    }
+}
+
 /// The metadata for an image XObject
 #[derive(Debug, Copy, Clone)]
 pub struct ImageMetadata {
@@ -520,6 +547,10 @@ pub struct ImageMetadata {
     pub color_space: ColorSpace,
     /// The `BitsPerComponent`
     pub bits_per_component: u8,
+    /// The `ImageMask`
+    pub image_mask: bool,
+    /// The `Decode`
+    pub decode: ColorIs,
 }
 
 impl ToDict for ImageMetadata {
@@ -530,6 +561,10 @@ impl ToDict for ImageMetadata {
         dict.field("Height", &self.height)?;
         dict.field("ColorSpace", &self.color_space)?;
         dict.field("BitsPerComponent", &self.bits_per_component)?;
+        dict.default_field("Decode", &self.decode)?;
+        if self.image_mask {
+            dict.field("ImageMask", &true)?;
+        }
         Ok(())
     }
 }

@@ -3,6 +3,7 @@
 use std::fmt::{Debug, Display};
 
 pub mod bit_iter;
+pub(crate) mod bit_writer;
 pub mod data;
 
 /// A `u16` that does not encode an integer

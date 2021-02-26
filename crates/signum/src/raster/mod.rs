@@ -7,7 +7,7 @@ use crate::{
     docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
     util::bit_iter::BitIter,
-    util::data::BIT_STRING,
+    util::{bit_writer::BitWriter, data::BIT_STRING},
 };
 #[cfg(feature = "image")]
 use {crate::util::data::BIT_PROJECTION, image::GrayImage};
@@ -238,6 +238,78 @@ impl Page {
     /// Use this for small images only
     pub fn print(&self) {
         print(self.bytes_per_line, self.width, &self.buffer);
+    }
+
+    /**/
+
+    /*let lmod = x % 8;
+    let rmod = w % 8;
+    let step = (rmod + lmod) % 8;
+    let lskip = x / 8;
+
+    let mut off = lmod; // whats the difference between i&o byte aligned
+    let mut carry = 0; // clen first bits filled with carry
+    let mut clen = 0;
+    for line in iter {
+        off = if off == 0 {
+            let mut lpos = lskip;
+            if clen > 0 {
+                assert_eq!(clen, lmod);
+
+                lpos += 1;
+            }
+            // if we are aligned
+            let len = w / 8;
+            let rpos = lpos+len;
+            out.extend_from_slice(&line[lpos..rpos]);
+            carry = line[rpos];
+            clen = rmod;
+            step
+        } else {
+            // if we start out skipping lmod bits
+            0
+        };
+    }*/
+
+    /// Get a part of the image as bitmap (1-bit per pixel) image
+    pub fn select(&self, area: ImageArea) -> Vec<u8> {
+        let h = area.h as usize;
+        let w = area.w as usize;
+        let y = area.y as usize;
+        let x = area.x as usize;
+        let chunk_size = self.bytes_per_line as usize;
+        let iter = self.buffer.chunks(chunk_size).skip(y).take(h);
+        let mut out;
+        let lskip = x / 8;
+        let lmod = x % 8;
+
+        if lmod > 0 {
+            let mut bw = BitWriter::new();
+            let lead = 8 - lmod;
+            let end = w - lead;
+            let cnt = end / 8;
+            let rmod = end % 8;
+            let apos = lskip + 1;
+            let bpos = apos + cnt;
+            for line in iter {
+                bw.write_bits(line[lskip] as usize, lead);
+                for &val in &line[apos..bpos] {
+                    bw.write_bits(val as usize, 8);
+                }
+                bw.write_bits(line[bpos] as usize, rmod);
+                bw.flush();
+            }
+            out = bw.done();
+        } else {
+            out = Vec::with_capacity(w * h / 8 + 1);
+            let rmod = w % 8;
+            let len = if rmod > 0 { w / 8 + 1 } else { w / 8 };
+            for line in iter {
+                out.extend_from_slice(&line[lskip..lskip + len]);
+            }
+        }
+
+        out
     }
 
     /// Get a part of the image as a grayscale (8-bit per pixel) image

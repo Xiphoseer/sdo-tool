@@ -1,9 +1,65 @@
-use std::io::Write;
+use std::io::{self, Write};
 
 use pdf_create::write::write_string;
+use signum::docs::hcim::ImageSite;
+
+/// The `Contents` stream of a PDF
+#[derive(Default)]
+pub struct Contents {
+    top: f32,
+    left: f32,
+    inner: Vec<u8>,
+}
+
+impl Contents {
+    /// Create a new stream
+    pub fn new(top: f32, left: f32) -> Self {
+        let mut inner = Vec::new();
+        writeln!(inner, "0 g").unwrap();
+        Self { inner, top, left }
+    }
+
+    pub fn image(&mut self, site: &ImageSite, key: &str) -> io::Result<()> {
+        writeln!(self.inner, "q")?;
+        let t = self.top - (((site.site.y + site.site.h / 2 - site._5 / 2) as f32 * 72.0) / 54.0);
+        let l = self.left + ((site.site.x as f32 * 72.0) / 90.0);
+        let w = (site.site.w as f32 * 72.0) / 90.0;
+        let h = (site.site.h as f32 * /*72.0*/ 36.0) / 54.0;
+        writeln!(self.inner, "{} 0 0 {} {} {} cm", w, h, l, t)?;
+        writeln!(self.inner, "/{} Do", key)?;
+        writeln!(self.inner, "Q")?;
+        Ok(())
+    }
+
+    pub fn start_text(self, scale_x: f32, scale_y: f32) -> TextContents {
+        let mut inner = self.inner;
+        let left = self.left;
+        let top = self.top;
+        write!(
+            inner,
+            "q\nBT\n{} 0 0 {} {} {} Tm\n",
+            scale_x, scale_y, left, top
+        )
+        .unwrap();
+        TextContents {
+            line_started: false,
+            pos_y: 0,
+            line_y: 0,
+            line_x: 0,
+            buf: vec![],
+            open: false,
+            needs_space: false,
+            //is_ascii: true,
+            cset: 0xff,
+            fs: 0,
+            fw: 100,
+            inner,
+        }
+    }
+}
 
 /// Helper to create a valid `/Contents` stream
-pub struct Contents {
+pub struct TextContents {
     buf: Vec<u8>,
     inner: Vec<u8>,
     cset: u8,
@@ -23,29 +79,7 @@ pub struct Contents {
     line_x: u32,
 }
 
-impl Contents {
-    pub fn new(scale_x: f32, scale_y: f32, left: f32, top: f32) -> Self {
-        let inner = format!(
-            "q\n0 g\nBT\n{} 0 0 {} {} {} Tm\n",
-            scale_x, scale_y, left, top
-        );
-        let inner = inner.into_bytes();
-        Contents {
-            line_started: false,
-            pos_y: 0,
-            line_y: 0,
-            line_x: 0,
-            buf: vec![],
-            open: false,
-            needs_space: false,
-            //is_ascii: true,
-            cset: 0xff,
-            fs: 0,
-            fw: 100,
-            inner,
-        }
-    }
-
+impl TextContents {
     /// Moves to the next line.
     ///
     /// `x` and `y` are in Signum coordinate units, i.e. `x` uses 1/90th of a inch and `y` uses 1/54th of an inch.

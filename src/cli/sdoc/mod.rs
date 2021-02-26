@@ -1,7 +1,7 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use log::{info, warn};
+use log::{error, info, warn};
 use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::{
     chsets::{
@@ -313,11 +313,11 @@ impl<'a> Document<'a> {
         let mut images = Vec::with_capacity(hcim.header.img_count as usize);
 
         for (index, img) in hcim.images.iter().enumerate() {
-            println!("image[{}]:", index);
+            //println!("image[{}]:", index);
             match parse_image(img.0) {
                 Ok((_imgrest, im)) => {
-                    println!("IMAGE: {:?}", im.key);
-                    println!("{:#?}", im.bytes);
+                    info!("Found image {:?}", im.key);
+                    //println!("{:#?}", im.bytes);
                     let page = Page::from_screen(im.image);
                     if let Some(out_img) = out_img {
                         let name = format!("{:02}-{}.png", index, im.key);
@@ -328,7 +328,7 @@ impl<'a> Document<'a> {
                     images.push(page);
                 }
                 Err(e) => {
-                    println!("Error: {}", e);
+                    error!("Error: {}", e);
                 }
             }
         }

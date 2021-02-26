@@ -42,6 +42,19 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(self)
     }
 
+    /// Write a field
+    pub fn default_field<X: Default + PartialEq + Serialize>(
+        &mut self,
+        name: &str,
+        value: &X,
+    ) -> io::Result<&mut Self> {
+        if *value != Default::default() {
+            self.field(name, value)
+        } else {
+            Ok(self)
+        }
+    }
+
     /// Write flattened
     pub fn embed<X: ToDict>(&mut self, embed: &X) -> io::Result<&mut Self> {
         embed.write(self)?;
@@ -321,6 +334,7 @@ serialize_display_impl!(usize);
 serialize_display_impl!(u32);
 serialize_display_impl!(i32);
 serialize_display_impl!(f32);
+serialize_display_impl!(bool);
 
 impl<X: Serialize> Serialize for Vec<X> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {

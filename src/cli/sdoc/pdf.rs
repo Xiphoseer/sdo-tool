@@ -1,18 +1,12 @@
-use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-    fs::File,
-    io::{BufWriter, Write},
-    path::Path,
-    usize,
-};
+use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path, usize};
 
 use color_eyre::eyre::{self, eyre};
 use log::info;
 use pdf_create::{
     chrono::Local,
     common::{
-        ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle,
+        ColorIs, ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet,
+        Rectangle,
     },
     encoding::pdf_doc_encode,
     high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
@@ -99,18 +93,19 @@ pub fn prepare_document(
                 let img_index = hnd.res.x_objects.len();
                 let width = site.sel.w as usize;
                 let height = site.sel.h as usize;
-                let area = width * height;
+                //let area = width * height;
 
                 let im = &doc.images[site.img as usize];
-                let data = im.select_grayscale(site.sel);
-                assert_eq!(data.len(), area as usize);
+                let data = im.select(site.sel);
 
                 hnd.res.x_objects.push(XObject::Image(Image {
                     meta: ImageMetadata {
                         width,
                         height,
                         color_space: ColorSpace::DeviceGray,
-                        bits_per_component: 8,
+                        bits_per_component: 1,
+                        image_mask: true,
+                        decode: ColorIs::One,
                     },
                     data,
                 }));
@@ -150,7 +145,13 @@ pub fn prepare_document(
         let top = a4_height as f32 - top - 8.0;
         let media_box = Rectangle::media_box(a4_width, a4_height);
 
-        let mut contents = Contents::new(1.0, -1.0, left, top);
+        let mut contents = Contents::new(top, left);
+
+        for (site, key) in img {
+            contents.image(site, &key).unwrap();
+        }
+
+        let mut contents = contents.start_text(1.0, -1.0);
 
         for (skip, line) in &page.content {
             contents.next_line(0, *skip as u32 + 1);
@@ -197,17 +198,7 @@ pub fn prepare_document(
             contents.flush();
         }
 
-        let mut contents = contents.into_inner();
-        for (site, key) in img {
-            writeln!(contents, "q").unwrap();
-            let t = top - (((site.site.y + site.site.h / 2 - site._5 / 2) as f32 * 72.0) / 54.0);
-            let l = left + ((site.site.x as f32 * 72.0) / 90.0);
-            let w = (site.site.w as f32 * 72.0) / 90.0;
-            let h = (site.site.h as f32 * /*72.0*/ 36.0) / 54.0;
-            writeln!(contents, "{} 0 0 {} {} {} cm", w, h, l, t).unwrap();
-            writeln!(contents, "/{} Do", key).unwrap();
-            writeln!(contents, "Q").unwrap();
-        }
+        let contents = contents.into_inner();
 
         let page = Page {
             media_box,
