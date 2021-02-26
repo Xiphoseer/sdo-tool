@@ -42,6 +42,12 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         Ok(self)
     }
 
+    /// Write flattened
+    pub fn embed<X: ToDict>(&mut self, embed: &X) -> io::Result<&mut Self> {
+        embed.write(self)?;
+        Ok(self)
+    }
+
     /// Write an optional field, if it is not `None`
     pub fn opt_field<X: Serialize>(
         &mut self,
@@ -121,6 +127,12 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         }
         Ok(())
     }
+}
+
+/// API to serialize a type into a dict
+pub trait ToDict {
+    /// Add the key to the dict
+    fn write(&self, dict: &mut PdfDict<'_, '_>) -> io::Result<()>;
 }
 
 /// API to serialize an array

@@ -1,6 +1,6 @@
 [package]
 name = "sdo-tool"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["daniel"]
 edition = "2018"
 
@@ -8,6 +8,8 @@ edition = "2018"
 structopt = "0.3"
 color-eyre = { version = "0.5", default-features = false }
 prettytable-rs = "0.8"
+log = "0.4"
+pretty_env_logger = "0.4"
 bitflags = "1.2"
 thiserror = "1.0"
 nom-supreme = "0.4"
@@ -25,5 +27,8 @@ default-features = false
 version = "0.23"
 features = ["png"]
 
+#[profile.dev]
+#opt-level = 1
+
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "gui/*"]

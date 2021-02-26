@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 use color_eyre::eyre::{self, eyre, WrapErr};
+use log::LevelFilter;
 use sdo_tool::cli::{
     font::{process_eset, process_ls30, process_ps09, process_ps24},
     opt::Options,
@@ -16,6 +17,9 @@ use structopt::StructOpt;
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
+    pretty_env_logger::formatted_builder()
+        .filter_level(LevelFilter::Info)
+        .init();
     let opt = Options::from_args();
 
     let file_res = File::open(&opt.file);

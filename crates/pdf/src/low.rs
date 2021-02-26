@@ -6,9 +6,17 @@
 use std::{borrow::Cow, io};
 
 use crate::{
-    common::Dict, common::Encoding, common::Matrix, common::ObjRef, common::PdfString,
-    common::ProcSet, common::Rectangle, encoding::ascii_85_encode, write::Formatter,
-    write::PdfName, write::Serialize,
+    common::Dict,
+    common::Encoding,
+    common::Matrix,
+    common::ObjRef,
+    common::PdfString,
+    common::ProcSet,
+    common::{Rectangle, StreamMetadata},
+    encoding::ascii_85_encode,
+    write::Formatter,
+    write::PdfName,
+    write::Serialize,
 };
 
 /// Destination of a GoTo action
@@ -192,14 +200,20 @@ impl Serialize for Font<'_> {
 }
 
 /// A character drawing procedure
-pub struct Ascii85Stream<'a>(pub Cow<'a, [u8]>);
+pub struct Ascii85Stream<'a> {
+    /// The data of this stream
+    pub data: Cow<'a, [u8]>,
+    /// The associated metadata
+    pub meta: StreamMetadata,
+}
 
 impl<'a> Serialize for Ascii85Stream<'a> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut buf = Vec::new();
-        let len = ascii_85_encode(self.0.as_ref(), &mut buf)?;
+        let len = ascii_85_encode(self.data.as_ref(), &mut buf)?;
         buf.push(10);
         f.pdf_dict()
+            .embed(&self.meta)?
             .field("Length", &len)?
             .field("Filter", &PdfName("ASCII85Decode"))?
             .finish()?;
@@ -209,14 +223,16 @@ impl<'a> Serialize for Ascii85Stream<'a> {
 }
 
 /// An emedded object resource
-pub enum XObject {
+pub enum XObject<'a> {
     /// An image object
-    Image {},
+    Image(Ascii85Stream<'a>),
 }
 
-impl Serialize for XObject {
-    fn write(&self, _f: &mut Formatter) -> io::Result<()> {
-        todo!()
+impl<'a> Serialize for XObject<'a> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::Image(i) => i.write(f),
+        }
     }
 }
 
@@ -230,7 +246,7 @@ pub struct Resources<'a> {
     /// A dict of font resources
     pub font: ResDictRes<Font<'a>>,
     /// A dict of embedded object resources
-    pub x_object: ResDictRes<XObject>,
+    pub x_object: ResDictRes<XObject<'a>>,
     /// A set of valid procedures
     pub proc_set: &'a [ProcSet],
 }

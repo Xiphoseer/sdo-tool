@@ -1,70 +1,28 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path};
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+    usize,
+};
 
 use color_eyre::eyre::{self, eyre};
+use log::info;
 use pdf_create::{
     chrono::Local,
-    common::{OutputIntent, OutputIntentSubtype, PdfString, Rectangle},
+    common::{
+        ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle,
+    },
     encoding::pdf_doc_encode,
-    high::{Font, Handle, Page, Resource, Resources},
+    high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
 };
-use sdo_pdf::{font::type3_font, sdoc::Contents};
-use signum::chsets::{printer::PrinterKind, FontKind, UseTableVec};
+use sdo_pdf::{font::Fonts, sdoc::Contents};
+use signum::chsets::{cache::ChsetCache, FontKind, UseTableVec};
 
-use crate::cli::{font::cache::FontCache, opt::Meta};
+use crate::cli::opt::Meta;
 
 use super::Document;
-
-struct FontInfo {
-    widths: Vec<u32>,
-    first_char: u8,
-    index: usize,
-}
-
-pub struct Fonts {
-    info: Vec<Option<FontInfo>>,
-    base: usize,
-}
-
-impl Fonts {
-    pub fn new(fonts_capacity: usize, base: usize) -> Self {
-        Fonts {
-            info: Vec::with_capacity(fonts_capacity),
-            base,
-        }
-    }
-
-    pub fn make_fonts<'a>(
-        &mut self,
-        fc: &'a FontCache,
-        use_table_vec: UseTableVec,
-        pk: PrinterKind,
-    ) -> eyre::Result<Vec<Font<'a>>> {
-        let chsets = fc.chsets();
-        let mut result = Vec::with_capacity(chsets.len());
-        for (index, cs) in chsets.iter().enumerate() {
-            let use_table = &use_table_vec.csets[index];
-
-            if let Some(pfont) = cs.printer(pk) {
-                // FIXME: FontDescriptor
-
-                let efont = cs.e24();
-                let mappings = cs.map();
-                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
-                    let info = FontInfo {
-                        widths: font.widths.clone(),
-                        first_char: font.first_char,
-                        index: result.len(),
-                    };
-                    self.info.push(Some(info));
-                    result.push(Font::Type3(font));
-                    continue;
-                }
-            }
-            self.info.push(None);
-        }
-        Ok(result)
-    }
-}
 
 pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     // Metadata
@@ -114,8 +72,8 @@ pub fn prepare_document(
     for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
         if let Some(fc_index) = fc_index {
             let key = FONTS[cset].to_owned();
-            if let Some(info) = &font_info.info[fc_index] {
-                let index = font_info.base + info.index;
+            if let Some(info) = font_info.get(fc_index) {
+                let index = font_info.index(info);
                 let value = Resource::Global { index };
                 fonts.insert(key, value);
                 infos[cset] = Some(info);
@@ -123,6 +81,7 @@ pub fn prepare_document(
         }
     }
 
+    let font_dict = hnd.res.font_dicts.len();
     hnd.res.font_dicts.push(fonts);
 
     // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
@@ -132,9 +91,46 @@ pub fn prepare_document(
     for (_index, page) in doc.tebu.iter().enumerate() {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
+        let mut x_objects: DictResource<XObject> = BTreeMap::new();
+        let mut img = vec![];
+        for (index, site) in doc.sites.iter().enumerate() {
+            if site.page == page_info.log_pnr {
+                let key = format!("I{}", index);
+                let img_index = hnd.res.x_objects.len();
+                let width = site.sel.w as usize;
+                let height = site.sel.h as usize;
+                let area = width * height;
+
+                let im = &doc.images[site.img as usize];
+                let data = im.select_grayscale(site.sel);
+                assert_eq!(data.len(), area as usize);
+
+                hnd.res.x_objects.push(XObject::Image(Image {
+                    meta: ImageMetadata {
+                        width,
+                        height,
+                        color_space: ColorSpace::DeviceGray,
+                        bits_per_component: 8,
+                    },
+                    data,
+                }));
+                info!(
+                    "Adding image site {} on page {} as /{}",
+                    index, page_info.log_pnr, &key
+                );
+                x_objects.insert(key.clone(), Resource::Global { index: img_index });
+                img.push((site, key));
+            }
+        }
+
+        let mut proc_sets = vec![ProcSet::PDF, ProcSet::Text];
+        if !img.is_empty() {
+            proc_sets.push(ProcSet::ImageB);
+        }
         let resources = Resources {
-            fonts: Resource::Global { index: 0 },
-            ..Default::default()
+            fonts: Resource::Global { index: font_dict },
+            x_objects: Resource::Immediate(Box::new(x_objects)),
+            proc_sets,
         };
 
         let a4_width = 592;
@@ -192,9 +188,7 @@ pub fn prepare_document(
                     let font_name = doc.cset[csu].as_deref().unwrap_or("");
                     eyre!("Missing font #{}: {:?}", csu, font_name)
                 })?;
-                let fc = fi.first_char;
-                let wi = (te.cval - fc) as usize;
-                prev_width = fi.widths[wi] as i32;
+                prev_width = fi.width(te.cval) as i32;
                 if is_wide {
                     prev_width *= 2;
                 }
@@ -203,10 +197,22 @@ pub fn prepare_document(
             contents.flush();
         }
 
+        let mut contents = contents.into_inner();
+        for (site, key) in img {
+            writeln!(contents, "q").unwrap();
+            let t = top - (((site.site.y + site.site.h / 2 - site._5 / 2) as f32 * 72.0) / 54.0);
+            let l = left + ((site.site.x as f32 * 72.0) / 90.0);
+            let w = (site.site.w as f32 * 72.0) / 90.0;
+            let h = (site.site.h as f32 * /*72.0*/ 36.0) / 54.0;
+            writeln!(contents, "{} 0 0 {} {} {} cm", w, h, l, t).unwrap();
+            writeln!(contents, "/{} Do", key).unwrap();
+            writeln!(contents, "Q").unwrap();
+        }
+
         let page = Page {
             media_box,
             resources,
-            contents: contents.into_inner(),
+            contents,
         };
         hnd.pages.push(page);
     }
@@ -229,7 +235,7 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
     }
 }
 
-pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Handle<'a>> {
+pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
     let meta = doc_meta(doc)?;
@@ -249,12 +255,9 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Han
         return Err(eyre!("Editor fonts are not currently supported"));
     };
 
-    let mut font_info = Fonts {
-        info: Vec::with_capacity(8),
-        base: hnd.res.fonts.len(),
-    };
+    let mut font_info = Fonts::new(8, 0); // base = hnd.res.fonts.len() ???
 
-    for font in font_info.make_fonts(fc, use_table_vec, pk)? {
+    for font in font_info.make_fonts(fc, use_table_vec, pk) {
         hnd.res.fonts.push(font);
     }
 
@@ -262,7 +265,7 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a FontCache) -> eyre::Result<Han
     Ok(hnd)
 }
 
-pub fn output_pdf(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
+pub fn output_pdf(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
     let hnd = process_doc(doc, fc)?;
     handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
     Ok(())
@@ -286,9 +289,9 @@ pub fn handle_out(out: Option<&Path>, file: &Path, hnd: Handle) -> eyre::Result<
         };
         let out_file = File::create(&out)?;
         let mut out_buf = BufWriter::new(out_file);
-        print!("Writing `{}` ...", out.display());
+        info!("Writing `{}` ...", out.display());
         hnd.write(&mut out_buf)?;
-        println!(" Done!");
+        info!("Done!");
         Ok(())
     }
 }

@@ -1,14 +1,14 @@
 use color_eyre::eyre;
 use signum::{
-    chsets::encoding::antikro,
+    chsets::{cache::ChsetCache, encoding::antikro},
     docs::tebu::{Char, Flags, Line, Style},
 };
 
-use crate::cli::{font::cache::FontCache, opt::Format};
+use crate::cli::opt::Format;
 
 use super::Document;
 
-fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
+fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
@@ -109,7 +109,7 @@ fn print_tebu_data(doc: &Document, fc: &FontCache, data: &[Char]) {
     }
 }
 
-pub fn print_line(doc: &Document, fc: &FontCache, line: &Line, skip: u16) {
+pub fn print_line(doc: &Document, fc: &ChsetCache, line: &Line, skip: u16) {
     if line.flags.contains(Flags::FLAG) && doc.opt.format == Format::Html {
         println!("<F: {}>", line.extra);
     }
@@ -135,7 +135,7 @@ pub fn print_line(doc: &Document, fc: &FontCache, line: &Line, skip: u16) {
     }
 }
 
-pub fn output_console(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
+pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
     for page_text in &doc.tebu {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();

@@ -7,8 +7,8 @@ use io::Write;
 
 use crate::{
     common::{
-        Dict, Encoding, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel, PdfString, Point,
-        ProcSet, Rectangle, Trapped,
+        Dict, Encoding, ImageMetadata, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel,
+        PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped,
     },
     low::{self, ID},
     lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
@@ -214,7 +214,12 @@ pub enum XObject {
 
 #[derive(Debug)]
 /// An Image resource
-pub struct Image {}
+pub struct Image {
+    /// The metadata for this image
+    pub meta: ImageMetadata,
+    /// The data for the image
+    pub data: Vec<u8>,
+}
 
 /// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
@@ -296,7 +301,12 @@ impl<'a> Default for Handle<'a> {
 
 #[derive(Debug, Clone)]
 /// A text stream in the PDF
-pub struct Ascii85Stream<'a>(pub Cow<'a, [u8]>);
+pub struct Ascii85Stream<'a> {
+    /// The data of this stream
+    pub data: Cow<'a, [u8]>,
+    /// The metadata for this stream
+    pub meta: StreamMetadata,
+}
 
 impl<'a> Handle<'a> {
     /// Creates a new handle
@@ -385,6 +395,11 @@ impl<'a> Handle<'a> {
         for (font_ref, font) in &lowering.fonts.store {
             let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
             fmt.obj(*font_ref, &font_low)?;
+        }
+
+        for (x_ref, x) in &lowering.x_objects.store {
+            let x_low = x.lower(&mut (), &mut lowering.id_gen);
+            fmt.obj(*x_ref, &x_low)?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered

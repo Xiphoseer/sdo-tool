@@ -25,7 +25,10 @@ pub struct Contents {
 
 impl Contents {
     pub fn new(scale_x: f32, scale_y: f32, left: f32, top: f32) -> Self {
-        let inner = format!("0 g\nBT\n{} 0 0 {} {} {} Tm\n", scale_x, scale_y, left, top);
+        let inner = format!(
+            "q\n0 g\nBT\n{} 0 0 {} {} {} Tm\n",
+            scale_x, scale_y, left, top
+        );
         let inner = inner.into_bytes();
         Contents {
             line_started: false,
@@ -139,6 +142,7 @@ impl Contents {
 
     pub fn into_inner(mut self) -> Vec<u8> {
         self.inner.extend_from_slice(b"ET\n");
+        self.inner.extend_from_slice(b"Q\n");
         self.inner
     }
 }

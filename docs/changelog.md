@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Unreleased (main)
 
+### 26.02.2021
+
+- Initial support for images in PDFs
+
 ### 23.02.2021
 
 - &#91;sdo-pdf&#93; Added a proper `FontBBox` to resolve issues with Acrobat Reader

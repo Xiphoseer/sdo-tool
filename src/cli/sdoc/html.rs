@@ -2,18 +2,16 @@ use std::fmt::{self, Write};
 
 use color_eyre::eyre;
 use signum::{
-    chsets::encoding::antikro,
+    chsets::{cache::ChsetCache, encoding::antikro},
     docs::tebu::{Char, Flags, Line, Style},
 };
-
-use crate::cli::font::cache::FontCache;
 
 use super::Document;
 
 struct HtmlGen<'a> {
     out: String,
     doc: &'a Document<'a>,
-    fc: &'a FontCache,
+    fc: &'a ChsetCache,
 
     par: bool,
     protected: bool,
@@ -21,7 +19,7 @@ struct HtmlGen<'a> {
 }
 
 impl<'a> HtmlGen<'a> {
-    fn new(doc: &'a Document, fc: &'a FontCache) -> Result<Self, fmt::Error> {
+    fn new(doc: &'a Document, fc: &'a ChsetCache) -> Result<Self, fmt::Error> {
         let file_name = doc.opt.file.file_name().unwrap().to_string_lossy();
         let mut out = String::new();
         writeln!(out, "<!DOCTYPE html>")?;
@@ -261,7 +259,7 @@ impl<'a> HtmlGen<'a> {
     }
 }
 
-pub fn output_html(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
+pub fn output_html(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
     let mut gen = HtmlGen::new(doc, fc)?;
     gen.body()?;
 

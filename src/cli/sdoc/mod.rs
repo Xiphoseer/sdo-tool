@@ -1,9 +1,11 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
+use log::{info, warn};
 use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::{
     chsets::{
+        cache::{CSet, ChsetCache},
         editor::ESet,
         printer::{PSet, PrinterKind},
         FontKind, UseMatrix,
@@ -23,10 +25,7 @@ use signum::{
 };
 use util::to_err_tree;
 
-use super::{
-    font::cache::{CSet, FontCache},
-    util,
-};
+use super::util;
 
 mod console;
 mod html;
@@ -61,25 +60,25 @@ pub struct Document<'a> {
     // tebu
     tebu: Vec<PageText>,
     // hcim
-    images: Vec<Page>,
-    sites: Vec<ImageSite>,
+    pub(crate) images: Vec<Page>,
+    pub(crate) sites: Vec<ImageSite>,
 }
 
 impl<'a> Document<'a> {
-    pub fn eset<'f>(&self, fc: &'f FontCache, cset: u8) -> Option<&'f ESet<'static>> {
+    pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'static>> {
         self.chsets[cset as usize].and_then(|index| fc.eset(index))
     }
 
     pub fn pset<'f>(
         &self,
-        fc: &'f FontCache,
+        fc: &'f ChsetCache,
         cset: u8,
         pk: PrinterKind,
     ) -> Option<&'f PSet<'static>> {
         self.chsets[cset as usize].and_then(|index| fc.pset(pk, index))
     }
 
-    pub fn cset<'f>(&self, fc: &'f FontCache, cset: u8) -> Option<&'f CSet> {
+    pub fn cset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f CSet> {
         self.chsets[cset as usize].and_then(|index| fc.cset(index))
     }
 
@@ -113,7 +112,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset<'x>(&mut self, fc: &mut FontCache, part: Buf<'x>) -> eyre::Result<()> {
+    fn process_cset<'x>(&mut self, fc: &mut ChsetCache, part: Buf<'x>) -> eyre::Result<()> {
         let charsets = util::load(parse_cset, part.0)?;
         println!("'cset': {:?}", charsets);
 
@@ -139,16 +138,16 @@ impl<'a> Document<'a> {
         }
         // Print info on which sets are available
         if all_eset {
-            println!("Editor fonts available for all character sets");
+            info!("Editor fonts available for all character sets");
         }
         if all_p24 {
-            println!("Printer fonts (24-needle) available for all character sets");
+            info!("Printer fonts (24-needle) available for all character sets");
         }
         if all_l30 {
-            println!("Printer fonts (laser/30) available for all character sets");
+            info!("Printer fonts (laser/30) available for all character sets");
         }
         if all_p09 {
-            println!("Printer fonts (9-needle) available for all character sets");
+            info!("Printer fonts (9-needle) available for all character sets");
         }
 
         // If none was set, choose one strategy
@@ -156,22 +155,24 @@ impl<'a> Document<'a> {
             match pd {
                 FontKind::Editor => {
                     if !all_eset {
-                        println!("WARNING: Explicitly chosen editor print-driver but not all fonts are available");
+                        warn!(
+                            "Explicitly chosen editor print-driver but not all fonts are available"
+                        );
                     }
                 }
                 FontKind::Printer(PrinterKind::Needle24) => {
                     if !all_p24 {
-                        println!("WARNING: Explicitly chosen 24-needle print-driver but not all fonts are available");
+                        warn!("Explicitly chosen 24-needle print-driver but not all fonts are available");
                     }
                 }
                 FontKind::Printer(PrinterKind::Needle9) => {
                     if !all_p09 {
-                        println!("WARNING: Explicitly chosen 9-needle print-driver but not all fonts are available");
+                        warn!("Explicitly chosen 9-needle print-driver but not all fonts are available");
                     }
                 }
                 FontKind::Printer(PrinterKind::Laser30) => {
                     if !all_l30 {
-                        println!("WARNING: Explicitly chosen laser/30 print-driver but not all fonts are available");
+                        warn!("Explicitly chosen laser/30 print-driver but not all fonts are available");
                     }
                 }
             }
@@ -184,7 +185,7 @@ impl<'a> Document<'a> {
         } else if all_eset {
             self.print_driver = Some(FontKind::Editor);
         } else {
-            println!("No print-driver has all fonts available.");
+            warn!("No print-driver has all fonts available.");
         }
         Ok(())
     }
@@ -258,11 +259,10 @@ impl<'a> Document<'a> {
             }
         };
         self.tebu = tebu;
-        println!("Loaded all pages!");
-
         if !rest.is_empty() {
-            println!("{:#?}", Buf(rest));
+            println!(" rest: {:#?}", Buf(rest));
         }
+        info!("Loaded {} page(s)!", self.page_count);
         Ok(())
     }
 
@@ -276,37 +276,39 @@ impl<'a> Document<'a> {
             std::fs::create_dir_all(out_img)?;
         }
 
-        let mut image_table = Table::new();
-        image_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+        if !hcim.sites.is_empty() {
+            let mut image_table = Table::new();
+            image_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
 
-        // Add a row per time
-        image_table.set_titles(row![
-            "page", "pos_x", "pos_y", "site_w", "site_h", "[5]", "sel_x", "sel_y", "sel_w",
-            "sel_h", "[A]", "[B]", "[C]", "img", "[E]", "[F]",
-        ]);
+            // Add a row per time
+            image_table.set_titles(row![
+                "page", "pos_x", "pos_y", "site_w", "site_h", "[5]", "sel_x", "sel_y", "sel_w",
+                "sel_h", "[A]", "[B]", "[C]", "img", "[E]", "[F]",
+            ]);
 
-        for isite in &hcim.sites {
-            image_table.add_row(Row::new(vec![
-                Cell::new(&format!("{}", isite.page)),
-                Cell::new(&format!("{}", isite.site.x)),
-                Cell::new(&format!("{}", isite.site.y)),
-                Cell::new(&format!("{}", isite.site.w)),
-                Cell::new(&format!("{}", isite.site.h)),
-                Cell::new(&format!("{}", isite._5)),
-                Cell::new(&format!("{}", isite.sel.x)),
-                Cell::new(&format!("{}", isite.sel.y)),
-                Cell::new(&format!("{}", isite.sel.w)),
-                Cell::new(&format!("{}", isite.sel.h)),
-                Cell::new(&format!("{}", isite._A)),
-                Cell::new(&format!("{}", isite._B)),
-                Cell::new(&format!("{}", isite._C)),
-                Cell::new(&format!("{}", isite.img)),
-                Cell::new(&format!("{}", isite._E)),
-                Cell::new(&format!("{:?}", isite._F)),
-            ]));
+            for isite in &hcim.sites {
+                image_table.add_row(Row::new(vec![
+                    Cell::new(&format!("{}", isite.page)),
+                    Cell::new(&format!("{}", isite.site.x)),
+                    Cell::new(&format!("{}", isite.site.y)),
+                    Cell::new(&format!("{}", isite.site.w)),
+                    Cell::new(&format!("{}", isite.site.h)),
+                    Cell::new(&format!("{}", isite._5)),
+                    Cell::new(&format!("{}", isite.sel.x)),
+                    Cell::new(&format!("{}", isite.sel.y)),
+                    Cell::new(&format!("{}", isite.sel.w)),
+                    Cell::new(&format!("{}", isite.sel.h)),
+                    Cell::new(&format!("{}", isite._A)),
+                    Cell::new(&format!("{}", isite._B)),
+                    Cell::new(&format!("{}", isite._C)),
+                    Cell::new(&format!("{}", isite.img)),
+                    Cell::new(&format!("{}", isite._E)),
+                    Cell::new(&format!("{:?}", isite._F)),
+                ]));
+            }
+
+            image_table.printstd();
         }
-
-        image_table.printstd();
 
         let mut images = Vec::with_capacity(hcim.header.img_count as usize);
 
@@ -341,7 +343,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self, fc: &FontCache) -> eyre::Result<()> {
+    fn output(&self, fc: &ChsetCache) -> eyre::Result<()> {
         match self.opt.format {
             Format::Html => html::output_html(self, fc),
             Format::Plain => console::output_console(self, fc),
@@ -363,7 +365,7 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    pub fn process_sdoc(&mut self, input: &[u8], fc: &mut FontCache) -> eyre::Result<()> {
+    pub fn process_sdoc(&mut self, input: &[u8], fc: &mut ChsetCache) -> eyre::Result<()> {
         let (rest, sdoc) = parse_sdoc0001_container(input)
             .finish()
             .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
@@ -400,7 +402,7 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
 
     let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);
-    let mut fc = FontCache::new(chsets_folder);
+    let mut fc = ChsetCache::new(chsets_folder);
     document.process_sdoc(input, &mut fc)?;
 
     // Output the document

@@ -1,9 +1,21 @@
 //! Helpers to turn *high* types into *low* types
 
+use std::borrow::Cow;
+
 use crate::{
-    common::Encoding, common::ObjRef, high::Ascii85Stream, high::Destination, high::DictResource,
-    high::Font, high::Handle, high::OutlineItem, high::ResDictRes, high::Resource, high::XObject,
-    low, util::NextID,
+    common::Encoding,
+    common::{ObjRef, StreamMetadata},
+    high::Ascii85Stream,
+    high::Destination,
+    high::DictResource,
+    high::Font,
+    high::Handle,
+    high::OutlineItem,
+    high::ResDictRes,
+    high::Resource,
+    high::XObject,
+    low,
+    util::NextID,
 };
 
 /// Make a ObjRef for an original document (generation 0)
@@ -145,11 +157,16 @@ impl<'a> Lowerable<'a> for Font<'a> {
 }
 
 impl<'a> Lowerable<'a> for XObject {
-    type Lower = low::XObject;
+    type Lower = low::XObject<'a>;
     type Ctx = ();
 
     fn lower(&'a self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        todo!()
+        match self {
+            Self::Image(i) => low::XObject::Image(low::Ascii85Stream {
+                data: Cow::Borrowed(&i.data),
+                meta: StreamMetadata::Image(i.meta),
+            }),
+        }
     }
 
     fn name() -> &'static str {
@@ -162,7 +179,10 @@ impl<'a> Lowerable<'a> for Ascii85Stream<'a> {
     type Ctx = ();
 
     fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
-        low::Ascii85Stream(self.0.clone())
+        low::Ascii85Stream {
+            data: self.data.clone(),
+            meta: self.meta,
+        }
     }
 
     fn name() -> &'static str {

@@ -8,7 +8,7 @@ use std::{
 
 //use pdf::primitive::PdfString;
 
-use crate::write::{Formatter, PdfName, Serialize};
+use crate::write::{Formatter, PdfName, Serialize, ToDict};
 
 /// A PDF Byte string
 #[derive(Clone, Eq, PartialEq)]
@@ -461,6 +461,7 @@ impl<P: Serialize> Serialize for Dict<P> {
 }
 
 /// Valid `ProcSet`s for PDF files
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ProcSet {
     /// General PDFs procs
     PDF,
@@ -482,6 +483,71 @@ impl Serialize for ProcSet {
             Self::ImageB => PdfName("ImageB").write(f),
             Self::ImageC => PdfName("ImageC").write(f),
             Self::ImageI => PdfName("ImageI").write(f),
+        }
+    }
+}
+
+/// The color space of an image
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ColorSpace {
+    /// A 1-component grayscale image
+    DeviceGray,
+    /// A 3-component RGB image
+    DeviceRGB,
+    /// A 4-component CMYK image
+    DeviceCMYK,
+}
+
+impl Serialize for ColorSpace {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::DeviceGray => PdfName("DeviceGray").write(f),
+            Self::DeviceRGB => PdfName("DeviceRGB").write(f),
+            Self::DeviceCMYK => PdfName("DeviceCMYK").write(f),
+        }
+    }
+}
+
+/// The metadata for an image XObject
+#[derive(Debug, Copy, Clone)]
+pub struct ImageMetadata {
+    /// The width of the image
+    pub width: usize,
+    /// The height of the image
+    pub height: usize,
+    /// The `ColorSpace`
+    pub color_space: ColorSpace,
+    /// The `BitsPerComponent`
+    pub bits_per_component: u8,
+}
+
+impl ToDict for ImageMetadata {
+    fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
+        dict.field("Type", &PdfName("XObject"))?;
+        dict.field("Subtype", &PdfName("Image"))?;
+        dict.field("Width", &self.width)?;
+        dict.field("Height", &self.height)?;
+        dict.field("ColorSpace", &self.color_space)?;
+        dict.field("BitsPerComponent", &self.bits_per_component)?;
+        Ok(())
+    }
+}
+
+/// The metadata for a stream
+#[derive(Debug, Copy, Clone)]
+pub enum StreamMetadata {
+    /// No specific metadata (e.g. `CharProc`)
+    None,
+    /// Metadata for an Image
+    Image(ImageMetadata),
+}
+
+impl ToDict for StreamMetadata {
+    fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
+        match self {
+            Self::None => Ok(()),
+            Self::Image(i) => i.write(dict),
         }
     }
 }

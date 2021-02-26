@@ -3,16 +3,21 @@ use std::path::PathBuf;
 use color_eyre::eyre;
 use image::ImageFormat;
 use signum::{
-    chsets::FontKind,
+    chsets::{cache::ChsetCache, FontKind},
     docs::tebu::{Char, Flags, Line},
     raster::{DrawPrintErr, Page},
 };
 
-use crate::cli::font::cache::FontCache;
-
 use super::{Document, Pos};
 
-fn draw_chars(doc: &Document, fc: &FontCache, data: &[Char], page: &mut Page, x: &mut u16, y: u16) {
+fn draw_chars(
+    doc: &Document,
+    fc: &ChsetCache,
+    data: &[Char],
+    page: &mut Page,
+    x: &mut u16,
+    y: u16,
+) {
     for te in data {
         *x += te.offset;
         match doc.print_driver {
@@ -52,7 +57,7 @@ fn draw_chars(doc: &Document, fc: &FontCache, data: &[Char], page: &mut Page, x:
 
 fn draw_line(
     doc: &Document,
-    fc: &FontCache,
+    fc: &ChsetCache,
     line: &Line,
     skip: u16,
     page: &mut Page,
@@ -69,7 +74,7 @@ fn draw_line(
     draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y);
 }
 
-pub fn output_print(doc: &Document, fc: &FontCache) -> eyre::Result<()> {
+pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
     let out_path: PathBuf = if let Some(path) = &doc.opt.out {
         path.clone()
     } else {

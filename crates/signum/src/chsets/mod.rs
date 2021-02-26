@@ -10,6 +10,7 @@ use std::{io, str::FromStr};
 use printer::PrinterKind;
 use thiserror::*;
 
+pub mod cache;
 pub mod editor;
 pub mod encoding;
 pub mod printer;

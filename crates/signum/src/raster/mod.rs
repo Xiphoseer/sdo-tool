@@ -240,6 +240,48 @@ impl Page {
         print(self.bytes_per_line, self.width, &self.buffer);
     }
 
+    /// Get a part of the image as a grayscale (8-bit per pixel) image
+    pub fn select_grayscale(&self, area: ImageArea) -> Vec<u8> {
+        let h = area.h as usize;
+        let w = area.w as usize;
+        let y = area.y as usize;
+        let x = area.x as usize;
+        let chunk_size = self.bytes_per_line as usize;
+        let iter = self.buffer.chunks(chunk_size).skip(y).take(h);
+        let mut out = Vec::with_capacity(w * h);
+        for line in iter {
+            let mut lskip = x / 8;
+            let lmod = x % 8;
+            let mut lw = lmod + w;
+            if lmod > 0 {
+                let lbyte = line[lskip] as usize;
+                let lsl = &BIT_PROJECTION[lbyte];
+                if lmod + w <= 8 {
+                    out.extend_from_slice(&lsl[lmod..lw]);
+                    continue;
+                } else {
+                    lskip += 1;
+                    lw -= 8;
+                    out.extend_from_slice(&lsl[lmod..]);
+                }
+            }
+            let mlen = lw / 8;
+            let rmod = lw % 8;
+            let rpos = lskip + mlen;
+            for &byte in &line[lskip..rpos] {
+                let mbyte = byte as usize;
+                let sl = &BIT_PROJECTION[mbyte];
+                out.extend_from_slice(sl);
+            }
+            if rmod > 0 {
+                let rbyte = line[rpos] as usize;
+                let rsl = &BIT_PROJECTION[rbyte];
+                out.extend_from_slice(&rsl[..rmod]);
+            }
+        }
+        out
+    }
+
     /// Draw a single printer char on the page
     pub fn draw_printer_char(&mut self, x: u32, y: u32, ch: &PSetChar) -> Result<(), DrawPrintErr> {
         let width = usize::from(ch.width);

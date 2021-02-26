@@ -10,13 +10,13 @@ use pdf_create::{
     encoding::pdf_doc_encode,
     high::{self, Handle},
 };
-use signum::chsets::{printer::PrinterKind, UseTableVec};
+use sdo_pdf::font::Fonts;
+use signum::chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec};
 use structopt::StructOpt;
 
 use sdo_tool::cli::{
-    font::cache::FontCache, opt::DocScript, opt::Format, opt::Meta, opt::Options, opt::OutlineItem,
-    sdoc::pdf::handle_out, sdoc::pdf::prepare_document, sdoc::pdf::prepare_meta, sdoc::pdf::Fonts,
-    sdoc::Document,
+    opt::DocScript, opt::Format, opt::Meta, opt::Options, opt::OutlineItem, sdoc::pdf::handle_out,
+    sdoc::pdf::prepare_document, sdoc::pdf::prepare_meta, sdoc::Document,
 };
 
 #[derive(StructOpt, Debug)]
@@ -71,7 +71,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
             chsets_folder.display()
         )
     })?;
-    let mut fc = FontCache::new(chsets_folder);
+    let mut fc = ChsetCache::new(chsets_folder);
 
     // Prepare output folder
     if opt.out != Path::new("-") {
@@ -119,7 +119,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let fonts_capacity = fc.chsets().len();
     let mut font_info = Fonts::new(fonts_capacity, hnd.res.fonts.len());
 
-    for font in font_info.make_fonts(&fc, use_table_vec, pk)? {
+    for font in font_info.make_fonts(&fc, use_table_vec, pk) {
         hnd.res.fonts.push(font);
     }
 

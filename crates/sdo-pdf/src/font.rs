@@ -5,16 +5,17 @@ use std::{
 
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
-    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet},
-    high::{Ascii85Stream, Type3Font},
+    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet, StreamMetadata},
+    high::{Ascii85Stream, Font, Type3Font},
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::chsets::{
+    cache::ChsetCache,
     editor::ESet,
     encoding::Mapping,
     printer::{PSet, PSetChar, PrinterKind},
-    UseTable,
+    UseTable, UseTableVec,
 };
 
 use crate::cmap::write_cmap;
@@ -205,7 +206,10 @@ pub fn type3_font<'a>(
     for (name, cproc) in procs {
         char_procs.insert(
             String::from(name),
-            Ascii85Stream(Cow::Owned(cproc.to_owned())),
+            Ascii85Stream {
+                data: Cow::Owned(cproc.to_owned()),
+                meta: StreamMetadata::None,
+            },
         );
     }
 
@@ -221,7 +225,10 @@ pub fn type3_font<'a>(
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
         write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
-        Ascii85Stream(Cow::Owned(out.into_bytes()))
+        Ascii85Stream {
+            data: Cow::Owned(out.into_bytes()),
+            meta: StreamMetadata::None,
+        }
     });
 
     Some(Type3Font {
@@ -238,4 +245,75 @@ pub fn type3_font<'a>(
         widths,
         to_unicode,
     })
+}
+
+pub struct FontInfo {
+    widths: Vec<u32>,
+    first_char: u8,
+    index: usize,
+}
+
+impl FontInfo {
+    pub fn width(&self, cval: u8) -> u32 {
+        assert!(cval < 128);
+        let fc = self.first_char;
+        let wi = (cval - fc) as usize;
+        self.widths[wi]
+    }
+}
+
+pub struct Fonts {
+    info: Vec<Option<FontInfo>>,
+    base: usize,
+}
+
+pub enum MakeFontsErr {}
+
+impl Fonts {
+    pub fn index(&self, info: &FontInfo) -> usize {
+        self.base + info.index
+    }
+
+    pub fn get(&self, fc_index: usize) -> Option<&FontInfo> {
+        self.info[fc_index].as_ref()
+    }
+
+    pub fn new(fonts_capacity: usize, base: usize) -> Self {
+        Fonts {
+            info: Vec::with_capacity(fonts_capacity),
+            base,
+        }
+    }
+
+    pub fn make_fonts<'a>(
+        &mut self,
+        fc: &'a ChsetCache,
+        use_table_vec: UseTableVec,
+        pk: PrinterKind,
+    ) -> Vec<Font<'a>> {
+        let chsets = fc.chsets();
+        let mut result = Vec::with_capacity(chsets.len());
+        for (index, cs) in chsets.iter().enumerate() {
+            let use_table = &use_table_vec.csets[index];
+
+            if let Some(pfont) = cs.printer(pk) {
+                // FIXME: FontDescriptor
+
+                let efont = cs.e24();
+                let mappings = cs.map();
+                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
+                    let info = FontInfo {
+                        widths: font.widths.clone(),
+                        first_char: font.first_char,
+                        index: result.len(),
+                    };
+                    self.info.push(Some(info));
+                    result.push(Font::Type3(font));
+                    continue;
+                }
+            }
+            self.info.push(None);
+        }
+        result
+    }
 }
