@@ -296,7 +296,9 @@ impl Page {
                 for &val in &line[apos..bpos] {
                     bw.write_bits(val as usize, 8);
                 }
-                bw.write_bits(line[bpos] as usize, rmod);
+                if rmod > 0 {
+                    bw.write_bits(line[bpos] as usize, rmod);
+                }
                 bw.flush();
             }
             out = bw.done();

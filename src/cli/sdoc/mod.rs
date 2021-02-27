@@ -1,8 +1,7 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use log::{error, info, warn};
-use prettytable::{cell, format, row, Cell, Row, Table};
+use log::{debug, error, info, warn};
 use signum::{
     chsets::{
         cache::{CSet, ChsetCache},
@@ -113,8 +112,9 @@ impl<'a> Document<'a> {
     }
 
     fn process_cset<'x>(&mut self, fc: &mut ChsetCache, part: Buf<'x>) -> eyre::Result<()> {
+        info!("Loading 'cset' chunk");
         let charsets = util::load(parse_cset, part.0)?;
-        println!("'cset': {:?}", charsets);
+        info!("CHSETS: {:?}", charsets);
 
         let mut all_eset = true;
         let mut all_p24 = true;
@@ -191,66 +191,33 @@ impl<'a> Document<'a> {
     }
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
+        info!("Loading 'sysp' chunk");
         let sysp = util::load(parse_sysp, part.0)?;
-        println!("'sysp': {:#?}", sysp);
+        debug!("{:?}", sysp);
         Ok(())
     }
 
     fn process_pbuf(&mut self, part: Buf<'_>) -> eyre::Result<()> {
+        info!("Loading 'pbuf' chunk");
         let pbuf = util::load(parse_pbuf, part.0)?;
 
-        println!(
-            "Page Buffer ('pbuf')\n  page_count: {}\n  kl: {}\n  first_page_nr: {}",
-            pbuf.page_count, pbuf.kl, pbuf.first_page_nr
+        debug!(
+            "PageBuffer {{ page_count: {}, elem_len: {}, first_page_nr: {} }}",
+            pbuf.page_count, pbuf.elem_len, pbuf.first_page_nr
         );
-
-        // Create the table
-        let mut page_table = Table::new();
-        page_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-
-        // Add a row per time
-        page_table.set_titles(row![
-            "idx", "#phys", "#log", "len", "left", "right", "head", "foot", "numbpos", "kapitel",
-            "???", "#vi", "rest",
-        ]);
-
-        for (index, pbuf_entry) in pbuf.pages.iter().enumerate() {
-            if let Some((page, buf)) = pbuf_entry {
-                page_table.add_row(row![
-                    index,
-                    page.phys_pnr,
-                    page.log_pnr,
-                    page.format.length,
-                    page.format.left,
-                    page.format.right,
-                    page.format.header,
-                    page.format.footer,
-                    page.numbpos,
-                    page.kapitel,
-                    page.intern,
-                    page.vis_pnr,
-                    buf,
-                ]);
-            } else {
-                page_table.add_row(row![
-                    index, "---", "---", "---", "---", "---", "---", "---", "---", "---", "---",
-                    "---", "---"
-                ]);
-            }
-        }
-
-        // Print the table to stdout
-        page_table.printstd();
 
         self.pages = pbuf.pages.into_iter().map(|f| f.map(|(p, _b)| p)).collect();
         self.page_count = pbuf.page_count as usize;
+
+        info!("Loaded page table with {} entries", self.page_count);
 
         Ok(())
     }
 
     fn process_tebu(&mut self, part: Buf) -> eyre::Result<()> {
+        info!("Loading 'tebu' chunk");
         let (rest, tebu_header) = parse_tebu_header(part.0).unwrap();
-        println!("'tebu': {:?}", tebu_header);
+        debug!("{:?}", tebu_header);
 
         let (rest, tebu) = match count(parse_page_text, self.page_count)(rest) {
             Ok(r) => r,
@@ -260,54 +227,21 @@ impl<'a> Document<'a> {
         };
         self.tebu = tebu;
         if !rest.is_empty() {
-            println!(" rest: {:#?}", Buf(rest));
+            debug!("rest(tebu): {:#?}", Buf(rest));
         }
-        info!("Loaded {} page(s)!", self.page_count);
+        info!("Loaded text for {} page(s)!", self.page_count);
         Ok(())
     }
 
     fn process_hcim(&mut self, part: Buf) -> eyre::Result<()> {
+        info!("Loading 'hcim' chunk");
         let (rest, hcim) = parse_hcim(part.0).finish().map_err(to_err_tree(part.0))?;
-        println!("'hcim':");
-        println!("  {:?}", hcim.header);
+
+        debug!("{:?}", hcim.header);
 
         let out_img = self.opt.with_images.as_ref();
         if let Some(out_img) = out_img {
             std::fs::create_dir_all(out_img)?;
-        }
-
-        if !hcim.sites.is_empty() {
-            let mut image_table = Table::new();
-            image_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-
-            // Add a row per time
-            image_table.set_titles(row![
-                "page", "pos_x", "pos_y", "site_w", "site_h", "[5]", "sel_x", "sel_y", "sel_w",
-                "sel_h", "[A]", "[B]", "[C]", "img", "[E]", "[F]",
-            ]);
-
-            for isite in &hcim.sites {
-                image_table.add_row(Row::new(vec![
-                    Cell::new(&format!("{}", isite.page)),
-                    Cell::new(&format!("{}", isite.site.x)),
-                    Cell::new(&format!("{}", isite.site.y)),
-                    Cell::new(&format!("{}", isite.site.w)),
-                    Cell::new(&format!("{}", isite.site.h)),
-                    Cell::new(&format!("{}", isite._5)),
-                    Cell::new(&format!("{}", isite.sel.x)),
-                    Cell::new(&format!("{}", isite.sel.y)),
-                    Cell::new(&format!("{}", isite.sel.w)),
-                    Cell::new(&format!("{}", isite.sel.h)),
-                    Cell::new(&format!("{}", isite._A)),
-                    Cell::new(&format!("{}", isite._B)),
-                    Cell::new(&format!("{}", isite._C)),
-                    Cell::new(&format!("{}", isite.img)),
-                    Cell::new(&format!("{}", isite._E)),
-                    Cell::new(&format!("{:?}", isite._F)),
-                ]));
-            }
-
-            image_table.printstd();
         }
 
         let mut images = Vec::with_capacity(hcim.header.img_count as usize);
@@ -316,7 +250,7 @@ impl<'a> Document<'a> {
             //println!("image[{}]:", index);
             match parse_image(img.0) {
                 Ok((_imgrest, im)) => {
-                    info!("Found image {:?}", im.key);
+                    debug!("Found image {:?}", im.key);
                     //println!("{:#?}", im.bytes);
                     let page = Page::from_screen(im.image);
                     if let Some(out_img) = out_img {
@@ -332,6 +266,7 @@ impl<'a> Document<'a> {
                 }
             }
         }
+        info!("Found {} image(s)", images.len());
 
         self.images = images;
         self.sites = hcim.sites;
@@ -359,9 +294,9 @@ impl<'a> Document<'a> {
 
     pub fn process_0001(&mut self, part: Buf) -> eyre::Result<()> {
         let header = util::load(parse_header, part.0)?;
-        println!("'0001':");
-        println!("ctime: {}", header.ctime);
-        println!("mtime: {}", header.mtime);
+        info!("Loading '0001' chunk");
+        info!("File created: {}", header.ctime);
+        info!("File modified: {}", header.mtime);
         Ok(())
     }
 

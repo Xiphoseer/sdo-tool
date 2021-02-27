@@ -1,6 +1,6 @@
 //! Helpers to turn *high* types into *low* types
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     common::Encoding,
@@ -204,13 +204,18 @@ impl<'a> Lowerable<'a> for Encoding<'a> {
 }
 
 pub(crate) struct LowerBox<'a, T> {
-    pub store: Vec<(ObjRef, &'a T)>,
+    pub store: HashMap<usize, (ObjRef, &'a T)>,
     res: &'a [T],
+    next: usize,
 }
 
 impl<'a, T> LowerBox<'a, T> {
     fn new(res: &'a [T]) -> Self {
-        LowerBox { store: vec![], res }
+        LowerBox {
+            store: HashMap::new(),
+            res,
+            next: res.len(),
+        }
     }
 }
 
@@ -235,12 +240,12 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
     ) -> low::ResDictRes<T::Lower> {
         match res {
             Resource::Global { index } => {
-                if let Some((r, _)) = self.store.get(*index) {
+                if let Some((r, _)) = self.store.get(index) {
                     low::Resource::Ref(*r)
                 } else if let Some(font_dict) = self.res.get(*index) {
                     let id = id_gen.next();
                     let r = make_ref(id);
-                    self.store.push((r, font_dict));
+                    self.store.insert(*index, (r, font_dict));
                     low::Resource::Ref(r)
                 } else {
                     panic!("Couldn't find {} Dict #{}", T::name(), index);
@@ -258,7 +263,9 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
     fn put(&mut self, val: &'a T, id_gen: &mut NextID) -> ObjRef {
         let id = id_gen.next();
         let r = make_ref(id);
-        self.store.push((r, val));
+        let index = self.next;
+        self.next += 1;
+        self.store.insert(index, (r, val));
         r
     }
 
@@ -270,12 +277,12 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
     ) -> low::Resource<T::Lower> {
         match res {
             Resource::Global { index } => {
-                if let Some((r, _)) = self.store.get(*index) {
+                if let Some((r, _)) = self.store.get(index) {
                     low::Resource::Ref(*r)
                 } else if let Some(val) = self.res.get(*index) {
                     let id = id_gen.next();
                     let r = make_ref(id);
-                    self.store.push((r, val));
+                    self.store.insert(*index, (r, val));
                     low::Resource::Ref(r)
                 } else {
                     panic!("Couldn't find {} #{}", T::name(), index);

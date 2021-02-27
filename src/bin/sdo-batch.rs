@@ -5,6 +5,7 @@ use std::{
 };
 
 use color_eyre::eyre::{self, WrapErr};
+use log::{info, LevelFilter};
 use pdf_create::{
     common::{PageLabel, PdfString},
     encoding::pdf_doc_encode,
@@ -47,8 +48,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let script_res = ron::from_str(script_str);
     let script: DocScript = WrapErr::wrap_err(script_res, "Failed to parse DocScript")?;
 
-    println!("script: {:#?}", script);
-    println!("opt: {:?}", opt);
+    //println!("script: {:#?}", script);
+    //println!("opt: {:?}", opt);
 
     let doc_opt = Options {
         file: PathBuf::from("SDO-TOOL-BUG"),
@@ -95,9 +96,10 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     }
 
     let mut documents = Vec::with_capacity(capacity);
-    for (_doc_file, input) in &doc_files {
+    for (doc_file, input) in &doc_files {
         let mut document = Document::new(&doc_opt);
 
+        info!("Loading document file '{}'", doc_file.display());
         document.process_sdoc(&input, &mut fc)?;
         documents.push(document);
     }
@@ -147,6 +149,9 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
+    pretty_env_logger::formatted_builder()
+        .filter_level(LevelFilter::Info)
+        .init();
     let opt: RunOpts = RunOpts::from_args();
 
     let file_res = File::open(&opt.file);

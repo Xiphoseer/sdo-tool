@@ -382,7 +382,7 @@ impl<'a> Handle<'a> {
             pages.kids.push(page_ref);
         }
 
-        for (font_dict_ref, font_dict) in &lowering.font_dicts.store {
+        for (font_dict_ref, font_dict) in lowering.font_dicts.store.values() {
             let dict = lower_dict(
                 font_dict,
                 &mut lowering.fonts,
@@ -392,18 +392,18 @@ impl<'a> Handle<'a> {
             fmt.obj(*font_dict_ref, &dict)?;
         }
 
-        for (font_ref, font) in &lowering.fonts.store {
+        for (font_ref, font) in lowering.fonts.store.values() {
             let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
             fmt.obj(*font_ref, &font_low)?;
         }
 
-        for (x_ref, x) in &lowering.x_objects.store {
+        for (x_ref, x) in lowering.x_objects.store.values() {
             let x_low = x.lower(&mut (), &mut lowering.id_gen);
             fmt.obj(*x_ref, &x_low)?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in &lowering.font_ctx.text_streams.store {
+        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store.values() {
             let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
             fmt.obj(*cproc_ref, &cp)?;
         }

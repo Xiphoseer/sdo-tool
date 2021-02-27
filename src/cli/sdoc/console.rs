@@ -1,7 +1,12 @@
 use color_eyre::eyre;
+use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::{
     chsets::{cache::ChsetCache, encoding::antikro},
-    docs::tebu::{Char, Flags, Line, Style},
+    docs::{
+        hcim::ImageSite,
+        pbuf::Page,
+        tebu::{Char, Flags, Line, Style},
+    },
 };
 
 use crate::cli::opt::Format;
@@ -135,7 +140,83 @@ pub fn print_line(doc: &Document, fc: &ChsetCache, line: &Line, skip: u16) {
     }
 }
 
+pub fn print_pages(pages: &[Option<Page>]) {
+    // Create the table
+    let mut page_table = Table::new();
+    page_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+
+    // Add a row per time
+    page_table.set_titles(row![
+        "idx", "#phys", "#log", "len", "left", "right", "head", "foot", "numbpos", "kapitel",
+        "???", "#vi" //, "rest",
+    ]);
+
+    for (index, pbuf_entry) in pages.iter().enumerate() {
+        if let Some(page) = pbuf_entry {
+            page_table.add_row(row![
+                index,
+                page.phys_pnr,
+                page.log_pnr,
+                page.format.length,
+                page.format.left,
+                page.format.right,
+                page.format.header,
+                page.format.footer,
+                page.numbpos,
+                page.kapitel,
+                page.intern,
+                page.vis_pnr,
+                //buf,
+            ]);
+        } else {
+            page_table.add_row(row![
+                index, "---", "---", "---", "---", "---", "---", "---", "---", "---", "---",
+                "---" //, "---"
+            ]);
+        }
+    }
+
+    // Print the table to stdout
+    page_table.printstd();
+}
+
+fn print_img_sites(sites: &[ImageSite]) {
+    let mut image_table = Table::new();
+    image_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+
+    // Add a row per time
+    image_table.set_titles(row![
+        "page", "pos_x", "pos_y", "site_w", "site_h", "[5]", "sel_x", "sel_y", "sel_w", "sel_h",
+        "[A]", "[B]", "[C]", "img", "[E]", "[F]",
+    ]);
+
+    for isite in sites {
+        image_table.add_row(Row::new(vec![
+            Cell::new(&format!("{}", isite.page)),
+            Cell::new(&format!("{}", isite.site.x)),
+            Cell::new(&format!("{}", isite.site.y)),
+            Cell::new(&format!("{}", isite.site.w)),
+            Cell::new(&format!("{}", isite.site.h)),
+            Cell::new(&format!("{}", isite._5)),
+            Cell::new(&format!("{}", isite.sel.x)),
+            Cell::new(&format!("{}", isite.sel.y)),
+            Cell::new(&format!("{}", isite.sel.w)),
+            Cell::new(&format!("{}", isite.sel.h)),
+            Cell::new(&format!("{}", isite._A)),
+            Cell::new(&format!("{}", isite._B)),
+            Cell::new(&format!("{}", isite._C)),
+            Cell::new(&format!("{}", isite.img)),
+            Cell::new(&format!("{}", isite._E)),
+            Cell::new(&format!("{:?}", isite._F)),
+        ]));
+    }
+
+    image_table.printstd();
+}
+
 pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
+    print_pages(&doc.pages[..]);
+
     for page_text in &doc.tebu {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
@@ -151,5 +232,10 @@ pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
     }
+
+    if !doc.sites.is_empty() {
+        print_img_sites(&doc.sites[..]);
+    }
+
     Ok(())
 }

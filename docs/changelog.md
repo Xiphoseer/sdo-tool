@@ -8,6 +8,8 @@ The name in brackets indicates the relevant crate.
 ### 26.02.2021
 
 - Initial support for images in PDFs
+- Introduce `log` crate for output to the console
+- Move chunk tables to delayed console output, requires `--format plain` now
 
 ### 23.02.2021
 

@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path, usize};
 
 use color_eyre::eyre::{self, eyre};
-use log::info;
+use log::{debug, info};
 use pdf_create::{
     chrono::Local,
     common::{
@@ -88,16 +88,17 @@ pub fn prepare_document(
         let mut x_objects: DictResource<XObject> = BTreeMap::new();
         let mut img = vec![];
         for (index, site) in doc.sites.iter().enumerate() {
-            if site.page == page_info.log_pnr {
+            if site.page == page_info.phys_pnr {
                 let key = format!("I{}", index);
-                let img_index = hnd.res.x_objects.len();
                 let width = site.sel.w as usize;
                 let height = site.sel.h as usize;
                 //let area = width * height;
 
-                let im = &doc.images[site.img as usize];
+                let img_num = site.img as usize;
+                let im = &doc.images[img_num];
                 let data = im.select(site.sel);
 
+                let img_index = hnd.res.x_objects.len();
                 hnd.res.x_objects.push(XObject::Image(Image {
                     meta: ImageMetadata {
                         width,
@@ -109,9 +110,9 @@ pub fn prepare_document(
                     },
                     data,
                 }));
-                info!(
-                    "Adding image site {} on page {} as /{}",
-                    index, page_info.log_pnr, &key
+                debug!(
+                    "Adding image from #{} on page {} as /{}",
+                    img_num, page_info.log_pnr, &key
                 );
                 x_objects.insert(key.clone(), Resource::Global { index: img_index });
                 img.push((site, key));

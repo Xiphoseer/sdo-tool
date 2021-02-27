@@ -17,7 +17,7 @@ pub struct PBuf<'a> {
     /// The total number of pages
     pub page_count: u32,
     /// The length of the entry for each page
-    pub kl: u32,
+    pub elem_len: u32,
     /// The logical number for the first page
     pub first_page_nr: u32,
     /// A sparse map of pages, ordered by their index
@@ -149,7 +149,7 @@ pub fn parse_pbuf<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
         rest,
         PBuf {
             page_count,
-            kl,
+            elem_len: kl,
             first_page_nr,
             pages,
         },
