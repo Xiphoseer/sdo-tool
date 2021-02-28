@@ -108,7 +108,8 @@ At the moment, this program is not released on <https://crates.io>, so it cannot
 2. `sdo-tool --format png SOMEFILE.SDO` to get a sequence of PNG files
 3. `sdo-tool SOMEFILE.SDO` to print some text to the console
 4. `sdo-tool SOMEFILE.E24` to print all characters in the font to the console
-5. `sdo-tool SOMEFILE.IMC` to convert an IMC image file to a PNG file
+5. `sdo-tool --format png SOMEFILE.IMC` to convert an IMC image file to a PNG file
+5. `sdo-tool --format pbm SOMEFILE.IMC` to convert an IMC image file to a PBM file
 
 ## Example
 
