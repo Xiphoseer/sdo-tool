@@ -43,9 +43,10 @@ jobs:
       run: cargo test --verbose
     - name: Build
       run: cargo build --verbose --release
+      if: github.ref == 'refs/heads/main'
     - name: Upload files (windows)
       uses: actions/upload-artifact@v2.1.4
-      if: matrix.os == 'windows'
+      if: matrix.os == 'windows' && github.ref == 'refs/heads/main'
       with:
         name: sdo-toolbox-windows
         path: |
@@ -57,7 +58,7 @@ jobs:
           target/release/st-decode.exe
     - name: Upload files (*nix)
       uses: actions/upload-artifact@v2.1.4
-      if: matrix.os != 'windows'
+      if: matrix.os != 'windows' && github.ref == 'refs/heads/main'
       with:
         name: sdo-toolbox-${{ matrix.os }}
         path: |
