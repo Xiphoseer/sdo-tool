@@ -1,6 +1,7 @@
 use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use color_eyre::eyre::{self, eyre};
+use log::warn;
 use sdo_ps::out::PSWriter;
 use signum::chsets::{cache::ChsetCache, FontKind};
 
@@ -56,11 +57,13 @@ fn output_ps_writer(
             match pd {
                 FontKind::Printer(pk) => {
                     if let Some(cs) = doc.cset(fc, cset) {
+                        let name = cs.name();
                         if let Some(pset) = cs.printer(pk) {
-                            let name = cs.name();
                             pw.write_comment(&format!("SignumBitmapFont: {}", name))?;
                             write_ls30_ps_bitmap(FONTS[cau], name, pw, pset, Some(use_table))?;
                             pw.write_comment("EndSignumBitmapFont")?;
+                        } else {
+                            warn!("Missing printer font for '{}'", name);
                         }
                     }
                 }

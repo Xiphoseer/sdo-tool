@@ -2192,7 +2192,7 @@ dependencies = [
 
 [[package]]
 name = "sdo-tool"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bitflags",
  "ccitt-t4-t6",

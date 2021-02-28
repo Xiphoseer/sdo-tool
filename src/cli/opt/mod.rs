@@ -71,7 +71,7 @@ impl FromStr for Format {
 impl fmt::Display for Format {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Plain => f.write_str("txt"),
+            Self::Plain => f.write_str("plain"),
             Self::Html => f.write_str("html"),
             Self::PostScript => f.write_str("ps"),
             Self::Png => f.write_str("png"),
@@ -104,7 +104,7 @@ pub struct Options {
     pub page: Option<Vec<usize>>,
     /// Format of the output. Valid choices are:
     ///
-    /// "txt", "html", "ps", "png", and "pdraw"
+    /// "plain", "html", "pdf", "ps", "png", and "pdraw"
     #[structopt(default_value, long, short = "F")]
     pub format: Format,
 

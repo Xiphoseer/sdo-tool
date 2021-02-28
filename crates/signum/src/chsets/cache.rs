@@ -196,22 +196,29 @@ impl ChsetCache {
             return Some(*index);
         }
 
-        let editor_cset_file = match find_font_file(&self.chsets_folder, name, "E24") {
-            Some(f) => f,
+        let cset = match find_font_file(&self.chsets_folder, name, "E24") {
+            Some(editor_cset_file) => {
+                // Load all font files
+                CSet {
+                    name: name.to_owned(),
+                    e24: load_editor_font(&editor_cset_file),
+                    p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
+                    p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
+                    l30: load_printer_font(&editor_cset_file, PrinterKind::Laser30),
+                    map: load_mapping_file(&editor_cset_file),
+                }
+            }
             None => {
                 warn!("Editor font for `{}` not found!", name);
-                return None;
+                CSet {
+                    name: name.to_owned(),
+                    e24: None,
+                    p09: None,
+                    p24: None,
+                    l30: None,
+                    map: None,
+                }
             }
-        };
-
-        // Load all font files
-        let cset = CSet {
-            name: name.to_owned(),
-            e24: load_editor_font(&editor_cset_file),
-            p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
-            p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
-            l30: load_printer_font(&editor_cset_file, PrinterKind::Laser30),
-            map: load_mapping_file(&editor_cset_file),
         };
 
         // Get index and push
