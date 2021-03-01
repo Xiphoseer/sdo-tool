@@ -1,12 +1,7 @@
-name: Build
+name: Release Build
 
 on:
   push:
-    branches: [ main ]
-    paths-ignore:
-    - 'docs/**'
-    - 'mappings/**'
-  pull_request:
     branches: [ main ]
     paths-ignore:
     - 'docs/**'
@@ -39,10 +34,8 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests
-      run: cargo test --verbose
     - name: Build
-      run: cargo build --verbose --release
+      run: cargo build --release
       if: github.ref == 'refs/heads/main'
     - name: Upload files (windows)
       uses: actions/upload-artifact@v2.1.4
