@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+    branches: [ dev ]
+    paths-ignore:
+    - 'docs/**'
+    - 'mappings/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}-latest
+    
+    strategy:
+      matrix:
+        os: [ubuntu, windows, macOS]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache cargo directories
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      if: matrix.os != 'macOS'
+      uses: actions/cache@v2
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Run tests
+      run: cargo test
