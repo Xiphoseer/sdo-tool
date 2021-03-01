@@ -14,20 +14,22 @@ use de::{deserialize_opt_i32, deserialize_opt_string};
 pub enum Format {
     /// Plain utf-8 text
     Plain,
-    /// Text with formatting annotations
+    /// Text with formatting annotations (Documents)
     Html,
-    /// PostScript page description file
+    /// PostScript page description file (Documents)
     PostScript,
-    /// A Sequence of images
-    Png,
-    /// Portable Document Format
+    /// Portable Document Format (Documents)
     PDF,
-    /// A list of draw commands
+    /// A list of draw commands (Documents)
     PDraw,
+    /// Protable Network Graphic (Documents, Images)
+    Png,
+    /// Portable Bitmap Format (Images)
+    Pbm,
 
     /// A dvips-compatible inline postscript bitmap font (unstable)
     DVIPSBitmapFont,
-    /// A sequence of CCITT group 4 encoded bitmaps (unstable)
+    /// A sequence of CCITT group 4 encoded bitmaps (Fonts)
     CCITTT6,
 }
 
@@ -39,7 +41,7 @@ impl fmt::Display for FormatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Use one of `plain`, `html`, `pdf`, `ps`, `png` or `pdraw`"
+            "Use one of `plain`, `html`, `pdf`, `ps`, `png`, `pbm` or `pdraw`"
         )?;
         Ok(())
     }
@@ -60,6 +62,7 @@ impl FromStr for Format {
             "ps" | "postscript" => Ok(Self::PostScript),
             "png" => Ok(Self::Png),
             "pdf" => Ok(Self::PDF),
+            "pbm" => Ok(Self::Pbm),
             "pdraw" => Ok(Self::PDraw),
             "dvipsbf" => Ok(Self::DVIPSBitmapFont),
             "ccitt-t6" => Ok(Self::CCITTT6),
@@ -75,6 +78,7 @@ impl fmt::Display for Format {
             Self::Html => f.write_str("html"),
             Self::PostScript => f.write_str("ps"),
             Self::Png => f.write_str("png"),
+            Self::Pbm => f.write_str("pbm"),
             Self::PDF => f.write_str("pdf"),
             Self::PDraw => f.write_str("pdraw"),
             Self::DVIPSBitmapFont => f.write_str("dvipsbf"),
@@ -104,7 +108,7 @@ pub struct Options {
     pub page: Option<Vec<usize>>,
     /// Format of the output. Valid choices are:
     ///
-    /// "plain", "html", "pdf", "ps", "png", and "pdraw"
+    /// "plain", "html", "pdf", "ps", "png", "pbm" and "pdraw"
     #[structopt(default_value, long, short = "F")]
     pub format: Format,
 

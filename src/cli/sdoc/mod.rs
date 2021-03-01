@@ -287,7 +287,12 @@ impl<'a> Document<'a> {
             Format::Png => imgseq::output_print(self, fc),
             Format::PDF => pdf::output_pdf(self, fc),
             Format::DVIPSBitmapFont | Format::CCITTT6 => {
-                panic!("Document can't be formatted as a font")
+                error!("Document can't be formatted as a font");
+                Ok(())
+            }
+            Format::Pbm => {
+                error!("Document export as PBM not supported!");
+                Ok(())
             }
         }
     }
@@ -314,7 +319,7 @@ impl<'a> Document<'a> {
                 "tebu" => self.process_tebu(buf),
                 "hcim" => self.process_hcim(buf),
                 _ => {
-                    println!("'{}': {}", tag, buf.0.len());
+                    info!("Found unknown chunk '{}' ({} bytes)", tag, buf.0.len());
                     Ok(())
                 }
             }?;
@@ -330,10 +335,6 @@ impl<'a> Document<'a> {
 
 pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
     let mut document = Document::new(&opt);
-
-    /*if opt.out != Path::new("-") {
-        std::fs::create_dir_all(&opt.out)?;
-    }*/
 
     let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);

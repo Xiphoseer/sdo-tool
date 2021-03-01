@@ -5,6 +5,11 @@ The name in brackets indicates the relevant crate.
 
 ## Unreleased (main)
 
+### 28.02.2021
+
+- Minor improvements to the CLI experience
+- Converting (B)IMC files now requires a `--format` argument
+
 ### 26.02.2021
 
 - Initial support for images in PDFs

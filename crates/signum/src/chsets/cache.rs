@@ -82,7 +82,7 @@ fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
         }
     } else {
         warn!(
-            "Missing mapping for font '{}",
+            "Missing mapping for font '{}'",
             editor_cset_file.file_stem().unwrap().to_string_lossy()
         );
         None
