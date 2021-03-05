@@ -40,6 +40,8 @@
 //! let mut stdolock = stdout.lock();
 //! doc.write(&mut stdolock).expect("Write to stdout");
 //! ```
+//!
+//! Reference: <https://www.adobe.com/content/dam/acom/en/devnet/pdf/PDF32000_2008.pdf>
 
 pub mod common;
 pub mod encoding;

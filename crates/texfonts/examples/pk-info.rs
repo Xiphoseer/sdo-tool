@@ -5,7 +5,7 @@ use nom_supreme::{
 };
 use std::path::PathBuf;
 use structopt::StructOpt;
-use texfonts::{Decoder, Event};
+use texfonts::pk::{Decoder, Event};
 
 #[derive(Debug, StructOpt)]
 /// Prints information about a X11 PCF file
