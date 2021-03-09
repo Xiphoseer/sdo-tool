@@ -126,7 +126,7 @@ $ open ../FILE.pdf
 
 ## Examples
 
-See [this document][examples]
+See [this document][examples] for examples for the output that this tool produces.
 
 ## Font Mappings
 
@@ -145,6 +145,15 @@ You are free to download, and run this software for any personal and non-commerc
 at your own risk and without claiming fitness for any particular purpose. If you want to
 contribute to this project or use it for any kind of distribution or commercial purpose,
 please file a github issue or send me an email at `xiphoseer@mailbox.org`.
+
+## Signum! in the wild
+
+- <http://d-nb.info/911334238> (<http://xchem.de/publication/diss_a.html>)
+- <http://d-nb.info/1011523833> (<https://buske.de/worterbuch-deutsch-myanma.html>)
+- <https://epic.awi.de/id/eprint/11638/>
+- <https://katalog.ub.uni-heidelberg.de/cgi-bin/titel.cgi?katkey=3585528>
+- <https://www.friedemann-seebass.de/public_html/Software/FS_Der-Diskutant_de.html>
+- <http://www.tempel.org/files-d.html#MM2>
 
 ## Acknowledgements
 
