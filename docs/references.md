@@ -19,7 +19,7 @@
 - [ATARI ST SIGNUM! Zwei : eine Einführung in die Text- und Bildverarbeitung mit SIGNUM! Zwei](https://www.deutsche-digitale-bibliothek.de/item/OSYR2IIIS5SLCCGZ4TCXFMANMXQIL6KY)
 - [Schnellübersicht Signum : Version 1 und 2](https://www.deutsche-digitale-bibliothek.de/item/4FGK7DLCVHFERWJSTYHVUTMZVU7CW36M)
 - [Das Signum! Buch (VR, ASH)](https://www.zvab.com/products/isbn/9783980183406)
-- [Das Signum!3 Buch. Grundlagen im Umgang mit Signum!3 (VR, ASH)](https://www.zvab.com/products/isbn/9783980183451) | [(bei ASH)](https://www.ashshop.biz/diverses/buecher/textverarbeitung/878/das-signum-drei-buch) | [(Inhaltsverzeichnis)](http://scans.hebis.de/02/03/22/02032241_toc.pdf)
+- [Das Signum!3 Buch. Grundlagen im Umgang mit Signum!3 (VR, ASH)](https://www.zvab.com/products/isbn/9783980183451); [(bei ASH)](https://www.ashshop.biz/diverses/buecher/textverarbeitung/878/das-signum-drei-buch); [(Inhaltsverzeichnis)](http://scans.hebis.de/02/03/22/02032241_toc.pdf)
 - [351 Signum-Zeichensätze. Ein Buch zur Gestaltung (VR, ASH)](https://www.zvab.com/products/isbn/9783980183413)
 - [547 Neue Signum-Zeichensätze. Noch ein Buch zur Gestaltung (VR, ASH)](https://www.zvab.com/products/isbn/9783980183420)
 
@@ -43,4 +43,4 @@
 - <http://www.tempel.org/files-d.html#MM2>
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/92-collection-of-papers-volume-44-45>
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/93-collection-of-papers-volume-46>
-- [Informations-und Codierungstheorie (1995)](https://link.springer.com/book/10.1007/978-3-642-78659-4) | [(Einleitung)](https://link.springer.com/content/pdf/bfm:978-3-642-78659-4/1.pdf)
+- [Informations-und Codierungstheorie (1995)](https://link.springer.com/book/10.1007/978-3-642-78659-4); [(Einleitung)](https://link.springer.com/content/pdf/bfm:978-3-642-78659-4/1.pdf)
