@@ -44,3 +44,4 @@
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/92-collection-of-papers-volume-44-45>
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/93-collection-of-papers-volume-46>
 - [Informations-und Codierungstheorie (1995)](https://link.springer.com/book/10.1007/978-3-642-78659-4); [(Einleitung)](https://link.springer.com/content/pdf/bfm:978-3-642-78659-4/1.pdf)
+- <http://www.apollo-frankfurt.de/en/neva/publicationseries/neva-new-series.html>
