@@ -35,6 +35,7 @@
 
 ## Created with Signum!
 
+- <http://d-nb.info/871526166> (EBzG – Beispieltext Antik)
 - <http://d-nb.info/911334238> (<http://xchem.de/publication/diss_a.html>)
 - <http://d-nb.info/1011523833> (<https://buske.de/worterbuch-deutsch-myanma.html>)
 - <https://epic.awi.de/id/eprint/11638/>
