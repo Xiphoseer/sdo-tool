@@ -45,4 +45,13 @@
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/92-collection-of-papers-volume-44-45>
 - <http://gi.sanu.ac.rs/index.php/en/publishing/journal/93-collection-of-papers-volume-46>
 - [Informations-und Codierungstheorie (1995)](https://link.springer.com/book/10.1007/978-3-642-78659-4); [(Einleitung)](https://link.springer.com/content/pdf/bfm:978-3-642-78659-4/1.pdf)
+- [Algorithmische Lineare Algebra (1997)](https://link.springer.com/book/10.1007/978-3-322-84939-7); [(Einleitung)](https://link.springer.com/content/pdf/bfm:978-3-322-84939-7/1.pdf)
+- [Offenbarung und Epiphanie: Grundlagen des spätantiken und frühchristlichen Offenbarungsglaubens (1995)](http://d-nb.info/945879814); [(Leseprobe)](https://www.mohrsiebeck.com/uploads/tx_sgpublisher/produkte/leseproben/9783161571992.pdf)
 - <http://www.apollo-frankfurt.de/en/neva/publicationseries/neva-new-series.html>
+- [Der arabische Dialekt der Juden von ʿAqra und Arbīl / Otto Jastrow (1990)](http://d-nb.info/900282592); [(According to this search on Google Books)](https://books.google.de/books?redir_esc=y&hl=de&id=NNQUHKM_BJQC&q="Signum!2")
+- [Die Argumentation in den griechisch-christlichen Antimanichaica / Wolfgang Wassilios Klein (1991)](http://d-nb.info/910601836); [(Google Books Preview)](https://books.google.de/books?hl=de&lr=&id=zlymZjxQfUIC&oi=fnd&pg=PP10&dq="Signum!2")
+- [Cahiers de Topologie et Géométrie Différentielle Catégoriques (1989 - ???)](http://www.numdam.org/journals/CTGDC/); [(According to this article)](www.numdam.org/article/CTGDC_1988__29_4_255_0.pdf)
+- [Repertorium der griechischen christlichen Papyri Teil: 2., Kirchenväter-Papyri / Teil 1., Beschreibungen](http://d-nb.info/94448333X); [(Google Books)](https://books.google.de/books?id=9SOSu0W1eCoC&lpg=PP1&dq=%22Signum!2%22&lr&hl=de&pg=PR57#v=onepage&q=%22Signum!2%22&f=false)
+- [Sprachwissenschaft und Sprachphilosophie in der Romania : von den Anfängen bis August Wilhelm Schlegel / Georg Bossong (1990)]( 	http://d-nb.info/900699809); [(Google Books)](https://books.google.de/books?hl=de&id=Lst9tnN0w4QC&q="Signum!Zwei")
+- [*Form und Inhalt in der Europäisierung nicht-europäischer Kultursprachen* in *Fachsprache und Terminologie in Geschichte und Gegenwart* (1992)](http://d-nb.info/911418164); [(Google Books)](https://books.google.de/books?id=j8fEjdzG5lUC&q="Signum!Zwei")
+- Dutch Contributions to the Tenth International Congress of Slavists, Sofia, September 14-22, 1988: Linguistics, 465 pp. [(According to this review)](https://www.jstor.org/stable/3732187)
