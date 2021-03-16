@@ -11,39 +11,12 @@ files.
 
 This is especially unfortunate for people (mostly german-speaking) that wrote their
 thesis in Signum! in the 80s and still have the floppy disks with those files but no
-ATARI and/or no application anymore. Yes, you can set-up an emulator, get the installation
-files from ASH, use or [buy a product key][Signum!], create/insert virtual floppy disks,
-install Signum!, open your files, export the text to ASCII, export the images, use
-vision/zView for ATARI to covert the images, fix up umlauts in the ATARI-ASCII, and be
-done with one document, but that is a lot to ask for and I haven't seen a single post
-mention all of this at once. And it's really not worth the effort for some of the less
-important stuff I've found in the stash of floppies I had access to.
+ATARI and/or no application anymore. The current solutions are really not worth the
+effort for some of the less important stuff I've found in the stash of floppies I had access to.
 
-Or you can use this (work-in-progress) tool, which can read Signum!2 documents and
+Instead, you can use this (work-in-progress) tool, which can read Signum!2 documents and
 make some of these steps much easier. It's written in Rust, so it should work across
 all major platforms (Windows, Linux and OSX).
-
-## Rationale
-
-When searching for ways to decode Signum! files, I came across three general
-approaches:
-
-1. Running Signum!: Print to a decodable image format
-2. Running Signum!: Export to ASCII, fix the rest by hand
-3. Import to RTF with `papyrus`
-
-The first one works, but makes it difficult to recover the text, i.e. you need to
-use some sort of OCR later. The second one is probably the most straight-forward
-and reliable and is useful for texts that have no formatting or non-trivial fonts.
-
-I actually found a working copy of papyrus 7 (demo) after a lot of digging around
-and it turns out that this actually just calls `TEXTCONV.PRG` by Andreas Pirner.
-Version 1.23 is the one that comes with papyrus and I don't agree that it's
-useful. Yes, it can export to RTF and all the letters and numbers survive, but
-subscript, superscript and formulas are not close enough to be readable, the
-line-height was too low, the alignment was off, and more. Also, while papyrus
-(for ATARI) supports signum fonts, modern tools to read those files don't,
-so you still end up needing to find a perfect match for your font for newer systems.
 
 ## Features
 
@@ -165,7 +138,7 @@ please file a github issue or send me an email at `xiphoseer@mailbox.org`.
   which made porting 68K assembly to working rust code really smooth
 
 [ASH]: https://application-systems.de
-[Signum!]: https://www.ashshop.biz/diverses/atari/textverarbeitung/874/signum-2-download
+
 [Rust]: https://www.rust-lang.org/learn/get-started
 [image-rs]: https://crates.io/crates/image
 [MM2]: http://www.tempel.org/files-d.html#MM2
