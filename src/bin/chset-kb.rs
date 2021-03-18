@@ -7,6 +7,7 @@ use signum::{
 };
 use std::{
     collections::HashSet,
+    ffi::{OsStr, OsString},
     fs::File,
     io::{BufReader, Read},
     path::{Path, PathBuf},
@@ -20,9 +21,128 @@ pub enum KBCSet {
     Labels,
 }
 
+const NP_DRAW: [(u16, u16, u8, KBCSet); 116] = [
+    (599, 52, 113, KBCSet::Graphics),
+    (614, 52, 101, KBCSet::Graphics),
+    (629, 52, 113, KBCSet::Graphics),
+    (644, 52, 101, KBCSet::Graphics),
+    (659, 52, 113, KBCSet::Graphics),
+    (674, 52, 101, KBCSet::Graphics),
+    (689, 52, 113, KBCSet::Graphics),
+    (704, 52, 101, KBCSet::Graphics),
+    (603, 64, 15, KBCSet::Selected),
+    (614, 64, 1, KBCSet::Selected),
+    (633, 64, 16, KBCSet::Selected),
+    (642, 64, 2, KBCSet::Selected),
+    (664, 64, 17, KBCSet::Selected),
+    (672, 64, 3, KBCSet::Selected),
+    (694, 64, 18, KBCSet::Selected),
+    (703, 64, 4, KBCSet::Selected),
+    (599, 74, 114, KBCSet::Graphics),
+    (614, 74, 122, KBCSet::Graphics),
+    (629, 74, 114, KBCSet::Graphics),
+    (644, 74, 122, KBCSet::Graphics),
+    (659, 74, 114, KBCSet::Graphics),
+    (674, 74, 122, KBCSet::Graphics),
+    (689, 74, 114, KBCSet::Graphics),
+    (704, 74, 122, KBCSet::Graphics),
+    (599, 84, 113, KBCSet::Graphics),
+    (614, 84, 101, KBCSet::Graphics),
+    (629, 84, 113, KBCSet::Graphics),
+    (644, 84, 101, KBCSet::Graphics),
+    (659, 84, 113, KBCSet::Graphics),
+    (674, 84, 101, KBCSet::Graphics),
+    (689, 84, 113, KBCSet::Graphics),
+    (704, 84, 101, KBCSet::Graphics),
+    (604, 96, 26, KBCSet::Selected),
+    (612, 96, 12, KBCSet::Selected),
+    (633, 96, 27, KBCSet::Selected),
+    (644, 96, 13, KBCSet::Selected),
+    (663, 96, 28, KBCSet::Selected),
+    (673, 96, 14, KBCSet::Selected),
+    (694, 96, 30, KBCSet::Selected),
+    (599, 106, 114, KBCSet::Graphics),
+    (614, 106, 122, KBCSet::Graphics),
+    (629, 106, 114, KBCSet::Graphics),
+    (644, 106, 122, KBCSet::Graphics),
+    (659, 106, 114, KBCSet::Graphics),
+    (674, 106, 122, KBCSet::Graphics),
+    (689, 106, 114, KBCSet::Graphics),
+    (704, 106, 122, KBCSet::Graphics),
+    (599, 116, 113, KBCSet::Graphics),
+    (614, 116, 101, KBCSet::Graphics),
+    (629, 116, 113, KBCSet::Graphics),
+    (644, 116, 101, KBCSet::Graphics),
+    (659, 116, 113, KBCSet::Graphics),
+    (674, 116, 101, KBCSet::Graphics),
+    (689, 116, 113, KBCSet::Graphics),
+    (704, 116, 101, KBCSet::Graphics),
+    (603, 128, 23, KBCSet::Selected),
+    (612, 128, 9, KBCSet::Selected),
+    (633, 128, 24, KBCSet::Selected),
+    (643, 128, 10, KBCSet::Selected),
+    (663, 128, 25, KBCSet::Selected),
+    (672, 128, 11, KBCSet::Selected),
+    (694, 128, 29, KBCSet::Selected),
+    (599, 138, 114, KBCSet::Graphics),
+    (614, 138, 122, KBCSet::Graphics),
+    (629, 138, 114, KBCSet::Graphics),
+    (644, 138, 122, KBCSet::Graphics),
+    (659, 138, 114, KBCSet::Graphics),
+    (674, 138, 122, KBCSet::Graphics),
+    (689, 138, 114, KBCSet::Graphics),
+    (704, 138, 122, KBCSet::Graphics),
+    (599, 148, 113, KBCSet::Graphics),
+    (614, 148, 101, KBCSet::Graphics),
+    (629, 148, 113, KBCSet::Graphics),
+    (644, 148, 101, KBCSet::Graphics),
+    (659, 148, 113, KBCSet::Graphics),
+    (674, 148, 101, KBCSet::Graphics),
+    (689, 148, 113, KBCSet::Graphics),
+    (704, 148, 101, KBCSet::Graphics),
+    (694, 150, 69, KBCSet::Labels),
+    (698, 150, 110, KBCSet::Labels),
+    (702, 150, 116, KBCSet::Labels),
+    (705, 150, 101, KBCSet::Labels),
+    (709, 150, 114, KBCSet::Labels),
+    (603, 160, 20, KBCSet::Selected),
+    (614, 160, 6, KBCSet::Selected),
+    (633, 160, 21, KBCSet::Selected),
+    (643, 160, 7, KBCSet::Selected),
+    (663, 160, 22, KBCSet::Selected),
+    (673, 160, 8, KBCSet::Selected),
+    (599, 170, 114, KBCSet::Graphics),
+    (614, 170, 122, KBCSet::Graphics),
+    (629, 170, 114, KBCSet::Graphics),
+    (644, 170, 122, KBCSet::Graphics),
+    (659, 170, 114, KBCSet::Graphics),
+    (674, 170, 122, KBCSet::Graphics),
+    (689, 170, 112, KBCSet::Graphics),
+    (704, 170, 64, KBCSet::Graphics),
+    (599, 180, 113, KBCSet::Graphics),
+    (614, 180, 119, KBCSet::Graphics),
+    (629, 180, 119, KBCSet::Graphics),
+    (644, 180, 101, KBCSet::Graphics),
+    (659, 180, 113, KBCSet::Graphics),
+    (674, 180, 101, KBCSet::Graphics),
+    (689, 180, 112, KBCSet::Graphics),
+    (704, 180, 64, KBCSet::Graphics),
+    (606, 192, 19, KBCSet::Selected),
+    (620, 192, 5, KBCSet::Selected),
+    (664, 192, 31, KBCSet::Selected),
+    (599, 202, 114, KBCSet::Graphics),
+    (614, 202, 116, KBCSet::Graphics),
+    (629, 202, 116, KBCSet::Graphics),
+    (644, 202, 122, KBCSet::Graphics),
+    (659, 202, 114, KBCSet::Graphics),
+    (674, 202, 122, KBCSet::Graphics),
+    (689, 202, 114, KBCSet::Graphics),
+    (704, 202, 122, KBCSet::Graphics),
+];
+
 /// These are the draw commands from the KBANTIK document,
 /// used to render a keyboard layout
-const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
+const KB_DRAW: [(u16, u16, u8, KBCSet); 572] = [
     (0, 52, 113, KBCSet::Graphics),
     (5, 52, 69, KBCSet::Labels),
     (9, 52, 115, KBCSet::Labels),
@@ -81,14 +201,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (551, 52, 99, KBCSet::Labels),
     (555, 52, 101, KBCSet::Labels),
     (555, 52, 101, KBCSet::Graphics),
-    (599, 52, 113, KBCSet::Graphics),
-    (614, 52, 101, KBCSet::Graphics),
-    (629, 52, 113, KBCSet::Graphics),
-    (644, 52, 101, KBCSet::Graphics),
-    (659, 52, 113, KBCSet::Graphics),
-    (674, 52, 101, KBCSet::Graphics),
-    (689, 52, 113, KBCSet::Graphics),
-    (704, 52, 101, KBCSet::Graphics),
     (44, 64, 49, KBCSet::Selected),
     (57, 64, 33, KBCSet::Selected),
     (81, 64, 50, KBCSet::Selected),
@@ -115,14 +227,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (461, 64, 96, KBCSet::Selected),
     (492, 64, 35, KBCSet::Selected),
     (503, 64, 94, KBCSet::Selected),
-    (603, 64, 15, KBCSet::Selected),
-    (614, 64, 1, KBCSet::Selected),
-    (633, 64, 16, KBCSet::Selected),
-    (642, 64, 2, KBCSet::Selected),
-    (664, 64, 17, KBCSet::Selected),
-    (672, 64, 3, KBCSet::Selected),
-    (694, 64, 18, KBCSet::Selected),
-    (703, 64, 4, KBCSet::Selected),
     (0, 74, 114, KBCSet::Graphics),
     (12, 74, 116, KBCSet::Graphics),
     (22, 74, 122, KBCSet::Graphics),
@@ -169,14 +273,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (530, 74, 116, KBCSet::Graphics),
     (540, 74, 116, KBCSet::Graphics),
     (555, 74, 122, KBCSet::Graphics),
-    (599, 74, 114, KBCSet::Graphics),
-    (614, 74, 122, KBCSet::Graphics),
-    (629, 74, 114, KBCSet::Graphics),
-    (644, 74, 122, KBCSet::Graphics),
-    (659, 74, 114, KBCSet::Graphics),
-    (674, 74, 122, KBCSet::Graphics),
-    (689, 74, 114, KBCSet::Graphics),
-    (704, 74, 122, KBCSet::Graphics),
     (0, 84, 113, KBCSet::Graphics),
     (5, 84, 84, KBCSet::Labels),
     (9, 84, 97, KBCSet::Labels),
@@ -232,14 +328,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (553, 84, 116, KBCSet::Labels),
     (555, 84, 101, KBCSet::Graphics),
     (556, 84, 101, KBCSet::Labels),
-    (599, 84, 113, KBCSet::Graphics),
-    (614, 84, 101, KBCSet::Graphics),
-    (629, 84, 113, KBCSet::Graphics),
-    (644, 84, 101, KBCSet::Graphics),
-    (659, 84, 113, KBCSet::Graphics),
-    (674, 84, 101, KBCSet::Graphics),
-    (689, 84, 113, KBCSet::Graphics),
-    (704, 84, 101, KBCSet::Graphics),
     (59, 96, 113, KBCSet::Selected),
     (71, 96, 81, KBCSet::Selected),
     (94, 96, 119, KBCSet::Selected),
@@ -264,13 +352,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (442, 96, 92, KBCSet::Selected),
     (466, 96, 43, KBCSet::Selected),
     (478, 96, 42, KBCSet::Selected),
-    (604, 96, 26, KBCSet::Selected),
-    (612, 96, 12, KBCSet::Selected),
-    (633, 96, 27, KBCSet::Selected),
-    (644, 96, 13, KBCSet::Selected),
-    (663, 96, 28, KBCSet::Selected),
-    (673, 96, 14, KBCSet::Selected),
-    (694, 96, 30, KBCSet::Selected),
     (496, 100, 112, KBCSet::Graphics),
     (0, 106, 114, KBCSet::Graphics),
     (12, 106, 116, KBCSet::Graphics),
@@ -316,14 +397,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (533, 106, 114, KBCSet::Graphics),
     (545, 106, 116, KBCSet::Graphics),
     (555, 106, 122, KBCSet::Graphics),
-    (599, 106, 114, KBCSet::Graphics),
-    (614, 106, 122, KBCSet::Graphics),
-    (629, 106, 114, KBCSet::Graphics),
-    (644, 106, 122, KBCSet::Graphics),
-    (659, 106, 114, KBCSet::Graphics),
-    (674, 106, 122, KBCSet::Graphics),
-    (689, 106, 114, KBCSet::Graphics),
-    (704, 106, 122, KBCSet::Graphics),
     (0, 116, 113, KBCSet::Graphics),
     (5, 116, 67, KBCSet::Labels),
     (10, 116, 111, KBCSet::Labels),
@@ -380,14 +453,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (533, 116, 113, KBCSet::Graphics),
     (546, 116, 119, KBCSet::Graphics),
     (555, 116, 101, KBCSet::Graphics),
-    (599, 116, 113, KBCSet::Graphics),
-    (614, 116, 101, KBCSet::Graphics),
-    (629, 116, 113, KBCSet::Graphics),
-    (644, 116, 101, KBCSet::Graphics),
-    (659, 116, 113, KBCSet::Graphics),
-    (674, 116, 101, KBCSet::Graphics),
-    (689, 116, 113, KBCSet::Graphics),
-    (704, 116, 101, KBCSet::Graphics),
     (518, 122, 64, KBCSet::Graphics),
     (74, 128, 97, KBCSet::Selected),
     (88, 128, 65, KBCSet::Selected),
@@ -413,13 +478,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (455, 128, 125, KBCSet::Selected),
     (541, 128, 126, KBCSet::Selected),
     (558, 128, 124, KBCSet::Selected),
-    (603, 128, 23, KBCSet::Selected),
-    (612, 128, 9, KBCSet::Selected),
-    (633, 128, 24, KBCSet::Selected),
-    (643, 128, 10, KBCSet::Selected),
-    (663, 128, 25, KBCSet::Selected),
-    (672, 128, 11, KBCSet::Selected),
-    (694, 128, 29, KBCSet::Selected),
     (0, 138, 114, KBCSet::Graphics),
     (12, 138, 116, KBCSet::Graphics),
     (22, 138, 116, KBCSet::Graphics),
@@ -466,14 +524,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (533, 138, 114, KBCSet::Graphics),
     (545, 138, 116, KBCSet::Graphics),
     (555, 138, 122, KBCSet::Graphics),
-    (599, 138, 114, KBCSet::Graphics),
-    (614, 138, 122, KBCSet::Graphics),
-    (629, 138, 114, KBCSet::Graphics),
-    (644, 138, 122, KBCSet::Graphics),
-    (659, 138, 114, KBCSet::Graphics),
-    (674, 138, 122, KBCSet::Graphics),
-    (689, 138, 114, KBCSet::Graphics),
-    (704, 138, 122, KBCSet::Graphics),
     (0, 148, 113, KBCSet::Graphics),
     (5, 148, 83, KBCSet::Labels),
     (9, 148, 104, KBCSet::Labels),
@@ -525,19 +575,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (471, 148, 119, KBCSet::Graphics),
     (472, 148, 116, KBCSet::Labels),
     (486, 148, 101, KBCSet::Graphics),
-    (599, 148, 113, KBCSet::Graphics),
-    (614, 148, 101, KBCSet::Graphics),
-    (629, 148, 113, KBCSet::Graphics),
-    (644, 148, 101, KBCSet::Graphics),
-    (659, 148, 113, KBCSet::Graphics),
-    (674, 148, 101, KBCSet::Graphics),
-    (689, 148, 113, KBCSet::Graphics),
-    (704, 148, 101, KBCSet::Graphics),
-    (694, 150, 69, KBCSet::Labels),
-    (698, 150, 110, KBCSet::Labels),
-    (702, 150, 116, KBCSet::Labels),
-    (705, 150, 101, KBCSet::Labels),
-    (709, 150, 114, KBCSet::Labels),
     (54, 160, 60, KBCSet::Selected),
     (66, 160, 62, KBCSet::Selected),
     (91, 160, 121, KBCSet::Selected),
@@ -560,12 +597,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (400, 160, 58, KBCSet::Selected),
     (425, 160, 45, KBCSet::Selected),
     (438, 160, 95, KBCSet::Selected),
-    (603, 160, 20, KBCSet::Selected),
-    (614, 160, 6, KBCSet::Selected),
-    (633, 160, 21, KBCSet::Selected),
-    (643, 160, 7, KBCSet::Selected),
-    (663, 160, 22, KBCSet::Selected),
-    (673, 160, 8, KBCSet::Selected),
     (0, 170, 114, KBCSet::Graphics),
     (12, 170, 116, KBCSet::Graphics),
     (17, 170, 116, KBCSet::Graphics),
@@ -607,14 +638,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (466, 170, 116, KBCSet::Graphics),
     (471, 170, 116, KBCSet::Graphics),
     (486, 170, 122, KBCSet::Graphics),
-    (599, 170, 114, KBCSet::Graphics),
-    (614, 170, 122, KBCSet::Graphics),
-    (629, 170, 114, KBCSet::Graphics),
-    (644, 170, 122, KBCSet::Graphics),
-    (659, 170, 114, KBCSet::Graphics),
-    (674, 170, 122, KBCSet::Graphics),
-    (689, 170, 112, KBCSet::Graphics),
-    (704, 170, 64, KBCSet::Graphics),
     (47, 180, 113, KBCSet::Graphics),
     (52, 180, 65, KBCSet::Labels),
     (57, 180, 108, KBCSet::Labels),
@@ -662,17 +685,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (461, 180, 99, KBCSet::Labels),
     (465, 180, 107, KBCSet::Labels),
     (466, 180, 101, KBCSet::Graphics),
-    (599, 180, 113, KBCSet::Graphics),
-    (614, 180, 119, KBCSet::Graphics),
-    (629, 180, 119, KBCSet::Graphics),
-    (644, 180, 101, KBCSet::Graphics),
-    (659, 180, 113, KBCSet::Graphics),
-    (674, 180, 101, KBCSet::Graphics),
-    (689, 180, 112, KBCSet::Graphics),
-    (704, 180, 64, KBCSet::Graphics),
-    (606, 192, 19, KBCSet::Selected),
-    (620, 192, 5, KBCSet::Selected),
-    (664, 192, 31, KBCSet::Selected),
     (47, 202, 114, KBCSet::Graphics),
     (59, 202, 116, KBCSet::Graphics),
     (69, 202, 116, KBCSet::Graphics),
@@ -703,14 +715,6 @@ const KB_DRAW: [(u16, u16, u8, KBCSet); 688] = [
     (441, 202, 116, KBCSet::Graphics),
     (451, 202, 116, KBCSet::Graphics),
     (466, 202, 122, KBCSet::Graphics),
-    (599, 202, 114, KBCSet::Graphics),
-    (614, 202, 116, KBCSet::Graphics),
-    (629, 202, 116, KBCSet::Graphics),
-    (644, 202, 122, KBCSet::Graphics),
-    (659, 202, 114, KBCSet::Graphics),
-    (674, 202, 122, KBCSet::Graphics),
-    (689, 202, 114, KBCSet::Graphics),
-    (704, 202, 122, KBCSet::Graphics),
 ];
 
 pub const CHARS_GRAPH: [u8; 9] = [49, 64, 101, 112, 113, 114, 116, 119, 122];
@@ -989,29 +993,67 @@ fn _run_stage_2() -> eyre::Result<()> {
     Ok(())
 }
 
-pub fn run(buffer: &[u8], opt: KBOptions) -> eyre::Result<()> {
-    let (_, eset) = parse_eset(buffer) //
-        .map_err(|e| eyre!("Could not load editor charset:\n{}", e))?;
-    let mut page = Page::new(730, 175);
+struct Draw {
+    commands: &'static [(u16, u16, u8, KBCSet)],
+    width: u32,
+    height: u32,
+    xoff: u16,
+}
 
-    for (x, y, cval, cset) in KB_DRAW.iter().cloned() {
+fn make(draw: Draw, eset: &ESet, out: &Path, file_name: &OsStr, key: &str) -> eyre::Result<()> {
+    let mut page = Page::new(draw.width, draw.height);
+
+    for (x, y, cval, cset) in draw.commands.iter().cloned() {
         let echr = match cset {
             KBCSet::Selected => &eset.chars[cval as usize],
             KBCSet::Graphics => get_gchar(cval),
             KBCSet::Labels => get_lchar(cval),
         };
-        page.draw_echar(x + 6, y - 52, &echr);
+        let x = x + 6 - draw.xoff;
+        let y = y - 52;
+        page.draw_echar(x, y, &echr);
     }
 
     let img = page.to_image();
 
-    let mut out = opt.out;
-    if out.exists() && out.is_dir() {
-        out.push(opt.file.file_name().unwrap());
-        out.set_extension("png");
+    // Prepare file name
+    let mut name = OsString::from(key);
+    name.push(file_name);
+    let mut path = out.join(name);
+    path.set_extension("png");
+
+    img.save_with_format(&path, ImageFormat::Png)?;
+
+    Ok(())
+}
+
+pub fn run(buffer: &[u8], opt: KBOptions) -> eyre::Result<()> {
+    let (_, eset) = parse_eset(buffer) //
+        .map_err(|e| eyre!("Could not load editor charset:\n{}", e))?;
+
+    // Create dir if not exists
+    if !opt.out.exists() {
+        std::fs::create_dir(&opt.out);
     }
 
-    img.save_with_format(&out, ImageFormat::Png)?;
+    // Keyboard
+    let file_name = opt.file.file_name().unwrap();
+    let kb_draw = Draw {
+        commands: &KB_DRAW,
+        width: 580,
+        height: 175,
+        xoff: 0,
+    };
+    make(kb_draw, &eset, &opt.out, file_name, "kb")?;
+
+    // Numpad
+    let np_draw = Draw {
+        commands: &NP_DRAW,
+        width: 130,
+        height: 175,
+        xoff: 599,
+    };
+    make(np_draw, &eset, &opt.out, file_name, "np")?;
 
     Ok(())
 }

@@ -4,16 +4,15 @@ This page contains some additional font mappings. Initially, all of these are ju
 the visual mapping images, but I hope to turn the more interesting ones into mapping
 tables at some point.
 
+## Font discs
+
+- [SiFoX-03](sifox03)
+
 ## Random named fonts
 
 These are some fonts I found in my collection
 
-### BUBBLE
-
-<figure>
-    <img src="{{'img/kb/BUBBLE.png' | relative_url }}">
-    <figcaption>BUBBLE</figcaption>
-</figure>
+---
 
 ### FUTUR_09
 

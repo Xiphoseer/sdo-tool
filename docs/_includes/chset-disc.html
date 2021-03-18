@@ -1,0 +1,14 @@
+{% for font in site.chsets %}
+{% if font.disc == include.disc %}
+<figure id="{{font.name}}">
+    <img src="{{ font.name | prepend:'img/kb/kb' | append: '.png' | relative_url }}">
+    <img src="{{ font.name | prepend:'img/kb/np' | append: '.png' | relative_url }}" class="numpad">
+    <h4 class="chset">{% if font.full_name %}{{font.full_name}} {% endif %}»{{font.name}}«</h4>
+    {% if font.map %}
+    Mapping file: <a href="{{font.map}}">{{font.map}}</a>
+    {% endif %}
+    {{ font.content | markdownify }}
+</figure>
+<hr class="thick">
+{% endif %}
+{% endfor %}

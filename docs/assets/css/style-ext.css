@@ -39,15 +39,59 @@ pre {
     margin-left: -20px;
 }
 
+#main_content h4.chset {
+    border-top: 2px double black;
+    border-bottom: 2px double black;
+    box-sizing: border-box;
+    margin-top: 1rem;
+    /*display: inline-block;*/
+}
+
+@media (max-width: 400px) {
+    #main_content h4.chset {
+        clear: both;
+    }
+
+    #main_content figure > img.numpad {
+        float: unset;
+        margin: 0 auto;
+    }
+}
+
+hr {
+    clear: both;
+}
+
+hr.thick {
+    height: 0px;
+    background: none;
+    border-bottom: 2px dotted black;
+}
+
 img {
     box-sizing: border-box;
+}
+
+figure {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+figure > img.numpad {
+    float: right;
+    margin-top: 0;
+}
+
+figure > img {
+    background-color: white;
 }
 
 figure > figcaption, figure > img {
     text-align: center;
     display: block;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 figure > figcaption {
