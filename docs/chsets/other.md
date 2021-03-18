@@ -380,7 +380,7 @@ Source: <http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/>
     <figcaption>FONT_044</figcaption>
 </figure>
 
-### FONT_045
+### FONT_045 (»ASTRON_1«)
 
 <figure>
     <img src="{{'img/kb/FONT_045.png' | relative_url }}">

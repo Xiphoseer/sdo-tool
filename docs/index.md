@@ -108,12 +108,6 @@ See [this document][references] for a list of links to Signum! related documents
 See [this document][font-mappings] for mappings from
 standard Signum! fonts to [Unicode](https://unicode.org) codepoints.
 
-## Format Documentation
-
-- [Signum! Document (`sdoc0001`)](https://xiphoseer.github.io/sdo-tool/format-sdoc.html)
-- [Editor Charset (`eset`)](https://xiphoseer.github.io/sdo-tool/format-eset.html)
-- [Signum! Compressed Image (`bimc`)](https://xiphoseer.github.io/sdo-tool/format-bimc.html)
-
 ## License
 
 You are free to download, and run this software for any personal and non-commercial reason,

@@ -3,7 +3,7 @@
 This page lists updates to the SDO-Toolbox.
 The name in brackets indicates the relevant crate.
 
-## Unreleased (main)
+## Version 0.3.1
 
 ### 28.02.2021
 

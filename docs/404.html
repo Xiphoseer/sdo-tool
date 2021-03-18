@@ -20,12 +20,16 @@ layout: default
   let url = window.location.pathname.replace(/^\/sdo-tool/, '').replace(/.html$/, '');
   console.log("url:", url);
   let redirect = {
-    '/foo': '/format-sdoc',
-    '/font-mappings': '/chsets/mappings',
+    '/font-mappings': '/chsets/standard',
+    '/chsets/mappings': '/chsets/standard',
     '/font-other': '/chsets/other',
-    '/format-sdoc': '/formats/sdoc0001',
-    '/format-bimc': '/formats/bimc0002',
-    '/format-eset': '/formats/eset0001',
+    '/format-sdoc': '/formats/sdoc',
+    '/format-bimc': '/formats/bimc',
+    '/format-eset': '/formats/eset',
+    '/documents': '/signum/documents',
+    '/damaged': '/signum/damaged',
+    '/references': '/signum/references',
+    '/resources': '/signum/resources',
   }[url];
   if (redirect) {
     console.log("redirect:", redirect);
