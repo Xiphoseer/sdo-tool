@@ -6,6 +6,7 @@ tables at some point.
 
 ## Font discs
 
+- [Professional](professional)
 - [SiFoX-01](sifox01)
 - [SiFoX-03](sifox03)
 
