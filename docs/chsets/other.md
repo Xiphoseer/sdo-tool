@@ -6,6 +6,7 @@ tables at some point.
 
 ## Font discs
 
+- [Futur](futur)
 - [Professional](professional)
 - [SiFoX-01](sifox01)
 - [SiFoX-03](sifox03)
@@ -15,20 +16,6 @@ tables at some point.
 These are some fonts I found in my collection
 
 ---
-
-### FUTUR_09
-
-<figure>
-    <img src="{{'img/kb/FUTUR_09.png' | relative_url }}">
-    <figcaption>FUTUR_09</figcaption>
-</figure>
-
-### FUTUR_11
-
-<figure>
-    <img src="{{'img/kb/FUTUR_11.png' | relative_url }}">
-    <figcaption>FUTUR_11</figcaption>
-</figure>
 
 ### GRA
 
