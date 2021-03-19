@@ -7,6 +7,7 @@
     {% if font.map %}
     Mapping file: <a href="{{font.map}}">{{font.map}}</a>
     {% endif %}
+    {% if font.monospace %}Monospace font{% endif %}
     {{ font.content | markdownify }}
 </figure>
 <hr class="thick">

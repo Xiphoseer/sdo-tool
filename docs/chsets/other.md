@@ -6,6 +6,7 @@ tables at some point.
 
 ## Font discs
 
+- [SiFoX-01](sifox01)
 - [SiFoX-03](sifox03)
 
 ## Random named fonts
@@ -42,20 +43,6 @@ Seems ot be an older version of the default `GRAPH1` font.
 <figure>
     <img src="{{'img/kb/GROTMED.png' | relative_url }}">
     <figcaption>GROTMED</figcaption>
-</figure>
-
-### PRIS__11
-
-<figure>
-    <img src="{{'img/kb/PRIS__11.png' | relative_url }}">
-    <figcaption>PRIS__11</figcaption>
-</figure>
-
-### SCRIBA
-
-<figure>
-    <img src="{{'img/kb/SCRIBA.png' | relative_url }}">
-    <figcaption>SCRIBA</figcaption>
 </figure>
 
 ### TIMES
