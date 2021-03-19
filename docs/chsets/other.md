@@ -4,11 +4,12 @@ This page contains some additional font mappings. Initially, all of these are ju
 the visual mapping images, but I hope to turn the more interesting ones into mapping
 tables at some point.
 
-## Font discs
+## ASH Font discs
 
 - [Futur](futur)
 - [Professional](professional)
 - [SiFoX-01](sifox01)
+- [SiFoX-02](sifox02)
 - [SiFoX-03](sifox03)
 
 ## Random named fonts
