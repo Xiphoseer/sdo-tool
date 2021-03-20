@@ -12,6 +12,7 @@ tables at some point.
 - [SiFoX-02](sifox02)
 - [SiFoX-03](sifox03)
 - [SiFoX-04](sifox04)
+- [SiFoX-14](sifox14)
 
 ## Random named fonts
 
@@ -33,13 +34,6 @@ Seems ot be an older version of the default `GRAPH1` font.
 <figure>
     <img src="{{'img/kb/GROTMED.png' | relative_url }}">
     <figcaption>GROTMED</figcaption>
-</figure>
-
-### TIMES
-
-<figure>
-    <img src="{{'img/kb/TIMES.png' | relative_url }}">
-    <figcaption>TIMES</figcaption>
 </figure>
 
 ## Random unnamed fonts
@@ -356,12 +350,7 @@ Source: <http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/>
     <figcaption>FONT_044</figcaption>
 </figure>
 
-### FONT_045 (»ASTRON_1«)
-
-<figure>
-    <img src="{{'img/kb/FONT_045.png' | relative_url }}">
-    <figcaption>FONT_045</figcaption>
-</figure>
+(FONT_045 is »ASTRON_1«)
 
 ### FONT_046
 
