@@ -1,5 +1,5 @@
 {% for font in site.chsets %}
-{% if font.disc == include.disc %}
+{% if font.disc == include.disc or font.disc contains include.disc %}
 <figure id="{{font.name}}">
     <img src="{{ font.name | prepend:'img/kb/kb' | append: '.png' | relative_url }}">
     <img src="{{ font.name | prepend:'img/kb/np' | append: '.png' | relative_url }}" class="numpad">

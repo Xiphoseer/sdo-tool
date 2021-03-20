@@ -6,7 +6,9 @@ tables at some point.
 
 ## ASH Font discs
 
+- [Euro](euro)
 - [Futur](futur)
+- [Julia](julia)
 - [Professional](professional)
 - [SiFoX-01](sifox01)
 - [SiFoX-02](sifox02)
