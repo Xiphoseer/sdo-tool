@@ -4,18 +4,6 @@ This page contains some additional font mappings. Initially, all of these are ju
 the visual mapping images, but I hope to turn the more interesting ones into mapping
 tables at some point.
 
-## ASH Font discs
-
-- [Euro](euro)
-- [Futur](futur)
-- [Julia](julia)
-- [Professional](professional)
-- [SiFoX-01](sifox01)
-- [SiFoX-02](sifox02)
-- [SiFoX-03](sifox03)
-- [SiFoX-04](sifox04)
-- [SiFoX-14](sifox14)
-
 ## Random named fonts
 
 These are some fonts I found in my collection
@@ -44,7 +32,7 @@ These are fonts that people on the internet collected
 
 Source: <http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/>
 
-### FONT_001
+### FONT_001 (ca. »ABC« - 97/1)
 
 <figure>
     <img src="{{'img/kb/FONT_001.png' | relative_url }}">
