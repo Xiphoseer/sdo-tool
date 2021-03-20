@@ -11,6 +11,7 @@ tables at some point.
 - [SiFoX-01](sifox01)
 - [SiFoX-02](sifox02)
 - [SiFoX-03](sifox03)
+- [SiFoX-04](sifox04)
 
 ## Random named fonts
 
