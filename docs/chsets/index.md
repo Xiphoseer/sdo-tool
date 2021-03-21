@@ -17,7 +17,7 @@ editor font. I'm not (re)distributing the actual font files on purpose.
 <ul>
 {% assign fdiscs = site.fdiscs | sort: "title" %}
 {% for disc in fdiscs %}
-<li><a href="{{ disc.url }}">{{disc.title}}</a></li>
+<li><a href="{{ disc.url | relative_url }}">{{disc.title}}</a></li>
 {% endfor %}
 </ul>
 
