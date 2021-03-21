@@ -1,31 +1,11 @@
-<div class="table-responsive">
-<table>
-{% for font in site.chsets %}
-    {% if font.disc == include.disc or font.disc contains include.disc %}
-    <tr>
-        <td>
-        {% if font.missing %}{% else %}<a href="#{{font.name}}">{% endif%}
-        »{{font.name}}«
-        {% if font.missing %}{% else %}</a>{% endif%}
-        </td>
-        <td>{% if font.full_name %}{{font.full_name}} {% endif %}</td>
-        <td>{{ font.page}}</td> 
-    </tr>
-    {% endif %}
-{% endfor %}
-</table>
-</div>
-
-<hr class="thick">
-
 {% for font in site.chsets %}
 {% if font.disc == include.disc or font.disc contains include.disc %}
 {% if font.missing %}{% else %}
 <figure id="{{font.name}}">
-    <img src="{{ font.name | prepend:'img/kb/kb' | append: '.png' | relative_url }}">
-    <img src="{{ font.name | prepend:'img/kb/np' | append: '.png' | relative_url }}" class="numpad">
+    <img src="{{ font.name | prepend:'img/kb/' | append: '.png' | relative_url }}">
+    <img src="{{ font.name | prepend:'img/np/' | append: '.png' | relative_url }}" class="numpad">
     <h4 class="chset">{% if font.full_name %}{{font.full_name}} {% endif %}»{{font.name}}«</h4>
-    Page: {{font.page}}<br>
+    {% if font.page %}Page: {{font.page}}<br>{% endif %}
     {% if font.map %}
     Mapping file: <a href="{{font.map}}">{{font.map}}</a>
     {% endif %}

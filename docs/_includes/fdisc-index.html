@@ -1,0 +1,17 @@
+<div class="table-responsive">
+    <table>
+    {% for font in site.chsets %}
+        {% if font.disc == include.disc or font.disc contains include.disc %}
+        <tr>
+            <td>
+            {% if font.missing %}{% else %}<a href="#{{font.name}}">{% endif%}
+            »{{font.name}}«
+            {% if font.missing %}{% else %}</a>{% endif%}
+            </td>
+            <td>{% if font.full_name %}{{font.full_name}} {% endif %}</td>
+            <td>{{ font.page}}</td> 
+        </tr>
+        {% endif %}
+    {% endfor %}
+    </table>
+</div>

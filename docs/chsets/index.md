@@ -28,10 +28,6 @@ also a [list of all charsets](all) and a [list of characters not in Unicode](mis
 
 ## Links
 
-### ATARI Archive at the University of Michigan
-
-- [200 unnamed Editor- and Laserfonts](http://umich.edu/~archive/atari/Printing/sigfntdj.zoo)
-
 ### Delta Labs
 
 - Disk 1 of 074: <http://downloads.atari-home.de/Public_Domain/Serie_Delta-Labs/>

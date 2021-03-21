@@ -52,3 +52,4 @@ defaults:
       type: "fdiscs"
     values:
       layout: "fdisc"
+      index: true

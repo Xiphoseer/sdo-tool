@@ -7,4 +7,10 @@ layout: default
 
 {{ content }}
 
+{% if page.index %}
+{% include fdisc-index.html disc=page.short %}
+{% endif %}
+
+<hr class="thick">
+
 {% include chset-disc.html disc=page.short %}
