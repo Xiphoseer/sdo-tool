@@ -1,5 +1,7 @@
-## Fontdiskette Futur
-
+---
+title: Fontdiskette »Futur«
+short: Futur
+---
 The following fonts are missing for this disc:
 
 - Futur 7 »FUTUR_07«
@@ -11,7 +13,3 @@ The following fonts are missing for this disc:
 - Futur 13 shadow »FUTUR_SH«
 - Futur 11 condensed »FUTU_C11«
 - Futur 13 condensed »FUTU_C13«
-
-<hr class="thick">
-
-{% include chset-disc.html disc='Futur' %}

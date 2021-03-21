@@ -1,26 +1,30 @@
 # Character sets
 
-This page collects links to Signum! font collections across the internet
+This page contains information on Signum! character sets.
+
+See also: [E24 Charset Format]({{ 'formats/eset' | relative_url}})
 
 ## ASH font discs
 
-- [Anna](anna)
-- [Euro](euro)
-- [Futur](futur)
-- [Julia](julia)
-- [Professional](professional)
-- [SiFoX-01](sifox01)
-- [SiFoX-02](sifox02)
-- [SiFoX-03](sifox03)
-- [SiFoX-04](sifox04)
-- [SiFoX-05](sifox05)
-- [SiFoX-14](sifox14)
-- [Standard](standard)
+Application Systems sold a collection of font discs. The named ones were
+professional creations, while the *Signum-Font-eXchange* (SiFoX) was set
+up to redistribute user-generated fonts to all Signum licensees.
+
+Some of these fonts ended up in disk images on the web. The following
+pages use those to display a preview of the keyboard mapping using the
+editor font. I'm not (re)distributing the actual font files on purpose.
+
+<ul>
+{% assign fdiscs = site.fdiscs | sort: "title" %}
+{% for disc in fdiscs %}
+<li><a href="{{ disc.url }}">{{disc.title}}</a></li>
+{% endfor %}
+</ul>
 
 ---
 
-- [Other](other)
-- [Missing characters](missing)
+Some non-standard fonts that I came across are listed [here](other). There's
+also a [list of all charsets](all) and a [list of characters not in Unicode](missing).
 
 ## Links
 

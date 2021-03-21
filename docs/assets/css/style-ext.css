@@ -269,3 +269,11 @@ p {
 #main_content h6 {
     font-family: Gravitas One;
 }
+
+.table-responsive table {
+    min-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}

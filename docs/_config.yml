@@ -42,3 +42,13 @@ plugins:
 
 collections:
   chsets:
+  fdiscs:
+    sort_by: name
+    output: true
+
+defaults:
+  - scope:
+      path: ""
+      type: "fdiscs"
+    values:
+      layout: "fdisc"
