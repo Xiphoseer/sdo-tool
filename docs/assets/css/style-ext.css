@@ -1,5 +1,6 @@
 :root {
     --font-antikro: Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif;
+    --font-atari: "AES Menu";
 }
 
 p, li {
@@ -13,6 +14,10 @@ p, li {
 
 code {
     font-family: "AES Menu";
+}
+
+a code {
+    color: blue;
 }
 
 pre, code {
@@ -155,6 +160,7 @@ img {
 #wrapper {
     overflow-y: auto;
     max-height: calc(100vh - 26px);
+    height: calc(100vh - 26px);
 }
 
 #main_content {
@@ -175,6 +181,7 @@ img {
 #main_content_wrap {
     border-top: none;
     padding-top: 10px;
+    min-height: calc(100% - 175px);
 }
 
 ul#menu {
@@ -277,3 +284,28 @@ p {
 .table-responsive {
     overflow-x: auto;
 }
+
+/*#main_content_wrap {
+    /*background-image: url(../img/bg2.png);
+    background-repeat: repeat;
+    /*image-rendering: pixelated;
+    background-size: 4px 4px;
+}
+
+#footer_wrap {
+    /*background-image: url(../img/bg1.png);
+    background-repeat: repeat;
+    /*background-size: 136px 64px;
+    background-size: 4px 4px;
+    image-rendering: pixelated;
+}
+
+#footer_wrap p {
+    font-family: var(--font-atari);
+    background-color: white;
+    color: black;
+    padding: 0.5rem;
+}
+#footer_wrap p a {
+    color: blue;
+}*/

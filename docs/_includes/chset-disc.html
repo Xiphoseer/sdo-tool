@@ -1,4 +1,5 @@
-{% for font in site.chsets %}
+{% assign chsets = site.chsets | sort:"name" %}
+{% for font in chsets %}
 {% if font.disc == include.disc or font.disc contains include.disc %}
 {% if font.missing %}{% else %}
 <figure id="{{font.name}}">
