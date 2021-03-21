@@ -4,6 +4,7 @@ This page collects links to Signum! font collections across the internet
 
 ## ASH font discs
 
+- [Anna](anna)
 - [Euro](euro)
 - [Futur](futur)
 - [Julia](julia)
@@ -12,6 +13,7 @@ This page collects links to Signum! font collections across the internet
 - [SiFoX-02](sifox02)
 - [SiFoX-03](sifox03)
 - [SiFoX-04](sifox04)
+- [SiFoX-05](sifox05)
 - [SiFoX-14](sifox14)
 - [Standard](standard)
 
