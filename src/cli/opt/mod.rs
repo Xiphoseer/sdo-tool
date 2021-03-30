@@ -19,7 +19,7 @@ pub enum Format {
     /// PostScript page description file (Documents)
     PostScript,
     /// Portable Document Format (Documents)
-    PDF,
+    Pdf,
     /// A list of draw commands (Documents)
     PDraw,
     /// Protable Network Graphic (Documents, Images)
@@ -28,9 +28,9 @@ pub enum Format {
     Pbm,
 
     /// A dvips-compatible inline postscript bitmap font (unstable)
-    DVIPSBitmapFont,
+    DviPsBitmapFont,
     /// A sequence of CCITT group 4 encoded bitmaps (Fonts)
-    CCITTT6,
+    CcItt6,
 }
 
 #[derive(Debug)]
@@ -61,11 +61,11 @@ impl FromStr for Format {
             "html" => Ok(Self::Html),
             "ps" | "postscript" => Ok(Self::PostScript),
             "png" => Ok(Self::Png),
-            "pdf" => Ok(Self::PDF),
+            "pdf" => Ok(Self::Pdf),
             "pbm" => Ok(Self::Pbm),
             "pdraw" => Ok(Self::PDraw),
-            "dvipsbf" => Ok(Self::DVIPSBitmapFont),
-            "ccitt-t6" => Ok(Self::CCITTT6),
+            "dvipsbf" => Ok(Self::DviPsBitmapFont),
+            "ccitt-t6" => Ok(Self::CcItt6),
             _ => Err(FormatError {}),
         }
     }
@@ -79,10 +79,10 @@ impl fmt::Display for Format {
             Self::PostScript => f.write_str("ps"),
             Self::Png => f.write_str("png"),
             Self::Pbm => f.write_str("pbm"),
-            Self::PDF => f.write_str("pdf"),
+            Self::Pdf => f.write_str("pdf"),
             Self::PDraw => f.write_str("pdraw"),
-            Self::DVIPSBitmapFont => f.write_str("dvipsbf"),
-            Self::CCITTT6 => f.write_str("ccitt-t6"),
+            Self::DviPsBitmapFont => f.write_str("dvipsbf"),
+            Self::CcItt6 => f.write_str("ccitt-t6"),
         }
     }
 }
@@ -124,7 +124,7 @@ pub struct Options {
 #[derive(Debug, Error)]
 pub enum MetaError {
     #[error("IO Error")]
-    IO(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error("Deserialize Error")]
     Ron(#[from] ron::error::Error),
 }
@@ -222,11 +222,10 @@ pub enum Destination {
     PageFitH(usize, usize),
 }
 
-impl Into<high::Destination> for Destination {
-    fn into(self) -> high::Destination {
-        use high::Destination::*;
-        match self {
-            Self::PageFitH(a, b) => PageFitH(a, b),
+impl From<Destination> for high::Destination {
+    fn from(d: Destination) -> Self {
+        match d {
+            Destination::PageFitH(a, b) => Self::PageFitH(a, b),
         }
     }
 }
@@ -248,16 +247,16 @@ pub struct PageLabel {
     pub start: u32,
 }
 
-impl Into<Option<pdf_create::common::PageLabelKind>> for PageLabelKind {
-    fn into(self) -> Option<pdf_create::common::PageLabelKind> {
+impl From<PageLabelKind> for Option<pdf_create::common::PageLabelKind> {
+    fn from(kind: PageLabelKind) -> Self {
         use pdf_create::common::PageLabelKind::*;
-        match self {
-            Self::None => None,
-            Self::Decimal => Some(Decimal),
-            Self::RomanLower => Some(RomanLower),
-            Self::RomanUpper => Some(RomanUpper),
-            Self::AlphaLower => Some(AlphaLower),
-            Self::AlphaUpper => Some(AlphaUpper),
+        match kind {
+            PageLabelKind::None => None,
+            PageLabelKind::Decimal => Some(Decimal),
+            PageLabelKind::RomanLower => Some(RomanLower),
+            PageLabelKind::RomanUpper => Some(RomanUpper),
+            PageLabelKind::AlphaLower => Some(AlphaLower),
+            PageLabelKind::AlphaUpper => Some(AlphaUpper),
         }
     }
 }

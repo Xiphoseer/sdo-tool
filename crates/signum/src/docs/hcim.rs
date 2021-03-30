@@ -22,7 +22,7 @@ use super::{bytes16, bytes32};
 
 #[derive(Debug)]
 /// The header of a HCIM chunk
-pub struct HCIMHeader {
+pub struct HcimHeader {
     /// The length of the site_table
     pub header_length: u32,
     /// The number of images stored as bitmaps
@@ -78,9 +78,9 @@ pub struct ImageArea {
 
 #[derive(Debug)]
 /// A partiall parsed HCIM
-pub struct HCIM<'a> {
+pub struct Hcim<'a> {
     /// The header
-    pub header: HCIMHeader,
+    pub header: HcimHeader,
     /// The table of sites
     pub sites: Vec<ImageSite>,
     /// The table of images
@@ -125,7 +125,7 @@ pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
 /// Parse the `hcim` header
 pub fn parse_hcim_header<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
-) -> IResult<&'a [u8], HCIMHeader, E> {
+) -> IResult<&'a [u8], HcimHeader, E> {
     let (input, header_length) = be_u32(input)?;
     let (input, img_count) = be_u16(input)?;
     let (input, site_count) = be_u16(input)?;
@@ -134,7 +134,7 @@ pub fn parse_hcim_header<'a, E: ParseError<&'a [u8]>>(
 
     Ok((
         input,
-        HCIMHeader {
+        HcimHeader {
             header_length,
             img_count,
             site_count,
@@ -193,7 +193,7 @@ pub fn parse_hcim_img_ref<'a, E: ParseError<&'a [u8]>>(
 }
 
 /// Parse a `hcim` chunk
-pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], HCIM, E> {
+pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Hcim, E> {
     let (input, header) = parse_hcim_header(input)?;
     let (input, buf) = take(header.header_length as usize)(input)?;
     let (_, sites) = count(parse_hcim_img_ref, header.site_count as usize)(buf)?;
@@ -201,7 +201,7 @@ pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
 
     Ok((
         input,
-        HCIM {
+        Hcim {
             header,
             sites,
             images,

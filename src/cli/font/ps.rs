@@ -4,14 +4,14 @@ use color_eyre::eyre::{self, eyre};
 use nom::Finish;
 use sdo_ps::{
     dvips::{parse_char_header, parse_dvips_bitmap_font, CacheDevice, CharHeader},
-    out::PSWriter,
+    out::PsWriter,
 };
 use signum::{chsets::printer::PSet, chsets::UseTable, nom, util::data::BIT_STRING};
 
 pub fn write_ls30_ps_bitmap(
     key: &str,
     name: &str,
-    pw: &mut PSWriter<impl Write>,
+    pw: &mut PsWriter<impl Write>,
     font: &PSet,
     use_table: Option<&UseTable>,
 ) -> io::Result<()> {

@@ -285,8 +285,8 @@ impl<'a> Document<'a> {
             Format::PostScript => ps::output_postscript(self, fc),
             Format::PDraw => pdraw::output_pdraw(self),
             Format::Png => imgseq::output_print(self, fc),
-            Format::PDF => pdf::output_pdf(self, fc),
-            Format::DVIPSBitmapFont | Format::CCITTT6 => {
+            Format::Pdf => pdf::output_pdf(self, fc),
+            Format::DviPsBitmapFont | Format::CcItt6 => {
                 error!("Document can't be formatted as a font");
                 Ok(())
             }

@@ -2,7 +2,7 @@ use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use color_eyre::eyre::{self, eyre};
 use log::warn;
-use sdo_ps::out::PSWriter;
+use sdo_ps::out::PsWriter;
 use signum::chsets::{cache::ChsetCache, FontKind};
 
 use crate::cli::font::ps::write_ls30_ps_bitmap;
@@ -12,7 +12,7 @@ use super::{ps_proc::prog_dict, Document};
 fn output_ps_writer(
     doc: &Document,
     fc: &ChsetCache,
-    pw: &mut PSWriter<impl Write>,
+    pw: &mut PsWriter<impl Write>,
 ) -> eyre::Result<()> {
     let pd = doc
         .print_driver
@@ -177,7 +177,7 @@ fn output_ps_writer(
 pub fn output_postscript(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
     if doc.opt.out.as_deref() == Some(Path::new("-")) {
         println!("----------------------------- PostScript -----------------------------");
-        let mut pw = PSWriter::new();
+        let mut pw = PsWriter::new();
         output_ps_writer(doc, fc, &mut pw)?;
         println!("----------------------------------------------------------------------");
         Ok(())
@@ -195,7 +195,7 @@ pub fn output_postscript(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
         };
         let out_file = File::create(&out)?;
         let out_buf = BufWriter::new(out_file);
-        let mut pw = PSWriter::from(out_buf);
+        let mut pw = PsWriter::from(out_buf);
         print!("Writing `{}` ...", out.display());
         output_ps_writer(doc, fc, &mut pw)?;
         println!(" Done!");

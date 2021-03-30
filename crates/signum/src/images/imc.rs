@@ -17,7 +17,7 @@ use nom::{
 use std::convert::TryInto;
 
 #[derive(Debug)]
-struct IMCHeader {
+struct ImcHeader {
     size: u32,
 
     width: u16,
@@ -37,7 +37,7 @@ struct IMCHeader {
     u6: Bytes32,
 }
 
-fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
+fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
     let (input, size) = be_u32(input)?;
     let (input, width) = be_u16(input)?;
     let (input, height) = be_u16(input)?;
@@ -52,7 +52,7 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
     let (input, u5) = bytes32(input)?;
     let (input, u6) = bytes32(input)?;
 
-    let header = IMCHeader {
+    let header = ImcHeader {
         size,
         width,
         height,
@@ -68,11 +68,11 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], IMCHeader> {
     Ok((input, header))
 }
 
-struct IMCState<'src> {
+struct ImcState<'src> {
     a5: &'src [u8],
 }
 
-impl<'src> IMCState<'src> {
+impl<'src> ImcState<'src> {
     fn proc_h(&mut self, a0: &mut [u8]) {
         let mut d1 = self.a5[0];
         self.a5 = &self.a5[1..];
@@ -143,7 +143,7 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
     let mut bit_iter = BitIter::new(bits);
 
-    let mut state = IMCState { a5: data };
+    let mut state = ImcState { a5: data };
 
     let mut temp: [u8; 32];
 

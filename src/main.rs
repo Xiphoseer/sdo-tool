@@ -16,9 +16,9 @@ use std::{
 };
 use structopt::StructOpt;
 
-struct FourCC([u8; 4]);
+struct FourCc([u8; 4]);
 
-impl fmt::Display for FourCC {
+impl fmt::Display for FourCc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &b in &self.0 {
             match b {
@@ -55,7 +55,7 @@ fn main() -> eyre::Result<()> {
         Some(b"ls30") => process_ls30(&buffer, &opt),
         Some(b"bimc") => process_bimc(&buffer, opt),
         Some(t) => {
-            let fourcc = FourCC([t[0], t[1], t[2], t[3]]);
+            let fourcc = FourCc([t[0], t[1], t[2], t[3]]);
             error!("Unknown file type b\"{}\"", fourcc);
             Ok(())
         }

@@ -3,7 +3,7 @@ use ccitt_t4_t6::g42d::encode::Encoder;
 use color_eyre::eyre::{self, eyre};
 use eyre::Context;
 use image::ImageFormat;
-use sdo_ps::out::PSWriter;
+use sdo_ps::out::PsWriter;
 use signum::{
     chsets::{
         editor::parse_eset,
@@ -200,11 +200,11 @@ pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
     }
 
     match opt.format {
-        Format::DVIPSBitmapFont => {
-            let mut writer: PSWriter<Stdout> = PSWriter::new();
+        Format::DviPsBitmapFont => {
+            let mut writer: PsWriter<Stdout> = PsWriter::new();
             write_ls30_ps_bitmap("Fa", "FONT", &mut writer, &lset, None)?;
         }
-        Format::CCITTT6 => {
+        Format::CcItt6 => {
             save_as_ccitt(&lset, opt, &opt.file)?;
         }
         _ => {

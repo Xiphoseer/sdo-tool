@@ -2,9 +2,9 @@ use std::io;
 
 use io::Write;
 
-use sdo_ps::out::PSWriter;
+use sdo_ps::out::PsWriter;
 
-pub fn prog_dict<W: Write>(pw: &mut PSWriter<W>, dict: &str) -> io::Result<()> {
+pub fn prog_dict<W: Write>(pw: &mut PsWriter<W>, dict: &str) -> io::Result<()> {
     pw.lit(dict)?;
     pw.write_usize(300)?;
     pw.ps_dict()?;

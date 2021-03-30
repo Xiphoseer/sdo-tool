@@ -2,7 +2,7 @@
 
 use std::io::{self, Stdout, Write};
 
-pub struct PSWriter<W: Write> {
+pub struct PsWriter<W: Write> {
     // chars in the current line
     lc: usize,
     // need space
@@ -11,19 +11,19 @@ pub struct PSWriter<W: Write> {
     inner: W,
 }
 
-impl PSWriter<Stdout> {
+impl PsWriter<Stdout> {
     pub fn new() -> Self {
         Self::from(std::io::stdout())
     }
 }
 
-impl Default for PSWriter<Stdout> {
+impl Default for PsWriter<Stdout> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<W: Write> From<W> for PSWriter<W> {
+impl<W: Write> From<W> for PsWriter<W> {
     fn from(inner: W) -> Self {
         Self {
             lc: 0,
@@ -33,7 +33,7 @@ impl<W: Write> From<W> for PSWriter<W> {
     }
 }
 
-impl<W: Write> PSWriter<W> {
+impl<W: Write> PsWriter<W> {
     fn need_len(&mut self, len: usize) -> io::Result<()> {
         if self.lc + len > 72 {
             writeln!(self.inner)?;

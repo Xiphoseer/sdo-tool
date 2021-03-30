@@ -57,7 +57,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         with_images: None,
         print_driver: None,
         page: None,
-        format: Format::PDF,
+        format: Format::Pdf,
         cl_meta: Meta::default(),
         meta: None,
         chsets_path: script.chsets.clone(),
