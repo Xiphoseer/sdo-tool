@@ -18,32 +18,39 @@ Instead, you can use this (work-in-progress) tool, which can read Signum!2 docum
 make some of these steps much easier. It's written in Rust, so it should work across
 all major platforms (Windows, Linux and OSX).
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [License](#license)
+- [Contact](#contact)
+- [Acknowledgements](#acknowledgements)
+
 ## Features
 
-- Load Signum! 1/2 documents (*.SDO, `sdoc0001`)
+- Load Signum! 1/2 documents (`*.SDO`)
     - Print all kinds of data from the files to a console, but most importantly
     - Print a list of charset names
     - Print some global formatting options
     - Print a list of pages with additional formatting information
-    - Print text to the console, including page breaks, and some HTML-like format annotations
-        - Fonts that match the default ATARI keys are translated to the appropriate unicode characters
-        - Documents that use only the ANTIKRO font have working space detection. This is a WIP
-    - Render a document to one PNG image per page (see [examples][examples])
+    - Export the document as PDF or HTML or one PNG image per page
+        - See [examples][examples]
         - This requires the E24 font files to be available
-        - Character modifications (wide, tall, italics, ...) are not yet supported
+        - Font modes (e.g. bold and italic) are not yet supported in all formats
     - Print a list of image names
-- Load Signum! editor charsets (`*.E24`, `eset0001`)
+- Load Signum! editor charsets (`*.E24`)
     - Print height and width for each character
     - Print ASCII art for each character bitmap
-    - Render a string with the font (use `--input "..."`, currently always "Abcdefghijkl")
+    - Render a string with the font (use `--input "..."`)
+        - currently always "Abcdefghijkl"
     - Generate a visual map of the characters on an ATARI keyboard
-      - Examples of those are on the [font mappings][font-mappings] page
-- Load Signum! printer charsets (`*.P24`/`ps240001` and `*.L30`/`ls300001`)
+        - Examples of those are linked on the [chsets][chsets] page
+- Load Signum! printer charsets (`*.P24`, `*.P09`, `*.L30`)
     - Print height and width for each character
     - Print ASCII art for each character bitmap
-- Load Signum! images (`*.IMC`, `bimc0002`)
+- Load Signum! images (`*.IMC`, `*.I__`)
     - Produce a PNG for monochrome images exported from a document
-    - NOTE: It's a tiny step from there to exporting images from a document on the fly.
 
 ## Installation
 
@@ -84,7 +91,7 @@ At the moment, this program is not released on <https://crates.io>, so it cannot
 5. `sdo-tool --format png SOMEFILE.IMC` to convert an IMC image file to a PNG file
 5. `sdo-tool --format pbm SOMEFILE.IMC` to convert an IMC image file to a PBM file
 
-## Example
+### Example
 
 ```sh
 $ ls
@@ -97,23 +104,21 @@ $ ./sdo-tool --format pdf ../FILE.SDO
 $ open ../FILE.pdf
 ```
 
-## Examples
-
 See [this document][examples] for examples for the output that this tool produces.
-
-See [this document][references] for a list of links to Signum! related documents.
-
-## Font Mappings
-
-See [this document][font-mappings] for mappings from
-standard Signum! fonts to [Unicode](https://unicode.org) codepoints.
 
 ## License
 
 You are free to download, and run this software for any personal and non-commercial reason,
 at your own risk and without claiming fitness for any particular purpose. If you want to
 contribute to this project or use it for any kind of distribution or commercial purpose,
-please file a github issue or send me an email at `xiphoseer@mailbox.org`.
+please contact me.
+
+## Contact 
+
+If you had some reason to use this tool, I'd love to hear your story! Please reach out to
+me at `xiphoseer@mailbox.org`.
+
+<a href='https://ko-fi.com/Z8Z53PQWH' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi5.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 ## Acknowledgements
 
@@ -139,6 +144,5 @@ please file a github issue or send me an email at `xiphoseer@mailbox.org`.
 [ZERO-WHITE]: https://en.wikipedia.org/wiki/List_of_monochrome_and_RGB_color_formats#Monochrome_(1-bit)
 [1stWord]: http://stcarchiv.de/stc1989/02/von-1stword-zu-signum2
 
-[font-mappings]: https://xiphoseer.github.io/sdo-tool/chsets/mappings.html
 [examples]: https://xiphoseer.github.io/sdo-tool/examples.html
-[references]: https://xiphoseer.github.io/sdo-tool/references.html
+[chsets]: https://xiphoseer.github.io/sdo-tool/chsets/index.html

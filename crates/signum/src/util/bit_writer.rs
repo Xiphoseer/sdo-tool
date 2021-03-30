@@ -1,6 +1,7 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
 #[repr(u8)]
+#[allow(dead_code)]
 enum State { S0, S1, S2, S3, S4, S5, S6, S7 }
 
 impl Default for State {

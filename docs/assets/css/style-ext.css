@@ -63,6 +63,23 @@ pre {
     }
 }
 
+.keytable table td,
+.keytable table th {
+    padding: 5px;
+    text-align: center;
+    font-family: monospace;
+}
+
+.keytable table tr th:first-child {
+    background: #aaa;
+    color: inherit;
+}
+
+.keytable table tr td:first-child {
+    background: #373737;
+    color: #fff;
+}
+
 hr {
     clear: both;
 }
@@ -71,6 +88,10 @@ hr.thick {
     height: 0px;
     background: none;
     border-bottom: 2px dotted black;
+}
+
+#main_content li ul {
+    margin-bottom: 0;
 }
 
 img {
