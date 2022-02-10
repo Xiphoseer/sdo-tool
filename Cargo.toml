@@ -1,6 +1,6 @@
 [package]
 name = "sdo-tool"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["daniel"]
 edition = "2018"
 
