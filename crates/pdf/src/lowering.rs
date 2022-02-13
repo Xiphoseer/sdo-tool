@@ -15,7 +15,7 @@ use crate::{
     high::Resource,
     high::XObject,
     low,
-    util::NextID,
+    util::NextId,
 };
 
 /// Make a ObjRef for an original document (generation 0)
@@ -39,7 +39,7 @@ pub(super) fn lower_outline_items(
     pages: &[ObjRef],
     items: &[OutlineItem],
     parent: ObjRef,
-    id_gen: &mut NextID,
+    id_gen: &mut NextId,
 ) -> Option<(ObjRef, ObjRef)> {
     if let Some((last, rest)) = items.split_last() {
         let mut prev = None;
@@ -100,7 +100,7 @@ pub(crate) trait Lowerable<'a> {
     type Lower;
     type Ctx;
 
-    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextID) -> Self::Lower;
+    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextId) -> Self::Lower;
     fn name() -> &'static str;
 }
 
@@ -112,7 +112,7 @@ pub(crate) struct LowerFontCtx<'a> {
 fn lower_font<'a>(
     font: &'a Font<'a>,
     ctx: &mut LowerFontCtx<'a>,
-    id_gen: &mut NextID,
+    id_gen: &mut NextId,
 ) -> low::Font<'a> {
     match font {
         Font::Type3(font) => {
@@ -147,7 +147,7 @@ impl<'a> Lowerable<'a> for Font<'a> {
     type Lower = low::Font<'a>;
     type Ctx = LowerFontCtx<'a>;
 
-    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextID) -> Self::Lower {
+    fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextId) -> Self::Lower {
         lower_font(self, ctx, id_gen)
     }
 
@@ -160,7 +160,7 @@ impl<'a> Lowerable<'a> for XObject {
     type Lower = low::XObject<'a>;
     type Ctx = ();
 
-    fn lower(&'a self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
+    fn lower(&'a self, _ctx: &mut Self::Ctx, _id_gen: &mut NextId) -> Self::Lower {
         match self {
             Self::Image(i) => low::XObject::Image(low::Ascii85Stream {
                 data: Cow::Borrowed(&i.data),
@@ -178,7 +178,7 @@ impl<'a> Lowerable<'a> for Ascii85Stream<'a> {
     type Lower = low::Ascii85Stream<'a>;
     type Ctx = ();
 
-    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
+    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextId) -> Self::Lower {
         low::Ascii85Stream {
             data: self.data.clone(),
             meta: self.meta,
@@ -194,7 +194,7 @@ impl<'a> Lowerable<'a> for Encoding<'a> {
     type Lower = Encoding<'a>;
     type Ctx = ();
 
-    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextID) -> Self::Lower {
+    fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextId) -> Self::Lower {
         self.clone()
     }
 
@@ -223,7 +223,7 @@ pub(crate) fn lower_dict<'a, T: Lowerable<'a>>(
     dict: &'a DictResource<T>,
     inner: &mut LowerBox<'a, T>,
     ctx: &mut T::Ctx,
-    id_gen: &mut NextID,
+    id_gen: &mut NextId,
 ) -> low::DictResource<T::Lower> {
     dict.iter()
         .map(|(key, res)| (key.clone(), inner.map(res, ctx, id_gen)))
@@ -236,7 +236,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
         res: &'a ResDictRes<T>,
         inner: &mut LowerBox<'a, T>,
         ctx: &mut T::Ctx,
-        id_gen: &mut NextID,
+        id_gen: &mut NextId,
     ) -> low::ResDictRes<T::Lower> {
         match res {
             Resource::Global { index } => {
@@ -260,7 +260,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
 }
 
 impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
-    fn put(&mut self, val: &'a T, id_gen: &mut NextID) -> ObjRef {
+    fn put(&mut self, val: &'a T, id_gen: &mut NextId) -> ObjRef {
         let id = id_gen.next();
         let r = make_ref(id);
         let index = self.next;
@@ -273,7 +273,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
         &mut self,
         res: &'a Resource<T>,
         ctx: &mut T::Ctx,
-        id_gen: &mut NextID,
+        id_gen: &mut NextId,
     ) -> low::Resource<T::Lower> {
         match res {
             Resource::Global { index } => {
@@ -297,7 +297,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
 }
 
 pub(crate) struct Lowering<'a> {
-    pub id_gen: NextID,
+    pub id_gen: NextId,
     pub x_objects: LowerBox<'a, XObject>,
     pub x_object_dicts: LowerBox<'a, DictResource<XObject>>,
     pub fonts: LowerBox<'a, Font<'a>>,
@@ -308,7 +308,7 @@ pub(crate) struct Lowering<'a> {
 impl<'a> Lowering<'a> {
     pub fn new(doc: &'a Handle) -> Self {
         Lowering {
-            id_gen: NextID::new(1),
+            id_gen: NextId::new(1),
             x_objects: LowerBox::new(&doc.res.x_objects),
             x_object_dicts: LowerBox::new(&doc.res.x_object_dicts),
             fonts: LowerBox::new(&doc.res.fonts),

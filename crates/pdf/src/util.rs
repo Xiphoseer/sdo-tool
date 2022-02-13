@@ -45,11 +45,11 @@ where
     }
 }
 
-pub(crate) struct NextID {
+pub(crate) struct NextId {
     obj_id: u64,
 }
 
-impl NextID {
+impl NextId {
     pub(crate) fn new(start: u64) -> Self {
         Self { obj_id: start }
     }

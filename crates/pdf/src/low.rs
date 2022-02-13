@@ -359,6 +359,7 @@ impl Serialize for Catalog {
 }
 
 /// The structure that holds the document IDs.
+#[allow(clippy::clippy::upper_case_acronyms)]
 pub struct ID {
     /// The ID for the original (gen 0) document
     pub original: md5::Digest,
