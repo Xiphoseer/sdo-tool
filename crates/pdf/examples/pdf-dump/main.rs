@@ -149,7 +149,7 @@ fn main() -> io::Result<()> {
                             let pos_d = find(&bytes[pos_c..], b">>").expect("Expect >>") + pos_c;
                             let col_bytes = &bytes[pos_c..pos_d];
                             let col_str = std::str::from_utf8(col_bytes).unwrap();
-                            let width = usize::from_str_radix(col_str, 10).unwrap();
+                            let width = col_str.parse::<usize>().unwrap();
                             println!("width: {}", width);
                             println!();
                             fax_decode(glyph_data, width);

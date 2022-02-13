@@ -127,7 +127,7 @@ fn lower_font<'a>(
             let to_unicode = font
                 .to_unicode
                 .as_ref()
-                .map(|stream| ctx.text_streams.put(&stream, id_gen));
+                .map(|stream| ctx.text_streams.put(stream, id_gen));
             low::Font::Type3(low::Type3Font {
                 name: font.name,
                 font_bbox: font.font_bbox,

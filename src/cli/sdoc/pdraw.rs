@@ -21,7 +21,7 @@ pub fn output_pdraw(doc: &Document) -> eyre::Result<()> {
     for page_text in &doc.tebu {
         let mut pos = Pos::new(0, 0);
         for (skip, line) in &page_text.content {
-            print_line_cmds(&line, *skip, &mut pos);
+            print_line_cmds(line, *skip, &mut pos);
         }
     }
     Ok(())

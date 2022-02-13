@@ -190,7 +190,7 @@ impl Serialize for Font<'_> {
                     .field("LastChar", &font.last_char)?
                     .field("Encoding", &font.encoding)?
                     .field("CharProcs", &font.char_procs)?
-                    .arr_field("Widths", &font.widths)?
+                    .arr_field("Widths", font.widths)?
                     .opt_field("ToUnicode", &font.to_unicode)?;
             }
         }
@@ -256,7 +256,7 @@ impl Serialize for Resources<'_> {
         f.pdf_dict()
             .dict_res_field("Font", &self.font)?
             .dict_res_field("XObject", &self.x_object)?
-            .arr_field("ProcSet", &self.proc_set)?
+            .arr_field("ProcSet", self.proc_set)?
             .finish()
     }
 }
@@ -359,7 +359,7 @@ impl Serialize for Catalog {
 }
 
 /// The structure that holds the document IDs.
-#[allow(clippy::clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct ID {
     /// The ID for the original (gen 0) document
     pub original: md5::Digest,

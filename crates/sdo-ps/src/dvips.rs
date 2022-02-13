@@ -30,7 +30,7 @@ pub struct Font {
 }
 
 fn from_dec(src: &str) -> Result<usize, std::num::ParseIntError> {
-    usize::from_str_radix(src, 10)
+    src.parse::<usize>()
 }
 
 fn parse_usize(input: &[u8]) -> IResult<&[u8], usize> {

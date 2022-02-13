@@ -30,20 +30,14 @@ fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<Pat
         }
     };
 
-    let file = dir_iter.find_map(|entry| {
+    dir_iter.find_map(|entry| {
         entry
             .ok()
             .as_ref()
             .map(DirEntry::path)
             .filter(|p| p.is_dir())
             .and_then(|cset_folder| find_font_file(&cset_folder, name, extension))
-    });
-
-    if let Some(file) = file {
-        Some(file)
-    } else {
-        None
-    }
+    })
 }
 
 fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPSet> {
@@ -90,7 +84,7 @@ fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
 }
 
 fn load_editor_font(editor_cset_file: &Path) -> Option<OwnedESet> {
-    match OwnedESet::load(&editor_cset_file) {
+    match OwnedESet::load(editor_cset_file) {
         Ok(eset) => {
             info!("Loaded editor font file '{}'", editor_cset_file.display());
             Some(eset)

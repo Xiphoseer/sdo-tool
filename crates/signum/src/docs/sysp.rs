@@ -9,20 +9,32 @@ use super::{bytes16, bytes32};
 #[derive(Debug)]
 /// The system parameters chunk
 pub struct SysP {
-    space_width: u16,
-    letter_spacing: u16,
-    line_distance: u16,
-    index_distance: u16,
-    margin_left: u16,
-    margin_right: u16,
-    header: u16,
-    footer: u16,
-    page_length: u16,
-    page_numbering: Bytes16,
-    format_options: Bytes16,
-    opts_2: Bytes16,
-    opts_3: Bytes16,
-    opts_4: Bytes32,
+    /// Width of a space
+    pub space_width: u16,
+    /// ???
+    pub letter_spacing: u16,
+    /// (Vertical) distance between lines
+    pub line_distance: u16,
+    /// (Vertical) distance to index lines
+    pub index_distance: u16,
+    /// (Default) left page margin
+    pub margin_left: u16,
+    /// (Default) right page margin
+    pub margin_right: u16,
+    /// (Default) top page margin
+    pub header: u16,
+    /// (Default) bottom page margin
+    pub footer: u16,
+    /// Page length in editor units
+    pub page_length: u16,
+    /// Page numbering options
+    pub page_numbering: Bytes16,
+    /// More layout options
+    pub format_options: Bytes16,
+
+    _opts_2: Bytes16,
+    _opts_3: Bytes16,
+    _opts_4: Bytes32,
 }
 
 /// Parse the `sysp` chunk
@@ -59,9 +71,9 @@ pub fn parse_sysp<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
             page_length,
             page_numbering,
             format_options,
-            opts_2,
-            opts_3,
-            opts_4,
+            _opts_2: opts_2,
+            _opts_3: opts_3,
+            _opts_4: opts_4,
         },
     ))
 }

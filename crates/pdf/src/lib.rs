@@ -51,5 +51,5 @@ pub mod lowering;
 pub mod util;
 pub mod write;
 
-#[doc(hidded)]
+#[doc(hidden)]
 pub extern crate chrono;

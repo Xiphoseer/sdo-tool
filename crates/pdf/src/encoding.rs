@@ -70,7 +70,7 @@ pub fn ascii_85_encode<W: Write>(data: &[u8], w: &mut W) -> io::Result<usize> {
 
 #[derive(Debug)]
 /// Codepoint U+{0:04x} is not valid in PDFDocEncoding
-#[allow(clippy::clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct PDFDocEncodingError(char);
 
 impl Error for PDFDocEncodingError {}

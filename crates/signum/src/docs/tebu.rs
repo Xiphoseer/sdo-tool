@@ -11,7 +11,7 @@ use nom::{
 
 use super::bytes16;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 /// The style of a character
 pub struct Style {
     /// Whether the char is underlined
@@ -28,20 +28,6 @@ pub struct Style {
     pub tall: bool,
     /// Whether the char is small
     pub small: bool,
-}
-
-impl Default for Style {
-    fn default() -> Self {
-        Style {
-            underlined: false,
-            footnote: false,
-            wide: false,
-            bold: false,
-            italic: false,
-            tall: false,
-            small: false,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]

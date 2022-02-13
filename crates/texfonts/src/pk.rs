@@ -16,17 +16,17 @@ use nom::{
 
 #[derive(Debug)]
 pub struct PackedFont<'i> {
-    events: Vec<Event<'i>>,
+    pub events: Vec<Event<'i>>,
 }
 
 #[derive(Debug)]
 pub struct Preamble<'i> {
-    version: u8,
-    x: Cow<'i, str>,
-    ds: DesignSize,
-    cs: u32,
-    hppp: u32,
-    vppp: u32,
+    pub version: u8,
+    pub x: Cow<'i, str>,
+    pub ds: DesignSize,
+    pub cs: u32,
+    pub hppp: u32,
+    pub vppp: u32,
 }
 
 pub struct DesignSize(u32);
@@ -142,13 +142,13 @@ where
 
 #[derive(Debug)]
 pub struct CharPreamble {
-    tfm: u32,
-    dx: u32,
-    dy: u32,
-    w: u32,
-    h: u32,
-    hoff: i32,
-    voff: i32,
+    pub tfm: u32,
+    pub dx: u32,
+    pub dy: u32,
+    pub w: u32,
+    pub h: u32,
+    pub hoff: i32,
+    pub voff: i32,
 }
 
 #[derive(Debug)]

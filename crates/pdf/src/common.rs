@@ -462,7 +462,7 @@ impl<P: Serialize> Serialize for Dict<P> {
 
 /// Valid `ProcSet`s for PDF files
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ProcSet {
     /// General PDFs procs
     PDF,
@@ -491,7 +491,7 @@ impl Serialize for ProcSet {
 /// The color space of an image
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-#[allow(clippy::clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ColorSpace {
     /// A 1-component grayscale image
     DeviceGray,
