@@ -58,7 +58,7 @@ impl PrinterKind {
     pub fn baseline(self) -> i32 {
         match self {
             Self::Needle9 => 36,
-            Self::Needle24 => 58,
+            Self::Needle24 => 52,
             Self::Laser30 => 48,
         }
     }
