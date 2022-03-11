@@ -3,18 +3,20 @@
 #[cfg(feature = "bdf")]
 /// Conversion to BDF
 pub mod bdf {
-    use crate::chsets::printer::{PSet, PSetChar, PrinterKind};
+    use crate::chsets::{printer::{PSet, PSetChar, PrinterKind}, editor::{ESet, EChar}, encoding::antikro};
     use std::fmt;
 
     fn write_bdf_char<I: std::fmt::Write>(
         o: &mut I,
-        index: usize,
+        index: u8,
         chr: &PSetChar,
+        echar: &EChar,
         pk: PrinterKind,
     ) -> fmt::Result {
-        writeln!(o, "STARTCHAR U+{:04x}", index)?;
-        writeln!(o, "ENCODING {}", index)?;
-        writeln!(o, "SWIDTH {} {}", chr.width as u32 * 500, 0)?;
+        let code = antikro::decode(index) as u32;
+        writeln!(o, "STARTCHAR U+{:04x}", code)?;
+        writeln!(o, "ENCODING {}", code)?;
+        writeln!(o, "SWIDTH {} {}", echar.width as u32 * 72, 0)?;
         writeln!(o, "DWIDTH {} {}", chr.width as u32 * 8, 0)?;
         let half = (pk.line_height() as i32 - pk.baseline()) / 2;
         writeln!(
@@ -36,19 +38,42 @@ pub mod bdf {
         Ok(())
     }
 
+    fn write_bdf_space<I: std::fmt::Write>(
+        o: &mut I,
+        pk: PrinterKind,
+    ) -> fmt::Result {
+        let decoded = b' ';
+        writeln!(o, "STARTCHAR U+{:04x}", decoded)?;
+        writeln!(o, "ENCODING {}", decoded)?;
+        writeln!(o, "SWIDTH {} {}", 8 * 72, 0)?;
+        writeln!(o, "DWIDTH {} {}", 8, 0)?;
+        writeln!(
+            o,
+            "BBX {} {} {} {}",
+            pk.line_height() * 3 /4,
+            0,
+            0,
+            0,
+        )?;
+        writeln!(o, "BITMAP")?;
+        writeln!(o, "ENDCHAR")?;
+        Ok(())
+    }
+
     /// Convert a printer CHSET into a BDF font
-    pub fn pset_to_bdf<I: std::fmt::Write>(o: &mut I, pset: &PSet) -> fmt::Result {
+    pub fn pset_to_bdf<I: std::fmt::Write>(o: &mut I, pset: &PSet, eset: &ESet, name: &str) -> fmt::Result {
+        let resolution = pset.pk.resolution();
         let font_descriptor = bdf::xfont::XFontDescriptor {
             foundry: "gnu".to_string(),
-            family_name: "unifont".to_string(),
+            family_name: name.to_string(),
             weight_name: "medium".to_string(),
             slant: bdf::xfont::Slant::Roman,
             setwidth_name: "normal".to_string(),
             add_style_name: "".to_string(),
             pixel_size: pset.pk.line_height(),
             point_size: pset.pk.line_height() * 10,
-            resolution_x: 75,
-            resolution_y: 75,
+            resolution_x: resolution.x,
+            resolution_y: resolution.y,
             spacing: bdf::xfont::Spacing::CharCell,
             average_width: 80,
             charset_registry: "iso10646".to_string(),
@@ -57,7 +82,7 @@ pub mod bdf {
 
         writeln!(o, "STARTFONT 2.1")?;
         writeln!(o, "FONT {}", font_descriptor)?;
-        writeln!(o, "SIZE {} {} {}", pset.pk.line_height(), 75, 75)?;
+        writeln!(o, "SIZE {} {} {}", pset.pk.line_height(), resolution.x, resolution.y)?;
         writeln!(
             o,
             "FONTBOUNDINGBOX {} {} {} {}",
@@ -81,10 +106,14 @@ pub mod bdf {
         )?;
 
         for (index, chr) in pset.chars[1..].iter().enumerate() {
+            let index = index + 1;
             if chr.width > 0 {
-                write_bdf_char(o, index + 1, chr, pset.pk)?;
+                let echar = &eset.chars[index];
+                write_bdf_char(o, index as u8, chr, echar, pset.pk)?;
             }
         }
+
+        write_bdf_space(o, pset.pk)?;
 
         writeln!(o, "ENDFONT")?;
         Ok(())
