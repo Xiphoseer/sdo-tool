@@ -7,10 +7,13 @@ use crate::{
     docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
     util::bit_iter::BitIter,
-    util::{bit_writer::BitWriter, data::BIT_STRING},
+    util::{
+        bit_writer::BitWriter,
+        data::{BIT_PROJECTION, BIT_STRING},
+    },
 };
 #[cfg(feature = "image")]
-use {crate::util::data::BIT_PROJECTION, image::GrayImage};
+use image::GrayImage;
 
 /// A virtual page that works just like the atari monochrome screen
 ///

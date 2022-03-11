@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt};
 pub mod xfont;
 
 pub struct Font<'a> {
-    pub chars: &'a [Char<'a>],
+    pub chars: Vec<Char<'a>>,
     pub font_descriptor: xfont::XFontDescriptor,
     pub bounding_box: BoundingBox,
     pub properties: BTreeMap<String, u32>,
@@ -33,7 +33,7 @@ impl fmt::Display for Font<'_> {
 
         writeln!(f, "CHARS {}", self.chars.len())?;
 
-        for chr in self.chars {
+        for chr in &self.chars {
             chr.fmt(f)?;
         }
         writeln!(f, "ENDFONT")?;

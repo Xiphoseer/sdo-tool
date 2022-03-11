@@ -9,6 +9,9 @@ description = "Implementation of Signum! (1986) file formats"
 repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/signum"
 homepage = "https://xiphoseer.github.io/sdo-tool/implementation#signum"
 
+[features]
+default = ["bdf"]
+
 [dependencies]
 nom = "6.1.0"
 thiserror = "1.0"
@@ -21,6 +24,14 @@ optional = true
 default-features = false
 version = "0.23"
 features = ["png"]
+
+[dependencies.bdf]
+optional = true
+path = "../bdf"
+
+[[example]]
+name = "chset2bdf"
+required-features = ["bdf"]
 
 [dev-dependencies]
 color-eyre = { version = "0.5", default-features = false }

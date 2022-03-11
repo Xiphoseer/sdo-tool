@@ -13,6 +13,7 @@ use thiserror::*;
 pub mod cache;
 pub mod editor;
 pub mod encoding;
+pub mod output;
 pub mod printer;
 
 #[derive(Copy, Clone)]

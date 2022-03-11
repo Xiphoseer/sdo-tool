@@ -35,7 +35,7 @@ fn main() {
             xdpi: 75,
             ydpi: 75,
         },
-        chars: &[Char {
+        chars: vec![Char {
             unicode: 0x41,
             encoding: 65,
             scalable_width: Width { x: 500, y: 0 },
