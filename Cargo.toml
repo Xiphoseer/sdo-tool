@@ -31,4 +31,4 @@ features = ["png"]
 #opt-level = 1
 
 [workspace]
-members = ["crates/*", "gui/*"]
+members = ["crates/*"]

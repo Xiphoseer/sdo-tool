@@ -11,7 +11,7 @@ use pdf::{
     backend::Backend,
     file::Storage,
     file::Trailer,
-    object::{Object, PlainRef, Resolve, Stream},
+    object::{PlainRef, Resolve, Stream, FromDict},
     primitive::Dictionary,
     primitive::PdfStream,
     primitive::Primitive,
