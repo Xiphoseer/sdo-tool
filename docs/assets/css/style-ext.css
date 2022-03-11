@@ -1,5 +1,5 @@
 :root {
-    --font-antikro: Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif;
+    --font-antikro: ANTIKRO,Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif;
     --font-atari: "AES Menu";
     --font-normande: Normande, Gravitas One;
 }
@@ -16,6 +16,11 @@ p, li {
 @font-face {
     font-family: "NORMANDE";
     src: url("../font/NORMANDE.ttf");
+}
+
+@font-face {
+    font-family: "ANTIKRO";
+    src: url("../font/ANTIKRO.ttf");
 }
 
 code {
