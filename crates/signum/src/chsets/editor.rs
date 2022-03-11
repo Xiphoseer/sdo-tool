@@ -101,7 +101,12 @@ impl<'a> ESet<'a> {
             widths.push(ch.width);
             skips.push(ch.top);
             println!("{}, {}x{}", ch.top, wu, hu);
-            let border = BORDER[wu];
+            let border = if wu <= 16 {
+                BORDER[wu]
+            } else {
+                log::warn!("Editor glyph width is more than 16: {}", wu);
+                BORDER[16]
+            };
             println!("{}", border);
             for _ in 1..ch.top {
                 println!("|                |");

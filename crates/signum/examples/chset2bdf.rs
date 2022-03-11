@@ -1,4 +1,9 @@
-use std::{fmt, io, path::PathBuf};
+use std::{
+    fmt,
+    fs::File,
+    io::{self, BufWriter, Write},
+    path::PathBuf,
+};
 
 use signum::chsets;
 use structopt::StructOpt;
@@ -17,6 +22,14 @@ impl fmt::Write for StdoutWriter {
     }
 }
 
+struct FileWriter(BufWriter<File>);
+
+impl fmt::Write for FileWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0.write_all(s.as_bytes()).map_err(|_| fmt::Error)
+    }
+}
+
 fn main() -> io::Result<()> {
     let args = Args::from_args();
 
@@ -28,6 +41,9 @@ fn main() -> io::Result<()> {
     let eset_bytes = std::fs::read(&eset_path)?;
     let (_, eset) = chsets::editor::parse_eset(&eset_bytes).unwrap();
 
-    chsets::output::bdf::pset_to_bdf(&mut StdoutWriter, &pset, &eset, &name).unwrap();
+    let bdf_path = args.input.with_extension("bdf");
+    let bdf_file = BufWriter::new(File::create(&bdf_path)?);
+
+    chsets::output::bdf::pset_to_bdf(&mut FileWriter(bdf_file), &pset, &eset, &name).unwrap();
     Ok(())
 }
