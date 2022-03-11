@@ -1,6 +1,7 @@
 :root {
     --font-antikro: Book Antiqua,Palatino,Palatino Linotype,Palatino LT STD,Georgia,serif;
     --font-atari: "AES Menu";
+    --font-normande: Normande, Gravitas One;
 }
 
 p, li {
@@ -10,6 +11,11 @@ p, li {
 @font-face {
     font-family: "AES Menu";
     src: url("../font/atari-st.ttf");
+}
+
+@font-face {
+    font-family: "NORMANDE";
+    src: url("../font/NORMANDE.ttf");
 }
 
 code {
@@ -295,7 +301,7 @@ p {
 #main_content h4,
 #main_content h5,
 #main_content h6 {
-    font-family: Gravitas One;
+    font-family: var(--font-normande);
 }
 
 .table-responsive table {
