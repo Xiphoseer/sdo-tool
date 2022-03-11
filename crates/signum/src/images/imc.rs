@@ -17,6 +17,7 @@ use nom::{
 use std::convert::TryInto;
 
 #[derive(Debug)]
+#[allow(dead_code)] // format definition
 struct ImcHeader {
     size: u32,
 

@@ -187,7 +187,7 @@ pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
     let (input, top) = u8(input)?;
     let (input, height) = u8(input)?;
     let (input, width) = u8(input)?;
-    /// FIXME: Are there any valid files where this is non-zero?
+    // FIXME: Are there any valid files where this is non-zero?
     let (input, _d) = verify(u8, |x| *x == 0)(input)?;
 
     let len = (width as usize) * (height as usize);

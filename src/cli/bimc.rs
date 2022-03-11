@@ -23,7 +23,7 @@ pub fn write_pbm(image: MonochromeScreen, out: &mut String) -> fmt::Result {
 
 pub fn process_bimc(buffer: &[u8], opt: Options) -> eyre::Result<()> {
     info!("Found Signum! image (bimc)");
-    let decoded = parse_imc(&buffer) //
+    let decoded = parse_imc(buffer) //
         .map_err(|err| eyre!("Failed to parse: {}", err))?;
 
     let file = opt.file;

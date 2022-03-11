@@ -22,7 +22,10 @@ pub mod sysp;
 pub mod tebu;
 
 #[derive(Debug)]
+#[allow(dead_code)]
+/// FIXME: Implement this to load a full document
 struct SDoc<'a> {
+    /// Character sets in this document
     charsets: Vec<Cow<'a, str>>,
 }
 

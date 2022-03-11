@@ -596,6 +596,7 @@ pub enum Err {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 enum Cmd {
     X,
     MP(ModePrefix),

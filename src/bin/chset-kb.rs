@@ -1011,7 +1011,7 @@ fn make(draw: Draw, eset: &ESet, out: &Path, file_name: &OsStr, key: &str) -> ey
         };
         let x = x + 6 - draw.xoff;
         let y = y - 52;
-        page.draw_echar(x, y, &echr);
+        page.draw_echar(x, y, echr);
     }
 
     let img = page.to_image();

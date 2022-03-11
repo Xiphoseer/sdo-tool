@@ -26,7 +26,7 @@ pub fn write_ls30_ps_bitmap(
     for (i, chr) in font.chars.iter().enumerate() {
         let used = use_table.map(|arr| arr.chars[i as usize] > 0);
         if chr.width > 0 && used != Some(false) {
-            let char_header = CharHeader::from_signum(&chr);
+            let char_header = CharHeader::from_signum(chr);
             let head_iter = char_header.iter();
             let iter = chr.bitmap.iter().copied().chain(head_iter);
             pw.write_stream(iter)?;
@@ -50,7 +50,7 @@ pub fn write_ls30_ps_bitmap(
 }
 
 pub fn process_ps_font(buffer: &[u8]) -> eyre::Result<()> {
-    let (_, fa) = parse_dvips_bitmap_font(&buffer)
+    let (_, fa) = parse_dvips_bitmap_font(buffer)
         .finish()
         .map_err(|e| eyre!("Faile to parse DVIPSBitmapFont: {:?}", e))?;
     println!("Font: {} of {}", fa.len, fa.max);

@@ -101,7 +101,7 @@ pub fn write_char_stream<W: Write>(
     let ll_x = hb.max_lead;
     let box_width = ur_x - ll_x;
     let box_height = pchar.height as usize;
-    let mut encoder = Encoder::new(box_width, &pchar.bitmap);
+    let mut encoder = Encoder::new(box_width, pchar.bitmap);
     encoder.skip_lead = hb.max_lead;
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
@@ -232,7 +232,7 @@ pub fn type3_font<'a>(
     });
 
     Some(Type3Font {
-        name: name.map(|name| PdfName(name)),
+        name: name.map(PdfName),
         font_bbox,
         font_matrix,
         first_char,

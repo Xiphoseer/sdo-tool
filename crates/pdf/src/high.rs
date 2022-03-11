@@ -246,7 +246,7 @@ impl<'a> Default for Resources<'a> {
     }
 }
 /// The global context for lowering
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Res<'a> {
     /// Font resources
     pub fonts: Vec<Font<'a>>,
@@ -260,19 +260,6 @@ pub struct Res<'a> {
     pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
-}
-
-impl<'a> Default for Res<'a> {
-    fn default() -> Self {
-        Self {
-            fonts: Vec::new(),
-            font_dicts: Vec::new(),
-            x_objects: Vec::new(),
-            x_object_dicts: Vec::new(),
-            char_procs: Vec::new(),
-            encodings: Vec::new(),
-        }
-    }
 }
 
 /// Entrypoint to the high-level API

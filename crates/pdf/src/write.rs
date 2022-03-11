@@ -36,7 +36,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
         self.f.indent += 2;
         self.f.indent()?;
         self.f.needs_space = write_name(name, &mut self.f.inner)?;
-        value.write(&mut self.f)?;
+        value.write(self.f)?;
         writeln!(self.f.inner)?;
         self.f.indent -= 2;
         Ok(self)
@@ -168,7 +168,7 @@ impl<'a, 'b> PdfArr<'a, 'b> {
     /// Write the next entry
     pub fn entry(&mut self, value: &dyn Serialize) -> io::Result<&mut Self> {
         self.check_first()?;
-        value.write(&mut self.f)?;
+        value.write(self.f)?;
         Ok(self)
     }
 
@@ -376,7 +376,7 @@ pub struct PdfName<'a>(pub &'a str);
 
 impl Serialize for PdfName<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        f.needs_space = write_name(&self.0, &mut f.inner)?;
+        f.needs_space = write_name(self.0, &mut f.inner)?;
         Ok(())
     }
 }

@@ -100,7 +100,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         let mut document = Document::new(&doc_opt);
 
         info!("Loading document file '{}'", doc_file.display());
-        document.process_sdoc(&input, &mut fc)?;
+        document.process_sdoc(input, &mut fc)?;
         documents.push(document);
     }
 

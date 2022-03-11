@@ -462,6 +462,7 @@ impl<P: Serialize> Serialize for Dict<P> {
 
 /// Valid `ProcSet`s for PDF files
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ProcSet {
     /// General PDFs procs
     PDF,
@@ -490,6 +491,7 @@ impl Serialize for ProcSet {
 /// The color space of an image
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ColorSpace {
     /// A 1-component grayscale image
     DeviceGray,
@@ -608,7 +610,7 @@ impl Serialize for Trapped {
     }
 }
 
-#[allow(missing_docs, non_camel_case_types)]
+#[allow(missing_docs, non_camel_case_types, clippy::upper_case_acronyms)]
 #[derive(Debug, Copy, Clone)]
 pub enum OutputIntentSubtype {
     GTS_PDFX,
