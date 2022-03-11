@@ -16,7 +16,7 @@ pub mod bdf {
         let code = antikro::decode(index) as u32;
         writeln!(o, "STARTCHAR U+{:04x}", code)?;
         writeln!(o, "ENCODING {}", code)?;
-        writeln!(o, "SWIDTH {} {}", echar.width as u32 * 72, 0)?;
+        writeln!(o, "SWIDTH {} {}", echar.width as u32 * 64, 0)?;
         writeln!(o, "DWIDTH {} {}", chr.width as u32 * 8, 0)?;
         let half = (pk.line_height() as i32 - pk.baseline()) / 2;
         writeln!(

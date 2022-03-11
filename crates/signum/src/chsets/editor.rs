@@ -90,7 +90,12 @@ impl EChar<'_> {
         let wu = self.width as usize;
         let hu = self.height as usize;
         println!("{}, {}x{}", self.top, wu, hu);
-        let border = BORDER[wu];
+        let border = if wu <= 16 {
+            BORDER[wu]
+        } else {
+            log::warn!("Editor glyph width is more than 16: {}", wu);
+            BORDER[16]
+        };
         println!("{}", border);
         for _ in 1..self.top {
             println!("|                |");
