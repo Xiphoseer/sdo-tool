@@ -36,6 +36,6 @@ resolution, the mismatch between vertical and horizontal units is easily
 compensated for.
 
 <figure>
-    <img src="img/layout-settings.png">
+    <img src="../img/layout-settings.png">
     <figcaption>Layout Settings</figcaption>
 </figure>
