@@ -798,6 +798,7 @@ dependencies = [
 name = "pdf-create"
 version = "0.3.0"
 dependencies = [
+ "bitflags",
  "ccitt-t4-t6",
  "chrono",
  "color-eyre",

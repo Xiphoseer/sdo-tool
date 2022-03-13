@@ -8,7 +8,7 @@ use io::Write;
 use crate::{
     common::{
         Dict, Encoding, ImageMetadata, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel,
-        PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped,
+        PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped, FontDescriptor,
     },
     low::{self, ID},
     lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
@@ -160,6 +160,8 @@ pub struct Type3Font<'a> {
     pub name: Option<PdfName<'a>>,
     /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
+    /// Font characteristics
+    pub font_descriptor: Option<FontDescriptor<'a>>,
     /// The matrix to map glyph space into text space
     pub font_matrix: Matrix<f32>,
     /// The first used char key
@@ -185,6 +187,7 @@ impl<'a> Default for Type3Font<'a> {
             },
             name: None,
             font_matrix: Matrix::default_glyph(),
+            font_descriptor: None,
             first_char: 0,
             last_char: 255,
             char_procs: Dict::new(),
@@ -258,8 +261,8 @@ pub struct Res<'a> {
     pub x_object_dicts: Vec<DictResource<XObject>>,
     /// Char Procedure resources
     pub char_procs: Vec<Ascii85Stream<'a>>,
-    /// Encoding resources
-    pub encodings: Vec<Encoding<'a>>,
+    // /// Encoding resources
+    // pub encodings: Vec<Encoding<'a>>,
 }
 
 /// Entrypoint to the high-level API

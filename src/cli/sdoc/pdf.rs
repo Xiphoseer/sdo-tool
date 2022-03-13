@@ -153,11 +153,13 @@ pub fn prepare_document(
         }
 
         let mut contents = contents.start_text(1.0, -1.0);
+        
+        const FONT_SIZE: i32 = 10;
+        const FONTUNITS_PER_SIGNUM_X: i32 = 800 / FONT_SIZE;
 
         for (skip, line) in &page.content {
             contents.next_line(0, *skip as u32 + 1);
 
-            const FONTUNITS_PER_SIGNUM_X: i32 = 800;
             let mut prev_width = 0;
             for te in &line.data {
                 let x = te.offset as i32;
@@ -165,7 +167,7 @@ pub fn prepare_document(
                 let is_wide = te.style.wide;
                 let is_tall = te.style.tall;
 
-                let font_size = if is_tall { 2 } else { 1 };
+                let font_size = if is_tall { 20 } else { 10 };
                 let font_width = match (is_tall, is_wide) {
                     (true, true) => 100,
                     (true, false) => 50,

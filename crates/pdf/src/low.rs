@@ -6,17 +6,11 @@
 use std::{borrow::Cow, io};
 
 use crate::{
-    common::Dict,
-    common::Encoding,
-    common::Matrix,
-    common::ObjRef,
-    common::PdfString,
-    common::ProcSet,
-    common::{Rectangle, StreamMetadata},
+    common::{
+        Dict, Encoding, Matrix, ObjRef, PdfString, ProcSet, Rectangle, StreamMetadata, FontDescriptor,
+    },
     encoding::ascii_85_encode,
-    write::Formatter,
-    write::PdfName,
-    write::Serialize,
+    write::{Formatter, PdfName, Serialize},
 };
 
 /// Destination of a GoTo action
@@ -166,6 +160,8 @@ pub struct Type3Font<'a> {
     pub char_procs: Dict<ObjRef>,
     /// Width of every char between first and last
     pub widths: &'a [u32],
+    /// Font characteristics
+    pub font_descriptor: Option<FontDescriptor<'a>>,
     /// Optional reference to a CMap stream
     pub to_unicode: Option<ObjRef>,
 }
@@ -191,6 +187,7 @@ impl Serialize for Font<'_> {
                     .field("Encoding", &font.encoding)?
                     .field("CharProcs", &font.char_procs)?
                     .arr_field("Widths", font.widths)?
+                    .opt_field("FontDescriptor", &font.font_descriptor)?
                     .opt_field("ToUnicode", &font.to_unicode)?;
             }
         }

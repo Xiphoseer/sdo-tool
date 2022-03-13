@@ -106,7 +106,7 @@ pub(crate) trait Lowerable<'a> {
 
 pub(crate) struct LowerFontCtx<'a> {
     pub text_streams: LowerBox<'a, Ascii85Stream<'a>>,
-    pub encodings: LowerBox<'a, Encoding<'a>>,
+    //pub encodings: LowerBox<'a, Encoding<'a>>,
 }
 
 fn lower_font<'a>(
@@ -131,6 +131,7 @@ fn lower_font<'a>(
             low::Font::Type3(low::Type3Font {
                 name: font.name,
                 font_bbox: font.font_bbox,
+                font_descriptor: font.font_descriptor.clone(),
                 font_matrix: font.font_matrix,
                 first_char: font.first_char,
                 last_char: font.last_char,
@@ -315,7 +316,7 @@ impl<'a> Lowering<'a> {
             font_dicts: LowerBox::new(&doc.res.font_dicts),
             font_ctx: LowerFontCtx {
                 text_streams: LowerBox::new(&doc.res.char_procs),
-                encodings: LowerBox::new(&doc.res.encodings),
+                // encodings: LowerBox::new(&doc.res.encodings),
             },
         }
     }
