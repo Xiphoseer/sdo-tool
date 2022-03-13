@@ -3,6 +3,7 @@
 use std::{
     collections::BTreeMap,
     fmt, io,
+    num::{NonZeroI32, NonZeroU32},
     ops::{Add, Deref, DerefMut, Mul},
     str::FromStr,
 };
@@ -78,6 +79,202 @@ impl Serialize for BaseEncoding {
             Self::WinAnsiEncoding => PdfName("WinAnsiEncoding").write(f),
             Self::MacExpertEncoding => PdfName("MacExpertEncoding").write(f),
         }
+    }
+}
+
+/// The font stretch value.
+///
+/// The specific interpretation of these values varies from font to font.
+///
+/// Example: [`FontStretch::Condensed`] in one font may appear most similar to [`FontStretch::Normal`] in another.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FontStretch {
+    /// Ultra Condensed
+    UltraCondensed,
+    /// Extra Condensed
+    ExtraCondensed,
+    /// Condensed
+    Condensed,
+    /// Semi Condensed
+    SemiCondensed,
+    /// Normal
+    Normal,
+    /// Semi Expanded
+    SemiExpanded,
+    /// Expanded
+    Expanded,
+    /// Extra Expanded
+    ExtraExpanded,
+    /// Ultra Expanded
+    UltraExpanded,
+}
+
+impl Serialize for FontStretch {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        match self {
+            Self::UltraCondensed => PdfName("UltraCondensed").write(f),
+            Self::ExtraCondensed => PdfName("ExtraCondensed").write(f),
+            Self::Condensed => PdfName("Condensed").write(f),
+            Self::SemiCondensed => PdfName("SemiCondensed").write(f),
+            Self::Normal => PdfName("Normal").write(f),
+            Self::SemiExpanded => PdfName("SemiExpanded").write(f),
+            Self::Expanded => PdfName("Expanded").write(f),
+            Self::ExtraExpanded => PdfName("ExtraExpanded").write(f),
+            Self::UltraExpanded => PdfName("UltraExpanded").write(f),
+        }
+    }
+}
+
+bitflags::bitflags! {
+    /// Font flags specifying various characteristics of the font.
+    pub struct FontFlags: u32 {
+        /// All glyphs have the same width (as opposed to proportional or
+        /// variable-pitch fonts, which have different widths)
+        const FIXED_PITCH = 1 << 0;
+        /// Glyphs have serifs, which are short strokes drawn at an angle on the
+        /// top and bottom of glyph stems. (Sans serif fonts do not have serifs.)
+        const SERIF = 1 << 1;
+        /// Font contains glyphs outside the Adobe standard Latin character set.
+        /// This flag and the Nonsymbolic flag shall not both be set or both be
+        /// clear
+        const SYMBOLIC = 1 << 2;
+        /// Glyphs resemble cursive handwriting.
+        const SCRIPT = 1 << 3;
+        /// Font uses the Adobe standard Latin character set or a subset of it.
+        const NONSYMBOLIC = 1 << 5;
+        /// Glyphs have dominant vertical strokes that are slanted.
+        const ITALIC = 1 << 6;
+        /// Font contains no lowercase letters; typically used for display purposes,
+        /// such as for titles or headlines.
+        const ALL_CAPS = 1 << 16;
+        /// Font contains both uppercase and lowercase letters. The uppercase
+        /// letters are similar to those in the regular version of the same typeface
+        /// family. The glyphs for the lowercase letters have the same shapes as
+        /// the corresponding uppercase letters, but they are sized and their
+        /// proportions adjusted so that they have the same size and stroke
+        /// weight as lowercase glyphs in the same typeface family.
+        const SMALL_CAP = 1 << 17;
+        /// The ForceBold flag (bit 19) shall determine whether bold glyphs shall be painted with extra pixels even at very
+        /// small text sizes by a conforming reader. If the ForceBold flag is set, features of bold glyphs may be thickened at
+        /// small text sizes.
+        const FORCE_BOLD = 1 << 18;
+    }
+}
+
+impl Default for FontFlags {
+    fn default() -> Self {
+        Self::SYMBOLIC
+    }
+}
+
+impl Serialize for FontFlags {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        self.bits.write(f)
+    }
+}
+
+/// A font descriptor
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FontDescriptor<'a> {
+    /// **FontName**
+    pub font_name: PdfName<'a>,
+    /// **FontFamily**
+    pub font_family: PdfString,
+    /// **FontStretch**
+    pub font_stretch: Option<FontStretch>,
+
+    /// **FontWeight**
+    ///
+    /// The weight (thickness) component of the fully-qualified
+    /// font name or font specifier. The possible values shall be 100, 200, 300,
+    /// 400, 500, 600, 700, 800, or 900, where each number indicates a
+    /// weight that is at least as dark as its predecessor. A value of 400 shall
+    /// indicate a normal weight; 700 shall indicate bold.
+    /// The specific interpretation of these values varies from font to font.
+    ///
+    /// (PDF 1.5; should be used for Type 3 fonts in Tagged PDF documents)
+    pub font_weight: Option<u16>,
+
+    /// **Flags**: A collection of flags defining various characteristics of the font.
+    pub flags: FontFlags,
+
+    /// A rectangle, expressed in the glyph coordinate system, that shall specify the font bounding box.
+    ///
+    /// This should be the smallest rectangle enclosing the shape that would result if all
+    /// of the glyphs of the font were placed with their origins coincident and then filled.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub font_bbox: Option<Rectangle<i32>>,
+
+    /// **ItalicAngle**: The angle, expressed in degrees counterclockwise from
+    /// the vertical, of the dominant vertical strokes of the font.
+    ///
+    /// The value shall be negative for fonts that slope to the right, as almost all italic fonts do.
+    pub italic_angle: i32,
+
+    /// **Ascent**: The maximum height above the
+    /// baseline reached by glyphs in this font. The height of glyphs for
+    /// accented characters shall be excluded.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub ascent: Option<i32>,
+
+    /// **Descent**: The maximum depth below the
+    /// baseline reached by glyphs in this font. The value shall be a negative
+    /// number.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub descent: Option<i32>,
+
+    /// **Leading**: The spacing between baselines of consecutive lines of text.
+    ///
+    /// Default value: 0.
+    pub leading: Option<NonZeroI32>,
+
+    /// **CapHeight**: The vertical coordinate of the top of flat capital letters, measured from the baseline.
+    ///
+    /// (Required for fonts that have Latin characters, except for Type 3 fonts)
+    pub cap_height: Option<NonZeroU32>,
+
+    /// **XHeight**: The font’s x height: the vertical coordinate of the top of flat
+    /// nonascending lowercase letters (like the letter x), measured from the
+    /// baseline, in fonts that have Latin characters.
+    ///
+    /// Default value: 0.
+    pub x_height: Option<NonZeroU32>,
+
+    /// **StemV**  The thickness, measured horizontally, of the dominant vertical stems of glyphs in the font.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub stem_v: Option<NonZeroU32>,
+
+    /// **StemH** The thickness, measured vertically, of the dominant horizontal stems of glyphs
+    /// in the font.
+    ///
+    /// Default value: 0.
+    pub stem_h: Option<NonZeroU32>,
+}
+
+impl Serialize for FontDescriptor<'_> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut dict = f.pdf_dict();
+        dict.field("Type", &PdfName("FontDescriptor"))?
+            .field("FontName", &self.font_name)?
+            .field("FontFamily", &self.font_family)?
+            .opt_field("FontStretch", &self.font_stretch)?
+            .opt_field("FontWeight", &self.font_weight)?
+            .field("Flags", &self.flags)?
+            .opt_field("FontBBox", &self.font_bbox)?
+            .field("ItalicAngle", &self.italic_angle)?
+            .opt_field("Ascent", &self.ascent)?
+            .opt_field("Descent", &self.descent)?
+            .opt_field("Leading", &self.leading)?
+            .opt_field("CapHeight", &self.cap_height)?
+            .opt_field("XHeight", &self.x_height)?
+            .opt_field("StemV", &self.stem_v)?
+            .opt_field("StemH", &self.stem_h)?
+            .finish()?;
+        Ok(())
     }
 }
 
@@ -272,7 +469,7 @@ impl Serialize for Encoding<'_> {
 }
 
 /// A simple two-dimensional coordinate
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Point<P> {
     /// Horizontal offset
     pub x: P,
@@ -313,7 +510,7 @@ impl From<MediaBox> for Rectangle<i32> {
 }
 
 /// A primitive rectangle
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Rectangle<P> {
     /// lower left
     pub ll: Point<P>,

@@ -1,6 +1,9 @@
 //! Methods to produce a binary file
 
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    num::{NonZeroI32, NonZeroU32},
+};
 
 use chrono::{DateTime, TimeZone};
 
@@ -331,8 +334,11 @@ macro_rules! serialize_display_impl {
 
 serialize_display_impl!(u8);
 serialize_display_impl!(usize);
+serialize_display_impl!(u16);
 serialize_display_impl!(u32);
 serialize_display_impl!(i32);
+serialize_display_impl!(NonZeroI32);
+serialize_display_impl!(NonZeroU32);
 serialize_display_impl!(f32);
 serialize_display_impl!(bool);
 
@@ -383,7 +389,7 @@ impl Serialize for ObjRef {
 }
 
 /// A borrowed PDF name (e.g. `/Info`)
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PdfName<'a>(pub &'a str);
 
 impl Serialize for PdfName<'_> {

@@ -3,11 +3,15 @@
 use std::{
     borrow::Cow,
     io::{self, Write},
+    str::FromStr,
 };
 
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
-    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet, StreamMetadata},
+    common::{
+        BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,
+        Rectangle, SparseSet, StreamMetadata,
+    },
     high::{Ascii85Stream, DictResource, Font, GlobalResource, Res, Resource, Type3Font},
     write::PdfName,
 };
@@ -119,14 +123,18 @@ pub fn write_char_stream<W: Write>(
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
 
-    // This is all in font units
+    // The default font size
+    let font_size = DEFAULT_FONT_SIZE;
+
+    // This is in pixels
     let top = font_metrics.baseline;
     let upper_y = top - (pchar.top as i32);
     let lower_y = upper_y - pchar.height as i32;
 
-    let fpx = font_metrics.fontunits_per_pixel_x as i32 / DEFAULT_FONT_SIZE;
-    let fpy = font_metrics.fontunits_per_pixel_y as i32 / DEFAULT_FONT_SIZE;
+    let fpx = font_metrics.fontunits_per_pixel_x as i32 / font_size;
+    let fpy = font_metrics.fontunits_per_pixel_y as i32 / font_size;
 
+    // This is all in font units
     let cd = CacheDevice {
         w_x: dx as i16,
         w_y: 0,
@@ -200,21 +208,24 @@ pub fn type3_font<'a>(
             todo!("missing character #{} in editor font", cvu);
         };
         let num_uses = use_table.chars[cvu];
+        let pchar = &pfont.chars[cvu];
+
+        // calculate font metrics
+        let sig_origin_y = font_metrics.baseline;
+        let sig_upper_y = sig_origin_y - pchar.top as i32;
+        let sig_lower_y = sig_upper_y - pchar.height as i32;
+        max_above_baseline = max_above_baseline.max(sig_upper_y * fpy);
+        max_below_baseline = max_below_baseline.min(sig_lower_y * fpy);
+
         if ewidth > 0 && num_uses > 0 {
             let width = u32::from(ewidth) * (FONTUNITS_PER_SIGNUM_X / font_size);
             widths.push(width);
             max_width = max_width.max(width as i32);
 
-            let pchar = &pfont.chars[cvu];
             if pchar.width > 0 {
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
-                let sig_origin_y = font_metrics.baseline;
-                let sig_upper_y = sig_origin_y - pchar.top as i32;
-                let sig_lower_y = sig_upper_y - pchar.height as i32;
-                max_above_baseline = max_above_baseline.max(sig_upper_y * fpy);
-                max_below_baseline = max_below_baseline.min(sig_lower_y * fpy);
             } else {
                 // FIXME: empty glyph for non-printable characters?
                 log::warn!(
@@ -238,6 +249,10 @@ pub fn type3_font<'a>(
             widths.push(0);
         }
     }
+
+    // FIXME: this works best in evice => why?
+    let ascent = pfont.pk.ascent() as i32 * fpy * 2 / 3;
+    let descent = -(pfont.pk.descent() as i32) * fpy / 4;
 
     let font_bbox = Rectangle {
         ll: Point {
@@ -270,6 +285,23 @@ pub fn type3_font<'a>(
         }
     }
 
+    let font_descriptor = Some(FontDescriptor {
+        font_name: PdfName(name),
+        font_family: PdfString::from_str(name).unwrap(),
+        font_stretch: None,
+        font_weight: None,
+        flags: FontFlags::SYMBOLIC,
+        font_bbox: Some(font_bbox),
+        italic_angle: 0,
+        ascent: Some(ascent),
+        descent: Some(descent),
+        leading: None,
+        cap_height: None,
+        x_height: None,
+        stem_v: None,
+        stem_h: None,
+    });
+
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
         write_cmap(&mut out, mapping, name, true).unwrap();
@@ -286,6 +318,7 @@ pub fn type3_font<'a>(
         first_char,
         last_char,
         char_procs,
+        font_descriptor,
         encoding: Encoding {
             base_encoding: Some(BaseEncoding::WinAnsiEncoding),
             differences: Some(differences),
