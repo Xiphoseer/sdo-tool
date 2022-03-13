@@ -57,7 +57,7 @@ impl PrinterKind {
     /// Get the position of the character baseline from the top of the glyph bounding box
     pub fn baseline(self) -> i32 {
         match self {
-            Self::Needle9 => 36,
+            Self::Needle9 => 35,
             Self::Needle24 => 58,
             Self::Laser30 => 48,
         }
@@ -67,8 +67,26 @@ impl PrinterKind {
     pub fn line_height(self) -> u32 {
         match self {
             Self::Needle9 => 48,
-            Self::Needle24 => 64,
-            Self::Laser30 => 52,
+            Self::Needle24 => 80,
+            Self::Laser30 => 68,
+        }
+    }
+
+    /// The space between the baseline and the bottom of the bounding box (in pixels)
+    pub fn descent(self) -> u32 {
+        match self {
+            Self::Needle9 => 13,
+            Self::Needle24 => 22,
+            Self::Laser30 => 20,
+        }
+    }
+
+    /// The default height of the character box (in pixels)
+    pub fn ascent(self) -> u32 {
+        match self {
+            Self::Needle9 => 22,
+            Self::Needle24 => 36,
+            Self::Laser30 => 30,
         }
     }
 

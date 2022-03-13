@@ -5,7 +5,10 @@ use std::{
 
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
-    common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet, StreamMetadata},
+    common::{
+        BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,
+        Rectangle, SparseSet, StreamMetadata,
+    },
     high::{Ascii85Stream, Font, Type3Font},
     write::PdfName,
 };
@@ -106,18 +109,25 @@ pub fn write_char_stream<W: Write>(
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();
 
-    // This is all in font units
+    // The default font size
+    let font_size = 10;
+
+    // This is in pixels
     let top = font_metrics.baseline;
     let ur_y = top - (pchar.top as i32);
     let ll_y = ur_y - pchar.height as i32;
 
+    let fpx = font_metrics.fontunits_per_pixel_x as i32 / font_size;
+    let fpy = font_metrics.fontunits_per_pixel_y as i32 / font_size;
+
+    // This is all in font units
     let cd = CacheDevice {
         w_x: dx as i16,
         w_y: 0,
-        ll_x: ll_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
-        ll_y: ll_y * font_metrics.fontunits_per_pixel_y as i32,
-        ur_x: ur_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
-        ur_y: ur_y * font_metrics.fontunits_per_pixel_y as i32,
+        ll_x: ll_x as i32 * fpx,
+        ll_y: ll_y * fpy,
+        ur_x: ur_x as i32 * fpx,
+        ur_y: ur_y * fpy,
     };
     writeln!(
         w,
@@ -125,13 +135,10 @@ pub fn write_char_stream<W: Write>(
         cd.w_x, cd.w_y, cd.ll_x, cd.ll_y, cd.ur_x, cd.ur_y
     )?;
 
-    let fpx = font_metrics.fontunits_per_pixel_x;
-    let fpy = font_metrics.fontunits_per_pixel_y;
-
-    let gc_w = box_width as i32 * fpx as i32;
-    let gc_h = box_height as i32 * fpy as i32;
-    let gc_x = ll_x as i32 * fpx as i32;
-    let gc_y = ll_y as i32 * fpy as i32;
+    let gc_w = box_width as i32 * fpx;
+    let gc_h = (box_height as i32) * fpy;
+    let gc_x = ll_x as i32 * fpx;
+    let gc_y = ll_y as i32 * fpy;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;
@@ -166,7 +173,11 @@ pub fn type3_font<'a>(
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
     let mut max_width = 0;
-    let mut max_height = 0;
+
+    let mut max_bottom = 0;
+    let mut min_top = pfont.pk.line_height();
+
+    let font_size = 10;
 
     for cval in first_char..=last_char {
         let cvu = cval as usize;
@@ -176,7 +187,7 @@ pub fn type3_font<'a>(
             todo!("missing character #{} in editor font", cvu);
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
-            let width = u32::from(ewidth) * 800;
+            let width = u32::from(ewidth) * (800 / font_size);
             widths.push(width);
             max_width = max_width.max(width as i32);
 
@@ -185,7 +196,8 @@ pub fn type3_font<'a>(
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
-                max_height = max_height.max(pchar.height as i32 * 200);
+                max_bottom = max_bottom.max(pchar.top as u32 + pchar.height as u32);
+                min_top = min_top.min(pchar.top as u32);
             } else {
                 // FIXME: empty glyph for non-printable characters?
             }
@@ -194,11 +206,30 @@ pub fn type3_font<'a>(
         }
     }
 
+    let gchar = &pfont.chars[b'g' as usize];
+    let gchar_descent = gchar.top as i32 + gchar.height as i32;
+    let descent = pfont.pk.baseline() as i32 - gchar_descent;
+
+    let achar = &pfont.chars[b'A' as usize];
+    let achar_ascent = achar.top as i32;
+    let ascent = pfont.pk.baseline() as i32 - achar_ascent;
+
+    assert!(min_top <= max_bottom);
+    //let max_height = max_bottom - min_top;
+
+    let ll_y = pfont.pk.baseline() as i32 - max_bottom as i32;
+    let ur_y = pfont.pk.baseline() as i32 - min_top as i32;
+
+    let fpy = font_metrics.fontunits_per_pixel_y as i32;
+
     let font_bbox = Rectangle {
-        ll: Point { x: 0, y: 0 },
+        ll: Point {
+            x: 0,
+            y: ll_y * fpy,
+        },
         ur: Point {
             x: max_width,
-            y: max_height,
+            y: ur_y * fpy,
         },
     };
 
@@ -222,6 +253,23 @@ pub fn type3_font<'a>(
         }
     }
 
+    let font_descriptor = name.map(|name| FontDescriptor {
+        font_name: PdfName(name),
+        font_family: PdfString::new(name),
+        font_stretch: None,
+        font_weight: None,
+        flags: FontFlags::SYMBOLIC,
+        font_bbox: Some(font_bbox),
+        italic_angle: 0,
+        ascent: Some((ascent * fpy) / 18),
+        descent: Some((descent * fpy) / 18),
+        leading: None,
+        cap_height: None,
+        x_height: None,
+        stem_v: None,
+        stem_h: None,
+    });
+
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
         write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
@@ -238,6 +286,7 @@ pub fn type3_font<'a>(
         first_char,
         last_char,
         char_procs,
+        font_descriptor,
         encoding: Encoding {
             base_encoding: Some(BaseEncoding::WinAnsiEncoding),
             differences: Some(differences),
