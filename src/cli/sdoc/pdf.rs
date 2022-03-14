@@ -239,9 +239,7 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
     let mut use_table_vec = UseTableVec::new();
     use_table_vec.append(&doc.chsets, use_matrix);
 
-    let pd = doc
-        .print_driver
-        .ok_or_else(|| eyre!("No printer type selected"))?;
+    let pd = fc.print_driver(doc.opt.print_driver)?;
 
     let pk = if let FontKind::Printer(pk) = pd {
         pk

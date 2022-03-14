@@ -1,13 +1,13 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use signum::{
     chsets::{
         cache::{CSet, ChsetCache},
         editor::ESet,
         printer::{PSet, PrinterKind},
-        FontKind, UseMatrix,
+        UseMatrix,
     },
     docs::{
         container::{parse_sdoc0001_container, Chunk},
@@ -47,9 +47,7 @@ impl Pos {
 
 pub struct Document<'a> {
     // Configuration
-    print_driver: Option<FontKind>,
     opt: &'a Options,
-    //file: &'a Path,
     // cset
     pub cset: [Option<String>; 8],
     pub chsets: [Option<usize>; 8],
@@ -104,7 +102,7 @@ impl<'a> Document<'a> {
             chsets: [None; 8],
             pages: vec![],
             page_count: 0,
-            print_driver: opt.print_driver,
+            //print_driver: opt.print_driver,
             tebu: vec![],
             images: vec![],
             sites: vec![],
@@ -116,76 +114,12 @@ impl<'a> Document<'a> {
         let charsets = util::load(parse_cset, part.0)?;
         info!("CHSETS: {:?}", charsets);
 
-        let mut all_eset = true;
-        let mut all_p24 = true;
-        let mut all_l30 = true;
-        let mut all_p09 = true;
         for (index, name) in charsets.iter().enumerate() {
             if name.is_empty() {
                 continue;
             }
             self.cset[index] = Some(name.to_string());
-            let name_ref = name.as_ref();
-
-            if let Some(cset_cache_index) = fc.load_cset(name_ref) {
-                let cset = fc.cset(cset_cache_index).unwrap();
-                self.chsets[index] = Some(cset_cache_index);
-                all_eset &= cset.e24().is_some();
-                all_p24 &= cset.p24().is_some();
-                all_l30 &= cset.l30().is_some();
-                all_p09 &= cset.p09().is_some();
-            }
-        }
-        // Print info on which sets are available
-        if all_eset {
-            info!("Editor fonts available for all character sets");
-        }
-        if all_p24 {
-            info!("Printer fonts (24-needle) available for all character sets");
-        }
-        if all_l30 {
-            info!("Printer fonts (laser/30) available for all character sets");
-        }
-        if all_p09 {
-            info!("Printer fonts (9-needle) available for all character sets");
-        }
-
-        // If none was set, choose one strategy
-        if let Some(pd) = self.print_driver {
-            match pd {
-                FontKind::Editor => {
-                    if !all_eset {
-                        warn!(
-                            "Explicitly chosen editor print-driver but not all fonts are available"
-                        );
-                    }
-                }
-                FontKind::Printer(PrinterKind::Needle24) => {
-                    if !all_p24 {
-                        warn!("Explicitly chosen 24-needle print-driver but not all fonts are available");
-                    }
-                }
-                FontKind::Printer(PrinterKind::Needle9) => {
-                    if !all_p09 {
-                        warn!("Explicitly chosen 9-needle print-driver but not all fonts are available");
-                    }
-                }
-                FontKind::Printer(PrinterKind::Laser30) => {
-                    if !all_l30 {
-                        warn!("Explicitly chosen laser/30 print-driver but not all fonts are available");
-                    }
-                }
-            }
-        } else if all_l30 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
-        } else if all_p24 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
-        } else if all_p09 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
-        } else if all_eset {
-            self.print_driver = Some(FontKind::Editor);
-        } else {
-            warn!("No print-driver has all fonts available.");
+            self.chsets[index] = fc.load_cset(name.as_ref());
         }
         Ok(())
     }
@@ -279,12 +213,13 @@ impl<'a> Document<'a> {
     }
 
     fn output(&self, fc: &ChsetCache) -> eyre::Result<()> {
+        let print_driver = fc.print_driver(self.opt.print_driver)?;
         match self.opt.format {
             Format::Html => html::output_html(self, fc),
             Format::Plain => console::output_console(self, fc),
             Format::PostScript => ps::output_postscript(self, fc),
             Format::PDraw => pdraw::output_pdraw(self),
-            Format::Png => imgseq::output_print(self, fc),
+            Format::Png => imgseq::output_print(self, fc, print_driver),
             Format::Pdf => pdf::output_pdf(self, fc),
             Format::DviPsBitmapFont | Format::CcItt6 => {
                 error!("Document can't be formatted as a font");

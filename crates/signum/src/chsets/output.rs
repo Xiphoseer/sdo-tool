@@ -3,7 +3,11 @@
 #[cfg(feature = "bdf")]
 /// Conversion to BDF
 pub mod bdf {
-    use crate::chsets::{printer::{PSet, PSetChar, PrinterKind}, editor::{ESet, EChar}, encoding::antikro};
+    use crate::chsets::{
+        editor::{EChar, ESet},
+        encoding::antikro,
+        printer::{PSet, PSetChar, PrinterKind},
+    };
     use std::fmt;
 
     fn write_bdf_char<I: std::fmt::Write>(
@@ -38,30 +42,25 @@ pub mod bdf {
         Ok(())
     }
 
-    fn write_bdf_space<I: std::fmt::Write>(
-        o: &mut I,
-        pk: PrinterKind,
-    ) -> fmt::Result {
+    fn write_bdf_space<I: std::fmt::Write>(o: &mut I, pk: PrinterKind) -> fmt::Result {
         let decoded = b' ';
         writeln!(o, "STARTCHAR U+{:04x}", decoded)?;
         writeln!(o, "ENCODING {}", decoded)?;
         writeln!(o, "SWIDTH {} {}", 8 * 72, 0)?;
         writeln!(o, "DWIDTH {} {}", 8, 0)?;
-        writeln!(
-            o,
-            "BBX {} {} {} {}",
-            pk.line_height() * 3 /4,
-            0,
-            0,
-            0,
-        )?;
+        writeln!(o, "BBX {} {} {} {}", pk.line_height() * 3 / 4, 0, 0, 0,)?;
         writeln!(o, "BITMAP")?;
         writeln!(o, "ENDCHAR")?;
         Ok(())
     }
 
     /// Convert a printer CHSET into a BDF font
-    pub fn pset_to_bdf<'a, I: std::fmt::Write>(o: &mut I, pset: &'a PSet, eset: &ESet, name: &str) -> fmt::Result {
+    pub fn pset_to_bdf<'a, I: std::fmt::Write>(
+        o: &mut I,
+        pset: &'a PSet,
+        eset: &ESet,
+        name: &str,
+    ) -> fmt::Result {
         let (resolution_x, resolution_y) = pset.pk.resolution();
         let font_descriptor = bdf::xfont::XFontDescriptor {
             foundry: "gnu".to_string(),
@@ -82,7 +81,13 @@ pub mod bdf {
 
         writeln!(o, "STARTFONT 2.1")?;
         writeln!(o, "FONT {}", font_descriptor)?;
-        writeln!(o, "SIZE {} {} {}", pset.pk.line_height(), resolution_x, resolution_y)?;
+        writeln!(
+            o,
+            "SIZE {} {} {}",
+            pset.pk.line_height(),
+            resolution_x,
+            resolution_y
+        )?;
         writeln!(
             o,
             "FONTBOUNDINGBOX {} {} {} {}",

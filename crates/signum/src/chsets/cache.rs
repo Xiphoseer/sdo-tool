@@ -1,5 +1,6 @@
 //! # Implementation of a charset cache
 
+use core::fmt;
 use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
 
 use log::{info, warn};
@@ -13,6 +14,8 @@ use crate::chsets::{
     printer::PrinterKind,
     LoadError,
 };
+
+use super::FontKind;
 
 fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
     let cset_file = cset_folder.join(name);
@@ -147,6 +150,22 @@ impl CSet {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+/// No suitable printer driver was found for all character sets
+pub struct NoPrinterDriver;
+
+impl std::error::Error for NoPrinterDriver {}
+
+impl fmt::Display for NoPrinterDriver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Failed to find suitable printer driver (missing font files)"
+        )?;
+        Ok(())
+    }
+}
+
 /// A simple cache for charsets
 pub struct ChsetCache {
     chsets_folder: PathBuf,
@@ -182,6 +201,67 @@ impl ChsetCache {
     /// Get a specific charset
     pub fn cset(&self, index: usize) -> Option<&CSet> {
         self.chsets.get(index)
+    }
+
+    /// Get a suitable printer driver
+    pub fn print_driver(&self, prefer: Option<FontKind>) -> Result<FontKind, NoPrinterDriver> {
+        let mut all_eset = true;
+        let mut all_p24 = true;
+        let mut all_l30 = true;
+        let mut all_p09 = true;
+
+        for cs in &self.chsets {
+            all_eset &= cs.e24.is_some();
+            all_p24 &= cs.p24.is_some();
+            all_p09 &= cs.p09.is_some();
+            all_l30 &= cs.l30.is_some();
+        }
+
+        // Print info on which sets are available
+        if all_eset {
+            info!("Editor fonts available for all character sets");
+        }
+        if all_p24 {
+            info!("Printer fonts (24-needle) available for all character sets");
+        }
+        if all_l30 {
+            info!("Printer fonts (laser/30) available for all character sets");
+        }
+        if all_p09 {
+            info!("Printer fonts (9-needle) available for all character sets");
+        }
+
+        // If none was set, choose one strategy
+        if let Some(pd) = prefer {
+            let has_all = match pd {
+                FontKind::Editor => all_eset,
+                FontKind::Printer(PrinterKind::Needle24) => all_p24,
+                FontKind::Printer(PrinterKind::Needle9) => all_p09,
+                FontKind::Printer(PrinterKind::Laser30) => all_l30,
+            };
+
+            if !has_all {
+                warn!(
+                    "Explicitly chosen {:?} driver but not all fonts are available",
+                    pd
+                );
+            } else {
+                return Ok(pd);
+            }
+        }
+
+        if all_l30 {
+            Ok(FontKind::Printer(PrinterKind::Laser30))
+        } else if all_p24 {
+            Ok(FontKind::Printer(PrinterKind::Needle24))
+        } else if all_p09 {
+            Ok(FontKind::Printer(PrinterKind::Needle9))
+        } else if all_eset {
+            Ok(FontKind::Editor)
+        } else {
+            warn!("No print-driver has all fonts available.");
+            Err(NoPrinterDriver)
+        }
     }
 
     /// Load a character set

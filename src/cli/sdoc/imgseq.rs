@@ -15,12 +15,13 @@ fn draw_chars(
     fc: &ChsetCache,
     data: &[Char],
     page: &mut Page,
+    print_driver: Option<FontKind>,
     x: &mut u16,
     y: u16,
 ) {
     for te in data {
         *x += te.offset;
-        match doc.print_driver {
+        match print_driver {
             Some(FontKind::Editor) => {
                 if let Some(eset) = doc.eset(fc, te.cset) {
                     let ch = &eset.chars[te.cval as usize];
@@ -60,6 +61,7 @@ fn draw_line(
     fc: &ChsetCache,
     line: &Line,
     skip: u16,
+    print_driver: Option<FontKind>,
     page: &mut Page,
     pos: &mut Pos,
 ) {
@@ -71,10 +73,10 @@ fn draw_line(
 
     if line.flags.contains(Flags::ALIG) {}
 
-    draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y);
+    draw_chars(doc, fc, &line.data, page, print_driver, &mut pos.x, pos.y);
 }
 
-pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
+pub fn output_print(doc: &Document, fc: &ChsetCache, print_driver: FontKind) -> eyre::Result<()> {
     let out_path: PathBuf = if let Some(path) = &doc.opt.out {
         path.clone()
     } else {
@@ -95,28 +97,35 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             }
         }
 
-        let (mut page, mut pos) = if let Some(print_driver) = doc.print_driver {
-            let width_units: u16 = pbuf_entry.format.left + pbuf_entry.format.right + 20;
-            let height_units: u16 =
-                pbuf_entry.format.header + pbuf_entry.format.length + pbuf_entry.format.footer;
+        //let (mut page, mut pos) = if let Some(print_driver) = pd {
+        let width_units: u16 = pbuf_entry.format.left + pbuf_entry.format.right + 20;
+        let height_units: u16 =
+            pbuf_entry.format.header + pbuf_entry.format.length + pbuf_entry.format.footer;
 
-            let width = print_driver.scale_x(width_units);
-            let height = print_driver.scale_y(height_units);
+        let width = print_driver.scale_x(width_units);
+        let height = print_driver.scale_y(height_units);
 
-            let page = Page::new(width, height);
-            let pos = Pos::new(10, 0 /*page_text.skip & 0x00FF*/);
-            (page, pos)
-        } else {
+        let mut page = Page::new(width, height);
+        let mut pos = Pos::new(10, 0 /*page_text.skip & 0x00FF*/);
+        /*} else {
             println!(
                 "Print Driver not set, skipping page #{}",
                 pbuf_entry.log_pnr
             );
             continue;
-        };
+        }; */
 
         for (skip, line) in &page_text.content {
             pos.x = 10;
-            draw_line(doc, fc, line, *skip, &mut page, &mut pos);
+            draw_line(
+                doc,
+                fc,
+                line,
+                *skip,
+                Some(print_driver),
+                &mut page,
+                &mut pos,
+            );
         }
 
         for site in doc.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
@@ -125,14 +134,12 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
                 site.sel.w, site.sel.h, site.sel.x, site.sel.y, site.img, site.site.x, site.site.y
             );
 
-            if let Some(pd) = doc.print_driver {
-                let px = pd.scale_x(10 + site.site.x);
-                let w = pd.scale_x(site.site.w);
-                let py = pd.scale_y(10 + site.site.y - site._5 / 2);
-                let h = pd.scale_y(site.site.h / 2);
-                let image = &doc.images[site.img as usize];
-                page.draw_image(px, py, w, h, image, site.sel);
-            }
+            let px = print_driver.scale_x(10 + site.site.x);
+            let w = print_driver.scale_x(site.site.w);
+            let py = print_driver.scale_y(10 + site.site.y - site._5 / 2);
+            let h = print_driver.scale_y(site.site.h / 2);
+            let image = &doc.images[site.img as usize];
+            page.draw_image(px, py, w, h, image, site.sel);
         }
 
         let image = page.to_image();

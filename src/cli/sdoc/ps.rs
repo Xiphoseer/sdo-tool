@@ -1,6 +1,6 @@
 use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
-use color_eyre::eyre::{self, eyre};
+use color_eyre::eyre;
 use log::warn;
 use sdo_ps::out::PsWriter;
 use signum::chsets::{cache::ChsetCache, FontKind};
@@ -14,9 +14,7 @@ fn output_ps_writer(
     fc: &ChsetCache,
     pw: &mut PsWriter<impl Write>,
 ) -> eyre::Result<()> {
-    let pd = doc
-        .print_driver
-        .ok_or_else(|| eyre!("No printer type selected"))?;
+    let pd = fc.print_driver(doc.opt.print_driver)?;
     let (hdpi, vdpi) = pd.resolution();
 
     pw.write_magic()?;
