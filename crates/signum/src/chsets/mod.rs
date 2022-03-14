@@ -131,6 +131,15 @@ pub enum FontKind {
 }
 
 impl FontKind {
+    /// Return `Some` iff `self` is a printer font
+    pub fn printer(&self) -> Option<PrinterKind> {
+        if let Self::Printer(p) = self {
+            Some(*p)
+        } else {
+            None
+        }
+    }
+
     /// Return the number of device points corresponding to the given vertical units.
     pub fn scale_y(&self, units: u16) -> u32 {
         match self {

@@ -12,12 +12,12 @@ use pdf_create::{
     high::{self, Handle},
 };
 use sdo_pdf::font::Fonts;
-use signum::chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec};
+use signum::chsets::{cache::ChsetCache, UseTableVec};
 use structopt::StructOpt;
 
 use sdo_tool::cli::{
-    opt::DocScript, opt::Format, opt::Meta, opt::Options, opt::OutlineItem, sdoc::pdf::handle_out,
-    sdoc::pdf::prepare_document, sdoc::pdf::prepare_meta, sdoc::Document,
+    opt::{DocScript, Format, Meta, Options, OutlineItem},
+    sdoc::{pdf, Document},
 };
 
 #[derive(StructOpt, Debug)]
@@ -107,7 +107,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     // Preprare output
     let mut hnd = Handle::new();
 
-    prepare_meta(&mut hnd, &script.meta)?;
+    pdf::prepare_meta(&mut hnd, &script.meta)?;
 
     let mut use_table_vec = UseTableVec::new();
     for doc in &documents {
@@ -115,8 +115,10 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         use_table_vec.append(&doc.chsets, use_matrix);
     }
 
-    // FIXME: Auto-Detect from font cache
-    let pk = PrinterKind::Laser30;
+    let pk = fc
+        .print_driver(None)?
+        .printer()
+        .ok_or_else(|| eyre::eyre!("Printing with editor font not supported in PDF"))?;
 
     let fonts_capacity = fc.chsets().len();
     let mut font_info = Fonts::new(fonts_capacity, hnd.res.fonts.len());
@@ -126,7 +128,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     }
 
     for doc in &documents {
-        prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
+        pdf::prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {
@@ -143,7 +145,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     hnd.outline.children = map_outline_items(&script.outline)?;
 
-    handle_out(Some(&opt.out), &opt.file, hnd)?;
+    pdf::handle_out(Some(&opt.out), &opt.file, hnd)?;
     Ok(())
 }
 
