@@ -164,7 +164,7 @@ pub fn type3_font<'a>(
     pfont: &'a PSet,
     use_table: &UseTable,
     mappings: Option<&Mapping>,
-    name: Option<&'a str>,
+    name: &'a str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
     let font_matrix = Matrix::scale(0.001, -0.001);
@@ -188,7 +188,8 @@ pub fn type3_font<'a>(
         } else {
             todo!("missing character #{} in editor font", cvu);
         };
-        if ewidth > 0 && use_table.chars[cvu] > 0 {
+        let num_uses = use_table.chars[cvu];
+        if ewidth > 0 && num_uses > 0 {
             let width = u32::from(ewidth) * (800 / font_size);
             widths.push(width);
             max_width = max_width.max(width as i32);
@@ -202,8 +203,23 @@ pub fn type3_font<'a>(
                 min_top = min_top.min(pchar.top as u32);
             } else {
                 // FIXME: empty glyph for non-printable characters?
+                log::warn!(
+                    "Missing glyph {} in {:?} [used {} time(s)]",
+                    cvu,
+                    name,
+                    num_uses
+                );
             }
         } else {
+            if num_uses > 0 {
+                log::warn!(
+                    "Empty glyph {} in {:?} [used {} time(s)], inserting empty glyph",
+                    cvu,
+                    name,
+                    num_uses
+                );
+                procs.push((DEFAULT_NAMES[cvu], b"0 0 0 0 0 0 d1".to_vec()));
+            }
             widths.push(0);
         }
     }
@@ -255,7 +271,7 @@ pub fn type3_font<'a>(
         }
     }
 
-    let font_descriptor = name.map(|name| FontDescriptor {
+    let font_descriptor = Some(FontDescriptor {
         font_name: PdfName(name),
         font_family: PdfString::new(name),
         font_stretch: None,
@@ -274,7 +290,7 @@ pub fn type3_font<'a>(
 
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
-        write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
+        write_cmap(&mut out, mapping, name).unwrap();
         Ascii85Stream {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,
@@ -282,7 +298,7 @@ pub fn type3_font<'a>(
     });
 
     Some(Type3Font {
-        name: name.map(PdfName),
+        name: Some(PdfName(name)),
         font_bbox,
         font_matrix,
         first_char,
@@ -352,7 +368,7 @@ impl Fonts {
 
                 let efont = cs.e24();
                 let mappings = cs.map();
-                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
+                if let Some(font) = type3_font(efont, pfont, use_table, mappings, cs.name()) {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,
