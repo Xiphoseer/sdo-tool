@@ -153,39 +153,39 @@ pub struct XCharMetrics {
 
 #[derive(Debug, Clone)]
 pub struct PCFMetricBounds {
-    min: XCharMetrics,
-    max: XCharMetrics,
+    pub min: XCharMetrics,
+    pub max: XCharMetrics,
 }
 
 #[derive(Debug, Clone)]
 pub struct PCFAccelerators {
     /// if for all `i`, `max(metrics[i].rightSideBearing - metrics[i].characterWidth) <= minbounds.leftSideBearing`
-    no_overlap: u8,
+    pub no_overlap: u8,
     /// Means the perchar field of the XFontStruct can be NULL
-    constant_metrics: u8,
+    pub constant_metrics: u8,
     /// `constant_metrics` true and forall characters:
     ///
     /// - the left side bearing==0
     /// - the right side bearing== the character's width
     /// - the character's ascent==the font's ascent
     /// - the character's descent==the font's descent
-    terminal_font: u8,
+    pub terminal_font: u8,
     /// monospace font like courier
-    constant_width: u8,
+    pub constant_width: u8,
     /// Means that all inked bits are within the rectangle with x between `[0,charwidth]`
     /// and y between `[-descent,ascent]`. So no ink overlaps another char when drawing
-    ink_inside: u8,
+    pub ink_inside: u8,
     /// true if the ink metrics differ from the metrics somewhere
-    ink_metrics: u8,
+    pub ink_metrics: u8,
     /// 0=>left to right, 1=>right to left
-    draw_direction: u8,
+    pub draw_direction: u8,
 
-    font_ascent: i32,
-    font_descent: i32,
-    max_overlap: i32,
+    pub font_ascent: i32,
+    pub font_descent: i32,
+    pub max_overlap: i32,
 
-    bounds: PCFMetricBounds,
-    ink_bounds: Option<PCFMetricBounds>,
+    pub bounds: PCFMetricBounds,
+    pub ink_bounds: Option<PCFMetricBounds>,
 }
 
 #[derive(Debug, Clone)]
@@ -265,15 +265,15 @@ pub struct PCFBitmaps {
     ///
     /// - the byte order (format&4 => LSByte first)
     /// - the bit order (format&8 => LSBit first)
-    order: ByteOrder,
+    pub order: ByteOrder,
 
     /// how each row in each glyph's bitmap is padded (format&3)
     ///
     /// 0=>bytes, 1=>shorts, 2=>ints
-    pad_width: BitWidth,
+    pub pad_width: BitWidth,
 
     /// what the bits are stored in (bytes, shorts, ints) (format>>4)&3
     ///
     /// 0=>bytes, 1=>shorts, 2=>ints
-    store_width: BitWidth,
+    pub store_width: BitWidth,
 }
