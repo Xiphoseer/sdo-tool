@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use thiserror::*;
 
 mod de;
-use de::{deserialize_opt_i32, deserialize_opt_string};
+use de::{deserialize_opt_i32, deserialize_opt_string, deserialize_string_or_list};
 
 /// The format to export the document into
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -140,9 +140,7 @@ impl Options {
             if let Some(yoffset) = self.cl_meta.yoffset {
                 meta.yoffset = Some(yoffset);
             }
-            if let Some(author) = &self.cl_meta.author {
-                meta.author = Some(author.clone());
-            }
+            meta.author = self.cl_meta.author.clone();
             if let Some(title) = &self.cl_meta.title {
                 meta.title = Some(title.clone());
             }
@@ -168,8 +166,8 @@ pub struct Meta {
     pub yoffset: Option<i32>,
     /// Author
     #[structopt(long)]
-    #[serde(default, deserialize_with = "deserialize_opt_string")]
-    pub author: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_string_or_list")]
+    pub author: Vec<String>,
     /// Title
     #[structopt(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]

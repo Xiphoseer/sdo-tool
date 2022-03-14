@@ -3,13 +3,11 @@ use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Pat
 use color_eyre::eyre::{self, eyre};
 use log::{debug, info};
 use pdf_create::{
-    chrono::Local,
     common::{
-        ColorIs, ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet,
-        Rectangle,
+        ColorIs, ColorSpace, ICCColorProfileMetadata, ImageMetadata, LabColorSpaceParams,
+        OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle,
     },
-    encoding::pdf_doc_encode,
-    high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
+    high::{DictResource, Handle, ICCBasedColorProfile, Image, Page, Resource, Resources, XObject},
 };
 use sdo_pdf::{font::Fonts, sdoc::Contents};
 use signum::chsets::{cache::ChsetCache, FontKind, UseTableVec};
@@ -18,36 +16,38 @@ use crate::cli::opt::Meta;
 
 use super::Document;
 
+pub const TEX_SRBG_COLOR_PROFILE: &[u8] = include_bytes!("../../../res/sRGB.icc");
+pub const ICC_SRBG_COLOR_PROFILE: &[u8] = include_bytes!("../../../res/sRGB_v4_ICC_preference.icc");
+pub const ICC_SRBG_2014_COLOR_PROFILE: &[u8] = include_bytes!("../../../res/sRGB2014.icc");
+
 pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     // Metadata
-    if let Some(author) = &meta.author {
-        let author = pdf_doc_encode(author)?;
-        hnd.info.author = Some(PdfString::new(author));
-    }
+    hnd.meta.author = meta.author.clone();
     if let Some(subject) = &meta.subject {
-        let subject = pdf_doc_encode(subject)?;
-        hnd.info.subject = Some(PdfString::new(subject));
+        hnd.meta.subject = Some(subject.clone());
     }
     if let Some(title) = &meta.title {
-        let title = pdf_doc_encode(title)?;
-        hnd.info.title = Some(PdfString::new(title));
+        hnd.meta.title = Some(title.clone());
     }
-    let creator = pdf_doc_encode("SIGNUM © 1986-93 F. Schmerbeck")?;
-    hnd.info.creator = Some(PdfString::new(creator));
-    let producer = pdf_doc_encode("Signum! Document Toolbox")?;
-    hnd.info.producer = Some(PdfString::new(producer));
-
-    let now = Local::now();
-    hnd.info.creation_date = Some(now);
-    hnd.info.mod_date = Some(now);
+    hnd.meta.creator = Some("SIGNUM © 1986-93 F. Schmerbeck".to_string());
+    hnd.meta.producer = "Signum! Document Toolbox".to_string();
 
     // Output intents
     hnd.output_intents.push(OutputIntent {
         subtype: OutputIntentSubtype::GTS_PDFA1,
+        dest_output_profile: Some(ICCBasedColorProfile {
+            stream: TEX_SRBG_COLOR_PROFILE,
+            meta: ICCColorProfileMetadata {
+                alternate: Some(ColorSpace::DeviceRGB),
+                num_components: 3,
+            },
+        }),
         output_condition: None,
-        output_condition_identifier: PdfString::new("FOO"),
-        registry_name: None,
-        info: None,
+        output_condition_identifier: PdfString::new("IEC sRGB"),
+        registry_name: Some(PdfString::new("http://www.iec.ch")),
+        info: Some(PdfString::new(
+            "IEC 61966-2.1 Default RGB colour space - sRGB",
+        )),
     });
 
     Ok(())
@@ -103,7 +103,7 @@ pub fn prepare_document(
                     meta: ImageMetadata {
                         width,
                         height,
-                        color_space: ColorSpace::DeviceGray,
+                        color_space: ColorSpace::Lab(LabColorSpaceParams::default()),
                         bits_per_component: 1,
                         image_mask: true,
                         decode: ColorIs::One,
@@ -153,7 +153,7 @@ pub fn prepare_document(
         }
 
         let mut contents = contents.start_text(1.0, -1.0);
-        
+
         const FONT_SIZE: i32 = 10;
         const FONTUNITS_PER_SIGNUM_X: i32 = 800 / FONT_SIZE;
 

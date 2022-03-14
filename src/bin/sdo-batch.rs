@@ -48,9 +48,6 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let script_res = ron::from_str(script_str);
     let script: DocScript = WrapErr::wrap_err(script_res, "Failed to parse DocScript")?;
 
-    //println!("script: {:#?}", script);
-    //println!("opt: {:?}", opt);
-
     let doc_opt = Options {
         file: PathBuf::from("SDO-TOOL-BUG"),
         out: Some(opt.out.clone()),
