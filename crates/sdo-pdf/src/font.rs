@@ -163,13 +163,15 @@ pub fn write_char_stream<W: Write>(
 /// Number of font-units (1/72000 of an inch) per horizontal signum unit (1/90 of an inch)
 pub(crate) const FONTUNITS_PER_SIGNUM_X: u32 = 800;
 
+const EMPTY_GLYPH_PROC: &[u8] = b"0 0 0 0 0 0 d1";
+
 /// Create a type 3 font
 pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
     pfont: &'a PSet,
     use_table: &UseTable,
     mappings: Option<&Mapping>,
-    name: Option<&'a str>,
+    name: &'a str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
     let font_matrix = Matrix::scale(0.001, 0.001);
@@ -183,6 +185,8 @@ pub fn type3_font<'a>(
     let mut max_above_baseline = 0;
     let mut max_below_baseline = 0;
 
+    let font_size = DEFAULT_FONT_SIZE as u32;
+
     for cval in first_char..=last_char {
         let cvu = cval as usize;
         let ewidth = if let Some(efont) = efont {
@@ -190,8 +194,9 @@ pub fn type3_font<'a>(
         } else {
             todo!("missing character #{} in editor font", cvu);
         };
-        if ewidth > 0 && use_table.chars[cvu] > 0 {
-            let width = u32::from(ewidth) * FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32;
+        let num_uses = use_table.chars[cvu];
+        if ewidth > 0 && num_uses > 0 {
+            let width = u32::from(ewidth) * (FONTUNITS_PER_SIGNUM_X / font_size);
             widths.push(width);
             max_width = max_width.max(width as i32);
 
@@ -209,8 +214,24 @@ pub fn type3_font<'a>(
                     .min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32 * 10);
             } else {
                 // FIXME: empty glyph for non-printable characters?
+                log::warn!(
+                    "Missing spacer glyph {} in {:?} [used {} time(s)], inserting empty glyph",
+                    cvu,
+                    name,
+                    num_uses
+                );
+                procs.push((DEFAULT_NAMES[cvu], EMPTY_GLYPH_PROC.to_vec()));
             }
         } else {
+            if num_uses > 0 {
+                log::warn!(
+                    "Empty zero-advance glyph {} in {:?} [used {} time(s)], inserting empty glyph",
+                    cvu,
+                    name,
+                    num_uses
+                );
+                procs.push((DEFAULT_NAMES[cvu], EMPTY_GLYPH_PROC.to_vec()));
+            }
             widths.push(0);
         }
     }
@@ -248,7 +269,7 @@ pub fn type3_font<'a>(
 
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
-        write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
+        write_cmap(&mut out, mapping, name).unwrap();
         Ascii85Stream {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,
@@ -256,7 +277,7 @@ pub fn type3_font<'a>(
     });
 
     Some(Type3Font {
-        name: name.map(PdfName),
+        name: Some(PdfName(name)),
         font_bbox,
         font_matrix,
         first_char,
@@ -333,7 +354,7 @@ impl Fonts {
 
                 let efont = cs.e24();
                 let mappings = cs.map();
-                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
+                if let Some(font) = type3_font(efont, pfont, use_table, mappings, cs.name()) {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,

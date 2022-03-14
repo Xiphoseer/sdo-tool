@@ -56,7 +56,7 @@ impl Contents {
         let t = self.top - (((site.site.y + site.site.h / 2 - site._5 / 2) as f32 * 72.0) / 54.0);
         let l = self.left + ((site.site.x as f32 * 72.0) / 90.0);
         let w = (site.site.w as f32 * 72.0) / 90.0;
-        let h = (site.site.h as f32 * /*72.0*/ 36.0) / 54.0;
+        let h = (site.site.h as f32 * 36.0) / 54.0;
         writeln!(self.inner, "{} 0 0 {} {} {} cm", w, h, l, t)?;
         writeln!(self.inner, "/{} Do", key)?;
         writeln!(self.inner, "Q")?;
