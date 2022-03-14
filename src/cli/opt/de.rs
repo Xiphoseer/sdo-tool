@@ -5,6 +5,13 @@ use serde::{
     Deserializer,
 };
 
+pub(super) fn deserialize_string_or_list<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_string(StringOrListVisitor)
+}
+
 pub(super) fn deserialize_opt_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
@@ -33,6 +40,41 @@ impl Visitor<'_> for OptStringVisitor {
         E: Error,
     {
         Ok(Some(v.to_owned()))
+    }
+}
+
+struct StringOrListVisitor;
+
+impl<'de> Visitor<'de> for StringOrListVisitor {
+    type Value = Vec<String>;
+
+    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "a string")
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(vec![v])
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(vec![v.to_owned()])
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut v = Vec::new();
+        while let Some(n) = seq.next_element()? {
+            v.push(n)
+        }
+        Ok(v)
     }
 }
 

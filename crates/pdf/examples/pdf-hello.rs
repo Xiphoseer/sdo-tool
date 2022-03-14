@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use color_eyre::eyre;
 use pdf_create::{
     common::Point,
-    common::{PdfString, Rectangle},
+    common::Rectangle,
     high::{Font, Handle, Page, Resource, Resources, Type3Font},
 };
 
@@ -12,10 +12,10 @@ pub fn main() -> eyre::Result<()> {
 
     let mut doc = Handle::new();
 
-    doc.info.author = Some(PdfString::new("Xiphoseer"));
-    doc.info.creator = Some(PdfString::new("SIGNUM (c) 1986-93 F. Schmerbeck"));
-    doc.info.producer = Some(PdfString::new("Signum! Document Toolbox"));
-    doc.info.title = Some(PdfString::new("EMPTY.SDO"));
+    doc.meta.author = vec!["Xiphoseer".to_string()];
+    doc.meta.creator = Some("SIGNUM (c) 1986-93 F. Schmerbeck".to_string());
+    doc.meta.producer = "Signum! Document Toolbox".to_string();
+    doc.meta.title = Some("EMPTY.SDO".to_string());
 
     // FIXME: Add some glyphs/char procs here
     doc.res.fonts.push(Font::Type3(Type3Font::default()));

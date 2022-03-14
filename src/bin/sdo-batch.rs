@@ -2,6 +2,7 @@ use std::{
     fs::File,
     io::{BufReader, Read},
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use clap::Parser;
@@ -9,7 +10,6 @@ use color_eyre::eyre::{self, WrapErr};
 use log::{info, LevelFilter};
 use pdf_create::{
     common::{PageLabel, PdfString},
-    encoding::pdf_doc_encode,
     high::{self, Handle},
 };
 use sdo_pdf::{
@@ -41,7 +41,7 @@ pub struct RunOpts {
 fn map_outline_items(items: &[OutlineItem]) -> eyre::Result<Vec<high::OutlineItem>> {
     let mut result = Vec::with_capacity(items.len());
     for item in items {
-        let title = PdfString::new(pdf_doc_encode(&item.title)?);
+        let title = PdfString::from_str(&item.title)?;
         result.push(high::OutlineItem {
             title,
             dest: item.dest.into(),
@@ -56,9 +56,6 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let script_str = WrapErr::wrap_err(script_str_res, "Failed to parse as string")?;
     let script_res = ron::from_str(script_str);
     let script: DocScript = WrapErr::wrap_err(script_res, "Failed to parse DocScript")?;
-
-    //println!("script: {:#?}", script);
-    //println!("opt: {:?}", opt);
 
     let doc_opt = Options {
         file: PathBuf::from("SDO-TOOL-BUG"),
@@ -117,7 +114,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     // Preprare output
     let mut hnd = Handle::new();
 
-    prepare_info(&mut hnd.info, &script.meta.to_pdf_meta())?;
+    prepare_info(&mut hnd.meta, &script.meta.to_pdf_meta())?;
     prepare_pdfa_output_intent(&mut hnd)?;
 
     let mut use_table_vec = UseTableVec::new();
@@ -141,7 +138,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     }
 
     for (key, value) in &script.page_labels {
-        let prefix = PdfString::new(pdf_doc_encode(&value.prefix)?);
+        let prefix = PdfString::from_str(&value.prefix)?;
         hnd.page_labels.insert(
             *key,
             PageLabel {

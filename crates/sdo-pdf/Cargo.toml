@@ -4,6 +4,9 @@ version = "0.2.0"
 authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
 
+[features]
+js = ["pdf-create/js"]
+
 [dependencies]
 sdo-ps = { path = "../sdo-ps" }
 pdf-create = { path = "../pdf" }

@@ -1,5 +1,6 @@
 use std::{fs::File, io::BufWriter, path::Path};
 
+use super::{Document, DocumentInfo};
 use color_eyre::eyre::{self, eyre, OptionExt};
 use log::info;
 use sdo_pdf::{generate_pdf, MetaInfo, Pdf};
@@ -7,8 +8,6 @@ use signum::{
     chsets::{cache::ChsetCache, FontKind},
     docs::{hcim::ImageSite, pbuf, tebu::PageText, GenerationContext, Overrides},
 };
-
-use super::{Document, DocumentInfo};
 
 pub struct GenCtx<'a> {
     di: &'a DocumentInfo,

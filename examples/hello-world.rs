@@ -4,7 +4,7 @@ use clap::Parser;
 
 use color_eyre::eyre::{self, eyre};
 use pdf_create::{
-    common::{PdfString, Rectangle},
+    common::Rectangle,
     high::{Font, Handle, Page, Resource, Resources},
 };
 use sdo_pdf::font::type3_font;
@@ -40,14 +40,10 @@ pub fn main() -> eyre::Result<()> {
 
     let mut doc = Handle::new();
 
-    let author = String::from("Xiphoseer").into_bytes();
-    doc.info.author = Some(PdfString::new(author));
-    let creator = String::from("SIGNUM (c) 1986-93 F. Schmerbeck").into_bytes();
-    doc.info.creator = Some(PdfString::new(creator));
-    let producer = String::from("Signum! Document Toolbox").into_bytes();
-    doc.info.producer = Some(PdfString::new(producer));
-    let title = String::from("EMPTY.SDO").into_bytes();
-    doc.info.title = Some(PdfString::new(title));
+    doc.meta.author = vec!["Xiphoseer".to_string()];
+    doc.meta.creator = Some("SIGNUM (c) 1986-93 F. Schmerbeck".to_string());
+    doc.meta.producer = "Signum! Document Toolbox".to_string();
+    doc.meta.title = Some("EMPTY.SDO".to_string());
 
     let use_table = UseTable::from("HelloJ@rgen!1");
 

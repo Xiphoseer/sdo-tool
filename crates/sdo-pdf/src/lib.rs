@@ -87,7 +87,7 @@ pub fn generate_pdf<'f, GC: GenerationContext>(
     gc: &GC,
 ) -> crate::Result<Pdf<'f>> {
     let mut hnd = Handle::new();
-    prepare_info(&mut hnd.info, meta)?;
+    prepare_info(&mut hnd.meta, meta)?;
     prepare_pdfa_output_intent(&mut hnd)?;
     let font_info = prepare_pdf_fonts(&mut hnd.res, gc, fc, pk);
     generate_pdf_pages(gc, &mut hnd, overrides, &font_info)?;

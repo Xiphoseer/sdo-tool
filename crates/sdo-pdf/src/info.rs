@@ -1,7 +1,9 @@
 use pdf_create::chrono::{DateTime, Local, NaiveDateTime, TimeZone};
-use pdf_create::common::{OutputIntent, OutputIntentSubtype, PdfString};
-use pdf_create::encoding::{pdf_doc_encode, PDFDocEncodingError};
-use pdf_create::high::{Handle, Info};
+use pdf_create::common::{
+    ColorSpace, ICCColorProfileMetadata, OutputIntent, OutputIntentSubtype, PdfString,
+};
+use pdf_create::encoding::PDFDocEncodingError;
+use pdf_create::high::{Handle, ICCBasedColorProfile, Metadata};
 use signum::docs::header::Header;
 
 /// Information to add into the PDF `/Info` dictionary
@@ -10,7 +12,7 @@ pub struct MetaInfo {
     /// Title
     pub title: Option<String>,
     /// Author
-    pub author: Option<String>,
+    pub author: Vec<String>,
     /// Subject
     pub subject: Option<String>,
 
@@ -32,40 +34,56 @@ impl MetaInfo {
 }
 
 /// Write PDF info data
-pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodingError> {
-    if let Some(author) = &meta.author {
-        let author = pdf_doc_encode(author)?;
-        info.author = Some(PdfString::new(author));
-    }
+pub fn prepare_info(info: &mut Metadata, meta: &MetaInfo) -> Result<(), PDFDocEncodingError> {
+    info.author = meta.author.clone();
     if let Some(subject) = &meta.subject {
-        let subject = pdf_doc_encode(subject)?;
-        info.subject = Some(PdfString::new(subject));
+        info.subject = Some(subject.clone());
     }
     if let Some(title) = &meta.title {
-        let title = pdf_doc_encode(title)?;
-        info.title = Some(PdfString::new(title));
+        info.title = Some(title.clone());
     }
-    let creator = pdf_doc_encode("SIGNUM © 1986-93 F. Schmerbeck")?;
-    info.creator = Some(PdfString::new(creator));
-    let producer = pdf_doc_encode("Signum! Document Toolbox")?;
-    info.producer = Some(PdfString::new(producer));
-    let now = Local::now();
-    info.creation_date = meta.creation_date.or(Some(now));
-    info.mod_date = meta.mod_date.or(Some(now));
+    info.creator = Some("SIGNUM © 1986-93 F. Schmerbeck".to_owned());
+    info.producer = "Signum! Document Toolbox".to_owned();
+    if let Some(creation_date) = meta.creation_date {
+        info.creation_date = creation_date;
+    }
+    if let Some(mod_date) = meta.mod_date {
+        info.modify_date = mod_date;
+    }
     Ok(())
 }
 
-/// Add a simple output intend for PDF/A
+/// Add a simple output intent for PDF/A
 ///
 /// This is not yet properly implemented
 pub fn prepare_pdfa_output_intent(hnd: &mut Handle) -> crate::Result<()> {
-    // Output intents
-    hnd.output_intents.push(OutputIntent {
-        subtype: OutputIntentSubtype::GTS_PDFA1,
-        output_condition: None,
-        output_condition_identifier: PdfString::new("FOO"),
-        registry_name: None,
-        info: None,
-    });
+    hnd.output_intents.push(PdfAOutputIntent::default_grey());
     Ok(())
 }
+
+struct PdfAOutputIntent;
+
+impl PdfAOutputIntent {
+    /// Return a minimal grayscale sRGB output intent
+    fn default_grey() -> OutputIntent<ICCBasedColorProfile<'static>> {
+        OutputIntent {
+            subtype: OutputIntentSubtype::GTS_PDFA1,
+            output_condition_identifier: PdfString::new(b"sGry"),
+            output_condition: None,
+            registry_name: None,
+            info: Some(PdfString::new(
+                b"Compact-ICC-Profiles ICC v4 Grayscale Parametric Curve",
+            )),
+            dest_output_profile: Some(ICC_SGREY_V4),
+        }
+    }
+}
+
+// https://github.com/saucecontrol/Compact-ICC-Profiles
+const ICC_SGREY_V4: ICCBasedColorProfile<'static> = ICCBasedColorProfile {
+    stream: include_bytes!("../res/sGrey-v4.icc"),
+    meta: ICCColorProfileMetadata {
+        alternate: Some(ColorSpace::DeviceGray),
+        num_components: 1,
+    },
+};

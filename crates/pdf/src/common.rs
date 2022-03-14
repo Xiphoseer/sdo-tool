@@ -4,11 +4,15 @@ use std::{
     collections::BTreeMap,
     fmt, io,
     ops::{Add, Deref, DerefMut, Mul},
+    str::FromStr,
 };
 
 //use pdf::primitive::PdfString;
 
-use crate::write::{Formatter, PdfName, Serialize, ToDict};
+use crate::{
+    encoding::{pdf_doc_encode, PDFDocEncodingError},
+    write::{Formatter, PdfName, Serialize, ToDict},
+};
 
 /// A PDF Byte string
 #[derive(Clone, Eq, PartialEq)]
@@ -16,8 +20,16 @@ pub struct PdfString(Vec<u8>);
 
 impl PdfString {
     /// Create a new string
-    pub fn new<S: AsRef<[u8]>>(string: S) -> Self {
-        Self(string.as_ref().to_vec())
+    pub fn new(string: &[u8]) -> Self {
+        Self(string.to_vec())
+    }
+}
+
+impl FromStr for PdfString {
+    type Err = PDFDocEncodingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        pdf_doc_encode(s).map(Self)
     }
 }
 
@@ -511,8 +523,70 @@ impl Serialize for ProcSet {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+/// Parameters for the **CalGray** color space
+pub struct CalGrayColorSpaceParams {
+    /// The white point of the space [X_W, Y_W, Z_W]
+    pub white_point: [f32; 3],
+    /// The black point of the space [X_B, Y_B, Z_B]
+    pub black_point: Option<[f32; 3]>,
+    /// A number G defining the gamma for the gray (A) component.
+    /// G shall be positive and is generally greater than or equal to 1.
+    ///
+    /// Default value: 1.
+    pub gamma: Option<f32>,
+}
+
+/// The D65 white point
+pub const CAL_GRAY_D65: CalGrayColorSpaceParams = CalGrayColorSpaceParams {
+    white_point: [0.9505, 1.0000, 1.0890],
+    black_point: None,
+    gamma: None,
+};
+
+impl Serialize for CalGrayColorSpaceParams {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict()
+            .field("WhitePoint", &self.white_point)?
+            .opt_field("BlackPoint", &self.black_point)?
+            .opt_field("Gamma", &self.gamma)?
+            .finish()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+/// Parameters for the `Lab` color space
+pub struct LabColorSpaceParams {
+    /// The white point of the space [X_W, Y_W, Z_W]
+    pub white_point: [f32; 3],
+    /// The black point of the space [X_B, Y_B, Z_B]
+    pub black_point: Option<[f32; 3]>,
+    /// The range of the space [a_min, a_max, b_min, b_max]
+    pub range: [i32; 4],
+}
+
+impl Serialize for LabColorSpaceParams {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_dict()
+            .field("WhitePoint", &self.white_point)?
+            .opt_field("BlackPoint", &self.black_point)?
+            .field("Range", &self.range)?
+            .finish()
+    }
+}
+
+impl Default for LabColorSpaceParams {
+    fn default() -> Self {
+        Self {
+            white_point: [0.9505, 1.0000, 1.0890],
+            black_point: None,
+            range: [-128, 127, -128, 127],
+        }
+    }
+}
+
 /// The color space of an image
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[non_exhaustive]
 #[allow(clippy::upper_case_acronyms)]
 pub enum ColorSpace {
@@ -522,6 +596,10 @@ pub enum ColorSpace {
     DeviceRGB,
     /// A 4-component CMYK image
     DeviceCMYK,
+    /// CalGray color space
+    CalGray(CalGrayColorSpaceParams),
+    /// A L*a*b color space
+    Lab(LabColorSpaceParams),
 }
 
 impl Serialize for ColorSpace {
@@ -530,6 +608,8 @@ impl Serialize for ColorSpace {
             Self::DeviceGray => PdfName("DeviceGray").write(f),
             Self::DeviceRGB => PdfName("DeviceRGB").write(f),
             Self::DeviceCMYK => PdfName("DeviceCMYK").write(f),
+            Self::CalGray(params) => (PdfName("CalGray"), params).write(f),
+            Self::Lab(params) => (PdfName("Lab"), params).write(f),
         }
     }
 }
@@ -601,6 +681,10 @@ pub enum StreamMetadata {
     None,
     /// Metadata for an Image
     Image(ImageMetadata),
+    /// Metadata for a color Profile
+    ColorProfile(ICCColorProfileMetadata),
+    /// Metadata
+    MetadataXML,
 }
 
 impl ToDict for StreamMetadata {
@@ -608,7 +692,30 @@ impl ToDict for StreamMetadata {
         match self {
             Self::None => Ok(()),
             Self::Image(i) => i.write(dict),
+            Self::ColorProfile(m) => m.write(dict),
+            Self::MetadataXML => {
+                dict.field("Type", &PdfName("Metadata"))?;
+                dict.field("Subtype", &PdfName("XML"))?;
+                Ok(())
+            }
         }
+    }
+}
+
+/// Color Profile metadata
+#[derive(Debug, Copy, Clone)]
+pub struct ICCColorProfileMetadata {
+    /// An alternate color space
+    pub alternate: Option<ColorSpace>,
+    /// Number of color components: 1, 3, or 4
+    pub num_components: u8,
+}
+
+impl ToDict for ICCColorProfileMetadata {
+    fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
+        dict.field("N", &self.num_components)?;
+        dict.opt_field("Alternate", &self.alternate)?;
+        Ok(())
     }
 }
 
@@ -648,7 +755,7 @@ impl Serialize for OutputIntentSubtype {
 
 #[derive(Debug, Clone)]
 /// An output intent
-pub struct OutputIntent {
+pub struct OutputIntent<Profile> {
     /// The subtype / spec
     pub subtype: OutputIntentSubtype,
     /// ???
@@ -659,10 +766,11 @@ pub struct OutputIntent {
     pub registry_name: Option<PdfString>,
     /// ???
     pub info: Option<PdfString>,
-    // TODO: DestOutputProfile stream
+    /// Output profile stream
+    pub dest_output_profile: Option<Profile>,
 }
 
-impl Serialize for OutputIntent {
+impl Serialize for OutputIntent<ObjRef> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
             .field("Type", &PdfName("OutputIntent"))?
@@ -674,6 +782,7 @@ impl Serialize for OutputIntent {
             )?
             .opt_field("RegistryName", &self.registry_name)?
             .opt_field("Info", &self.info)?
+            .opt_field("DestOutputProfile", &self.dest_output_profile)?
             .finish()
     }
 }

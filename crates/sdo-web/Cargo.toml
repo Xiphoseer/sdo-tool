@@ -40,7 +40,7 @@ web-sys = { version = "0.3.68", features = [
 ] }
 signum = { path = "../signum", features = ["image"] }
 sdo-util = { path = "../sdo-util" }
-sdo-pdf = { path = "../sdo-pdf" }
+sdo-pdf = { path = "../sdo-pdf", features = ["js"]}
 serde-wasm-bindgen = "0.4.5"
 console_log = { version = "1.0.0", features = ["wasm-bindgen"] }
 log = "0.4"

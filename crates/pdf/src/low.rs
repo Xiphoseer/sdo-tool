@@ -3,16 +3,15 @@
 //! This module contains structs and enums for representing/creating a PDF
 //! that is already split up into objects with opaque reference IDs.
 
-use std::{borrow::Cow, io};
+use std::{
+    borrow::Cow,
+    io::{self, Write},
+};
+
+use flate2::{write::ZlibEncoder, Compression};
 
 use crate::{
-    common::Dict,
-    common::Encoding,
-    common::Matrix,
-    common::ObjRef,
-    common::PdfString,
-    common::ProcSet,
-    common::{Rectangle, StreamMetadata},
+    common::{Dict, Encoding, Matrix, ObjRef, PdfString, ProcSet, Rectangle, StreamMetadata},
     encoding::ascii_85_encode,
     write::Formatter,
     write::PdfName,
@@ -222,6 +221,60 @@ impl Serialize for Ascii85Stream<'_> {
     }
 }
 
+/// A character drawing procedure
+pub struct FlateStream<'a> {
+    /// The data of this stream
+    pub data: Cow<'a, [u8]>,
+    /// The associated metadata
+    pub meta: StreamMetadata,
+}
+
+impl Serialize for FlateStream<'_> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::best());
+        e.write_all(self.data.as_ref()).unwrap();
+        let mut buf = e.finish()?;
+        let len = buf.len();
+        buf.push(10);
+        f.pdf_dict()
+            .embed(&self.meta)?
+            .field("Length", &len)?
+            .field("Filter", &PdfName("FlateDecode"))?
+            .finish()?;
+        f.pdf_stream(&buf)?;
+        Ok(())
+    }
+}
+
+/// A character drawing procedure
+pub struct FlateAscii85Stream<'a> {
+    /// The data of this stream
+    pub data: &'a [u8],
+    /// The associated metadata
+    pub meta: StreamMetadata,
+}
+
+impl Serialize for FlateAscii85Stream<'_> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::best());
+        e.write_all(self.data.as_ref()).unwrap();
+        let mut buf = e.finish()?;
+        let mut out = Vec::new();
+        let len = ascii_85_encode(&buf, &mut out)?;
+        buf.push(10);
+        f.pdf_dict()
+            .embed(&self.meta)?
+            .field("Length", &len)?
+            .field(
+                "Filter",
+                &(PdfName("ASCII85Decode"), PdfName("FlateDecode")),
+            )?
+            .finish()?;
+        f.pdf_stream(&out)?;
+        Ok(())
+    }
+}
+
 /// An emedded object resource
 pub enum XObject<'a> {
     /// An image object
@@ -281,6 +334,8 @@ impl Serialize for Pages {
 pub struct Stream {
     /// The (unencoded) data
     pub data: Vec<u8>,
+    /// Additional metadata
+    pub meta: StreamMetadata,
 }
 
 impl Serialize for Stream {
@@ -289,7 +344,10 @@ impl Serialize for Stream {
         if self.data.ends_with(&[0x0a]) {
             len -= 1;
         }
-        f.pdf_dict().field("Length", &len)?.finish()?;
+        f.pdf_dict()
+            .embed(&self.meta)?
+            .field("Length", &len)?
+            .finish()?;
         f.pdf_stream(&self.data)?;
         Ok(())
     }
@@ -343,6 +401,8 @@ pub struct Catalog {
     pub outline: Option<ObjRef>,
     /// Optional List of output intents
     pub output_intents: Vec<ObjRef>,
+    /// XMP metadata stream
+    pub metadata: Option<ObjRef>,
 }
 
 impl Serialize for Catalog {
@@ -354,6 +414,7 @@ impl Serialize for Catalog {
             .opt_field("PageLabels", &self.page_labels)?
             .opt_field("Outlines", &self.outline)?
             .opt_arr_field("OutputIntents", &self.output_intents)?
+            .opt_field("Metadata", &self.metadata)?
             .finish()
     }
 }

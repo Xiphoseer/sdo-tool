@@ -84,6 +84,12 @@ impl fmt::Display for PDFDocEncodingError {
     }
 }
 
+impl From<PDFDocEncodingError> for io::Error {
+    fn from(error: PDFDocEncodingError) -> Self {
+        io::Error::new(io::ErrorKind::Other, error)
+    }
+}
+
 fn pdf_char_encode(chr: char) -> Result<u8, PDFDocEncodingError> {
     match u32::from(chr) {
         0x00..=0x17 | 0x20..=0x7E | 0xA1..=0xff => Ok(chr as u8),

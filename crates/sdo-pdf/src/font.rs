@@ -98,6 +98,9 @@ impl From<PrinterKind> for FontMetrics {
 
 pub(crate) const DEFAULT_FONT_SIZE: i32 = 10;
 
+const _COLOR_SPACE: &str = "[/CalGray<</WhitePoint[0.9505 1.0000 1.0890]>>]";
+const COLOR_SPACE: &str = "/G";
+
 /// Write a printer character to the stream
 pub fn write_char_stream<W: Write>(
     w: &mut W,
@@ -150,7 +153,7 @@ pub fn write_char_stream<W: Write>(
     writeln!(w, "  /BPC 1")?;
     writeln!(w, "  /D[0 1]")?;
     writeln!(w, "  /F/CCF")?;
-    //writeln!(w, "  /CS/CalGray")?;
+    writeln!(w, "  /CS{}", COLOR_SPACE)?;
     writeln!(w, "  /DP<</K -1/Columns {}>>", box_width)?;
     writeln!(w, "ID")?;
 
