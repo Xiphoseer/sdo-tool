@@ -15,12 +15,10 @@
 //! let mut doc = Handle::new();
 //!
 //! // Set some metadata
-//! doc.info.author = Some(PdfString::new("Xiphoseer"));
-//! doc.info.creator = Some(PdfString::new("SIGNUM (c) 1986-93 F. Schmerbeck"));
-//! doc.info.producer = Some(PdfString::new("Signum! Document Toolbox"));
-//! doc.info.title = Some(PdfString::new("EMPTY.SDO"));
-//! doc.info.mod_date = Some(Local::now());
-//! doc.info.creation_date = Some(Local::now());
+//! doc.meta.author = vec!["Xiphoseer".to_string()];
+//! doc.meta.creator = Some("SIGNUM (c) 1986-93 F. Schmerbeck".to_string());
+//! doc.meta.producer = "Signum! Document Toolbox".to_string();
+//! doc.meta.title = Some("EMPTY.SDO".to_string());
 //!
 //! // Create a page
 //! let page = Page {
@@ -50,6 +48,7 @@ pub mod low;
 pub mod lowering;
 pub mod util;
 pub mod write;
+pub mod xmp;
 
 #[doc(hidden)]
 pub extern crate chrono;

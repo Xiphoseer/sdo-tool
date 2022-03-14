@@ -1,6 +1,9 @@
 //! Methods to produce a binary file
 
-use std::{io::{self, Write}, num::{NonZeroI32, NonZeroU32}};
+use std::{
+    io::{self, Write},
+    num::{NonZeroI32, NonZeroU32},
+};
 
 use chrono::{DateTime, Local};
 
@@ -31,7 +34,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
     }
 
     /// Write a field
-    pub fn field(&mut self, name: &str, value: &dyn Serialize) -> io::Result<&mut Self> {
+    pub fn field<T: Serialize + ?Sized>(&mut self, name: &str, value: &T) -> io::Result<&mut Self> {
         self.check_first()?;
         self.f.indent += 2;
         self.f.indent()?;
@@ -348,6 +351,18 @@ impl<X: Serialize> Serialize for Vec<X> {
         }
         write!(f.inner, "]")?;
         Ok(())
+    }
+}
+
+impl<X: Serialize, const N: usize> Serialize for [X; N] {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        self.as_slice().write(f)
+    }
+}
+
+impl<A: Serialize, B: Serialize> Serialize for (A, B) {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.pdf_arr().entry(&self.0)?.entry(&self.1)?.finish()
     }
 }
 
