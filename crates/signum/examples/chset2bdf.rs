@@ -5,10 +5,10 @@ use std::{
     path::PathBuf,
 };
 
+use clap::Parser;
 use signum::chsets;
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Args {
     input: PathBuf,
 }
@@ -31,7 +31,7 @@ impl fmt::Write for FileWriter {
 }
 
 fn main() -> io::Result<()> {
-    let args = Args::from_args();
+    let args = Args::parse();
 
     let pset_bytes = std::fs::read(&args.input)?;
     let name = args.input.file_stem().unwrap().to_string_lossy();

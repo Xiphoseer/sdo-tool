@@ -221,12 +221,20 @@ impl<'a> Document<'a> {
             Format::PDraw => pdraw::output_pdraw(self),
             Format::Png => imgseq::output_print(self, fc, print_driver),
             Format::Pdf => pdf::output_pdf(self, fc),
-            Format::DviPsBitmapFont | Format::CcItt6 => {
-                error!("Document can't be formatted as a font");
+            Format::DviPsBitmapFont => {
+                error!("Document export as PostScript font not supported!");
+                Ok(())
+            }
+            Format::CcItt6 => {
+                error!("Document export as CCITT-T6 (bitmap) not supported!");
                 Ok(())
             }
             Format::Pbm => {
-                error!("Document export as PBM not supported!");
+                error!("Document export as PBM (bitmap) not supported!");
+                Ok(())
+            }
+            Format::Bdf => {
+                error!("Document export as BDF (font) not supported!");
                 Ok(())
             }
         }

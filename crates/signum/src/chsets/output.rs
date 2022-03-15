@@ -22,14 +22,14 @@ pub mod bdf {
         writeln!(o, "ENCODING {}", code)?;
         writeln!(o, "SWIDTH {} {}", echar.width as u32 * 64, 0)?;
         writeln!(o, "DWIDTH {} {}", chr.width as u32 * 8, 0)?;
-        let half = (pk.line_height() as i32 - pk.baseline()) / 2;
+        let half = (pk.line_height() as i32 - pk.baseline() as i32) / 2;
         writeln!(
             o,
             "BBX {} {} {} {}",
             (chr.width * 8),
             chr.height, //pk.line_height(),
             0,
-            pk.baseline() - (chr.top as i32) - (chr.height as i32) + half,
+            (pk.baseline() as i32) - (chr.top as i32) - (chr.height as i32) + half,
         )?;
         writeln!(o, "BITMAP")?;
         for scanline in chr.bitmap.chunks(chr.width as usize) {
@@ -94,7 +94,7 @@ pub mod bdf {
             pset.pk.line_height(),
             pset.pk.line_height(),
             0,
-            pset.pk.line_height() as i32 - pset.pk.baseline(),
+            pset.pk.line_height() as i32 - pset.pk.baseline() as i32,
         )?;
         writeln!(o, "STARTPROPERTIES 2",)?;
 

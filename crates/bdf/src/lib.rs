@@ -14,11 +14,13 @@ impl fmt::Display for Font<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "STARTFONT 2.1")?;
         writeln!(f, "FONT {}", self.font_descriptor)?;
-        writeln!(f, 
+        writeln!(
+            f,
             "SIZE {} {} {}",
             self.size.point_size, self.size.xdpi, self.size.ydpi
         )?;
-        writeln!(f, 
+        writeln!(
+            f,
             "FONTBOUNDINGBOX {} {} {} {}",
             self.bounding_box.width,
             self.bounding_box.height,
@@ -54,9 +56,14 @@ impl fmt::Display for Char<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "STARTCHAR U+{:04x}", self.unicode)?;
         writeln!(f, "ENCODING {}", self.encoding)?;
-        writeln!(f, "SWIDTH {} {}", self.scalable_width.x, self.scalable_width.y)?;
+        writeln!(
+            f,
+            "SWIDTH {} {}",
+            self.scalable_width.x, self.scalable_width.y
+        )?;
         writeln!(f, "DWIDTH {} {}", self.device_width.x, self.device_width.y)?;
-        writeln!(f, 
+        writeln!(
+            f,
             "BBX {} {} {} {}",
             self.bounding_box.width,
             self.bounding_box.height,
