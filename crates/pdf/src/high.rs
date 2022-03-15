@@ -3,8 +3,8 @@
 use std::{borrow::Cow, collections::BTreeMap, io, str::FromStr};
 
 use chrono::{DateTime, Local};
-use guid_create::GUID;
 use io::Write;
+use uuid::Uuid;
 
 use crate::{
     common::{
@@ -385,8 +385,8 @@ impl<'a> Handle<'a> {
             metadata_date: now,
         })?;
         writer.add_description(&xmp::XmpMM {
-            document_id: GUID::rand(),
-            instance_id: GUID::rand(),
+            document_id: Uuid::new_v4(),
+            instance_id: Uuid::new_v4(),
         })?;
 
         writer.finish()

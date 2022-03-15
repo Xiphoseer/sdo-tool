@@ -1,7 +1,8 @@
 //! ## XMP generation facilities
 
-use guid_create::GUID;
 use std::{collections::BTreeMap, fmt, io};
+
+use uuid::Uuid;
 
 /// Implemented for structures that can hold XMP description data
 pub trait XmpDescription {
@@ -158,9 +159,9 @@ impl XmpDescription for XmpBasic {
 /// Adobe XMP Media Management
 pub struct XmpMM {
     /// Unique identifier for this document
-    pub document_id: GUID,
+    pub document_id: Uuid,
     /// Unqiue identifier for the latest modification
-    pub instance_id: GUID,
+    pub instance_id: Uuid,
 }
 
 impl XmpDescription for XmpMM {
