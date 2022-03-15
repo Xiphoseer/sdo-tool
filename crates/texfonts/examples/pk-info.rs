@@ -4,10 +4,9 @@ use nom_supreme::{
     final_parser::{ByteOffset, ExtractContext},
 };
 use std::path::PathBuf;
-use structopt::StructOpt;
 use texfonts::pk::{Decoder, Event};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::Parser)]
 /// Prints information about a X11 PCF file
 struct Opts {
     file: PathBuf,
@@ -33,7 +32,7 @@ where
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    let opts: Opts = Opts::from_args();
+    let opts: Opts = <Opts as clap::Parser>::parse();
     let buffer = std::fs::read(opts.file)?;
 
     let decoder: Decoder<'_, ErrorTree<&[u8]>> = Decoder::new(&buffer);

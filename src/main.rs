@@ -1,6 +1,7 @@
 //! # Signum! file tool
 #![warn(missing_docs)]
 
+use clap::Parser;
 use color_eyre::eyre::{self, eyre, WrapErr};
 use log::{error, info, LevelFilter};
 use sdo_tool::cli::{
@@ -14,14 +15,14 @@ use std::{
     fs::File,
     io::{BufReader, Read},
 };
-use structopt::StructOpt;
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    pretty_env_logger::formatted_builder()
+    env_logger::builder()
+        .format_timestamp(None)
         .filter_level(LevelFilter::Info)
         .init();
-    let opt = Options::from_args();
+    let opt = Options::parse();
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {
         format!("Failed to open file: `{}`", opt.file.display())

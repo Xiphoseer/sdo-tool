@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromStr};
 
+use clap::Parser;
 use pdf_create::high;
 use sdo_pdf::MetaInfo;
 use serde::Deserialize;
 use signum::{chsets::FontKind, docs::Overrides};
-use structopt::StructOpt;
 use thiserror::*;
 
 mod de;
@@ -28,7 +28,8 @@ pub enum Format {
     Png,
     /// Portable Bitmap Format (Images)
     Pbm,
-
+    /// Glyph Bitmap Distribution Format (Fonts)
+    Bdf,
     /// A dvips-compatible inline postscript bitmap font (unstable)
     DviPsBitmapFont,
     /// A sequence of CCITT group 4 encoded bitmaps (Fonts)
@@ -49,6 +50,8 @@ impl fmt::Display for FormatError {
     }
 }
 
+impl std::error::Error for FormatError {}
+
 impl FromStr for Format {
     type Err = FormatError;
     fn from_str(val: &str) -> Result<Self, Self::Err> {
@@ -61,28 +64,35 @@ impl FromStr for Format {
             "pbm" => Ok(Self::Pbm),
             "pdraw" => Ok(Self::PDraw),
             "dvipsbf" => Ok(Self::DviPsBitmapFont),
-            "ccitt-t6" => Ok(Self::CcItt6),
+            "ccitt" | "ccitt-t6" => Ok(Self::CcItt6),
             _ => Err(FormatError {}),
+        }
+    }
+}
+
+impl Format {
+    fn to_static_str(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::Html => "html",
+            Self::PostScript => "ps",
+            Self::Png => "png",
+            Self::Pbm => "pbm",
+            Self::Pdf => "pdf",
+            Self::PDraw => "pdraw",
+            Self::DviPsBitmapFont => "dvipsbf",
+            Self::CcItt6 => "ccitt-t6",
+            Self::Bdf => "bdf",
         }
     }
 }
 
 impl fmt::Display for Format {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Plain => f.write_str("plain"),
-            Self::Html => f.write_str("html"),
-            Self::PostScript => f.write_str("ps"),
-            Self::Png => f.write_str("png"),
-            Self::Pbm => f.write_str("pbm"),
-            Self::Pdf => f.write_str("pdf"),
-            Self::PDraw => f.write_str("pdraw"),
-            Self::DviPsBitmapFont => f.write_str("dvipsbf"),
-            Self::CcItt6 => f.write_str("ccitt-t6"),
-        }
+        f.write_str(self.to_static_str())
     }
 }
-#[derive(StructOpt)]
+#[derive(Parser)]
 /// Convert a Signum file to another format
 pub struct Options {
     /// The file to be processed (e.g. *.SDO, *.E24, *.IMC)
@@ -90,30 +100,30 @@ pub struct Options {
     /// Where to store the output
     pub out: Option<PathBuf>,
     /// If specified, extract all embedded images to that folder
-    #[structopt(long = "with-images", short = "I")]
+    #[clap(long = "with-images", short = 'I')]
     pub with_images: Option<PathBuf>,
     /// Select the printer font (and resolution).
     ///
     /// May fail, if the fonts are not available.
-    #[structopt(long = "print-driver", short = "P")]
+    #[clap(long = "print-driver", short = 'P')]
     pub print_driver: Option<FontKind>,
-    #[structopt(long, short = "C", default_value = "CHSETS")]
+    #[clap(long, short = 'C', default_value = "CHSETS")]
     pub chsets_path: PathBuf,
     /// If specified, limits the pages that are printed
-    #[structopt(long = "page", short = "#")]
+    #[clap(long = "page", short = '#')]
     pub page: Option<Vec<usize>>,
     /// Format of the output. Valid choices are:
     ///
-    /// "plain", "html", "pdf", "ps", "png", "pbm" and "pdraw"
-    #[structopt(default_value, long, short = "F")]
+    /// "plain", "html", "pdf", "ps", "png", "pbm", "bdf" and "pdraw"
+    #[clap(default_value_t, long, short = 'F')]
     pub format: Format,
 
     /// Meta Parameters passed as command line args
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub cl_meta: Meta,
 
     /// Meta parameter as a file
-    #[structopt(long)]
+    #[clap(long)]
     pub meta: Option<PathBuf>,
 }
 
@@ -152,26 +162,26 @@ impl Options {
     }
 }
 
-#[derive(Debug, Default, Clone, StructOpt, Deserialize)]
+#[derive(Debug, Default, Clone, Parser, Deserialize)]
 pub struct Meta {
     /// Horizontal offset
-    #[structopt(long)]
+    #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_i32")]
     pub xoffset: Option<i32>,
     /// Vertical offset
-    #[structopt(long)]
+    #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_i32")]
     pub yoffset: Option<i32>,
     /// Author
-    #[structopt(long)]
+    #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub author: Option<String>,
     /// Title
-    #[structopt(long)]
+    #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub title: Option<String>,
     /// Subject
-    #[structopt(long)]
+    #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub subject: Option<String>,
 }

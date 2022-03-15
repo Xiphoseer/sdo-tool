@@ -138,7 +138,11 @@ impl<'a> Document<'a> {
                 Ok(())
             }
             Format::Pbm => {
-                error!("Document export as PBM not supported!");
+                error!("Document export as PBM (bitmap) not supported!");
+                Ok(())
+            }
+            Format::Bdf => {
+                error!("Document export as BDF (font) not supported!");
                 Ok(())
             }
         }

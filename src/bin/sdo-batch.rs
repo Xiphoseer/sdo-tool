@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use clap::Parser;
 use color_eyre::eyre::{self, WrapErr};
 use log::{info, LevelFilter};
 use pdf_create::{
@@ -18,7 +19,6 @@ use signum::{
     chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec},
     util::LocalFS,
 };
-use structopt::StructOpt;
 
 use sdo_tool::cli::{
     opt::{DocScript, Format, Meta, Options, OutlineItem},
@@ -28,12 +28,13 @@ use sdo_tool::cli::{
     },
 };
 
-#[derive(StructOpt, Debug)]
+#[derive(clap::Parser, Debug)]
 /// Run a document script
 pub struct RunOpts {
     /// A document script
     file: PathBuf,
     /// The output folder
+    #[clap(default_value = ".")]
     out: PathBuf,
 }
 
@@ -159,10 +160,11 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    pretty_env_logger::formatted_builder()
+    env_logger::builder()
+        .format_timestamp(None)
         .filter_level(LevelFilter::Info)
         .init();
-    let opt: RunOpts = RunOpts::from_args();
+    let opt: RunOpts = RunOpts::parse();
 
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {

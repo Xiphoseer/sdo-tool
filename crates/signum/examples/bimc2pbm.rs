@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use clap::Parser;
 use color_eyre::eyre::eyre;
 use signum::images::imc::parse_imc;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 /// Converts a file from Signum! IMC to a Portable Bit-Map
 struct Opts {
     /// The file to convert
@@ -13,7 +13,7 @@ struct Opts {
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    let opts: Opts = Opts::from_args();
+    let opts: Opts = Opts::parse();
 
     let file = std::fs::read(opts.file)?;
     let image = parse_imc(&file).map_err(|e| eyre!("{}", e))?;
