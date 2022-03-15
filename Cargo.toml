@@ -5,32 +5,32 @@ authors = ["daniel"]
 edition = "2018"
 
 [dependencies]
-structopt = "0.3"
+clap = { version = "3.1", features = ["derive"] }
 color-eyre = { version = "0.5", default-features = false }
 prettytable-rs = { version = "0.8", default-features = false }
 log = "0.4"
-pretty_env_logger = "0.4"
+env_logger = { version = "0.8.4", default-features = false }
 bitflags = "1.2"
 thiserror = "1.0"
-nom-supreme = "0.4"
+nom-supreme = { version = "0.7", features = ["error"] }
 ccitt-t4-t6 = { path = "crates/ccitt" }
 pdf-create = { path = "crates/pdf" }
 sdo-pdf = { path = "crates/sdo-pdf" }
 sdo-ps = { path = "crates/sdo-ps" }
-signum = { path = "crates/signum", features = ["image"] }
 ron = "0.6"
 serde = "1.0"
 
-[dev-dependencies]
-pdf = "0.7"
+[dependencies.signum]
+path = "crates/signum"
+features = ["image"]
 
 [dependencies.image]
 default-features = false
 version = "0.23"
 features = ["png"]
 
-#[profile.dev]
-#opt-level = 1
+[dev-dependencies]
+pdf = "0.7"
 
 [workspace]
 members = ["crates/*"]

@@ -55,7 +55,7 @@ impl PrinterKind {
     }
 
     /// Get the position of the character baseline from the top of the glyph bounding box
-    pub fn baseline(self) -> i32 {
+    pub fn baseline(self) -> u8 {
         match self {
             Self::Needle9 => 35,
             Self::Needle24 => 58,
