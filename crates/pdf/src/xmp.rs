@@ -1,7 +1,7 @@
 //! ## XMP generation facilities
 
-use std::{collections::BTreeMap, fmt, io};
 use guid_create::GUID;
+use std::{collections::BTreeMap, fmt, io};
 
 /// Implemented for structures that can hold XMP description data
 pub trait XmpDescription {
@@ -192,7 +192,10 @@ pub struct XmpWriter<W>(W);
 impl<W: io::Write> XmpWriter<W> {
     /// Create a new instance
     pub fn new(mut w: W) -> io::Result<Self> {
-        writeln!(w, "<?xpacket begin='\u{FEFF}' id='W5M0MpCehiHzreSzNTczkc9d' ?>")?;
+        writeln!(
+            w,
+            "<?xpacket begin='\u{FEFF}' id='W5M0MpCehiHzreSzNTczkc9d' ?>"
+        )?;
         writeln!(
             w,
             "<x:xmpmeta xmlns:x=\"{}\" x:xmptk=\"{}\">",

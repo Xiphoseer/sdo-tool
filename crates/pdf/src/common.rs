@@ -4,12 +4,16 @@ use std::{
     collections::BTreeMap,
     fmt, io,
     num::{NonZeroI32, NonZeroU32},
-    ops::{Add, Deref, DerefMut, Mul}, str::FromStr,
+    ops::{Add, Deref, DerefMut, Mul},
+    str::FromStr,
 };
 
 //use pdf::primitive::PdfString;
 
-use crate::{write::{Formatter, PdfName, Serialize, ToDict}, encoding::{pdf_doc_encode, PDFDocEncodingError}};
+use crate::{
+    encoding::{pdf_doc_encode, PDFDocEncodingError},
+    write::{Formatter, PdfName, Serialize, ToDict},
+};
 
 /// A PDF Byte string
 #[derive(Clone, Eq, PartialEq)]
@@ -29,7 +33,6 @@ impl FromStr for PdfString {
         pdf_doc_encode(s).map(Self)
     }
 }
-
 
 impl PdfString {
     /// Get a slice to the contained bytes
