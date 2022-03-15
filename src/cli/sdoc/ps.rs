@@ -5,21 +5,22 @@ use log::warn;
 use sdo_ps::out::PsWriter;
 use signum::chsets::{cache::ChsetCache, FontKind};
 
-use crate::cli::font::ps::write_ls30_ps_bitmap;
+use crate::cli::{font::ps::write_ls30_ps_bitmap, opt::Options};
 
 use super::{ps_proc::prog_dict, Document};
 
 fn output_ps_writer(
     doc: &Document,
+    opt: &Options,
     fc: &ChsetCache,
     pw: &mut PsWriter<impl Write>,
 ) -> eyre::Result<()> {
-    let pd = fc.print_driver(doc.opt.print_driver)?;
+    let pd = fc.print_driver(opt.print_driver)?;
     let (hdpi, vdpi) = pd.resolution();
 
     pw.write_magic()?;
     pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
-    let file_name = doc.opt.file.file_name().unwrap().to_string_lossy();
+    let file_name = opt.file.file_name().unwrap().to_string_lossy();
     pw.write_meta_field("Title", file_name.as_ref())?;
     //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;
     pw.write_meta_field("Pages", &format!("{}", doc.page_count))?;
@@ -113,7 +114,7 @@ fn output_ps_writer(
     })?;
     pw.write_meta("EndSetup")?;
 
-    let meta = &doc.opt.meta()?;
+    let meta = &opt.meta()?;
     let x_offset = meta.xoffset.unwrap_or(0);
 
     for (index, page) in doc.tebu.iter().enumerate() {
@@ -172,20 +173,19 @@ fn output_ps_writer(
     Ok(())
 }
 
-pub fn output_postscript(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    if doc.opt.out.as_deref() == Some(Path::new("-")) {
+pub fn output_postscript(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
+    if opt.out.as_deref() == Some(Path::new("-")) {
         println!("----------------------------- PostScript -----------------------------");
         let mut pw = PsWriter::new();
-        output_ps_writer(doc, fc, &mut pw)?;
+        output_ps_writer(doc, opt, fc, &mut pw)?;
         println!("----------------------------------------------------------------------");
         Ok(())
     } else {
-        let out = doc
-            .opt
+        let out = opt
             .out
             .as_deref()
-            .unwrap_or_else(|| doc.opt.file.parent().unwrap());
-        let file = doc.opt.file.file_stem().unwrap();
+            .unwrap_or_else(|| opt.file.parent().unwrap());
+        let file = opt.file.file_stem().unwrap();
         let out = {
             let mut buf = out.join(file);
             buf.set_extension("ps");
@@ -195,7 +195,7 @@ pub fn output_postscript(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
         let out_buf = BufWriter::new(out_file);
         let mut pw = PsWriter::from(out_buf);
         print!("Writing `{}` ...", out.display());
-        output_ps_writer(doc, fc, &mut pw)?;
+        output_ps_writer(doc, opt, fc, &mut pw)?;
         println!(" Done!");
         Ok(())
     }

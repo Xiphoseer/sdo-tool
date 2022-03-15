@@ -53,6 +53,7 @@ impl Contents {
             cset: 0xff,
             fs: 0,
             fw: 100,
+            leading: 0.0,
             inner,
         }
     }
@@ -77,6 +78,8 @@ pub struct TextContents {
 
     line_y: u32,
     line_x: u32,
+
+    leading: f32,
 }
 
 impl TextContents {
@@ -89,13 +92,21 @@ impl TextContents {
         self.line_started = false;
     }
 
-    fn start_line(&mut self) {
+    fn start_line(&mut self) -> io::Result<()> {
         if !self.line_started {
             self.line_started = true;
             let diff_y = (self.line_y - self.pos_y) as f32;
-            writeln!(self.inner, "{} {} Td", self.line_x, diff_y / 3.0).unwrap();
+            let new_leading = diff_y / 3.0;
+            if new_leading == self.leading && self.line_x == 0 {
+                write!(self.inner, "T*")?;
+                self.needs_space = true;
+            } else {
+                writeln!(self.inner, "{} {} TD", self.line_x, new_leading)?;
+            }
+            self.leading = new_leading;
             self.pos_y = self.line_y;
         }
+        Ok(())
     }
 
     pub fn cset(&mut self, cset: u8, font_size: u8) {
@@ -116,19 +127,21 @@ impl TextContents {
     }
 
     /// xoff in font-units (1/72000)
-    pub fn xoff(&mut self, xoff: i32) {
-        self.open();
+    pub fn xoff(&mut self, xoff: i32) -> io::Result<()> {
+        self.open()?;
         self.buf_flush();
         if self.needs_space {
-            write!(self.inner, " ").unwrap();
+            write!(self.inner, " ")?;
         }
-        write!(self.inner, "{}", xoff).unwrap();
+        write!(self.inner, "{}", xoff)?;
         self.needs_space = true;
+        Ok(())
     }
 
-    pub fn byte(&mut self, byte: u8) {
-        self.open();
+    pub fn byte(&mut self, byte: u8) -> io::Result<()> {
+        self.open()?;
         self.buf.push(byte);
+        Ok(())
     }
 
     fn buf_flush(&mut self) {
@@ -157,13 +170,14 @@ impl TextContents {
         self.needs_space = false;
     }
 
-    fn open(&mut self) {
+    fn open(&mut self) -> io::Result<()> {
         if !self.open {
-            self.start_line();
-            write!(self.inner, "[").unwrap();
+            self.start_line()?;
+            write!(self.inner, "[")?;
             self.open = true;
             self.needs_space = false;
         }
+        Ok(())
     }
 
     pub fn flush(&mut self) {
