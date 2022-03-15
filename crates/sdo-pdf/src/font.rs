@@ -50,11 +50,28 @@ pub const DEFAULT_NAMES: [&str; 128] = [
     "x",           "y",          "z",           "Odieresis",  "bar",       "Adieresis", "asciitilde",  "germandbls",
 ];
 
-/// Charcodes of all characters that have a different name compared to the `WinAnsiEncoding`
+/*/// Charcodes of all characters that have a different name compared to the `WinAnsiEncoding`
 pub const DIFFERENCES: &[u8] = &[
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     26, 27, 28, 29, 30, 31, 32, 64, 91, 92, 93, 123, 125, 127,
-];
+];*/
+
+pub const MAPPED: &[u8] = &[32, 64, 91, 92, 93, 123, 125, 127];
+
+pub fn encode_byte(cval: u8) -> u8 {
+    match cval {
+        // Turn a space into a `WinAnsiEncoding` `section`
+        32 => 0o247,  // section
+        64 => 0o374,  // udieresis
+        91 => 0o366,  // odieresis
+        92 => 0o334,  // Udieresis
+        93 => 0o344,  // adieresis
+        123 => 0o326, // Odieresis
+        125 => 0o304, // Adieresis
+        127 => 0o337, // germandbls
+        _ => cval,
+    }
+}
 
 pub struct FontMetrics {
     pub baseline: u8,
@@ -170,9 +187,22 @@ pub fn type3_font<'a>(
     let font_matrix = Matrix::scale(0.001, -0.001);
 
     let (first_char, last_char) = use_table.first_last()?;
-    let capacity = (last_char - first_char + 1) as usize;
+    let glyph_count = (last_char - first_char + 1) as usize;
+    
+    // Fixup mapped chars
+    let mut last_code = last_char;
+    for &code in MAPPED {
+        if use_table.chars[code as usize] > 0 {
+            let coded = encode_byte(code);
+            if coded > last_code {
+                last_code = coded;
+            }
+        }
+    }
+
+    let capacity = (last_code - first_char + 1) as usize;
     let mut widths = Vec::with_capacity(capacity);
-    let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
+    let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(glyph_count);
 
     let mut max_width = 0;
 
@@ -190,7 +220,13 @@ pub fn type3_font<'a>(
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
             let width = u32::from(ewidth) * (800 / font_size);
-            widths.push(width);
+            let coded = encode_byte(cval);
+            let index = (coded - first_char) as usize;
+            while widths.len() <= index {
+                widths.push(0);
+            }
+            widths[index] = width;
+            
             max_width = max_width.max(width as i32);
 
             let pchar = &pfont.chars[cvu];
@@ -247,8 +283,7 @@ pub fn type3_font<'a>(
     }
 
     let mut differences = SparseSet::with_size(256);
-    for cval in DIFFERENCES {
-        let i = *cval as usize;
+    for i in 0..32 {
         if use_table.chars[i] > 0 {
             // skip unused chars
             differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
@@ -272,6 +307,7 @@ pub fn type3_font<'a>(
         stem_h: None,
     });
 
+    // FIXME: update to include `encode_byte` cases
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
         write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
@@ -286,7 +322,7 @@ pub fn type3_font<'a>(
         font_bbox,
         font_matrix,
         first_char,
-        last_char,
+        last_char: last_code,
         char_procs,
         font_descriptor,
         encoding: Encoding {
@@ -308,7 +344,8 @@ impl FontInfo {
     pub fn width(&self, cval: u8) -> u32 {
         assert!(cval < 128);
         let fc = self.first_char;
-        let wi = (cval - fc) as usize;
+        let idx = encode_byte(cval);
+        let wi = (idx - fc) as usize;
         self.widths[wi]
     }
 }

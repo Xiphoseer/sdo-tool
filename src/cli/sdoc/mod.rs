@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
@@ -15,7 +17,7 @@ use signum::{
         hcim::{parse_hcim, parse_image, ImageSite},
         header::parse_header,
         pbuf::{self, parse_pbuf},
-        sysp::parse_sysp,
+        sysp::{parse_sysp, SysP},
         tebu::{parse_page_text, parse_tebu_header, PageText},
     },
     nom::{multi::count, Finish},
@@ -45,23 +47,28 @@ impl Pos {
     }
 }
 
-pub struct Document<'a> {
-    // Configuration
-    opt: &'a Options,
+pub struct Image {
+    pub key: String,
+    pub image: Page,
+}
+
+pub struct Document {
     // cset
     pub cset: [Option<String>; 8],
     pub chsets: [Option<usize>; 8],
+    // sysp
+    sysp: Option<SysP>,
     // pbuf
     pages: Vec<Option<pbuf::Page>>,
     page_count: usize,
     // tebu
     tebu: Vec<PageText>,
     // hcim
-    pub(crate) images: Vec<Page>,
+    pub(crate) images: Vec<Image>,
     pub(crate) sites: Vec<ImageSite>,
 }
 
-impl<'a> Document<'a> {
+impl Document {
     pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'static>> {
         self.chsets[cset as usize].and_then(|index| fc.eset(index))
     }
@@ -95,21 +102,20 @@ impl<'a> Document<'a> {
         use_matrix
     }
 
-    pub fn new(opt: &'a Options) -> Self {
+    pub fn new() -> Self {
         Document {
-            opt,
             cset: [None, None, None, None, None, None, None, None],
             chsets: [None; 8],
+            sysp: None,
             pages: vec![],
             page_count: 0,
-            //print_driver: opt.print_driver,
             tebu: vec![],
             images: vec![],
             sites: vec![],
         }
     }
 
-    fn process_cset<'x>(&mut self, fc: &mut ChsetCache, part: Buf<'x>) -> eyre::Result<()> {
+    fn process_cset<'x>(&mut self, part: Buf<'x>, fc: &mut ChsetCache) -> eyre::Result<()> {
         info!("Loading 'cset' chunk");
         let charsets = util::load(parse_cset, part.0)?;
         info!("CHSETS: {:?}", charsets);
@@ -128,6 +134,7 @@ impl<'a> Document<'a> {
         info!("Loading 'sysp' chunk");
         let sysp = util::load(parse_sysp, part.0)?;
         debug!("{:?}", sysp);
+        self.sysp = Some(sysp);
         Ok(())
     }
 
@@ -173,27 +180,17 @@ impl<'a> Document<'a> {
 
         debug!("{:?}", hcim.header);
 
-        let out_img = self.opt.with_images.as_ref();
-        if let Some(out_img) = out_img {
-            std::fs::create_dir_all(out_img)?;
-        }
-
         let mut images = Vec::with_capacity(hcim.header.img_count as usize);
 
-        for (index, img) in hcim.images.iter().enumerate() {
-            //println!("image[{}]:", index);
+        for img in hcim.images {
             match parse_image(img.0) {
                 Ok((_imgrest, im)) => {
                     debug!("Found image {:?}", im.key);
-                    //println!("{:#?}", im.bytes);
                     let page = Page::from_screen(im.image);
-                    if let Some(out_img) = out_img {
-                        let name = format!("{:02}-{}.png", index, im.key);
-                        let path = out_img.join(name);
-                        let img = page.to_image();
-                        img.save_with_format(&path, ImageFormat::Png)?;
-                    }
-                    images.push(page);
+                    images.push(Image {
+                        key: im.key.into_owned(),
+                        image: page,
+                    });
                 }
                 Err(e) => {
                     error!("Error: {}", e);
@@ -212,15 +209,14 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self, fc: &ChsetCache) -> eyre::Result<()> {
-        let print_driver = fc.print_driver(self.opt.print_driver)?;
-        match self.opt.format {
-            Format::Html => html::output_html(self, fc),
-            Format::Plain => console::output_console(self, fc),
-            Format::PostScript => ps::output_postscript(self, fc),
+    fn output(&self, fc: &ChsetCache, opt: &Options) -> eyre::Result<()> {
+        match opt.format {
+            Format::Html => html::output_html(self, opt, fc),
+            Format::Plain => console::output_console(self, opt, fc),
+            Format::PostScript => ps::output_postscript(self, opt, fc),
             Format::PDraw => pdraw::output_pdraw(self),
-            Format::Png => imgseq::output_print(self, fc, print_driver),
-            Format::Pdf => pdf::output_pdf(self, fc),
+            Format::Png => imgseq::output_print(self, opt, fc),
+            Format::Pdf => pdf::output_pdf(self, opt, fc),
             Format::DviPsBitmapFont => {
                 error!("Document export as PostScript font not supported!");
                 Ok(())
@@ -253,21 +249,22 @@ impl<'a> Document<'a> {
             .finish()
             .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
 
-        for Chunk { tag, buf } in sdoc.chunks {
+        for Chunk { tag, buf: part } in sdoc.chunks {
             match tag {
-                "0001" => self.process_0001(buf),
-                "cset" => self.process_cset(fc, buf),
-                "sysp" => self.process_sysp(buf),
-                "pbuf" => self.process_pbuf(buf),
-                "tebu" => self.process_tebu(buf),
-                "hcim" => self.process_hcim(buf),
+                "0001" => self.process_0001(part),
+                "cset" => self.process_cset(part, fc),
+                "sysp" => self.process_sysp(part),
+                "pbuf" => self.process_pbuf(part),
+                "tebu" => self.process_tebu(part),
+                "hcim" => self.process_hcim(part),
                 _ => {
-                    info!("Found unknown chunk '{}' ({} bytes)", tag, buf.0.len());
+                    info!("Found unknown chunk '{}' ({} bytes)", tag, part.0.len());
                     Ok(())
                 }
             }?;
         }
 
+        // Output rest
         if !rest.is_empty() {
             println!("remaining: {:#?}", Buf(rest));
         }
@@ -276,16 +273,33 @@ impl<'a> Document<'a> {
     }
 }
 
+fn output_images(doc: &Document, out_img: &Path) -> eyre::Result<()> {
+    std::fs::create_dir_all(out_img)?;
+    for (index, im) in doc.images.iter().enumerate() {
+        let name = format!("{:02}-{}.png", index, im.key);
+        let path = out_img.join(name);
+        let img = im.image.to_image();
+        img.save_with_format(&path, ImageFormat::Png)?;
+    }
+    Ok(())
+}
+
 pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
-    let mut document = Document::new(&opt);
+    let mut document = Document::new();
 
     let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);
     let mut fc = ChsetCache::new(chsets_folder);
+
     document.process_sdoc(input, &mut fc)?;
 
+    // Output images
+    if let Some(out_img) = opt.with_images.as_ref() {
+        output_images(&document, out_img)?;
+    }
+
     // Output the document
-    document.output(&fc)?;
+    document.output(&fc, &opt)?;
 
     Ok(())
 }

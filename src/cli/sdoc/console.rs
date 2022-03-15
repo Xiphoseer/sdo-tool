@@ -9,7 +9,7 @@ use signum::{
     },
 };
 
-use crate::cli::opt::Format;
+use crate::cli::opt::{Format, Options};
 
 use super::Document;
 
@@ -114,26 +114,26 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
     }
 }
 
-pub fn print_line(doc: &Document, fc: &ChsetCache, line: &Line, skip: u16) {
-    if line.flags.contains(Flags::FLAG) && doc.opt.format == Format::Html {
+pub fn print_line(doc: &Document, is_html: bool, is_plain: bool, fc: &ChsetCache, line: &Line, skip: u16) {
+    if line.flags.contains(Flags::FLAG) && is_html {
         println!("<F: {}>", line.extra);
     }
 
-    if line.flags.contains(Flags::PARA) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::PARA) && is_html {
         print!("<p>");
     }
 
     print_tebu_data(doc, fc, &line.data);
 
-    if line.flags.contains(Flags::ALIG) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::ALIG) && is_html {
         print!("<A>");
     }
 
-    if line.flags.contains(Flags::LINE) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::LINE) && is_html {
         print!("<br>");
     }
 
-    if doc.opt.format == Format::Plain {
+    if is_plain {
         println!();
     } else {
         println!("{{{}}}", skip);
@@ -214,8 +214,11 @@ fn print_img_sites(sites: &[ImageSite]) {
     image_table.printstd();
 }
 
-pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
+pub fn output_console(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
     print_pages(&doc.pages[..]);
+
+    let is_html = opt.format == Format::Html;
+    let is_plain = opt.format == Format::Plain;
 
     for page_text in &doc.tebu {
         let index = page_text.index as usize;
@@ -225,7 +228,7 @@ pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
         for (skip, line) in &page_text.content {
-            print_line(doc, fc, line, *skip);
+            print_line(doc, is_html, is_plain, fc, line, *skip);
         }
         println!(
             "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
