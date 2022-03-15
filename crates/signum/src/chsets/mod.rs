@@ -158,7 +158,7 @@ impl FontKind {
 
     /// Returns the amount of pixels from the top of the box to
     /// the baseline of the font.
-    pub fn baseline(&self) -> i32 {
+    pub fn baseline(&self) -> u8 {
         match self {
             Self::Editor => 18,
             Self::Printer(pk) => pk.baseline(),

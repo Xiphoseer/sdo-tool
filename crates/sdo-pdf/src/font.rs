@@ -57,7 +57,7 @@ pub const DIFFERENCES: &[u8] = &[
 ];
 
 pub struct FontMetrics {
-    pub baseline: i32,
+    pub baseline: u8,
     pub pixels_per_inch_x: u32,
     pub pixels_per_inch_y: u32,
     pub pixels_per_pdfunit_x: u32,
@@ -115,9 +115,9 @@ pub fn write_char_stream<W: Write>(
     let font_size = 10;
 
     // This is in pixels
-    let top = font_metrics.baseline;
-    let ur_y = top - (pchar.top as i32);
-    let ll_y = ur_y - pchar.height as i32;
+    let top = font_metrics.baseline as i8;
+    let ur_y = top - pchar.top as i8;
+    let ll_y = ur_y - pchar.height as i8;
 
     let fpx = font_metrics.fontunits_per_pixel_x as i32 / font_size;
     let fpy = font_metrics.fontunits_per_pixel_y as i32 / font_size;
@@ -127,9 +127,9 @@ pub fn write_char_stream<W: Write>(
         w_x: dx as i16,
         w_y: 0,
         ll_x: ll_x as i32 * fpx,
-        ll_y: ll_y * fpy,
+        ll_y: ll_y as i32 * fpy,
         ur_x: ur_x as i32 * fpx,
-        ur_y: ur_y * fpy,
+        ur_y: ur_y as i32 * fpy,
     };
     writeln!(
         w,

@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use structopt::StructOpt;
+use clap::Parser;
 
 use color_eyre::eyre::{self, eyre};
 use pdf_create::{
@@ -11,7 +11,7 @@ use sdo_pdf::font::type3_font;
 use signum::chsets::{editor::parse_eset, printer::parse_ls30, UseTable};
 use signum::nom::Finish;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Options {
     font: PathBuf,
 }
@@ -19,7 +19,7 @@ struct Options {
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let opt = Options::from_args();
+    let opt = Options::parse();
 
     let pfont_path = opt.font;
     let pfont_buffer = std::fs::read(&pfont_path)?;
