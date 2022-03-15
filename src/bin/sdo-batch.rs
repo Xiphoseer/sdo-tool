@@ -26,6 +26,7 @@ pub struct RunOpts {
     /// A document script
     file: PathBuf,
     /// The output folder
+    #[structopt(default_value = ".")]
     out: PathBuf,
 }
 

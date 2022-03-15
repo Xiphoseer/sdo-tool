@@ -5,11 +5,14 @@ use std::{
     fmt, io,
     num::{NonZeroI32, NonZeroU32},
     ops::{Add, Deref, DerefMut, Mul},
+    str::FromStr,
 };
 
 //use pdf::primitive::PdfString;
-
-use crate::write::{Formatter, PdfName, Serialize, ToDict};
+use crate::{
+    encoding::{pdf_doc_encode, PDFDocEncodingError},
+    write::{Formatter, PdfName, Serialize, ToDict},
+};
 
 /// A PDF Byte string
 #[derive(Clone, Eq, PartialEq)]
@@ -19,6 +22,14 @@ impl PdfString {
     /// Create a new string
     pub fn new<S: AsRef<[u8]>>(string: S) -> Self {
         Self(string.as_ref().to_vec())
+    }
+}
+
+impl FromStr for PdfString {
+    type Err = PDFDocEncodingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        pdf_doc_encode(s).map(Self)
     }
 }
 
