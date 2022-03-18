@@ -165,6 +165,46 @@ impl PSetChar<'_> {
         }
         HBounds { max_lead, max_tail }
     }
+
+    ///
+    /// ```
+    /// use signum::chsets::printer::PSetChar;
+    /// 
+    /// let p = PSetChar {
+    ///     width: 1,
+    ///     height: 8,
+    ///     top: 10,
+    ///     bitmap: &[
+    ///         0b10000000,
+    ///         0b01000000,
+    ///         0b00100000,
+    ///         0b00010000,
+    ///         0b00001000,
+    ///         0b00000100,
+    ///         0b00000010,
+    ///         0b00000001,
+    ///     ]
+    /// };
+    /// for i in 0..8 {
+    ///     for j in 0..8 {
+    ///         assert_eq!(p.get_ink_at(i, j), i == j);
+    ///     }
+    /// }
+    /// ```
+    pub fn get_ink_at(&self, x: usize, y: usize) -> bool {
+        const MASK: [u8; 8] = [128, 64, 32, 16, 8, 4, 2, 1];
+        let offset = x / 8;
+        let wu = self.width as usize;
+        if offset >= wu {
+            return false;
+        }
+        if y >= self.height as usize {
+            return false;
+        }
+        let byte = self.bitmap[y * wu + offset];
+        let mask = MASK[x % 8];
+        (mask & byte) > 0
+    }
 }
 
 /// An owned printer character set
