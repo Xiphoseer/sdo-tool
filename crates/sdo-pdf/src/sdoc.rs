@@ -120,13 +120,13 @@ impl TextContents {
             self.cset = cset;
             self.fs = font_size;
             self.fv = font_variant;
-            
+
             // Get the new font resource identifier
             let var = match font_variant {
                 FontVariant::Regular => 'C',
                 FontVariant::Italic => 'I',
                 FontVariant::Bold => 'B',
-                FontVariant::ItalicBold => 'X',
+                FontVariant::BoldItalic => 'X',
             };
 
             // Write to output
