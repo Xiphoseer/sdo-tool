@@ -273,6 +273,12 @@ impl Document {
     }
 }
 
+impl Default for Document {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn output_images(doc: &Document, out_img: &Path) -> eyre::Result<()> {
     std::fs::create_dir_all(out_img)?;
     for (index, im) in doc.images.iter().enumerate() {

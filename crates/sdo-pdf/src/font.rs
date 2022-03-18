@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    collections::BTreeMap,
     io::{self, Write},
 };
 
@@ -9,8 +10,8 @@ use pdf_create::{
         BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,
         Rectangle, SparseSet, StreamMetadata,
     },
-    high::{Ascii85Stream, Font, Type3Font},
-    write::PdfName,
+    high::{Ascii85Stream, Font, ResourceIndex},
+    write::{PdfName, PdfNameBuf, PdfNameStr},
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::chsets::{
@@ -157,15 +158,58 @@ pub fn write_char_stream<W: Write>(
     Ok(())
 }
 
-pub fn type3_font<'a>(
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Font variants
+pub enum FontVariant {
+    /// Regular
+    Regular,
+    /// Italic
+    Italic,
+    /// Bold
+    Bold,
+    /// Italic & Bold
+    ItalicBold,
+}
+
+pub struct Type3FontVariant<'a> {
+    /// The name of the font
+    pub name: Cow<'a, PdfNameStr>,
+    /// The matrix to map glyph space into text space
+    ///
+    /// this is useful for creating an italic font
+    pub font_matrix: Matrix<f32>,
+    /// Font characteristics
+    pub font_descriptor: FontDescriptor<'a>,
+}
+
+pub struct Type3FontFamily<'a> {
+    pub font_variants: BTreeMap<FontVariant, Type3FontVariant<'a>>,
+    /// The largest boundig box that fits all glyphs
+    pub font_bbox: Rectangle<i32>,
+    /// The first used char key
+    pub first_char: u8,
+    /// The last used char key
+    pub last_char: u8,
+    /// Dict of char names to drawing procedures
+    pub char_procs: Dict<Ascii85Stream<'a>>,
+    /// Dict of encoding value to char names
+    pub encoding: Encoding<'a>,
+    /// Width of every char between first and last
+    pub widths: Vec<u32>,
+    /// ToUnicode CMap stream
+    pub to_unicode: Option<Ascii85Stream<'a>>,
+}
+
+pub fn type3_font_family<'a>(
     efont: Option<&'a ESet>,
     pfont: &'a PSet,
     use_table: &UseTable,
     mappings: Option<&Mapping>,
-    name: Option<&'a str>,
-) -> Option<Type3Font<'a>> {
+    name: &'a str,
+) -> Option<Type3FontFamily<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
     let font_matrix = Matrix::scale(0.001, -0.001);
+    let font_matrix_italic = font_matrix * Matrix::shear_x(-0.25);
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
@@ -249,50 +293,83 @@ pub fn type3_font<'a>(
         let i = *cval as usize;
         if use_table.chars[i] > 0 {
             // skip unused chars
-            differences[i] = Some(PdfName(DEFAULT_NAMES[i]));
+            differences[i] = Some(PdfName::new(DEFAULT_NAMES[i]));
         }
     }
 
-    let font_descriptor = name.map(|name| FontDescriptor {
-        font_name: PdfName(name),
-        font_family: PdfString::new(name),
-        font_stretch: None,
-        font_weight: None,
-        flags: FontFlags::SYMBOLIC,
-        font_bbox: Some(font_bbox),
-        italic_angle: 0,
-        ascent: Some((ascent * fpy) / 18),
-        descent: Some((descent * fpy) / 18),
-        leading: None,
-        cap_height: None,
-        x_height: None,
-        stem_v: None,
-        stem_h: None,
-    });
-
+    // FIXME: update to include `encode_byte` cases
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
-        write_cmap(&mut out, mapping, name.unwrap_or("UNKNOWN")).unwrap();
+        write_cmap(&mut out, mapping, name).unwrap();
         Ascii85Stream {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,
         }
     });
 
-    Some(Type3Font {
-        name: name.map(PdfName),
+    let mut font_variants = BTreeMap::new();
+    font_variants.insert(FontVariant::Regular, {
+        let font_name = PdfNameBuf::new(format!("{}-Regular", name));
+        let font_descriptor = FontDescriptor {
+            font_name: Cow::Owned(font_name.clone()),
+            font_family: PdfString::new(name),
+            font_stretch: None,
+            font_weight: None,
+            flags: FontFlags::SYMBOLIC,
+            font_bbox: Some(font_bbox),
+            italic_angle: 0.0,
+            ascent: Some((ascent * fpy) / 18),
+            descent: Some((descent * fpy) / 18),
+            leading: None,
+            cap_height: None,
+            x_height: None,
+            stem_v: None,
+            stem_h: None,
+        };
+        Type3FontVariant {
+            name: Cow::Owned(font_name),
+            font_matrix,
+            font_descriptor,
+        }
+    });
+
+    font_variants.insert(FontVariant::Italic, {
+        let font_name = PdfNameBuf::new(format!("{}-Italic", name));
+        let font_descriptor = FontDescriptor {
+            font_name: Cow::Owned(font_name.clone()),
+            font_family: PdfString::new(name),
+            font_stretch: None,
+            font_weight: None,
+            flags: FontFlags::SYMBOLIC,
+            font_bbox: Some(font_bbox),
+            italic_angle: -22.5,
+            ascent: Some((ascent * fpy) / 18),
+            descent: Some((descent * fpy) / 18),
+            leading: None,
+            cap_height: None,
+            x_height: None,
+            stem_v: None,
+            stem_h: None,
+        };
+        Type3FontVariant {
+            name: Cow::Owned(font_name),
+            font_matrix: font_matrix_italic,
+            font_descriptor,
+        }
+    });
+
+    Some(Type3FontFamily {
         font_bbox,
-        font_matrix,
         first_char,
         last_char,
         char_procs,
-        font_descriptor,
         encoding: Encoding {
             base_encoding: Some(BaseEncoding::WinAnsiEncoding),
             differences: Some(differences),
         },
         widths,
         to_unicode,
+        font_variants,
     })
 }
 
@@ -319,8 +396,15 @@ pub struct Fonts {
 pub enum MakeFontsErr {}
 
 impl Fonts {
-    pub fn index(&self, info: &FontInfo) -> usize {
-        self.base + info.index
+    pub fn index<'a>(&self, info: &FontInfo, variant: FontVariant) -> ResourceIndex<Font<'a>> {
+        // FIXME: times two is for regular and italic
+        let off = match variant {
+            FontVariant::Regular => 0,
+            FontVariant::Italic => 1,
+            FontVariant::Bold => todo!(),
+            FontVariant::ItalicBold => todo!(),
+        };
+        ResourceIndex::new(self.base + info.index * 2 + off)
     }
 
     pub fn get(&self, fc_index: usize) -> Option<&FontInfo> {
@@ -339,29 +423,26 @@ impl Fonts {
         fc: &'a ChsetCache,
         use_table_vec: UseTableVec,
         pk: PrinterKind,
-    ) -> Vec<Font<'a>> {
+    ) -> Vec<Type3FontFamily<'a>> {
         let chsets = fc.chsets();
         let mut result = Vec::with_capacity(chsets.len());
         for (index, cs) in chsets.iter().enumerate() {
             let use_table = &use_table_vec.csets[index];
 
-            if let Some(pfont) = cs.printer(pk) {
-                // FIXME: FontDescriptor
-
+            let info = cs.printer(pk).and_then(|pfont| {
                 let efont = cs.e24();
                 let mappings = cs.map();
-                if let Some(font) = type3_font(efont, pfont, use_table, mappings, Some(cs.name())) {
+                type3_font_family(efont, pfont, use_table, mappings, cs.name()).map(|font| {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,
                         index: result.len(),
                     };
-                    self.info.push(Some(info));
-                    result.push(Font::Type3(font));
-                    continue;
-                }
-            }
-            self.info.push(None);
+                    result.push(font);
+                    info
+                })
+            });
+            self.info.push(info);
         }
         result
     }

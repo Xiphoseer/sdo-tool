@@ -109,9 +109,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let fonts_capacity = fc.chsets().len();
     let mut font_info = Fonts::new(fonts_capacity, hnd.res.fonts.len());
 
-    for font in font_info.make_fonts(&fc, use_table_vec, pk) {
-        hnd.res.fonts.push(font);
-    }
+    let fonts = font_info.make_fonts(&fc, use_table_vec, pk);
+    pdf::push_fonts(&mut hnd, fonts);
 
     for doc in &documents {
         pdf::prepare_document(&mut hnd, doc, &script.meta, &font_info)?;

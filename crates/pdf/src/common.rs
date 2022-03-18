@@ -1,6 +1,7 @@
 //! Common structs and enums
 
 use std::{
+    borrow::Cow,
     collections::BTreeMap,
     fmt, io,
     num::{NonZeroI32, NonZeroU32},
@@ -11,7 +12,7 @@ use std::{
 //use pdf::primitive::PdfString;
 use crate::{
     encoding::{pdf_doc_encode, PDFDocEncodingError},
-    write::{Formatter, PdfName, Serialize, ToDict},
+    write::{Formatter, PdfName, PdfNameStr, Serialize, ToDict},
 };
 
 /// A PDF Byte string
@@ -73,11 +74,12 @@ pub enum BaseEncoding {
 
 impl Serialize for BaseEncoding {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::MacRomanEncoding => PdfName("MacRomanEncoding").write(f),
-            Self::WinAnsiEncoding => PdfName("WinAnsiEncoding").write(f),
-            Self::MacExpertEncoding => PdfName("MacExpertEncoding").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::MacRomanEncoding => "MacRomanEncoding",
+            Self::WinAnsiEncoding => "WinAnsiEncoding",
+            Self::MacExpertEncoding => "MacExpertEncoding",
+        })
+        .write(f)
     }
 }
 
@@ -110,17 +112,18 @@ pub enum FontStretch {
 
 impl Serialize for FontStretch {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::UltraCondensed => PdfName("UltraCondensed").write(f),
-            Self::ExtraCondensed => PdfName("ExtraCondensed").write(f),
-            Self::Condensed => PdfName("Condensed").write(f),
-            Self::SemiCondensed => PdfName("SemiCondensed").write(f),
-            Self::Normal => PdfName("Normal").write(f),
-            Self::SemiExpanded => PdfName("SemiExpanded").write(f),
-            Self::Expanded => PdfName("Expanded").write(f),
-            Self::ExtraExpanded => PdfName("ExtraExpanded").write(f),
-            Self::UltraExpanded => PdfName("UltraExpanded").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::UltraCondensed => "UltraCondensed",
+            Self::ExtraCondensed => "ExtraCondensed",
+            Self::Condensed => "Condensed",
+            Self::SemiCondensed => "SemiCondensed",
+            Self::Normal => "Normal",
+            Self::SemiExpanded => "SemiExpanded",
+            Self::Expanded => "Expanded",
+            Self::ExtraExpanded => "ExtraExpanded",
+            Self::UltraExpanded => "UltraExpanded",
+        })
+        .write(f)
     }
 }
 
@@ -173,10 +176,10 @@ impl<'a> Serialize for FontFlags {
 }
 
 /// A font descriptor
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FontDescriptor<'a> {
     /// **FontName**
-    pub font_name: PdfName<'a>,
+    pub font_name: Cow<'a, PdfNameStr>,
     /// **FontFamily**
     pub font_family: PdfString,
     /// **FontStretch**
@@ -209,7 +212,7 @@ pub struct FontDescriptor<'a> {
     /// the vertical, of the dominant vertical strokes of the font.
     ///
     /// The value shall be negative for fonts that slope to the right, as almost all italic fonts do.
-    pub italic_angle: i32,
+    pub italic_angle: f32,
 
     /// **Ascent**: The maximum height above the
     /// baseline reached by glyphs in this font. The height of glyphs for
@@ -257,8 +260,8 @@ pub struct FontDescriptor<'a> {
 impl<'a> Serialize for FontDescriptor<'a> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut dict = f.pdf_dict();
-        dict.field("Type", &PdfName("FontDescriptor"))?
-            .field("FontName", &self.font_name)?
+        dict.field("Type", &PdfNameStr::new("FontDescriptor"))?
+            .field("FontName", &self.font_name.as_ref())?
             .field("FontFamily", &self.font_family)?
             .opt_field("FontStretch", &self.font_stretch)?
             .opt_field("FontWeight", &self.font_weight)?
@@ -294,13 +297,14 @@ pub enum PageLabelKind {
 
 impl Serialize for PageLabelKind {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::Decimal => PdfName("D").write(f),
-            Self::RomanLower => PdfName("r").write(f),
-            Self::RomanUpper => PdfName("R").write(f),
-            Self::AlphaLower => PdfName("a").write(f),
-            Self::AlphaUpper => PdfName("A").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::Decimal => "D",
+            Self::RomanLower => "r",
+            Self::RomanUpper => "R",
+            Self::AlphaLower => "a",
+            Self::AlphaUpper => "A",
+        })
+        .write(f)
     }
 }
 
@@ -318,7 +322,7 @@ pub struct PageLabel {
 impl Serialize for PageLabel {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut dict = f.pdf_dict();
-        dict.field("Type", &PdfName("PageLabel"))?;
+        dict.field("Type", &PdfNameStr::new("PageLabel"))?;
         dict.opt_field("S", &self.kind)?;
         dict.field("St", &self.start)?;
         if !self.prefix.as_bytes().is_empty() {
@@ -460,7 +464,7 @@ pub struct Encoding<'a> {
 impl Serialize for Encoding<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Encoding"))?
+            .field("Type", &PdfNameStr::new("Encoding"))?
             .opt_field("BaseEncoding", &self.base_encoding)?
             .opt_field("Differences", &self.differences)?
             .finish()
@@ -624,6 +628,18 @@ impl Matrix<f32> {
         }
     }
 
+    /// Generate a matrix that shears in the x direction
+    pub fn shear_x(m: f32) -> Self {
+        Self {
+            a: 1.0,
+            b: 0.0,
+            c: m,
+            d: 1.0,
+            e: 0.0,
+            f: 0.0,
+        }
+    }
+
     /// Create a scaling matrix
     pub fn scale(x: f32, y: f32) -> Self {
         Self {
@@ -638,7 +654,7 @@ impl Matrix<f32> {
 
     /// Create a default 1:1000 glyph matrix
     pub fn default_glyph() -> Self {
-        Self::scale(0.0001, 0.0001)
+        Self::scale(0.001, 0.001)
     }
 }
 
@@ -686,13 +702,14 @@ pub enum ProcSet {
 
 impl Serialize for ProcSet {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::PDF => PdfName("PDF").write(f),
-            Self::Text => PdfName("Text").write(f),
-            Self::ImageB => PdfName("ImageB").write(f),
-            Self::ImageC => PdfName("ImageC").write(f),
-            Self::ImageI => PdfName("ImageI").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::PDF => "PDF",
+            Self::Text => "Text",
+            Self::ImageB => "ImageB",
+            Self::ImageC => "ImageC",
+            Self::ImageI => "ImageI",
+        })
+        .write(f)
     }
 }
 
@@ -712,9 +729,9 @@ pub enum ColorSpace {
 impl Serialize for ColorSpace {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         match self {
-            Self::DeviceGray => PdfName("DeviceGray").write(f),
-            Self::DeviceRGB => PdfName("DeviceRGB").write(f),
-            Self::DeviceCMYK => PdfName("DeviceCMYK").write(f),
+            Self::DeviceGray => PdfNameStr::new("DeviceGray").write(f),
+            Self::DeviceRGB => PdfNameStr::new("DeviceRGB").write(f),
+            Self::DeviceCMYK => PdfNameStr::new("DeviceCMYK").write(f),
         }
     }
 }
@@ -765,8 +782,8 @@ pub struct ImageMetadata {
 
 impl ToDict for ImageMetadata {
     fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
-        dict.field("Type", &PdfName("XObject"))?;
-        dict.field("Subtype", &PdfName("Image"))?;
+        dict.field("Type", &PdfNameStr::new("XObject"))?;
+        dict.field("Subtype", &PdfNameStr::new("Image"))?;
         dict.field("Width", &self.width)?;
         dict.field("Height", &self.height)?;
         dict.field("ColorSpace", &self.color_space)?;
@@ -792,7 +809,7 @@ impl ToDict for StreamMetadata {
     fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
         match self {
             Self::None => Ok(()),
-            Self::Image(i) => i.write(dict),
+            Self::Image(i) => i.write(dict)
         }
     }
 }
@@ -828,11 +845,12 @@ pub enum OutputIntentSubtype {
 
 impl Serialize for OutputIntentSubtype {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::GTS_PDFX => PdfName("GTS_PDFX").write(f),
-            Self::GTS_PDFA1 => PdfName("GTS_PDFA1").write(f),
-            Self::ISO_PDFE1 => PdfName("ISO_PDFE1").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::GTS_PDFX => "GTS_PDFX",
+            Self::GTS_PDFA1 => "GTS_PDFA1",
+            Self::ISO_PDFE1 => "ISO_PDFE1",
+        })
+        .write(f)
     }
 }
 
@@ -855,7 +873,7 @@ pub struct OutputIntent {
 impl Serialize for OutputIntent {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("OutputIntent"))?
+            .field("Type", &PdfNameStr::new("OutputIntent"))?
             .field("S", &self.subtype)?
             .opt_field("OutputCondition", &self.output_condition)?
             .field(
