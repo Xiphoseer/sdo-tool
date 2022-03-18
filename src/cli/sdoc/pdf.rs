@@ -7,10 +7,13 @@ use pdf_create::{
         ColorIs, ColorSpace, ICCColorProfileMetadata, ImageMetadata, LabColorSpaceParams,
         OutputIntent, OutputIntentSubtype, PdfString, Point, ProcSet, Rectangle,
     },
-    high::{DictResource, Handle, ICCBasedColorProfile, Image, Page, Resource, Resources, XObject},
+    high::{
+        self, DictResource, Font, Handle, ICCBasedColorProfile, Image, Page, Resource,
+        ResourceIndex, Resources, XObject,
+    },
 };
 use sdo_pdf::{
-    font::{encode_byte, FontInfo, Fonts},
+    font::{encode_byte, FontInfo, FontVariant, Fonts, Type3FontFamily},
     sdoc::Contents,
 };
 use signum::{
@@ -59,16 +62,17 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     Ok(())
 }
 
-const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+const FONTS_REGULAR: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+const FONTS_ITALIC: [&str; 8] = ["I0", "I1", "I2", "I3", "I4", "I5", "I6", "I7"];
 
-pub fn prepare_page(
-    hnd: &mut Handle,
+pub fn prepare_page<'a>(
+    hnd: &mut Handle<'a>,
     doc: &Document,
     offset: Point<Option<i32>>,
     page: &PageText,
     font_infos: [Option<&FontInfo>; 8],
-    font_dict_resource_index: usize,
-) -> eyre::Result<Page<'static>> {
+    font_dict_resource_index: ResourceIndex<DictResource<Font<'a>>>,
+) -> eyre::Result<Page<'a>> {
     let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
     let mut x_objects: DictResource<XObject> = BTreeMap::new();
@@ -78,14 +82,12 @@ pub fn prepare_page(
             let key = format!("I{}", index);
             let width = site.sel.w as usize;
             let height = site.sel.h as usize;
-            //let area = width * height;
 
             let img_num = site.img as usize;
             let im = &doc.images[img_num].image;
             let data = im.select(site.sel);
 
-            let img_index = hnd.res.x_objects.len();
-            hnd.res.x_objects.push(XObject::Image(Image {
+            let res_index = hnd.res.push_x_object(XObject::Image(Image {
                 meta: ImageMetadata {
                     width,
                     height,
@@ -100,7 +102,7 @@ pub fn prepare_page(
                 "Adding image from #{} on page {} as /{}",
                 img_num, page_info.log_pnr, &key
             );
-            x_objects.insert(key.clone(), Resource::Global { index: img_index });
+            x_objects.insert(key.clone(), Resource::Global(res_index));
             img.push((site, key));
         }
     }
@@ -110,9 +112,7 @@ pub fn prepare_page(
         proc_sets.push(ProcSet::ImageB);
     }
     let resources = Resources {
-        fonts: Resource::Global {
-            index: font_dict_resource_index,
-        },
+        fonts: Resource::Global(font_dict_resource_index),
         x_objects: Resource::Immediate(Box::new(x_objects)),
         proc_sets,
     };
@@ -163,7 +163,14 @@ pub fn prepare_page(
                 (false, false) => 100,
             };
 
-            contents.cset(te.cset, font_size);
+            // FIXME: all four
+            let font_variant = if te.style.italic {
+                FontVariant::Italic
+            } else {
+                FontVariant::Regular
+            };
+
+            contents.cset(te.cset, font_size, font_variant);
             contents.fwidth(font_width);
 
             let mut diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
@@ -211,18 +218,21 @@ pub fn prepare_document(
 
     for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
         if let Some(fc_index) = fc_index {
-            let key = FONTS[cset].to_owned();
+            let key_regular = FONTS_REGULAR[cset].to_owned();
+            let key_italic = FONTS_ITALIC[cset].to_owned();
             if let Some(info) = font_info.get(fc_index) {
-                let index = font_info.index(info);
-                let value = Resource::Global { index };
-                fonts.insert(key, value);
+                let index_regular = font_info.index(info, FontVariant::Regular);
+                let index_italic = font_info.index(info, FontVariant::Italic);
+
+                fonts.insert(key_regular, Resource::Global(index_regular));
+                font_infos[cset] = Some(info);
+                fonts.insert(key_italic, Resource::Global(index_italic));
                 font_infos[cset] = Some(info);
             }
         }
     }
 
-    let font_dict_resource_index = hnd.res.font_dicts.len();
-    hnd.res.font_dicts.push(fonts);
+    let font_dict_resource_index = hnd.res.push_font_dict(fonts);
 
     // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
     //
@@ -279,12 +289,34 @@ pub fn process_doc<'a>(
 
     let mut font_info = Fonts::new(8, 0); // base = hnd.res.fonts.len() ???
 
-    for font in font_info.make_fonts(fc, use_table_vec, pk) {
-        hnd.res.fonts.push(font);
-    }
+    let fonts = font_info.make_fonts(fc, use_table_vec, pk);
+    push_fonts(&mut hnd, fonts);
 
     prepare_document(&mut hnd, doc, &meta, &font_info)?;
     Ok(hnd)
+}
+
+pub fn push_fonts<'a>(hnd: &mut Handle<'a>, font_families: Vec<Type3FontFamily<'a>>) {
+    for (_index, family) in font_families.into_iter().enumerate() {
+        let char_procs = hnd.res.push_char_procs(family.char_procs);
+        let encoding = hnd.res.push_encoding(family.encoding);
+
+        for key in &[FontVariant::Regular, FontVariant::Italic] {
+            let var = family.font_variants.get(key).unwrap();
+            hnd.res.fonts.push(high::Font::Type3(high::Type3Font {
+                name: Some(var.name.clone()),
+                font_matrix: var.font_matrix,
+                font_descriptor: Some(var.font_descriptor.clone()),
+                font_bbox: family.font_bbox,
+                first_char: family.first_char,
+                last_char: family.last_char,
+                char_procs: high::Resource::Global(char_procs),
+                encoding: high::Resource::Global(encoding),
+                widths: family.widths.clone(),
+                to_unicode: family.to_unicode.clone(),
+            }));
+        }
+    }
 }
 
 pub fn output_pdf(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {

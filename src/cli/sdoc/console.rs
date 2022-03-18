@@ -114,7 +114,14 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
     }
 }
 
-pub fn print_line(doc: &Document, is_html: bool, is_plain: bool, fc: &ChsetCache, line: &Line, skip: u16) {
+pub fn print_line(
+    doc: &Document,
+    is_html: bool,
+    is_plain: bool,
+    fc: &ChsetCache,
+    line: &Line,
+    skip: u16,
+) {
     if line.flags.contains(Flags::FLAG) && is_html {
         println!("<F: {}>", line.extra);
     }

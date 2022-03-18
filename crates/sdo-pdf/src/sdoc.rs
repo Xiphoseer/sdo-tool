@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use pdf_create::write::write_string;
 use signum::docs::hcim::ImageSite;
 
+use crate::font::FontVariant;
+
 /// The `Contents` stream of a PDF
 #[derive(Default)]
 pub struct Contents {
@@ -52,6 +54,7 @@ impl Contents {
             //is_ascii: true,
             cset: 0xff,
             fs: 0,
+            fv: FontVariant::Regular,
             fw: 100,
             leading: 0.0,
             inner,
@@ -66,6 +69,8 @@ pub struct TextContents {
     cset: u8,
     /// The current font size
     fs: u8,
+    /// The current font variant
+    fv: FontVariant,
     /// The current horizontal scaling
     fw: u8,
     open: bool,
@@ -109,12 +114,24 @@ impl TextContents {
         Ok(())
     }
 
-    pub fn cset(&mut self, cset: u8, font_size: u8) {
-        if self.cset != cset || self.fs != font_size {
+    pub fn cset(&mut self, cset: u8, font_size: u8, font_variant: FontVariant) {
+        if self.cset != cset || self.fs != font_size || self.fv != font_variant {
+            // Overwrite the old state
             self.cset = cset;
             self.fs = font_size;
+            self.fv = font_variant;
+            
+            // Get the new font resource identifier
+            let var = match font_variant {
+                FontVariant::Regular => 'C',
+                FontVariant::Italic => 'I',
+                FontVariant::Bold => 'B',
+                FontVariant::ItalicBold => 'X',
+            };
+
+            // Write to output
             self.flush();
-            writeln!(self.inner, "/C{} {} Tf", cset, font_size).unwrap();
+            writeln!(self.inner, "/{}{} {} Tf", var, cset, font_size).unwrap();
         }
     }
 
