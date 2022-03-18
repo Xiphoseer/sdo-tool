@@ -64,6 +64,8 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
 
 const FONTS_REGULAR: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 const FONTS_ITALIC: [&str; 8] = ["I0", "I1", "I2", "I3", "I4", "I5", "I6", "I7"];
+const FONTS_BOLD: [&str; 8] = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7"];
+const FONTS_BOLD_ITALIC: [&str; 8] = ["X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"];
 
 pub fn prepare_page<'a>(
     hnd: &mut Handle<'a>,
@@ -163,11 +165,11 @@ pub fn prepare_page<'a>(
                 (false, false) => 100,
             };
 
-            // FIXME: all four
-            let font_variant = if te.style.italic {
-                FontVariant::Italic
-            } else {
-                FontVariant::Regular
+            let font_variant = match (te.style.italic, te.style.bold) {
+                (true, true) => FontVariant::BoldItalic,
+                (true, false) => FontVariant::Italic,
+                (false, true) => FontVariant::Bold,
+                (false, false) => FontVariant::Regular,
             };
 
             contents.cset(te.cset, font_size, font_variant);
@@ -220,13 +222,19 @@ pub fn prepare_document(
         if let Some(fc_index) = fc_index {
             let key_regular = FONTS_REGULAR[cset].to_owned();
             let key_italic = FONTS_ITALIC[cset].to_owned();
+            let key_bold = FONTS_BOLD[cset].to_owned();
+            let key_bold_italic = FONTS_BOLD_ITALIC[cset].to_owned();
             if let Some(info) = font_info.get(fc_index) {
                 let index_regular = font_info.index(info, FontVariant::Regular);
                 let index_italic = font_info.index(info, FontVariant::Italic);
+                let index_bold = font_info.index(info, FontVariant::Bold);
+                let index_bold_italic = font_info.index(info, FontVariant::BoldItalic);
 
                 fonts.insert(key_regular, Resource::Global(index_regular));
-                font_infos[cset] = Some(info);
                 fonts.insert(key_italic, Resource::Global(index_italic));
+                fonts.insert(key_bold, Resource::Global(index_bold));
+                fonts.insert(key_bold_italic, Resource::Global(index_bold_italic));
+
                 font_infos[cset] = Some(info);
             }
         }
@@ -296,13 +304,26 @@ pub fn process_doc<'a>(
     Ok(hnd)
 }
 
+const VARIANTS: [FontVariant; 4] = [
+    FontVariant::Regular,
+    FontVariant::Italic,
+    FontVariant::Bold,
+    FontVariant::BoldItalic,
+];
+
 pub fn push_fonts<'a>(hnd: &mut Handle<'a>, font_families: Vec<Type3FontFamily<'a>>) {
     for (_index, family) in font_families.into_iter().enumerate() {
         let char_procs = hnd.res.push_char_procs(family.char_procs);
+        let char_procs_bold = hnd.res.push_char_procs(family.bold_char_procs);
         let encoding = hnd.res.push_encoding(family.encoding);
 
-        for key in &[FontVariant::Regular, FontVariant::Italic] {
-            let var = family.font_variants.get(key).unwrap();
+        for key in VARIANTS {
+            let var = family.font_variants.get(&key).unwrap();
+            let char_procs = if matches!(key, FontVariant::Bold | FontVariant::BoldItalic) {
+                high::Resource::Global(char_procs_bold)
+            } else {
+                high::Resource::Global(char_procs)
+            };
             hnd.res.fonts.push(high::Font::Type3(high::Type3Font {
                 name: Some(var.name.clone()),
                 font_matrix: var.font_matrix,
@@ -310,7 +331,7 @@ pub fn push_fonts<'a>(hnd: &mut Handle<'a>, font_families: Vec<Type3FontFamily<'
                 font_bbox: family.font_bbox,
                 first_char: family.first_char,
                 last_char: family.last_char,
-                char_procs: high::Resource::Global(char_procs),
+                char_procs,
                 encoding: high::Resource::Global(encoding),
                 widths: family.widths.clone(),
                 to_unicode: family.to_unicode.clone(),
