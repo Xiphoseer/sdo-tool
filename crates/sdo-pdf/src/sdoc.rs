@@ -97,6 +97,10 @@ impl TextContents {
         self.line_started = false;
     }
 
+    pub fn get_y(&self) -> f32 {
+        self.line_y as f32 / 3.0
+    }
+
     fn start_line(&mut self) -> io::Result<()> {
         if !self.line_started {
             self.line_started = true;

@@ -809,7 +809,7 @@ impl ToDict for StreamMetadata {
     fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
         match self {
             Self::None => Ok(()),
-            Self::Image(i) => i.write(dict)
+            Self::Image(i) => i.write(dict),
         }
     }
 }

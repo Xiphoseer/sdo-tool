@@ -139,3 +139,11 @@ fn pdf_char_encode(chr: char) -> Result<u8, PDFDocEncodingError> {
 pub fn pdf_doc_encode(input: &str) -> Result<Vec<u8>, PDFDocEncodingError> {
     input.chars().map(pdf_char_encode).collect()
 }
+
+/// Encode a string as PDFDocEncoding, ignoring unconvertible characters
+pub fn pdf_doc_encode_lossy(input: &str) -> Vec<u8> {
+    input
+        .chars()
+        .flat_map(|x| pdf_char_encode(x).ok())
+        .collect()
+}

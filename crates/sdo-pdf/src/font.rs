@@ -457,6 +457,7 @@ pub struct FontInfo {
     widths: Vec<u32>,
     first_char: u8,
     index: usize,
+    mapping: Option<Box<Mapping>>,
 }
 
 impl FontInfo {
@@ -465,6 +466,10 @@ impl FontInfo {
         let fc = self.first_char;
         let wi = (cval - fc) as usize;
         self.widths[wi]
+    }
+
+    pub fn mappings(&self) -> &Mapping {
+        self.mapping.as_deref().unwrap_or_default()
     }
 }
 
@@ -517,6 +522,7 @@ impl Fonts {
                         widths: font.widths.clone(),
                         first_char: font.first_char,
                         index: result.len(),
+                        mapping: mappings.cloned().map(Box::new),
                     };
                     result.push(font);
                     info
