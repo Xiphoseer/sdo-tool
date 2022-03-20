@@ -55,6 +55,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aho-corasick"
+version = "0.7.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e37cfd5e7657ada45f742d6e99ca5788580b5c529dc78faf11ece6dc702656f"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,6 +875,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex"
+version = "1.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a11647b6b25ff05a515cb92c365cec08801e83423a235b51e231e1808747286"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.6.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
+
+[[package]]
 name = "ron"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -916,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "sdo-tool"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "ccitt-t4-t6",
@@ -929,6 +955,7 @@ dependencies = [
  "pdf",
  "pdf-create",
  "prettytable-rs",
+ "regex",
  "ron",
  "sdo-pdf",
  "sdo-ps",

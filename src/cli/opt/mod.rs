@@ -193,6 +193,30 @@ fn chsets_path() -> PathBuf {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+pub struct AutoTocConfig {
+    /// Level 0 name of the TOC
+    pub title: String,
+    /// The pages that contain the TOC
+    pub page_range: (usize, usize),
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+pub struct AutoOutlineConfig {
+    /// The regexes that recognize the levels
+    #[serde(default)]
+    pub levels: Vec<String>,
+    /// Number of lines to skip at the top of a page
+    #[serde(default)]
+    pub min_line_index: usize,
+    /// Whether the style in the line needs to be identical
+    #[serde(default)]
+    pub req_same_style: bool,
+    /// Level 0 name of the TOC
+    #[serde(default)]
+    pub toc: Option<AutoTocConfig>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct DocScript {
     /// The document meta information
     #[serde(default)]
@@ -212,6 +236,9 @@ pub struct DocScript {
     /// The path to the fonts folder
     #[serde(default = "chsets_path")]
     pub chsets: PathBuf,
+
+    #[serde(default)]
+    pub auto_outline: AutoOutlineConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]

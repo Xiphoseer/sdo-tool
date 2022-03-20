@@ -9,7 +9,7 @@ use color_eyre::eyre::{self, WrapErr};
 use log::{info, LevelFilter};
 use pdf_create::{
     common::{PageLabel, PdfString},
-    encoding::pdf_doc_encode,
+    encoding::{pdf_doc_encode, pdf_doc_encode_lossy},
     high::{self, Handle},
 };
 use sdo_pdf::font::Fonts;
@@ -17,7 +17,10 @@ use signum::chsets::{cache::ChsetCache, UseTableVec};
 
 use sdo_tool::cli::{
     opt::{DocScript, OutlineItem},
-    sdoc::{pdf, Document},
+    sdoc::{
+        pdf::{self, AutoOutline},
+        Document,
+    },
 };
 
 #[derive(clap::Parser, Debug)]
@@ -30,17 +33,17 @@ pub struct RunOpts {
     out: PathBuf,
 }
 
-fn map_outline_items(items: &[OutlineItem]) -> eyre::Result<Vec<high::OutlineItem>> {
+fn map_outline_items(items: &[OutlineItem]) -> Vec<high::OutlineItem> {
     let mut result = Vec::with_capacity(items.len());
     for item in items {
-        let title = PdfString::new(pdf_doc_encode(&item.title)?);
+        let title = PdfString::new(pdf_doc_encode_lossy(&item.title));
         result.push(high::OutlineItem {
             title,
             dest: item.dest.into(),
-            children: map_outline_items(&item.children)?,
+            children: map_outline_items(&item.children),
         });
     }
-    Ok(result)
+    result
 }
 
 pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
@@ -106,14 +109,37 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         .printer()
         .ok_or_else(|| eyre::eyre!("Printing with editor font not supported in PDF"))?;
 
+    // Prepare the fonts
     let fonts_capacity = fc.chsets().len();
     let mut font_info = Fonts::new(fonts_capacity, hnd.res.fonts.len());
 
     let fonts = font_info.make_fonts(&fc, use_table_vec, pk);
     pdf::push_fonts(&mut hnd, fonts);
 
+    // Prepare the auto outline
+    let mut auto_outline = AutoOutline::new(
+        &script.auto_outline.levels,
+        script.auto_outline.min_line_index,
+    )?;
+    auto_outline.req_same_style(script.auto_outline.req_same_style);
+    log::info!("{:?}", script.auto_outline.toc);
+    if let Some(tt) = &script.auto_outline.toc {
+        let page_range = tt.page_range.0..(tt.page_range.1 + 1);
+        auto_outline.set_auto_toc(&tt.title, page_range);
+    }
+
+    // Loop over all documents / pages
+    let mut page_count = 0;
     for doc in &documents {
-        pdf::prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
+        pdf::prepare_document(
+            &mut hnd,
+            doc,
+            page_count,
+            &script.meta,
+            &font_info,
+            &mut auto_outline,
+        )?;
+        page_count += doc.page_count();
     }
 
     for (key, value) in &script.page_labels {
@@ -128,8 +154,15 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         );
     }
 
-    hnd.outline.children = map_outline_items(&script.outline)?;
+    // Generate Outline (either automatic or user-defined)
+    let outline = if script.outline.is_empty() {
+        auto_outline.get_items()
+    } else {
+        &script.outline
+    };
+    hnd.outline.children = map_outline_items(outline);
 
+    // Write the PDF file
     pdf::handle_out(Some(&opt.out), &opt.file, hnd)?;
     Ok(())
 }

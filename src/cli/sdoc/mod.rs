@@ -69,6 +69,10 @@ pub struct Document {
 }
 
 impl Document {
+    pub fn page_count(&self) -> usize {
+        self.tebu.len()
+    }
+
     pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'static>> {
         self.chsets[cset as usize].and_then(|index| fc.eset(index))
     }
