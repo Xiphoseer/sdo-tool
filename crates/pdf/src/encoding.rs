@@ -146,10 +146,62 @@ pub fn pdf_doc_encode(input: &str) -> Result<Vec<u8>, PDFDocEncodingError> {
     input.chars().map(pdf_char_encode).collect()
 }
 
+/// Transliterate some non-representable characters
+/// 
+/// FIXME: Instead fall back to default mapping
+fn pdf_char_encode_lossy(chr: char) -> Option<u8> {
+    pdf_char_encode(chr).ok().or(match chr {
+        'Α' => Some(b'A'),
+        'Β' => Some(b'B'),
+        'Γ' => Some(b'G'),
+        'Δ' => Some(b'D'),
+        'Ε' => Some(b'E'),
+        'Ζ' => Some(b'Z'),
+        'Η' => Some(b'H'),
+        'Τ' => Some(b'T'),
+        'Θ' => Some(b'I'),
+        'Ι' => Some(b'I'),
+        'Κ' => Some(b'K'),
+        'Λ' => Some(b'L'),
+        'Μ' => Some(b'M'),
+        'Ν' => Some(b'N'),
+        'Χ' | 'Ξ' => Some(b'X'),
+        'Ο' => Some(b'O'),
+        'Ψ' | 'Π' => Some(b'P'),
+        'Ρ' => Some(b'R'),
+        'Σ' => Some(b'S'),
+        'Υ' => Some(b'Y'),
+        'Φ' => Some(b'V'),
+        'Ω' => Some(b'W'),
+
+        'α' => Some(b'a'),
+        'β' => Some(b'b'),
+        'γ' => Some(b'g'),
+        'δ' => Some(b'd'),
+        'ε' => Some(b'e'),
+        'ζ' => Some(b'z'),
+        'η' => Some(b'h'),
+        'τ' => Some(b't'),
+        'θ' => Some(b'i'),
+        'ι' => Some(b'i'),
+        'κ' => Some(b'k'),
+        'λ' => Some(b'l'),
+        'μ' => Some(b'm'),
+        'χ' | 'ξ' => Some(b'x'),
+        'ο' => Some(b'o'),
+        'ψ' | 'π' => Some(b'p'),
+        'ρ' => Some(b'r'),
+        'ς' | 'σ' => Some(b's'),
+        'υ' => Some(b'y'),
+        'φ' => Some(b'v'),
+        'ω' => Some(b'w'),
+
+        '‖' => Some(b'2'),
+        _ => None,
+    })
+}
+
 /// Encode a string as PDFDocEncoding, ignoring unconvertible characters
 pub fn pdf_doc_encode_lossy(input: &str) -> Vec<u8> {
-    input
-        .chars()
-        .flat_map(|x| pdf_char_encode(x).ok())
-        .collect()
+    input.chars().flat_map(pdf_char_encode_lossy).collect()
 }
