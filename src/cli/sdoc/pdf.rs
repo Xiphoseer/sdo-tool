@@ -225,7 +225,7 @@ fn prepare_page<'a>(
             }
         }
 
-        let is_all_box = text.chars().all(|x| matches!(x, '|' | '_' | ' '));
+        let is_all_box = text.chars().all(|x| matches!(x, '|' | '_' | ' ' | '.'));
         let is_line_index_ok = line_index >= auto_outline.min_line_index;
         //let is_not_align = !line.flags.contains(Flags::ALIG);
         //let is_para = line.flags.contains(Flags::PARA);
