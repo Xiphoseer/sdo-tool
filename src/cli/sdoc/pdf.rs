@@ -1,4 +1,6 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path, usize};
+use std::{
+    borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, ops::Range, path::Path, usize,
+};
 
 use color_eyre::eyre::{self, eyre};
 use log::{debug, info};
@@ -12,16 +14,17 @@ use pdf_create::{
         ResourceIndex, Resources, XObject,
     },
 };
+use regex::RegexSet;
 use sdo_pdf::{
     font::{encode_byte, FontInfo, FontVariant, Fonts, Type3FontFamily},
     sdoc::Contents,
 };
 use signum::{
     chsets::{cache::ChsetCache, FontKind, UseTableVec},
-    docs::tebu::PageText,
+    docs::tebu::{Line, PageText, Style},
 };
 
-use crate::cli::opt::{Meta, Options};
+use crate::cli::opt::{Destination, Meta, Options, OutlineItem};
 
 use super::Document;
 
@@ -67,13 +70,19 @@ const FONTS_ITALIC: [&str; 8] = ["I0", "I1", "I2", "I3", "I4", "I5", "I6", "I7"]
 const FONTS_BOLD: [&str; 8] = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7"];
 const FONTS_BOLD_ITALIC: [&str; 8] = ["X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"];
 
-pub fn prepare_page<'a>(
+struct PageContext<'a, 'b> {
+    offset: Point<Option<i32>>,
+    font_infos: [Option<&'b FontInfo>; 8],
+    font_dict_resource_index: ResourceIndex<DictResource<Font<'a>>>,
+}
+
+fn prepare_page<'a>(
     hnd: &mut Handle<'a>,
     doc: &Document,
-    offset: Point<Option<i32>>,
+    index: usize,
     page: &PageText,
-    font_infos: [Option<&FontInfo>; 8],
-    font_dict_resource_index: ResourceIndex<DictResource<Font<'a>>>,
+    ctx: &PageContext<'a, '_>,
+    auto_outline: &mut AutoOutline,
 ) -> eyre::Result<Page<'a>> {
     let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
@@ -114,7 +123,7 @@ pub fn prepare_page<'a>(
         proc_sets.push(ProcSet::ImageB);
     }
     let resources = Resources {
-        fonts: Resource::Global(font_dict_resource_index),
+        fonts: Resource::Global(ctx.font_dict_resource_index),
         x_objects: Resource::Immediate(Box::new(x_objects)),
         proc_sets,
     };
@@ -130,9 +139,9 @@ pub fn prepare_page<'a>(
     let xmargin = (a4_width - width as i32) / 2;
     let ymargin = (a4_height - height as i32) / 2;
 
-    let left = xmargin as f32 + offset.x.unwrap_or(0) as f32;
+    let left = xmargin as f32 + ctx.offset.x.unwrap_or(0) as f32;
     let left = left - page_info.format.left as f32 * 8.0 / 10.0;
-    let top = ymargin as f32 + offset.y.unwrap_or(0) as f32;
+    let top = ymargin as f32 + ctx.offset.y.unwrap_or(0) as f32;
     let top = a4_height as f32 - top - 8.0;
     let media_box = Rectangle::media_box(a4_width, a4_height);
 
@@ -142,17 +151,28 @@ pub fn prepare_page<'a>(
         contents.image(site, &key).unwrap();
     }
 
-    let mut contents = contents.start_text(1.0, -1.0);
-
     const FONT_SIZE: i32 = 10;
     const FONTUNITS_PER_SIGNUM_X: i32 = 800 / FONT_SIZE;
 
-    for (skip, line) in &page.content {
+    draw_underlines(doc, &ctx.font_infos, &page.content, &mut contents)?;
+
+    let mut contents = contents.start_text(1.0, -1.0);
+
+    for (line_index, (skip, line)) in page.content.iter().enumerate() {
+        let first_style = line.data.first().map(|x| x.style).unwrap_or_default();
+        let mut is_same_style = !auto_outline.req_same_style || first_style != Style::default();
+
         contents.next_line(0, *skip as u32 + 1);
 
         let mut prev_width = 0;
+        let mut text = String::new();
+
         for te in &line.data {
             let x = te.offset as i32;
+
+            if is_same_style {
+                is_same_style &= te.style == first_style;
+            }
 
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
@@ -181,22 +201,74 @@ pub fn prepare_page<'a>(
                     diff /= 2;
                 }
                 contents.xoff(-diff)?;
+
+                if !text.is_empty() {
+                    text.push(' ');
+                }
             }
 
             let win_ansi_byte = encode_byte(te.cval);
             contents.byte(win_ansi_byte)?;
 
             let csu = te.cset as usize;
-            let fi = font_infos[csu].ok_or_else(|| {
+            let fi = ctx.font_infos[csu].ok_or_else(|| {
                 let font_name = doc.cset[csu].as_deref().unwrap_or("");
                 eyre!("Missing font #{}: {:?}", csu, font_name)
             })?;
+
+            // Push the character
+            text.push(fi.mappings().decode(te.cval));
+
             prev_width = fi.width(te.cval) as i32;
             if is_wide {
                 prev_width *= 2;
             }
         }
 
+        let is_all_box = text.chars().all(|x| matches!(x, '|' | '_' | ' '));
+        let is_line_index_ok = line_index >= auto_outline.min_line_index;
+        //let is_not_align = !line.flags.contains(Flags::ALIG);
+        //let is_para = line.flags.contains(Flags::PARA);
+        let style_ok = !auto_outline.req_same_style || is_same_style;
+
+        let matches = auto_outline.title_set.matches(&text);
+        if is_line_index_ok && style_ok && !is_all_box && matches.matched_any() {
+            let mut level = matches.iter().next().unwrap();
+
+            // Check auto outline
+            if auto_outline.in_toc {
+                let auto_toc = auto_outline.toc.as_ref().unwrap();
+                log::info!("Check page {} against {:?}", index, auto_toc.page_range);
+                if auto_toc.page_range.contains(&index) {
+                    level += 1;
+                } else {
+                    auto_outline.in_toc = false;
+                }
+            }
+
+            let out = recurse_outline_level(level, &mut auto_outline.items);
+
+            // Trim trailing colon
+            if text.ends_with(':') {
+                text.pop();
+            }
+
+            if let Some(auto_toc) = auto_outline.toc.as_ref() {
+                log::info!("Found {} on page {}", text, index + 1);
+
+                if !auto_outline.in_toc && text == auto_toc.title {
+                    auto_outline.in_toc = true;
+                    log::info!("Found TOC!");
+                };
+            }
+
+            let y_pos = top - contents.get_y() + 50.0;
+            out.push(OutlineItem {
+                title: text,
+                dest: Destination::PageFitH(index, y_pos as usize),
+                children: vec![],
+            });
+        }
         contents.flush();
     }
 
@@ -209,21 +281,177 @@ pub fn prepare_page<'a>(
     })
 }
 
-pub fn prepare_document(
-    hnd: &mut Handle,
+fn recurse_outline_level(level: usize, o: &mut Vec<OutlineItem>) -> &mut Vec<OutlineItem> {
+    if level == 0 || o.is_empty() {
+        return o;
+    }
+    let inner = o.last_mut().unwrap();
+    recurse_outline_level(level - 1, &mut inner.children)
+}
+
+fn draw_underlines(
     doc: &Document,
+    font_infos: &[Option<&FontInfo>; 8],
+    content: &[(u16, Line)],
+    contents: &mut Contents,
+) -> color_eyre::Result<()> {
+    let mut y = 0;
+
+    const UNITS_PER_SIGNUM_X: f32 = 0.8;
+
+    // Draw underlines
+    for (skip, line) in content {
+        y += *skip as u32 + 1;
+
+        let mut underline_start = None;
+
+        let mut prev_width = 0.0;
+        let mut x = 0.0;
+
+        for te in &line.data {
+            let x_step = te.offset as i32;
+            let x_step_pdf = x_step as f32 * UNITS_PER_SIGNUM_X;
+            let x_new = x + x_step_pdf;
+
+            let is_wide = te.style.wide;
+            let is_underlined = te.style.underlined;
+
+            // check underlined
+            match (is_underlined, underline_start) {
+                (true, None) => {
+                    underline_start = Some(x_new);
+                }
+                (true, Some(_)) => { /* keep the start */ }
+                (false, None) => { /* no underline */ }
+                (false, Some(x_start)) => {
+                    // underline ended after the previous char
+                    let y_pos = y + 2;
+                    let x_end = x + prev_width;
+                    contents.draw_line(&[(x_start, y_pos), (x_end, y_pos)])?;
+                    underline_start = None;
+                }
+            }
+
+            // Find character
+            let csu = te.cset as usize;
+            let fi = font_infos[csu].ok_or_else(|| {
+                let font_name = doc.cset[csu].as_deref().unwrap_or("");
+                eyre!("Missing font #{}: {:?}", csu, font_name)
+            })?;
+
+            // Update variables
+            x = x_new;
+            // div by 1000 (font matrix) mul by 10 (font size)
+            prev_width = fi.width(te.cval) as f32 / 100.0;
+            if is_wide {
+                prev_width *= 2.0;
+            }
+        }
+
+        // Finish underlining the last char
+        if let Some(x_start) = underline_start {
+            let x_end = x + prev_width;
+            let y_pos = y + 2;
+            contents.draw_line(&[(x_start, y_pos), (x_end, y_pos)])?;
+        }
+    }
+    Ok(())
+}
+
+struct AutoTOC {
+    title: String,
+    page_range: Range<usize>,
+}
+
+pub struct AutoOutline {
+    items: Vec<OutlineItem>,
+    title_set: RegexSet,
+    min_line_index: usize,
+    req_same_style: bool,
+    in_toc: bool,
+    toc: Option<AutoTOC>,
+}
+
+impl AutoOutline {
+    /// Create a new auto outline
+    pub fn new<S: AsRef<str>>(arg: &[S], min_line_index: usize) -> Result<Self, regex::Error> {
+        Ok(Self {
+            items: vec![],
+            title_set: RegexSet::new(arg)?,
+            min_line_index,
+            in_toc: false,
+            req_same_style: false,
+            toc: None,
+        })
+    }
+
+    pub fn req_same_style(&mut self, f: bool) {
+        self.req_same_style = f;
+    }
+
+    pub fn set_auto_toc(&mut self, title: &str, page_range: Range<usize>) {
+        self.toc = Some(AutoTOC {
+            title: title.to_owned(),
+            page_range,
+        })
+    }
+
+    pub fn get_items(&self) -> &[OutlineItem] {
+        &self.items
+    }
+}
+
+pub fn prepare_document<'a>(
+    hnd: &mut Handle<'a>,
+    doc: &Document,
+    page_index_offset: usize,
     meta: &Meta,
     font_info: &Fonts,
+    auto_outline: &mut AutoOutline,
 ) -> eyre::Result<()> {
-    let mut fonts = BTreeMap::new();
-    let mut font_infos = [None; 8];
+    let (fonts, font_infos) = find_fonts(doc, font_info);
+    let font_dict_resource_index = hnd.res.push_font_dict(fonts);
 
-    for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
+    // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
+    //
+    // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
+
+    let ctx = PageContext {
+        offset: Point {
+            x: meta.xoffset,
+            y: meta.yoffset,
+        },
+        font_infos,
+        font_dict_resource_index,
+    };
+
+    for (index, page) in doc.tebu.iter().enumerate() {
+        let page_index = page_index_offset + index;
+        let page = prepare_page(hnd, doc, page_index, page, &ctx, auto_outline)?;
+        hnd.pages.push(page);
+    }
+
+    Ok(())
+}
+
+fn find_fonts<'a, 'b>(
+    doc: &Document,
+    font_info: &'b Fonts,
+) -> (
+    BTreeMap<String, Resource<Font<'a>>>,
+    [Option<&'b FontInfo>; 8],
+) {
+    let mut fonts = BTreeMap::new();
+    const INDEX: [usize; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    let enumerated = INDEX.map(|cset| (cset, doc.chsets[cset]));
+
+    let font_infos = enumerated.map(|(cset, fc_index)| {
         if let Some(fc_index) = fc_index {
             let key_regular = FONTS_REGULAR[cset].to_owned();
             let key_italic = FONTS_ITALIC[cset].to_owned();
             let key_bold = FONTS_BOLD[cset].to_owned();
             let key_bold_italic = FONTS_BOLD_ITALIC[cset].to_owned();
+
             if let Some(info) = font_info.get(fc_index) {
                 let index_regular = font_info.index(info, FontVariant::Regular);
                 let index_italic = font_info.index(info, FontVariant::Italic);
@@ -235,27 +463,12 @@ pub fn prepare_document(
                 fonts.insert(key_bold, Resource::Global(index_bold));
                 fonts.insert(key_bold_italic, Resource::Global(index_bold_italic));
 
-                font_infos[cset] = Some(info);
+                return Some(info);
             }
         }
-    }
-
-    let font_dict_resource_index = hnd.res.push_font_dict(fonts);
-
-    // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
-    //
-    // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
-
-    for page in doc.tebu.iter() {
-        let offset = Point {
-            x: meta.xoffset,
-            y: meta.yoffset,
-        };
-        let page = prepare_page(hnd, doc, offset, page, font_infos, font_dict_resource_index)?;
-        hnd.pages.push(page);
-    }
-
-    Ok(())
+        None
+    });
+    (fonts, font_infos)
 }
 
 fn doc_meta(opt: &Options) -> eyre::Result<Cow<Meta>> {
@@ -277,6 +490,7 @@ pub fn process_doc<'a>(
     doc: &'a Document,
     opt: &'a Options,
     fc: &'a ChsetCache,
+    auto_outline: &mut AutoOutline,
 ) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
@@ -300,7 +514,7 @@ pub fn process_doc<'a>(
     let fonts = font_info.make_fonts(fc, use_table_vec, pk);
     push_fonts(&mut hnd, fonts);
 
-    prepare_document(&mut hnd, doc, &meta, &font_info)?;
+    prepare_document(&mut hnd, doc, 0, &meta, &font_info, auto_outline)?;
     Ok(hnd)
 }
 
@@ -341,7 +555,8 @@ pub fn push_fonts<'a>(hnd: &mut Handle<'a>, font_families: Vec<Type3FontFamily<'
 }
 
 pub fn output_pdf(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
-    let hnd = process_doc(doc, opt, fc)?;
+    let mut auto_outline = AutoOutline::new(&[] as &[&str], 0)?;
+    let hnd = process_doc(doc, opt, fc, &mut auto_outline)?;
     handle_out(opt.out.as_deref(), &opt.file, hnd)?;
     Ok(())
 }
