@@ -1,10 +1,7 @@
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use log::info;
-use signum::{
-    images::imc::{parse_imc},
-    raster::Page,
-};
+use signum::{images::imc::parse_imc, raster::Page};
 
 use super::opt::{Format, Options};
 

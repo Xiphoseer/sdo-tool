@@ -11,7 +11,7 @@ use crate::{
     util::{bit_writer::BitWriter, data::BIT_STRING},
 };
 #[cfg(feature = "image")]
-use image::GrayImage;
+use image::{GrayAlphaImage, GrayImage};
 
 /// A virtual page that works just like the atari monochrome screen
 ///
@@ -557,5 +557,25 @@ impl Page {
             buffer.extend_from_slice(&BIT_PROJECTION[byte]);
         }
         GrayImage::from_vec(self.bytes_per_line * 8, self.height, buffer).unwrap()
+    }
+
+    #[cfg(feature = "image")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+    /// Turn the page into a `GrayImage` from the `image` crate
+    pub fn to_alpha_image(&self) -> GrayAlphaImage {
+        let mut buffer = Vec::with_capacity(self.buffer.len() * 8);
+        for byte in self.buffer.iter().copied() {
+            let mut mask = 0b10000000;
+            while mask > 0 {
+                if byte & mask > 0 {
+                    // bit set -> black
+                    buffer.extend_from_slice(&[0x00, 0xFF]); // no color, full alpha
+                } else {
+                    buffer.extend_from_slice(&[0xFF, 0x00]); // full color, no alpha
+                }
+                mask = mask >> 1;
+            }
+        }
+        GrayAlphaImage::from_vec(self.bytes_per_line * 8, self.height, buffer).unwrap()
     }
 }

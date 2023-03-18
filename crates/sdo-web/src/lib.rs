@@ -1,3 +1,6 @@
+use std::io::Cursor;
+
+use image::ImageOutputFormat;
 use js_sys::Array;
 use js_sys::ArrayBuffer;
 use js_sys::Uint8Array;
@@ -6,9 +9,14 @@ use signum::chsets::encoding::decode_atari_str;
 use signum::docs::container::parse_sdoc0001_container;
 use signum::docs::hcim::parse_image;
 use signum::docs::SDoc;
+use signum::raster;
 use wasm_bindgen::prelude::*;
+use web_sys::Blob;
+use web_sys::BlobPropertyBag;
 use web_sys::Document;
 use web_sys::HtmlElement;
+use web_sys::HtmlImageElement;
+use web_sys::Url;
 use web_sys::{Event, HtmlInputElement};
 
 macro_rules! console_log {
@@ -112,7 +120,7 @@ pub fn setup(name: &str) -> Result<Module, JsValue> {
 
                         // cset
                         let ar = Array::new();
-                        let mut html = "<ol>".to_string();
+                        let mut html = "<h3>Character Sets</h3><ol>".to_string();
                         for chr in doc.charsets {
                             let name = decode_atari_str(chr.as_ref());
                             html.push_str("<li>");
@@ -146,11 +154,45 @@ pub fn setup(name: &str) -> Result<Module, JsValue> {
                                 .unwrap()
                                 .dyn_into::<HtmlElement>()
                                 .unwrap();
-                            let mut html = "<h3>Embedded Images</h3>".to_string();
+                            el_hcim.set_inner_html("");
+                            let heading = document.create_element("h3")?;
+                            heading.set_inner_html("Embedded Images");
+                            el_hcim.append_child(&heading)?;
+                            let mut p = BlobPropertyBag::new();
+                            p.type_("image/png");
                             for (i, _im) in hcim.images.iter().enumerate() {
                                 match parse_image(_im.0) {
                                     Ok((_rest, image)) => {
-                                        html.push_str(&format!("<p>{}</p>", image.key));
+                                        let im = raster::Page::from(image.image).to_alpha_image();
+                                        let buf = Vec::<u8>::new();
+                                        let mut c = Cursor::new(buf);
+
+                                        im.write_to(&mut c, ImageOutputFormat::Png).unwrap();
+
+                                        let buf = c.into_inner();
+
+                                        let arr = Array::new();
+                                        let bytes = Uint8Array::from(buf.as_ref());
+                                        arr.push(&bytes);
+
+                                        let _blob =
+                                            Blob::new_with_u8_array_sequence_and_options(&arr, &p)?;
+                                        let _url = Url::create_object_url_with_blob(&_blob)?;
+
+                                        let el_figure = document.create_element("figure")?;
+                                        let el_image = HtmlImageElement::new()?;
+                                        el_image.set_src(&_url);
+                                        el_figure.append_child(&el_image)?;
+
+                                        let el_figcaption =
+                                            document.create_element("figcaption")?;
+                                        el_figcaption.set_inner_html(&image.key);
+
+                                        el_figure.append_child(&el_figcaption)?;
+
+                                        el_hcim.append_child(&el_figure)?;
+
+                                        //html.push_str(&format!("<p>{}</p>", image.key));
                                     }
                                     Err(e) => {
                                         log::error!("Failed to parse image {}: {}", i, e);
@@ -160,7 +202,7 @@ pub fn setup(name: &str) -> Result<Module, JsValue> {
                             if let Ok(tebu) = serde_wasm_bindgen::to_value(hcim) {
                                 log_val("hcim", &tebu);
                             }
-                            el_hcim.set_inner_html(&html);
+                            //el_hcim.set_inner_html(&html);
                         }
 
                         for (key, val) in &doc.other {
