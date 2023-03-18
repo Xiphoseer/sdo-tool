@@ -2,6 +2,7 @@ use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use log::{debug, error, info, warn};
+use nom_supreme::error::ErrorTree;
 use signum::{
     chsets::{
         cache::{CSet, ChsetCache},
@@ -20,7 +21,7 @@ use signum::{
     },
     nom::{multi::count, Finish},
     raster::Page,
-    util::Buf,
+    util::{Buf, FourCC},
 };
 use util::to_err_tree;
 
@@ -120,14 +121,12 @@ impl<'a> Document<'a> {
         let mut all_p24 = true;
         let mut all_l30 = true;
         let mut all_p09 = true;
-        for (index, name) in charsets.iter().enumerate() {
+        for (index, &name) in charsets.iter().enumerate() {
             if name.is_empty() {
                 continue;
             }
             self.cset[index] = Some(name.to_string());
-            let name_ref = name.as_ref();
-
-            if let Some(cset_cache_index) = fc.load_cset(name_ref) {
+            if let Some(cset_cache_index) = fc.load_cset(name) {
                 let cset = fc.cset(cset_cache_index).unwrap();
                 self.chsets[index] = Some(cset_cache_index);
                 all_eset &= cset.e24().is_some();
@@ -216,10 +215,10 @@ impl<'a> Document<'a> {
 
     fn process_tebu(&mut self, part: Buf) -> eyre::Result<()> {
         info!("Loading 'tebu' chunk");
-        let (rest, tebu_header) = parse_tebu_header(part.0).unwrap();
+        let (rest, tebu_header) = parse_tebu_header::<ErrorTree<&[u8]>>(part.0).unwrap();
         debug!("{:?}", tebu_header);
 
-        let (rest, tebu) = match count(parse_page_text, self.page_count)(rest) {
+        let (rest, tebu) = match count(parse_page_text::<ErrorTree<&[u8]>>, self.page_count)(rest) {
             Ok(r) => r,
             Err(e) => {
                 return Err(eyre!("Failed to process pages: {}", e));
@@ -247,12 +246,10 @@ impl<'a> Document<'a> {
         let mut images = Vec::with_capacity(hcim.header.img_count as usize);
 
         for (index, img) in hcim.images.iter().enumerate() {
-            //println!("image[{}]:", index);
             match parse_image(img.0) {
                 Ok((_imgrest, im)) => {
                     debug!("Found image {:?}", im.key);
-                    //println!("{:#?}", im.bytes);
-                    let page = Page::from_screen(im.image);
+                    let page = Page::from(im.image);
                     if let Some(out_img) = out_img {
                         let name = format!("{:02}-{}.png", index, im.key);
                         let path = out_img.join(name);
@@ -312,12 +309,12 @@ impl<'a> Document<'a> {
 
         for Chunk { tag, buf } in sdoc.chunks {
             match tag {
-                "0001" => self.process_0001(buf),
-                "cset" => self.process_cset(fc, buf),
-                "sysp" => self.process_sysp(buf),
-                "pbuf" => self.process_pbuf(buf),
-                "tebu" => self.process_tebu(buf),
-                "hcim" => self.process_hcim(buf),
+                FourCC::_0001 => self.process_0001(buf),
+                FourCC::_CSET => self.process_cset(fc, buf),
+                FourCC::_SYSP => self.process_sysp(buf),
+                FourCC::_PBUF => self.process_pbuf(buf),
+                FourCC::_TEBU => self.process_tebu(buf),
+                FourCC::_HCIM => self.process_hcim(buf),
                 _ => {
                     info!("Found unknown chunk '{}' ({} bytes)", tag, buf.0.len());
                     Ok(())

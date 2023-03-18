@@ -6,12 +6,13 @@ use nom::{
     number::complete::{be_u16, be_u32, be_u8},
     IResult,
 };
+use serde::Serialize;
 
-use crate::util::{Buf, Bytes16};
+use crate::util::{Buf, Bytes16, FourCC};
 
 use super::bytes16;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// The page buffer
 pub struct PBuf<'a> {
     /// The total number of pages
@@ -24,7 +25,7 @@ pub struct PBuf<'a> {
     pub pages: Vec<Option<(Page, Buf<'a>)>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// The margins of a page
 pub struct PageFormat {
     /// The total length in vertical units (1/54th of an inch)
@@ -46,7 +47,7 @@ impl PageFormat {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// Structure representing a single page
 pub struct Page {
     /// Page number over all documents from the same collection
@@ -154,4 +155,15 @@ pub fn parse_pbuf<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
             pages,
         },
     ))
+}
+
+impl<'a> super::Chunk<'a> for PBuf<'a> {
+    const TAG: crate::util::FourCC = FourCC::_PBUF;
+
+    fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    where
+        E: ParseError<&'a [u8]>,
+    {
+        parse_pbuf(input)
+    }
 }

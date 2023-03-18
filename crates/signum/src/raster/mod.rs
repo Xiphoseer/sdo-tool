@@ -2,6 +2,7 @@
 
 use std::{cmp::Ordering, fmt};
 
+use crate::util::data::BIT_PROJECTION;
 use crate::{
     chsets::{editor::EChar, printer::PSetChar},
     docs::hcim::ImageArea,
@@ -10,7 +11,7 @@ use crate::{
     util::{bit_writer::BitWriter, data::BIT_STRING},
 };
 #[cfg(feature = "image")]
-use {crate::util::data::BIT_PROJECTION, image::GrayImage};
+use image::GrayImage;
 
 /// A virtual page that works just like the atari monochrome screen
 ///
@@ -22,6 +23,18 @@ pub struct Page {
     width: u32,
     height: u32,
     buffer: Vec<u8>,
+}
+
+impl From<MonochromeScreen> for Page {
+    /// Turn a (fixed-size) screen into a (variable-sized) page
+    fn from(screen: MonochromeScreen) -> Self {
+        Page {
+            bytes_per_line: 80,
+            width: 640,
+            height: 400,
+            buffer: screen.into_inner(),
+        }
+    }
 }
 
 struct VScaler<'a> {
@@ -169,18 +182,6 @@ impl<'a, 'b> HScaler<'a, 'b> {
         }
 
         vs.vpixel_count += 1;
-    }
-}
-
-impl Page {
-    /// Turn a (fixed-size) screen into a (variable-sized) page
-    pub fn from_screen(screen: MonochromeScreen) -> Self {
-        Page {
-            bytes_per_line: 80,
-            width: 640,
-            height: 400,
-            buffer: screen.into_inner(),
-        }
     }
 }
 

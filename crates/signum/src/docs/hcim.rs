@@ -12,15 +12,16 @@ use nom::{
     number::complete::{be_u16, be_u32},
     IResult,
 };
+use serde::Serialize;
 
 use crate::{
     images::imc::{decode_imc, MonochromeScreen},
-    util::{Buf, Bytes16, Bytes32},
+    util::{Buf, Bytes16, Bytes32, FourCC},
 };
 
-use super::{bytes16, bytes32};
+use super::{bytes16, bytes32, Chunk};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// The header of a HCIM chunk
 pub struct HcimHeader {
     /// The length of the site_table
@@ -35,7 +36,7 @@ pub struct HcimHeader {
     pub d: Bytes32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
 /// Information on an image site
 ///
@@ -63,7 +64,7 @@ pub struct ImageSite {
     pub _F: Bytes16,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize)]
 /// The area of an image
 pub struct ImageArea {
     /// The horizontal position of the left edge
@@ -76,8 +77,8 @@ pub struct ImageArea {
     pub h: u16,
 }
 
-#[derive(Debug)]
-/// A partiall parsed HCIM
+#[derive(Debug, Serialize)]
+/// A partially parsed HCIM
 pub struct Hcim<'a> {
     /// The header
     pub header: HcimHeader,
@@ -207,4 +208,15 @@ pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
             images,
         },
     ))
+}
+
+impl<'a> Chunk<'a> for Hcim<'a> {
+    const TAG: crate::util::FourCC = FourCC::_HCIM;
+
+    fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    where
+        E: ParseError<&'a [u8]>,
+    {
+        parse_hcim(input)
+    }
 }

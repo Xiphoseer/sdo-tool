@@ -1,21 +1,34 @@
 //! # The outer container / structure
 
 use nom::{
-    bytes::complete::{tag, take},
-    combinator::map_res,
-    multi::length_data,
+    bytes::complete::tag,
+    combinator::eof,
+    multi::{length_data, many_till},
     number::complete::be_u32,
+    sequence::preceded,
     IResult,
 };
 
-use crate::util::Buf;
+use crate::util::{Buf, FourCC};
+
+use super::four_cc;
 #[derive(Debug)]
 /// One chunk in the document container
 pub struct Chunk<'a> {
     /// The tag of the chunk
-    pub tag: &'a str,
+    pub tag: FourCC,
     /// The content of the chunk
     pub buf: Buf<'a>,
+}
+
+impl<'a> Chunk<'a> {
+    /// Create a new chunk
+    pub fn new(tag: FourCC, data: &'a [u8]) -> Self {
+        Self {
+            tag,
+            buf: Buf(data),
+        }
+    }
 }
 
 /// A Signum! document container
@@ -25,24 +38,16 @@ pub struct SDocContainer<'a> {
     pub chunks: Vec<Chunk<'a>>,
 }
 
-fn take4(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    take(4usize)(input)
+/// Parse a single document chunk (i.e. tag + body)
+pub fn parse_chunk(input: &[u8]) -> IResult<&[u8], Chunk> {
+    let (rest, tag) = four_cc(input)?;
+    let (rest, data) = length_data(be_u32)(rest)?;
+    let chunk = Chunk::new(tag, data);
+    Ok((rest, chunk))
 }
 
 /// Parse a Signum! document
 pub fn parse_sdoc0001_container(input: &[u8]) -> IResult<&[u8], SDocContainer> {
-    let (input, _) = tag(b"sdoc")(input)?;
-    let mut chunks = Vec::new();
-    let mut input = input;
-    while !input.is_empty() {
-        let (rest, tag): (&[u8], &str) = map_res(take4, std::str::from_utf8)(input)?;
-        let (rest, data) = length_data(be_u32)(rest)?;
-        chunks.push(Chunk {
-            tag,
-            buf: Buf(data),
-        });
-        input = rest;
-    }
-
+    let (input, (chunks, _)) = preceded(tag(b"sdoc"), many_till(parse_chunk, eof))(input)?;
     Ok((input, SDocContainer { chunks }))
 }

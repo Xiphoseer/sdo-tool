@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
 
+use bstr::BStr;
 use log::{info, warn};
 
 use crate::chsets::{
@@ -13,6 +14,8 @@ use crate::chsets::{
     printer::PrinterKind,
     LoadError,
 };
+
+use super::encoding::decode_atari_str;
 
 fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
     let cset_file = cset_folder.join(name);
@@ -185,16 +188,17 @@ impl ChsetCache {
     }
 
     /// Load a character set
-    pub fn load_cset(&mut self, name: &str) -> Option<usize> {
-        if let Some(index) = self.names.get(name) {
+    pub fn load_cset(&mut self, name: &BStr) -> Option<usize> {
+        let name = decode_atari_str(name.as_ref()).into_owned();
+        if let Some(index) = self.names.get(&name) {
             return Some(*index);
         }
 
-        let cset = match find_font_file(&self.chsets_folder, name, "E24") {
+        let cset = match find_font_file(&self.chsets_folder, &name, "E24") {
             Some(editor_cset_file) => {
                 // Load all font files
                 CSet {
-                    name: name.to_owned(),
+                    name: name.clone(),
                     e24: load_editor_font(&editor_cset_file),
                     p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
                     p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
@@ -205,7 +209,7 @@ impl ChsetCache {
             None => {
                 warn!("Editor font for `{}` not found!", name);
                 CSet {
-                    name: name.to_owned(),
+                    name: name.clone(),
                     e24: None,
                     p09: None,
                     p24: None,
@@ -220,7 +224,7 @@ impl ChsetCache {
         self.chsets.push(cset);
 
         // Add lookup and return
-        self.names.insert(name.to_owned(), new_index);
+        self.names.insert(name, new_index);
         Some(new_index)
     }
 }

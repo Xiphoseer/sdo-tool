@@ -1,17 +1,21 @@
 //! # (`tebu`) The text buffer
 use bitflags::bitflags;
+use log::{error, info};
 use nom::{
     combinator::{iterator, map_parser, map_res},
-    error::ErrorKind,
+    error::{ErrorKind, ParseError, VerboseError},
     multi::{length_data, many0},
     number::complete::{be_u16, be_u32},
     sequence::tuple,
     IResult,
 };
+use serde::Serialize;
+
+use crate::util::FourCC;
 
 use super::bytes16;
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, Serialize)]
 /// The style of a character
 pub struct Style {
     /// Whether the char is underlined
@@ -30,7 +34,7 @@ pub struct Style {
     pub small: bool,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize)]
 /// A single text character
 pub struct Char {
     /// The number of the character
@@ -44,14 +48,16 @@ pub struct Char {
 }
 
 /// The text buffer header
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TextBufferHeader {
     /// The total number of lines in the buffer
     pub lines_total: u32,
 }
 
 /// Parse a `tebu` chunk header
-pub fn parse_tebu_header(input: &[u8]) -> IResult<&[u8], TextBufferHeader> {
+pub fn parse_tebu_header<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&[u8], TextBufferHeader, E> {
     let (input, lines_total) = be_u32(input)?;
 
     Ok((
@@ -63,14 +69,14 @@ pub fn parse_tebu_header(input: &[u8]) -> IResult<&[u8], TextBufferHeader> {
 }
 
 /// The text buffer
-#[derive(Debug)]
-pub struct TeBu<'a> {
+#[derive(Debug, Serialize)]
+pub struct TeBu {
     /// The header of the buffer
     pub header: TextBufferHeader,
     /// The indicidual lines
     ///
     /// A line is a sequence of characters in the same vertical position
-    pub lines: Vec<LineBuf<'a>>,
+    pub pages: Vec<PageText>,
 }
 
 #[derive(Clone)]
@@ -103,7 +109,7 @@ impl<'a> Iterator for LineIter<'a> {
     }
 }
 
-fn te(input: &[u8]) -> IResult<&[u8], Char> {
+fn te<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Char, E> {
     let (input, cmd) = be_u16(input)?;
 
     // get the first sub-value
@@ -167,11 +173,29 @@ pub struct LineBuf<'a> {
 
 bitflags! {
     /// The flags that of a line
+    #[derive(Serialize)]
+    #[serde(transparent)]
     pub struct Flags: u16 {
         /// ???
         const FLAG = 0x0001;
+        /// ???
+        const F1 = 0x0002;
+        /// ???
+        const F2 = 0x0004;
+        /// ???
+        const F3 = 0x0008;
+        /// ???
+        const F5 = 0x0010;
+        /// ???
+        const F6 = 0x0020;
+        /// ???
+        const F7 = 0x0040;
         /// This is followed by an associated page number
         const PNUM = 0x0080;
+        /// ???
+        const F8 = 0x0100;
+        /// ???
+        const F9 = 0x0200;
         /// Hauptzeile
         const LINE = 0x0400;
         /// Absatz
@@ -187,7 +211,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// Structure that holds a parsed line
 pub struct Line {
     /// The flags for the line
@@ -199,7 +223,7 @@ pub struct Line {
 }
 
 /// Parse a line from its buffer
-pub fn parse_line(input: &[u8]) -> IResult<&[u8], Line> {
+pub fn parse_line<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Line, E> {
     let (input, bits) = bytes16(input)?;
     let flags = Flags::from_bits(bits.0).expect("Unknown flags");
 
@@ -242,27 +266,33 @@ impl<'a> LineBuf<'a> {
     }
 }
 
-fn parse_line_buf(input: &[u8]) -> IResult<&[u8], LineBuf> {
+fn parse_line_buf<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], LineBuf, E> {
     let (input, skip) = be_u16(input)?;
     let (input, data) = length_data(be_u16)(input)?;
     Ok((input, LineBuf { skip, data }))
 }
 
-fn parse_buffered_line(input: &[u8]) -> IResult<&[u8], (u16, Line)> {
+fn parse_buffered_line<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], (u16, Line), E> {
     tuple((be_u16, map_parser(length_data(be_u16), parse_line)))(input)
 }
 
-fn parse_page_start_line(input: &[u8]) -> IResult<&[u8], (u16, u16)> {
-    map_res(parse_buffered_line, |(a, l)| {
+fn parse_page_start_line<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], (u16, u16), E> {
+    map_res::<_, _, _, nom::error::Error<&'a [u8]>, _, _, _>(parse_buffered_line, |(a, l)| {
         if l.flags.contains(Flags::PAGE & Flags::PNEW) {
             Ok((a, l.extra))
         } else {
             Err("Expected the start of a page!")
         }
     })(input)
+    .map_err(|e| e.map(|e| E::from_error_kind(e.input, e.code)))
 }
 
 /// Holds the lines of a complete page
+#[derive(Debug, Serialize)]
 pub struct PageText {
     /// The index of the page
     pub index: u16,
@@ -275,7 +305,9 @@ pub struct PageText {
 }
 
 /// Parse the text of an entire page
-pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
+pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], PageText, E> {
     let (input, (lskip, index)) = parse_page_start_line(input)?;
     let mut iter = iterator(input, parse_buffered_line);
 
@@ -287,7 +319,7 @@ pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
         }
 
         if !line.flags.contains(Flags::PEND) {
-            panic!("This is an unknown case, please send in this document for investigation.")
+            //panic!("This is an unknown case, please send in this document for investigation.")
         }
 
         assert_eq!(line.extra, index);
@@ -303,18 +335,42 @@ pub fn parse_page_text(input: &[u8]) -> IResult<&[u8], PageText> {
     }
 
     match iter.finish() {
-        Ok((rest, ())) => Err(nom::Err::Failure(nom::error::Error {
-            input: rest,
-            code: ErrorKind::Eof,
-        })),
+        Ok((rest, ())) => Err(nom::Err::Failure(E::from_error_kind(rest, ErrorKind::Eof))),
         Err(e) => Err(e),
     }
 }
 
 /// Parse a `tebu` chunk
-pub fn parse_tebu(input: &[u8]) -> IResult<&[u8], TeBu> {
+pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], TeBu, E> {
+    info!("Parsing Header ({} bytes)", input.len());
     let (input, header) = parse_tebu_header(input)?;
-    let (input, lines) = many0(parse_line_buf)(input)?;
+    info!("{:?}", header);
+    let mut pages = Vec::new();
+    let mut it = iterator(input, parse_page_text::<VerboseError<&[u8]>>);
+    for i in &mut it {
+        pages.push(i);
+    }
+    match it.finish() {
+        Ok((_rest, ())) => {
+            info!("{} bytes remaining", _rest.len());
+        }
+        Err(e) => {
+            error!("Failed to parse: {}", e);
+        }
+    }
+    info!("Parsed {} pages", pages.len());
+    //let (input, pages) = many0(parse_page_text)(input)?;
 
-    Ok((input, TeBu { header, lines }))
+    Ok((input, TeBu { header, pages }))
+}
+
+impl<'a> super::Chunk<'a> for TeBu {
+    const TAG: crate::util::FourCC = FourCC::_TEBU;
+
+    fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    where
+        E: nom::error::ParseError<&'a [u8]>,
+    {
+        parse_tebu(input)
+    }
 }
