@@ -26,7 +26,7 @@ impl UseTable {
     /// Get the first and last char that is used
     ///
     /// ```
-    /// use sdo::font::UseTable;
+    /// use signum::chsets::UseTable;
     /// let mut chars = [0; 128];
     /// let use_table = UseTable { chars };
     /// assert_eq!(use_table.first_last(), None);
