@@ -205,9 +205,9 @@ dependencies = [
 
 [[package]]
 name = "bstr"
-version = "1.2.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7f0778972c64420fdedc63f09919c8a88bda7b25135357fd25a5d9f3257e832"
+checksum = "c3d4260bcc2e8fc9df1eac4919a720effeb63a3f0952f5bf4944adfa18897f09"
 dependencies = [
  "memchr",
  "once_cell",
@@ -1040,6 +1040,7 @@ dependencies = [
  "ron",
  "sdo-pdf",
  "sdo-ps",
+ "sdo-util",
  "serde",
  "signum",
  "structopt",
@@ -1047,9 +1048,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdo-util"
+version = "0.1.0"
+dependencies = [
+ "signum",
+]
+
+[[package]]
 name = "sdo-web"
 version = "0.1.0"
 dependencies = [
+ "bstr 1.4.0",
  "console_log",
  "image",
  "js-sys",
@@ -1109,7 +1118,7 @@ name = "signum"
 version = "0.3.0"
 dependencies = [
  "bitflags",
- "bstr 1.2.0",
+ "bstr 1.4.0",
  "color-eyre",
  "displaydoc",
  "image",

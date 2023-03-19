@@ -1,6 +1,9 @@
 //! # General utilities
 
-use std::fmt::{self, Debug, Display};
+use std::{
+    fmt::{self, Debug, Display},
+    ops::Deref,
+};
 
 use bstr::{BStr, ByteSlice};
 use serde::{Deserialize, Serialize};
@@ -74,6 +77,15 @@ impl<'a> Display for Buf<'a> {
 pub struct FourCC(pub(crate) [u8; 4]);
 
 impl FourCC {
+    /// `sdoc` - Signum Document
+    pub const SDOC: FourCC = FourCC(*b"sdoc");
+    /// `bimc` - Hardcopy Image File (standalone)
+    pub const BIMC: FourCC = FourCC(*b"bimc");
+    /// `eset` - Editor Font
+    pub const ESET: FourCC = FourCC(*b"eset");
+    /// `ps24` - 24-Needle Printer Font
+    pub const PS24: FourCC = FourCC(*b"ps24");
+
     /// `0001`
     pub const _0001: FourCC = FourCC(*b"0001");
     /// `cset`
@@ -111,5 +123,13 @@ impl fmt::Debug for FourCC {
 impl fmt::Display for FourCC {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_bstr(), f)
+    }
+}
+
+impl Deref for FourCC {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

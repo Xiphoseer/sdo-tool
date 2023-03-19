@@ -342,9 +342,7 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
 
 /// Parse a `tebu` chunk
 pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], TeBu, E> {
-    info!("Parsing Header ({} bytes)", input.len());
     let (input, header) = parse_tebu_header(input)?;
-    info!("{:?}", header);
     let mut pages = Vec::new();
     let mut it = iterator(input, parse_page_text::<VerboseError<&[u8]>>);
     for i in &mut it {
@@ -352,14 +350,15 @@ pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
     }
     match it.finish() {
         Ok((_rest, ())) => {
-            info!("{} bytes remaining", _rest.len());
+            if _rest.len() > 0 {
+                info!("{} bytes remaining in tebu", _rest.len());
+            }
         }
         Err(e) => {
             error!("Failed to parse: {}", e);
         }
     }
     info!("Parsed {} pages", pages.len());
-    //let (input, pages) = many0(parse_page_text)(input)?;
 
     Ok((input, TeBu { header, pages }))
 }
