@@ -37,6 +37,18 @@ impl From<MonochromeScreen> for Page {
     }
 }
 
+impl From<PSetChar<'_>> for Page {
+    fn from(value: PSetChar<'_>) -> Self {
+        let bytes_per_line = value.width.into();
+        Page {
+            bytes_per_line,
+            width: bytes_per_line * 8,
+            height: value.height.into(),
+            buffer: value.bitmap.to_vec(),
+        }
+    }
+}
+
 struct VScaler<'a> {
     w: usize,
     h: usize,

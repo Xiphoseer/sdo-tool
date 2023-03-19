@@ -9,6 +9,7 @@ use sdo_util::keymap::KB_DRAW;
 use sdo_util::keymap::NP_DRAW;
 use signum::chsets::editor::parse_eset;
 use signum::chsets::encoding::decode_atari_str;
+use signum::chsets::printer::parse_ps24;
 use signum::docs::container::parse_sdoc0001_container;
 use signum::docs::four_cc;
 use signum::docs::hcim::parse_image;
@@ -256,6 +257,36 @@ impl Handle {
         Ok(())
     }
 
+    fn parse_ps24(&self, data: &[u8]) -> Result<(), JsValue> {
+        log::info!("Signum 24-Needle Printer Bitmap Font");
+        match parse_ps24(data) {
+            Ok((_, pset)) => {
+                log::info!("Parsed Printer Font");
+                let el_table = self.document.create_element("table")?;
+                self.output.append_child(&el_table)?;
+                for (_rdx, crow) in pset.chars.chunks(16).enumerate() {
+                    let el_tr = self.document.create_element("tr")?;
+                    el_table.append_child(&el_tr)?;
+                    for (_idx, c) in crow.iter().enumerate() {
+                        //log::info!("Char {:x}{:x} {}x{}", rdx, idx, c.width, c.height);
+                        let el_td = self.document.create_element("td")?;
+                        el_tr.append_child(&el_td)?;
+                        if c.height > 0 {
+                            let page = raster::Page::from(*c);
+                            let blob = self.page_as_blob(&page)?;
+                            let img_el = Self::blob_image_el(&blob)?;
+                            el_td.append_child(&img_el)?;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to parse printer font: {}", e);
+            }
+        }
+        Ok(())
+    }
+
     #[wasm_bindgen]
     pub fn do_stuff(&self, name: &str, data: &[u8]) -> Result<(), JsValue> {
         info!("Parsing file '{}'", name);
@@ -265,10 +296,7 @@ impl Handle {
             match four_cc {
                 FourCC::SDOC => self.parse_sdoc(data),
                 FourCC::ESET => self.parse_eset(data),
-                FourCC::PS24 => {
-                    log::info!("Signum 24-Needle Printer Bitmap Font");
-                    Ok(())
-                }
+                FourCC::PS24 => self.parse_ps24(data),
                 k => {
                     log::warn!("Unknown File Format '{}'", k);
                     Ok(())
