@@ -12,9 +12,7 @@
 
 <body>
   <input id="upload" type="file" accept=".sdo, .p24, .e24, .p09">
-  <section id="0001"></section>
-  <section id="cset"></section>
-  <section id="hcim"></section>
+  <main id="output"></main>
 
   <script type="module">
     import init, { Handle } from './pkg/sdo_web.js';
@@ -22,7 +20,8 @@
     async function run() {
       await init();
 
-      const h = new Handle(document);
+      const outputEl = document.getElementById("output");
+      const h = new Handle(outputEl);
 
       async function runFile(file) {
         const buf = await file.arrayBuffer();
@@ -36,7 +35,7 @@
           console.log(`Completed '${file.name}'`);
         }
       }
-      
+
       const inputField = document.getElementById("upload");
       inputField.addEventListener('change', (event) => {
         runFiles(event.target);

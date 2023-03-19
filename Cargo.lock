@@ -1063,6 +1063,7 @@ dependencies = [
  "image",
  "js-sys",
  "log",
+ "sdo-util",
  "serde-wasm-bindgen",
  "signum",
  "wasm-bindgen",

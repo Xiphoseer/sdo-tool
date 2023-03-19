@@ -5,6 +5,9 @@ use js_sys::Array;
 use js_sys::Uint8Array;
 use log::info;
 use log::Level;
+use sdo_util::keymap::KB_DRAW;
+use sdo_util::keymap::NP_DRAW;
+use signum::chsets::editor::parse_eset;
 use signum::chsets::encoding::decode_atari_str;
 use signum::docs::container::parse_sdoc0001_container;
 use signum::docs::four_cc;
@@ -72,17 +75,19 @@ pub struct Module {
 #[wasm_bindgen]
 pub struct Handle {
     document: Document,
+    output: HtmlElement,
 }
 
 #[wasm_bindgen]
 impl Handle {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Result<Handle, JsValue> {
+    pub fn new(output: HtmlElement) -> Result<Handle, JsValue> {
         let h = Self {
             document: window()
                 .ok_or(JsValue::NULL)?
                 .document()
                 .ok_or(JsValue::NULL)?,
+            output,
         };
         log::info!("New handle created!");
         Ok(h)
@@ -91,24 +96,15 @@ impl Handle {
     fn write0001(&self, header: &header::Header<'_>) -> Result<(), JsValue> {
         log::info!("Created: {}", &header.ctime);
         log::info!("Modified: {}", &header.mtime);
-        let el_header = self
-            .document
-            .get_element_by_id("0001")
-            .ok_or("Failed to get element with ID '0001'")?
-            .dyn_into::<HtmlElement>()
-            .or(Err("Failed to cast to HtmlElement"))?;
+        let el_header = self.document.create_element("section")?;
         let text = format!("Created: {}<br>Modified: {}", header.ctime, header.mtime);
         el_header.set_inner_html(&text);
+        self.output.append_child(&el_header)?;
         Ok(())
     }
 
     fn write_cset(&self, charsets: &[&bstr::BStr]) -> Result<(), JsValue> {
-        let el_cset = self
-            .document
-            .get_element_by_id("cset")
-            .unwrap()
-            .dyn_into::<HtmlElement>()
-            .unwrap();
+        let el_cset = self.document.create_element("section")?;
         let ar = Array::new();
         let mut html = "<h3>Character Sets</h3><ol>".to_string();
         for chr in charsets {
@@ -121,43 +117,44 @@ impl Handle {
         html.push_str("</ol>");
         log_array("cset", ar);
         el_cset.set_inner_html(&html);
+        self.output.append_child(&el_cset)?;
         Ok(())
     }
 
-    fn write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
-        let el_hcim = self
-            .document
-            .get_element_by_id("hcim")
-            .unwrap()
-            .dyn_into::<HtmlElement>()
+    fn page_as_blob(&self, page: &raster::Page) -> Result<Blob, JsValue> {
+        let mut buffer = Cursor::new(Vec::<u8>::new());
+        page.to_alpha_image()
+            .write_to(&mut buffer, ImageOutputFormat::Png)
             .unwrap();
-        el_hcim.set_inner_html("");
+        Blob::new_with_u8_array_sequence_and_options(
+            &Array::from_iter([Uint8Array::from(buffer.get_ref().as_slice())]),
+            &{
+                let mut bag = BlobPropertyBag::new();
+                bag.type_("image/png");
+                bag
+            },
+        )
+    }
+
+    fn blob_image_el(blob: &Blob) -> Result<HtmlImageElement, JsValue> {
+        let url = Url::create_object_url_with_blob(&blob)?;
+        let el_image = HtmlImageElement::new()?;
+        el_image.set_src(&url);
+        Ok(el_image)
+    }
+
+    fn write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
+        let el_hcim = self.document.create_element("section")?;
         let heading = self.document.create_element("h3")?;
         heading.set_inner_html("Embedded Images");
         el_hcim.append_child(&heading)?;
-        let mut p = BlobPropertyBag::new();
-        p.type_("image/png");
         for (i, _im) in hcim.images.iter().enumerate() {
             match parse_image(_im.0) {
                 Ok((_rest, image)) => {
-                    let im = raster::Page::from(image.image).to_alpha_image();
-                    let buf = Vec::<u8>::new();
-                    let mut c = Cursor::new(buf);
-
-                    im.write_to(&mut c, ImageOutputFormat::Png).unwrap();
-
-                    let buf = c.into_inner();
-
-                    let arr = Array::new();
-                    let bytes = Uint8Array::from(buf.as_ref());
-                    arr.push(&bytes);
-
-                    let _blob = Blob::new_with_u8_array_sequence_and_options(&arr, &p)?;
-                    let _url = Url::create_object_url_with_blob(&_blob)?;
+                    let blob = self.page_as_blob(&image.image.into())?;
 
                     let el_figure = self.document.create_element("figure")?;
-                    let el_image = HtmlImageElement::new()?;
-                    el_image.set_src(&_url);
+                    let el_image = Self::blob_image_el(&blob)?;
                     el_figure.append_child(&el_image)?;
 
                     let el_figcaption = self.document.create_element("figcaption")?;
@@ -175,6 +172,7 @@ impl Handle {
         if let Ok(tebu) = serde_wasm_bindgen::to_value(hcim) {
             log_val("hcim", &tebu);
         }
+        self.output.append_child(&el_hcim)?;
         Ok(())
     }
 
@@ -230,18 +228,43 @@ impl Handle {
         Ok(())
     }
 
+    fn parse_eset(&self, data: &[u8]) -> Result<(), JsValue> {
+        log::info!("Signum Editor Bitmap Font");
+        match parse_eset(data) {
+            Ok((_, eset)) => {
+                log::info!("Parsed Editor Font");
+                let kb_img = KB_DRAW
+                    .to_page(&eset)
+                    .or(Err("Failed to draw Keyboard Map"))?;
+                let np_img = NP_DRAW
+                    .to_page(&eset)
+                    .or(Err("Failed to draw Numpad Map"))?;
+
+                let kb_blob = self.page_as_blob(&kb_img)?;
+                let np_blob = self.page_as_blob(&np_img)?;
+
+                let kb_img_el = Self::blob_image_el(&kb_blob)?;
+                let np_img_el = Self::blob_image_el(&np_blob)?;
+
+                self.output.append_child(&kb_img_el)?;
+                self.output.append_child(&np_img_el)?;
+            }
+            Err(e) => {
+                log::error!("Failed to parse editor font: {}", e);
+            }
+        }
+        Ok(())
+    }
+
     #[wasm_bindgen]
     pub fn do_stuff(&self, name: &str, data: &[u8]) -> Result<(), JsValue> {
         info!("Parsing file '{}'", name);
-        let _body = self.document.body().expect("document should have a body");
+        self.output.set_inner_html("");
 
         if let Ok((_, four_cc)) = four_cc(data) {
             match four_cc {
                 FourCC::SDOC => self.parse_sdoc(data),
-                FourCC::ESET => {
-                    log::info!("Signum Editor Bitmap Font");
-                    Ok(())
-                }
+                FourCC::ESET => self.parse_eset(data),
                 FourCC::PS24 => {
                     log::info!("Signum 24-Needle Printer Bitmap Font");
                     Ok(())
