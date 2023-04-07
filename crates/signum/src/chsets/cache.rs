@@ -127,25 +127,25 @@ pub struct CSet {
 }
 
 #[rustfmt::skip]
-impl CSet {
+impl<'a> CSet {
     /// The the name of the character set
     pub fn name(&self) -> &str { &self.name }
     /// Get the unicode mapping
     pub fn map(&self) -> Option<&Mapping> { self.map.as_ref() }
     /// Get the laser printer bitmaps
-    pub fn l30(&self) -> Option<&PSet<'static>> { self.l30.as_deref() }
+    pub fn l30(&'a self) -> Option<&PSet<'a>> { self.l30.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 24-needle printer bitmaps
-    pub fn p24(&self) -> Option<&PSet<'static>> { self.p24.as_deref() }
+    pub fn p24(&'a self) -> Option<&PSet<'a>> { self.p24.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 9-needle printer bitmaps
-    pub fn p09(&self) -> Option<&PSet<'static>> { self.p09.as_deref() }
+    pub fn p09(&'a self) -> Option<&PSet<'a>> { self.p09.as_ref().map(OwnedPSet::borrowed) }
     /// Get the editor bitmaps
     pub fn e24(&self) -> Option<&ESet<'static>> { self.e24.as_deref() }
     /// Get the bitmaps for the specified printer kind
-    pub fn printer(&self, pk: PrinterKind) -> Option<&PSet<'static>> {
+    pub fn printer(&'a self, pk: PrinterKind) -> Option<&PSet<'a>> {
         match pk {
-            PrinterKind::Needle9 => self.p09.as_deref(),
-            PrinterKind::Needle24 => self.p24.as_deref(),
-            PrinterKind::Laser30 => self.l30.as_deref(),
+            PrinterKind::Needle9 => self.p09.as_ref().map(OwnedPSet::borrowed),
+            PrinterKind::Needle24 => self.p24.as_ref().map(OwnedPSet::borrowed),
+            PrinterKind::Laser30 => self.l30.as_ref().map(OwnedPSet::borrowed),
         }
     }
 }
@@ -173,7 +173,7 @@ impl ChsetCache {
     }
 
     /// Get a specific printer charset
-    pub fn pset(&self, pk: PrinterKind, index: usize) -> Option<&PSet<'static>> {
+    pub fn pset<'a>(&'a self, pk: PrinterKind, index: usize) -> Option<&PSet<'a>> {
         self.cset(index).and_then(|cset| cset.printer(pk))
     }
 

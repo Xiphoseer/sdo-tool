@@ -37,8 +37,8 @@ impl From<MonochromeScreen> for Page {
     }
 }
 
-impl From<PSetChar<'_>> for Page {
-    fn from(value: PSetChar<'_>) -> Self {
+impl From<&'_ PSetChar<'_>> for Page {
+    fn from(value: &PSetChar<'_>) -> Self {
         let bytes_per_line = value.width.into();
         Page {
             bytes_per_line,

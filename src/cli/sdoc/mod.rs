@@ -74,7 +74,7 @@ impl<'a> Document<'a> {
         fc: &'f ChsetCache,
         cset: u8,
         pk: PrinterKind,
-    ) -> Option<&'f PSet<'static>> {
+    ) -> Option<&'f PSet<'f>> {
         self.chsets[cset as usize].and_then(|index| fc.pset(pk, index))
     }
 

@@ -1,32 +1,24 @@
-use std::io::Cursor;
-
 use image::ImageOutputFormat;
-use js_sys::Array;
-use js_sys::Uint8Array;
-use log::info;
-use log::Level;
-use sdo_util::keymap::KB_DRAW;
-use sdo_util::keymap::NP_DRAW;
-use signum::chsets::editor::parse_eset;
-use signum::chsets::encoding::decode_atari_str;
-use signum::chsets::printer::parse_ps24;
-use signum::docs::container::parse_sdoc0001_container;
-use signum::docs::four_cc;
-use signum::docs::hcim::parse_image;
-use signum::docs::hcim::Hcim;
-use signum::docs::header;
-use signum::docs::SDoc;
-use signum::raster;
-use signum::util::FourCC;
+use js_sys::{Array, Uint8Array};
+use log::{info, Level};
+use sdo_util::keymap::{KB_DRAW, NP_DRAW};
+use signum::{
+    chsets::{editor::parse_eset, encoding::decode_atari_str, printer::parse_ps24},
+    docs::{
+        container::parse_sdoc0001_container,
+        four_cc,
+        hcim::{parse_image, Hcim},
+        header, SDoc,
+    },
+    raster,
+    util::FourCC,
+};
+use std::io::Cursor;
 use wasm_bindgen::prelude::*;
-use web_sys::window;
-use web_sys::Blob;
-use web_sys::BlobPropertyBag;
-use web_sys::Document;
-use web_sys::Event;
-use web_sys::HtmlElement;
-use web_sys::HtmlImageElement;
-use web_sys::Url;
+use web_sys::{
+    window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Event, HtmlCanvasElement,
+    HtmlElement, HtmlImageElement, ImageBitmap, Url,
+};
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -77,6 +69,7 @@ pub struct Module {
 pub struct Handle {
     document: Document,
     output: HtmlElement,
+    closures: Vec<Closure<dyn FnMut(JsValue)>>,
 }
 
 #[wasm_bindgen]
@@ -89,6 +82,7 @@ impl Handle {
                 .document()
                 .ok_or(JsValue::NULL)?,
             output,
+            closures: Vec::new(),
         };
         log::info!("New handle created!");
         Ok(h)
@@ -257,7 +251,7 @@ impl Handle {
         Ok(())
     }
 
-    fn parse_ps24(&self, data: &[u8]) -> Result<(), JsValue> {
+    fn parse_ps24(&mut self, data: &[u8]) -> Result<(), JsValue> {
         log::info!("Signum 24-Needle Printer Bitmap Font");
         match parse_ps24(data) {
             Ok((_, pset)) => {
@@ -272,13 +266,53 @@ impl Handle {
                         let el_td = self.document.create_element("td")?;
                         el_tr.append_child(&el_td)?;
                         if c.height > 0 {
-                            let page = raster::Page::from(*c);
+                            let page = raster::Page::from(c);
                             let blob = self.page_as_blob(&page)?;
                             let img_el = Self::blob_image_el(&blob)?;
                             el_td.append_child(&img_el)?;
                         }
                     }
                 }
+
+                let char_capital_a = &pset.chars[b'A' as usize];
+                let page = raster::Page::from(char_capital_a);
+                let blob = self.page_as_blob(&page)?;
+
+                let window = window().ok_or("expected window")?;
+                let _p = window.create_image_bitmap_with_blob(&blob)?;
+
+                let canvas = self
+                    .document
+                    .create_element("canvas")?
+                    .dyn_into::<HtmlCanvasElement>()?;
+                canvas.set_width(600);
+                canvas.set_height(600);
+                self.output.append_child(&canvas)?;
+                let ctx = canvas
+                    .get_context("2d")?
+                    .ok_or("context")?
+                    .dyn_into::<CanvasRenderingContext2d>()?;
+
+                let chr = char_capital_a.owned();
+                let callback = Closure::new(move |_v: JsValue| {
+                    let chr = chr.borrowed();
+                    let img = _v.dyn_into::<ImageBitmap>().unwrap();
+                    let w = img.width() * 10;
+                    let h = img.height() * 10;
+                    ctx.set_fill_style(&"green".into());
+                    //ctx.fill_rect(0.0, 0.0, 150.0, 100.0);
+                    ctx.draw_image_with_image_bitmap_and_dw_and_dh(
+                        &img, 10.0, 10.0, w as f64, h as f64,
+                    )
+                    .unwrap();
+
+                    // Implement the rest of https://potrace.sourceforge.net/potrace.pdf
+                    for (x, y) in chr.vertices() {
+                        ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
+                    }
+                });
+                let _ = _p.then(&callback);
+                self.closures.push(callback);
             }
             Err(e) => {
                 log::error!("Failed to parse printer font: {}", e);
@@ -288,7 +322,7 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub fn do_stuff(&self, name: &str, data: &[u8]) -> Result<(), JsValue> {
+    pub fn do_stuff(&mut self, name: &str, data: &[u8]) -> Result<(), JsValue> {
         info!("Parsing file '{}'", name);
         self.output.set_inner_html("");
 

@@ -13,7 +13,7 @@ use nom::{
     number::complete::{be_u32, u8},
     Finish, IResult,
 };
-use std::{ops::Deref, path::Path};
+use std::path::Path;
 
 #[derive(Debug, Copy, Clone)]
 /// The supported kinds of printers
@@ -110,6 +110,20 @@ pub struct PSetChar<'a> {
     pub bitmap: &'a [u8],
 }
 
+/// An owned version of a PSetChar
+pub struct OwnedPSetChar {
+    inner: PSetChar<'static>,
+    #[allow(dead_code)]
+    buffer: Box<[u8]>,
+}
+
+impl<'a> OwnedPSetChar {
+    /// Get the borrowed version of this struct
+    pub fn borrowed(&'a self) -> &PSetChar<'a> {
+        &self.inner
+    }
+}
+
 /// A struct to hold information on computed character dimensions
 pub struct HBounds {
     /// The number of bits that are zero in every line from the left
@@ -119,6 +133,65 @@ pub struct HBounds {
 }
 
 impl PSetChar<'_> {
+    /// Create an owned version of this character
+    pub fn owned(&self) -> OwnedPSetChar {
+        let buffer = self.bitmap.to_vec().into_boxed_slice();
+        OwnedPSetChar {
+            inner: PSetChar {
+                top: self.top,
+                height: self.height,
+                width: self.width,
+                bitmap: unsafe { std::mem::transmute(buffer.as_ref()) },
+            },
+            buffer,
+        }
+    }
+
+    /// check whether there is ink at a given coordinate
+    pub fn ink_at(&self, x: u32, y: u32) -> bool {
+        let xb = (x / 8) as usize;
+        let shift = 7 - x % 8;
+        let byte = (y * self.width as u32) as usize + xb;
+        if self.bitmap.len() <= byte {
+            return false;
+        }
+        ((self.bitmap[byte] >> shift) & 1) > 0
+    }
+
+    /// Get an iterator of all vertices in the character
+    pub fn vertices(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+        const NONE: [bool; 4] = [false; 4];
+        const ALL: [bool; 4] = [true; 4];
+        self.points().filter(move |&(x, y)| {
+            let a = x > 0 && y > 0 && self.ink_at(x - 1, y - 1);
+            let b = y > 0 && self.ink_at(x, y - 1);
+            let c = x > 0 && self.ink_at(x - 1, y);
+            let d = self.ink_at(x, y);
+            return !matches!([a, b, c, d], NONE | ALL);
+        })
+    }
+
+    /// Iterate over all points in the bitmap
+    pub fn points(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+        let mut x: u32 = 0;
+        let mut y: u32 = 0;
+        let w = u32::from(self.width) * 8;
+        let h = u32::from(self.height);
+        std::iter::from_fn(move || {
+            let mut ret = None;
+            if y <= h {
+                if x <= w {
+                    ret = Some((x, y));
+                    x = (x + 1) % (w + 1);
+                }
+                if x == 0 {
+                    y += 1;
+                }
+            }
+            return ret;
+        })
+    }
+
     /// Compute the horizontal bounds of the char
     pub fn hbounds(&self) -> HBounds {
         let width = self.width as usize * 8;
@@ -160,10 +233,19 @@ pub struct OwnedPSet {
     buffer: Vec<u8>,
 }
 
+/*
 impl Deref for OwnedPSet {
     type Target = PSet<'static>;
 
     fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+ */
+
+impl<'a> OwnedPSet {
+    /// Get a borrowed version of this Owned Set
+    pub fn borrowed(&'a self) -> &'a PSet<'a> {
         &self.inner
     }
 }
