@@ -1,10 +1,14 @@
 //! # The printer charsets
 
 use super::LoadError;
-use crate::util::Buf;
+use crate::{
+    docs::four_cc,
+    util::{Buf, FourCC},
+};
 use nom::{
     bytes::complete::{tag, take},
     combinator::verify,
+    error::{ErrorKind, ParseError},
     multi::count,
     number::complete::{be_u32, u8},
     Finish, IResult,
@@ -244,4 +248,20 @@ pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
 pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ls30")(input)?;
     parse_font(input, PrinterKind::Laser30)
+}
+
+/// Parse any printer font
+pub fn parse_pset(input: &[u8]) -> IResult<&[u8], PSet> {
+    let (input, cc) = four_cc(input)?;
+    match cc {
+        FourCC::PS24 => parse_font(input, PrinterKind::Needle24),
+        FourCC::PS09 => parse_font(input, PrinterKind::Needle9),
+        FourCC::LS30 => parse_font(input, PrinterKind::Laser30),
+        _ => {
+            let e: ErrorKind = ErrorKind::Tag;
+            Err(nom::Err::Error(nom::error::Error::from_error_kind(
+                input, e,
+            )))
+        }
+    }
 }

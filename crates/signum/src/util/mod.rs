@@ -85,6 +85,10 @@ impl FourCC {
     pub const ESET: FourCC = FourCC(*b"eset");
     /// `ps24` - 24-Needle Printer Font
     pub const PS24: FourCC = FourCC(*b"ps24");
+    /// `ps09` - 24-Needle Printer Font
+    pub const PS09: FourCC = FourCC(*b"ps09");
+    /// `ls30` - 24-Needle Printer Font
+    pub const LS30: FourCC = FourCC(*b"ls30");
 
     /// `0001`
     pub const _0001: FourCC = FourCC(*b"0001");
