@@ -10,6 +10,8 @@ use std::{io, str::FromStr};
 use printer::PrinterKind;
 use thiserror::*;
 
+use self::cache::FontCacheInfo;
+
 pub mod cache;
 pub mod editor;
 pub mod encoding;
@@ -99,9 +101,9 @@ impl UseTableVec {
     }
 
     /// Integrate a UseMatrix (from a document) to this vector
-    pub fn append(&mut self, chsets: &[Option<usize>; 8], use_matrix: UseMatrix) {
+    pub fn append(&mut self, chsets: &[FontCacheInfo; 8], use_matrix: UseMatrix) {
         for (cset, use_table) in use_matrix.csets.iter().enumerate() {
-            if let Some(index) = chsets.get(cset).and_then(|x| *x) {
+            if let Some(index) = chsets.get(cset).and_then(FontCacheInfo::index) {
                 while self.csets.len() + 1 < index {
                     self.csets.push(UseTable::new());
                 }

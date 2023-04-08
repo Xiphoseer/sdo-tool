@@ -112,7 +112,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let mut use_table_vec = UseTableVec::new();
     for doc in &documents {
         let use_matrix = doc.use_matrix();
-        use_table_vec.append(&doc.chsets, use_matrix);
+        use_table_vec.append(&doc.print.chsets, use_matrix);
     }
 
     // FIXME: Auto-Detect from font cache

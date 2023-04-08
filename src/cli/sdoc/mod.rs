@@ -1,18 +1,17 @@
 use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use nom_supreme::error::ErrorTree;
 use signum::{
     chsets::{
-        cache::{CSet, ChsetCache},
-        editor::ESet,
-        printer::{PSet, PrinterKind},
-        FontKind, UseMatrix,
+        cache::{ChsetCache, DocumentFontCacheInfo},
+        UseMatrix,
     },
     docs::{
+        self,
         container::{parse_sdoc0001_container, Chunk},
-        cset::parse_cset,
+        cset::{self},
         hcim::{parse_hcim, parse_image, ImageSite},
         header::parse_header,
         pbuf::{self, parse_pbuf},
@@ -48,13 +47,8 @@ impl Pos {
 
 pub struct Document<'a> {
     // Configuration
-    print_driver: Option<FontKind>,
     opt: &'a Options,
-    //file: &'a Path,
-    // cset
-    pub cset: [Option<String>; 8],
-    pub chsets: [Option<usize>; 8],
-    // pbuf
+    pub print: DocumentFontCacheInfo,
     pages: Vec<Option<pbuf::Page>>,
     page_count: usize,
     // tebu
@@ -65,23 +59,6 @@ pub struct Document<'a> {
 }
 
 impl<'a> Document<'a> {
-    pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'static>> {
-        self.chsets[cset as usize].and_then(|index| fc.eset(index))
-    }
-
-    pub fn pset<'f>(
-        &self,
-        fc: &'f ChsetCache,
-        cset: u8,
-        pk: PrinterKind,
-    ) -> Option<&'f PSet<'f>> {
-        self.chsets[cset as usize].and_then(|index| fc.pset(pk, index))
-    }
-
-    pub fn cset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f CSet> {
-        self.chsets[cset as usize].and_then(|index| fc.cset(index))
-    }
-
     pub fn use_matrix(&self) -> UseMatrix {
         let mut use_matrix = UseMatrix::new();
 
@@ -101,11 +78,9 @@ impl<'a> Document<'a> {
     pub fn new(opt: &'a Options) -> Self {
         Document {
             opt,
-            cset: [None, None, None, None, None, None, None, None],
-            chsets: [None; 8],
+            print: DocumentFontCacheInfo::default(),
             pages: vec![],
             page_count: 0,
-            print_driver: opt.print_driver,
             tebu: vec![],
             images: vec![],
             sites: vec![],
@@ -114,78 +89,11 @@ impl<'a> Document<'a> {
 
     fn process_cset<'x>(&mut self, fc: &mut ChsetCache, part: Buf<'x>) -> eyre::Result<()> {
         info!("Loading 'cset' chunk");
-        let charsets = util::load(parse_cset, part.0)?;
-        info!("CHSETS: {:?}", charsets);
+        let charsets = util::load(<cset::CSet as docs::Chunk>::parse, part.0)?;
+        info!("CHSETS: {:?}", charsets.names);
 
-        let mut all_eset = true;
-        let mut all_p24 = true;
-        let mut all_l30 = true;
-        let mut all_p09 = true;
-        for (index, &name) in charsets.iter().enumerate() {
-            if name.is_empty() {
-                continue;
-            }
-            self.cset[index] = Some(name.to_string());
-            if let Some(cset_cache_index) = fc.load_cset(name) {
-                let cset = fc.cset(cset_cache_index).unwrap();
-                self.chsets[index] = Some(cset_cache_index);
-                all_eset &= cset.e24().is_some();
-                all_p24 &= cset.p24().is_some();
-                all_l30 &= cset.l30().is_some();
-                all_p09 &= cset.p09().is_some();
-            }
-        }
-        // Print info on which sets are available
-        if all_eset {
-            info!("Editor fonts available for all character sets");
-        }
-        if all_p24 {
-            info!("Printer fonts (24-needle) available for all character sets");
-        }
-        if all_l30 {
-            info!("Printer fonts (laser/30) available for all character sets");
-        }
-        if all_p09 {
-            info!("Printer fonts (9-needle) available for all character sets");
-        }
+        self.print = DocumentFontCacheInfo::of(&charsets, fc, self.opt.print_driver);
 
-        // If none was set, choose one strategy
-        if let Some(pd) = self.print_driver {
-            match pd {
-                FontKind::Editor => {
-                    if !all_eset {
-                        warn!(
-                            "Explicitly chosen editor print-driver but not all fonts are available"
-                        );
-                    }
-                }
-                FontKind::Printer(PrinterKind::Needle24) => {
-                    if !all_p24 {
-                        warn!("Explicitly chosen 24-needle print-driver but not all fonts are available");
-                    }
-                }
-                FontKind::Printer(PrinterKind::Needle9) => {
-                    if !all_p09 {
-                        warn!("Explicitly chosen 9-needle print-driver but not all fonts are available");
-                    }
-                }
-                FontKind::Printer(PrinterKind::Laser30) => {
-                    if !all_l30 {
-                        warn!("Explicitly chosen laser/30 print-driver but not all fonts are available");
-                    }
-                }
-            }
-        } else if all_l30 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
-        } else if all_p24 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
-        } else if all_p09 {
-            self.print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
-        } else if all_eset {
-            self.print_driver = Some(FontKind::Editor);
-        } else {
-            warn!("No print-driver has all fonts available.");
-        }
         Ok(())
     }
 

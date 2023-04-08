@@ -12,7 +12,10 @@ use pdf_create::{
     high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
 };
 use sdo_pdf::{font::Fonts, sdoc::Contents};
-use signum::chsets::{cache::ChsetCache, FontKind, UseTableVec};
+use signum::chsets::{
+    cache::{ChsetCache, FontCacheInfo},
+    FontKind, UseTableVec,
+};
 
 use crate::cli::opt::Meta;
 
@@ -63,16 +66,25 @@ pub fn prepare_document(
 ) -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
-    for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
-        if let Some(fc_index) = fc_index {
-            let key = FONTS[cset].to_owned();
-            if let Some(info) = font_info.get(fc_index) {
-                let index = font_info.index(info);
-                let value = Resource::Global { index };
-                fonts.insert(key, value);
-                infos[cset] = Some(info);
-            }
-        }
+    for (cset, info) in doc
+        .print
+        .chsets
+        .iter()
+        .map(FontCacheInfo::index)
+        .enumerate()
+        .filter_map(|(cset, fc_index)| {
+            fc_index
+                .and_then(|fc_index| font_info.get(fc_index))
+                .map(|info| (cset, info))
+        })
+    {
+        fonts.insert(
+            FONTS[cset].to_owned(),
+            Resource::Global {
+                index: font_info.index(info),
+            },
+        );
+        infos[cset] = Some(info);
     }
 
     let font_dict = hnd.res.font_dicts.len();
@@ -187,7 +199,7 @@ pub fn prepare_document(
 
                 let csu = te.cset as usize;
                 let fi = infos[csu].ok_or_else(|| {
-                    let font_name = doc.cset[csu].as_deref().unwrap_or("");
+                    let font_name = doc.print.chsets[csu].name().unwrap_or("");
                     eyre!("Missing font #{}: {:?}", csu, font_name)
                 })?;
                 prev_width = fi.width(te.cval) as i32;
@@ -235,10 +247,11 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
 
     let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
-    use_table_vec.append(&doc.chsets, use_matrix);
+    use_table_vec.append(&doc.print.chsets, use_matrix);
 
     let pd = doc
-        .print_driver
+        .print
+        .print_driver()
         .ok_or_else(|| eyre!("No printer type selected"))?;
 
     let pk = if let FontKind::Printer(pk) = pd {

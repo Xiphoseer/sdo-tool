@@ -5,17 +5,20 @@ use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
 use bstr::BStr;
 use log::{info, warn};
 
-use crate::chsets::{
-    editor::ESet,
-    editor::OwnedESet,
-    encoding::{p_mapping_file, Mapping},
-    printer::OwnedPSet,
-    printer::PSet,
-    printer::PrinterKind,
-    LoadError,
+use crate::{
+    chsets::{
+        editor::ESet,
+        editor::OwnedESet,
+        encoding::{p_mapping_file, Mapping},
+        printer::OwnedPSet,
+        printer::PSet,
+        printer::PrinterKind,
+        LoadError,
+    },
+    docs::cset,
 };
 
-use super::encoding::decode_atari_str;
+use super::{encoding::decode_atari_str, FontKind};
 
 fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
     let cset_file = cset_folder.join(name);
@@ -226,5 +229,157 @@ impl ChsetCache {
         // Add lookup and return
         self.names.insert(name, new_index);
         Some(new_index)
+    }
+}
+
+/// Printer options for a single font
+#[derive(Default, Clone)]
+pub struct FontCacheInfo {
+    index: Option<usize>,
+    name: Option<String>,
+}
+
+impl FontCacheInfo {
+    /// Get the index
+    pub fn index(&self) -> Option<usize> {
+        self.index
+    }
+
+    /// Get the name
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+}
+
+impl FontCacheInfo {
+    const EMPTY: Self = Self {
+        index: None,
+        name: None,
+    };
+}
+
+/// Print Options for a Document
+#[derive(Default)]
+pub struct DocumentFontCacheInfo {
+    /// Chosen Printer Driver
+    print_driver: Option<FontKind>,
+    /// Character sets used by this document
+    pub chsets: [FontCacheInfo; 8],
+}
+
+impl DocumentFontCacheInfo {
+    /// Get the preferred print driver
+    pub fn print_driver(&self) -> Option<FontKind> {
+        self.print_driver
+    }
+
+    /*pub fn from_cache<'a>(&self, fc: &'a ChsetCache) -> [Option<&'a FontInfo>; 8] {
+
+    }*/
+
+    /// Get print options for a CSet
+    pub fn of<'a>(
+        cset: &cset::CSet<'a>,
+        fc: &mut ChsetCache,
+        mut print_driver: Option<FontKind>,
+    ) -> Self {
+        let mut all_eset = true;
+        let mut all_p24 = true;
+        let mut all_l30 = true;
+        let mut all_p09 = true;
+
+        let mut chsets = [FontCacheInfo::EMPTY; 8];
+
+        for (index, &name) in cset.names.iter().enumerate() {
+            if name.is_empty() {
+                continue;
+            }
+            chsets[index].name = Some(name.to_string());
+            if let Some(cset_cache_index) = fc.load_cset(name) {
+                let cset = fc
+                    .cset(cset_cache_index)
+                    .expect("invalid index returned by load_cset");
+                chsets[index].index = Some(cset_cache_index);
+                all_eset &= cset.e24().is_some();
+                all_p24 &= cset.p24().is_some();
+                all_l30 &= cset.l30().is_some();
+                all_p09 &= cset.p09().is_some();
+            }
+        }
+        // Print info on which sets are available
+        if all_eset {
+            info!("Editor fonts available for all character sets");
+        }
+        if all_p24 {
+            info!("Printer fonts (24-needle) available for all character sets");
+        }
+        if all_l30 {
+            info!("Printer fonts (laser/30) available for all character sets");
+        }
+        if all_p09 {
+            info!("Printer fonts (9-needle) available for all character sets");
+        }
+
+        // If none was set, choose one strategy
+        if let Some(pd) = print_driver {
+            match pd {
+                FontKind::Editor if !all_eset => {
+                    warn!("Explicitly chosen editor print-driver but not all fonts are available");
+                }
+                FontKind::Printer(PrinterKind::Needle24) if !all_p24 => {
+                    warn!(
+                        "Explicitly chosen 24-needle print-driver but not all fonts are available"
+                    );
+                }
+                FontKind::Printer(PrinterKind::Needle9) if !all_p09 => {
+                    warn!(
+                        "Explicitly chosen 9-needle print-driver but not all fonts are available"
+                    );
+                }
+                FontKind::Printer(PrinterKind::Laser30) if !all_l30 => {
+                    warn!(
+                        "Explicitly chosen laser/30 print-driver but not all fonts are available"
+                    );
+                }
+                _ => {
+                    // All fonts available
+                }
+            }
+        } else if all_l30 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
+        } else if all_p24 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
+        } else if all_p09 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
+        } else if all_eset {
+            print_driver = Some(FontKind::Editor);
+        } else {
+            warn!("No print-driver has all fonts available.");
+        }
+        Self {
+            print_driver,
+            chsets,
+        }
+    }
+
+    /// Get the editor charset by index
+    pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'f>> {
+        self.cset(fc, cset).and_then(CSet::e24)
+    }
+
+    /// Get the printer character set by index
+    pub fn pset<'f>(&self, fc: &'f ChsetCache, cset: u8, pk: PrinterKind) -> Option<&'f PSet<'f>> {
+        self.cset(fc, cset).and_then(match pk {
+            PrinterKind::Needle24 => CSet::p24,
+            PrinterKind::Needle9 => CSet::p09,
+            PrinterKind::Laser30 => CSet::l30,
+        })
+    }
+
+    /// Get the `cache::CSet` by index
+    pub fn cset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f CSet> {
+        self.chsets[cset as usize]
+            .index
+            .and_then(|index| fc.cset(index))
     }
 }

@@ -15,7 +15,8 @@ fn output_ps_writer(
     pw: &mut PsWriter<impl Write>,
 ) -> eyre::Result<()> {
     let pd = doc
-        .print_driver
+        .print
+        .print_driver()
         .ok_or_else(|| eyre!("No printer type selected"))?;
     let (hdpi, vdpi) = pd.resolution();
 
@@ -56,7 +57,7 @@ fn output_ps_writer(
             let use_table = &use_matrix.csets[cau];
             match pd {
                 FontKind::Printer(pk) => {
-                    if let Some(cs) = doc.cset(fc, cset) {
+                    if let Some(cs) = doc.print.cset(fc, cset) {
                         let name = cs.name();
                         if let Some(pset) = cs.printer(pk) {
                             pw.write_comment(&format!("SignumBitmapFont: {}", name))?;

@@ -146,7 +146,7 @@ impl<'a> HtmlGen<'a> {
                 write!(self.out, "<u>")?;
             }
 
-            let mut width = if let Some(eset) = &self.doc.eset(self.fc, k.cset) {
+            let mut width = if let Some(eset) = &self.doc.print.eset(self.fc, k.cset) {
                 eset.chars[k.cval as usize].width
             } else {
                 // default for fonts that are missing

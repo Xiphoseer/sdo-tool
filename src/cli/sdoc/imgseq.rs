@@ -20,9 +20,9 @@ fn draw_chars(
 ) {
     for te in data {
         *x += te.offset;
-        match doc.print_driver {
+        match doc.print.print_driver() {
             Some(FontKind::Editor) => {
-                if let Some(eset) = doc.eset(fc, te.cset) {
+                if let Some(eset) = doc.print.eset(fc, te.cset) {
                     let ch = &eset.chars[te.cval as usize];
                     let x = *x; // No skew compensation (18/15)
                     let y = y * 2;
@@ -35,7 +35,7 @@ fn draw_chars(
                 }
             }
             Some(FontKind::Printer(pk)) => {
-                if let Some(eset) = doc.pset(fc, te.cset, pk) {
+                if let Some(eset) = doc.print.pset(fc, te.cset, pk) {
                     let ch = &eset.chars[te.cval as usize];
                     let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
                     let x = fk.scale_x(*x);
@@ -95,7 +95,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             }
         }
 
-        let (mut page, mut pos) = if let Some(print_driver) = doc.print_driver {
+        let (mut page, mut pos) = if let Some(print_driver) = doc.print.print_driver() {
             let width_units: u16 = pbuf_entry.format.left + pbuf_entry.format.right + 20;
             let height_units: u16 =
                 pbuf_entry.format.header + pbuf_entry.format.length + pbuf_entry.format.footer;
@@ -125,7 +125,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
                 site.sel.w, site.sel.h, site.sel.x, site.sel.y, site.img, site.site.x, site.site.y
             );
 
-            if let Some(pd) = doc.print_driver {
+            if let Some(pd) = doc.print.print_driver() {
                 let px = pd.scale_x(10 + site.site.x);
                 let w = pd.scale_x(site.site.w);
                 let py = pd.scale_y(10 + site.site.y - site._5 / 2);

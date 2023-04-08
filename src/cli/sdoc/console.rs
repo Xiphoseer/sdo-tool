@@ -79,7 +79,7 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
             print!("<b>");
         }
 
-        let width = if let Some(eset) = &doc.eset(fc, k.cset) {
+        let width = if let Some(eset) = &doc.print.eset(fc, k.cset) {
             eset.chars[k.cval as usize].width
         } else {
             // default for fonts that are missing
