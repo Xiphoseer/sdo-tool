@@ -12,7 +12,7 @@ use crate::{
     util::data::BIT_PROJECTION,
 };
 
-use super::{scalers::VScaler, DrawPrintErr};
+use super::{scalers::VScaler, trace::Dir, DrawPrintErr};
 
 /// A virtual page that works just like the atari monochrome screen
 ///
@@ -48,13 +48,6 @@ impl From<&'_ PSetChar<'_>> for Page {
             buffer: value.bitmap.to_vec(),
         }
     }
-}
-
-enum Dir {
-    Down,
-    Up,
-    Left,
-    Right,
 }
 
 impl Page {

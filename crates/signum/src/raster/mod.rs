@@ -4,9 +4,11 @@ use std::fmt;
 
 mod page;
 mod scalers;
+mod trace;
 mod util;
 
 pub use page::Page;
+pub use trace::{straight_up_to, Dir};
 
 #[derive(Debug)]
 /// Drawing Error
