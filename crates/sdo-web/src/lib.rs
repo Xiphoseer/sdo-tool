@@ -285,17 +285,15 @@ impl Handle {
                     .document
                     .create_element("canvas")?
                     .dyn_into::<HtmlCanvasElement>()?;
-                canvas.set_width(600);
-                canvas.set_height(600);
+                canvas.set_width(700);
+                canvas.set_height(900);
                 self.output.append_child(&canvas)?;
                 let ctx = canvas
                     .get_context("2d")?
                     .ok_or("context")?
                     .dyn_into::<CanvasRenderingContext2d>()?;
 
-                let chr = char_capital_a.owned();
                 let callback = Closure::new(move |_v: JsValue| {
-                    let chr = chr.borrowed();
                     let img = _v.dyn_into::<ImageBitmap>().unwrap();
                     let w = img.width() * 10;
                     let h = img.height() * 10;
@@ -307,8 +305,20 @@ impl Handle {
                     .unwrap();
 
                     // Implement the rest of https://potrace.sourceforge.net/potrace.pdf
-                    for (x, y) in chr.vertices() {
+                    for (x, y) in page.vertices() {
                         ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
+                    }
+
+                    ctx.set_stroke_style(&"blue".into());
+                    if let Some(mut iter) = page.first_outline() {
+                        log_val("Test", &JsValue::TRUE);
+                        let (x0, y0) = iter.next().unwrap();
+                        ctx.begin_path();
+                        ctx.move_to((10 + x0 * 10) as f64, (10 + y0 * 10) as f64);
+                        for (x, y) in iter {
+                            ctx.line_to((10 + x * 10) as f64, (10 + y * 10) as f64);
+                        }
+                        ctx.stroke();
                     }
                 });
                 let _ = _p.then(&callback);

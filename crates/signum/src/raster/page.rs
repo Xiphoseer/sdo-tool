@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, slice::SliceIndex};
+use std::{cmp::Ordering, collections::VecDeque, slice::SliceIndex};
 
 #[cfg(feature = "image")]
 use image::{GrayAlphaImage, GrayImage};
@@ -50,6 +50,13 @@ impl From<&'_ PSetChar<'_>> for Page {
     }
 }
 
+enum Dir {
+    Down,
+    Up,
+    Left,
+    Right,
+}
+
 impl Page {
     /// Create a new page with the given dimensions
     pub fn new(width: u32, height: u32) -> Self {
@@ -70,6 +77,129 @@ impl Page {
     /// Get a bit iterator for the given byte range
     pub fn bits<R: SliceIndex<[u8], Output = [u8]>>(&self, range: R) -> BitIter {
         BitIter::new(&self.buffer[range])
+    }
+
+    /// Get the position of the "first" pixel with ink
+    pub fn first_ink(&self) -> Option<(u32, u32)> {
+        self.buffer.iter().position(|&x| x > 0).map(|index| {
+            let xoff = self.buffer[index].leading_zeros();
+            let y = index as u32 / self.bytes_per_line;
+            let x = index as u32 % self.bytes_per_line;
+            return (x * 8 + xoff, y);
+        })
+    }
+
+    /// Get the first outline
+    pub fn first_outline(&self) -> Option<impl Iterator<Item = (u32, u32)> + '_> {
+        self.first_ink().map(|p0| {
+            let (x0, y0) = p0;
+            let mut p = (x0, y0 + 1);
+            let mut first = VecDeque::from([p0, p]);
+            let mut dir = Dir::Down;
+            return std::iter::from_fn(move || {
+                if let Some(x) = first.pop_front() {
+                    return Some(x);
+                }
+                if p == p0 {
+                    return None;
+                }
+                let (x, y) = p;
+                dir = match dir {
+                    Dir::Down => {
+                        // left is blank, right is ink
+                        let bl = x > 0 && self.ink_at(x - 1, y);
+                        let br = self.ink_at(x, y);
+                        match (bl, br) {
+                            (true, _) => Dir::Left,
+                            (false, true) => Dir::Down,
+                            (false, false) => Dir::Right,
+                        }
+                    }
+                    Dir::Up => {
+                        // left is ink, right is blank
+                        let tl = x > 0 && y > 0 && self.ink_at(x - 1, y - 1);
+                        let tr = y > 0 && self.ink_at(x, y - 1);
+                        match (tl, tr) {
+                            (_, true) => Dir::Right,
+                            (true, false) => Dir::Up,
+                            (false, false) => Dir::Left,
+                        }
+                    }
+                    Dir::Left => {
+                        // top is blank, bottom is ink
+                        let tl = x > 0 && y > 0 && self.ink_at(x - 1, y - 1);
+                        let bl = x > 0 && self.ink_at(x - 1, y);
+                        match (bl, tl) {
+                            (_, true) => Dir::Up,
+                            (true, false) => Dir::Left,
+                            (false, false) => Dir::Down,
+                        }
+                    }
+                    Dir::Right => {
+                        // top is ink, bottom is blank
+                        let tr = y > 0 && self.ink_at(x, y - 1);
+                        let br = self.ink_at(x, y);
+                        match (tr, br) {
+                            (_, true) => Dir::Down,
+                            (true, false) => Dir::Right,
+                            (false, false) => Dir::Up,
+                        }
+                    }
+                };
+                p = match dir {
+                    Dir::Down => (x, y + 1),
+                    Dir::Up => (x, y - 1),
+                    Dir::Left => (x - 1, y),
+                    Dir::Right => (x + 1, y),
+                };
+                return Some(p);
+            });
+        })
+    }
+
+    /// check whether there is ink at a given coordinate
+    pub fn ink_at(&self, x: u32, y: u32) -> bool {
+        if x >= self.width {
+            return false;
+        }
+        let xb = x / 8;
+        let shift = 7 - x % 8;
+        let byte = (y * self.bytes_per_line + xb) as usize;
+        if self.buffer.len() <= byte {
+            return false;
+        }
+        ((self.buffer[byte] >> shift) & 1) > 0
+    }
+
+    /// Get an iterator of all vertices in the character
+    pub fn vertices(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+        const NONE: [bool; 4] = [false; 4];
+        const ALL: [bool; 4] = [true; 4];
+        self.points().filter(move |&(x, y)| {
+            let a = x > 0 && y > 0 && self.ink_at(x - 1, y - 1);
+            let b = y > 0 && self.ink_at(x, y - 1);
+            let c = x > 0 && self.ink_at(x - 1, y);
+            let d = self.ink_at(x, y);
+            return !matches!([a, b, c, d], NONE | ALL);
+        })
+    }
+
+    /// Iterate over all points in the bitmap
+    pub fn points(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+        let (mut x, mut y): (u32, u32) = (0, 0);
+        std::iter::from_fn(move || {
+            let mut ret = None;
+            if y <= self.height {
+                if x <= self.width {
+                    ret = Some((x, y));
+                    x = (x + 1) % (self.width + 1);
+                }
+                if x == 0 {
+                    y += 1;
+                }
+            }
+            return ret;
+        })
     }
 
     /// This function prints an images to the console.
