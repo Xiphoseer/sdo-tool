@@ -5,7 +5,7 @@ This section lists documents for which plausible claims exist that they were typ
 ## Journals
 
 - Dutch Contributions to the Tenth International Congress of Slavists, Sofia, September 14-22, 1988: Linguistics, 465 pp. [(According to this review)](https://www.jstor.org/stable/3732187)
-- [Cahiers de Topologie et Géométrie Différentielle Catégoriques (1989 - ???)](http://www.numdam.org/journals/CTGDC/); [(According to this article)](www.numdam.org/article/CTGDC_1988__29_4_255_0.pdf)
+- [Cahiers de Topologie et Géométrie Différentielle Catégoriques (1989 - ???)](http://www.numdam.org/journals/CTGDC/); [(According to this article)](http://www.numdam.org/article/CTGDC_1988__29_4_255_0.pdf)
 - [Journal of the Geographical Institute "Jovan Cvijic" SASA (1993/94)](http://gi.sanu.ac.rs/index.php/en/publishing/journal/92-collection-of-papers-volume-44-45); [(1996)](http://gi.sanu.ac.rs/index.php/en/publishing/journal/93-collection-of-papers-volume-46)
 - [**Form und Inhalt in der Europäisierung nicht-europäischer Kultursprachen** in *Fachsprache und Terminologie in Geschichte und Gegenwart* (1992)](http://d-nb.info/911418164); [(Google Books)](https://books.google.de/books?id=j8fEjdzG5lUC&q="Signum!Zwei")
 - [**Nachrichten des Entomologischen Vereins Apollo** / New Series (1988 - 1992)](http://www.apollo-frankfurt.de/en/neva/publicationseries/neva-new-series.html)
