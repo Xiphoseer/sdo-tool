@@ -87,7 +87,7 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset<'x>(&mut self, fc: &mut ChsetCache, part: Buf<'x>) -> eyre::Result<()> {
+    fn process_cset(&mut self, fc: &mut ChsetCache, part: Buf<'_>) -> eyre::Result<()> {
         info!("Loading 'cset' chunk");
         let charsets = util::load(<cset::CSet as docs::Chunk>::parse, part.0)?;
         info!("CHSETS: {:?}", charsets.names);

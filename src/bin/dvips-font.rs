@@ -14,6 +14,6 @@ fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let opt: Options = Options::from_args();
 
-    let buffer = std::fs::read(&opt.file)?;
+    let buffer = std::fs::read(opt.file)?;
     process_ps_font(&buffer)
 }

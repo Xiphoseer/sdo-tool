@@ -152,12 +152,10 @@ pub trait Chunk<'a>: Sized {
         let input = chunk.buf.0;
         let chunk_tag = chunk.tag;
         let chunk_len = chunk.buf.0.len();
-        let map_err = move |e: nom::error::Error<&'a [u8]>| {
-            return Error::Nom {
-                chunk_tag,
-                code: e.code,
-                offset: chunk_len - e.input.len(),
-            };
+        let map_err = move |e: nom::error::Error<&'a [u8]>| Error::Nom {
+            chunk_tag,
+            code: e.code,
+            offset: chunk_len - e.input.len(),
         };
         let (_, head) = Self::parse::<NomErr<'a>>(input).finish().map_err(map_err)?;
         Ok(head)

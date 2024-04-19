@@ -78,7 +78,7 @@ impl Page {
             let xoff = self.buffer[index].leading_zeros();
             let y = index as u32 / self.bytes_per_line;
             let x = index as u32 % self.bytes_per_line;
-            return (x * 8 + xoff, y);
+            (x * 8 + xoff, y)
         })
     }
 
@@ -89,7 +89,7 @@ impl Page {
             let mut p = (x0, y0 + 1);
             let mut first = VecDeque::from([p0, p]);
             let mut dir = Dir::Down;
-            return std::iter::from_fn(move || {
+            std::iter::from_fn(move || {
                 if let Some(x) = first.pop_front() {
                     return Some(x);
                 }
@@ -145,8 +145,8 @@ impl Page {
                     Dir::Left => (x - 1, y),
                     Dir::Right => (x + 1, y),
                 };
-                return Some(p);
-            });
+                Some(p)
+            })
         })
     }
 
@@ -173,7 +173,7 @@ impl Page {
             let b = y > 0 && self.ink_at(x, y - 1);
             let c = x > 0 && self.ink_at(x - 1, y);
             let d = self.ink_at(x, y);
-            return !matches!([a, b, c, d], NONE | ALL);
+            !matches!([a, b, c, d], NONE | ALL)
         })
     }
 
@@ -191,7 +191,7 @@ impl Page {
                     y += 1;
                 }
             }
-            return ret;
+            ret
         })
     }
 
@@ -310,9 +310,9 @@ impl Page {
 
         let ubpl = self.bytes_per_line as usize;
         let x_bit = x % 8;
-        let mut base_index = ((uy + top) * ubpl + ux / 8) as usize;
+        let mut base_index = (uy + top) * ubpl + ux / 8;
         if x_bit == 0 {
-            for row in ch.bitmap.chunks_exact(width as usize) {
+            for row in ch.bitmap.chunks_exact(width) {
                 let mut row_index = base_index;
                 for byte in row {
                     self.buffer[row_index] |= *byte;
@@ -322,7 +322,7 @@ impl Page {
             }
         } else {
             let x_shift = 8 - x_bit;
-            for row in ch.bitmap.chunks_exact(width as usize) {
+            for row in ch.bitmap.chunks_exact(width) {
                 let mut row_index = base_index;
                 let mut next = 0x00;
                 for byte in row {
@@ -503,7 +503,7 @@ impl Page {
                 } else {
                     buffer.extend_from_slice(&[0xFF, 0x00]); // full color, no alpha
                 }
-                mask = mask >> 1;
+                mask >>= 1;
             }
         }
         GrayAlphaImage::from_vec(self.bytes_per_line * 8, self.height, buffer).unwrap()

@@ -69,7 +69,9 @@ fn draw_line(
         println!("<F: {}>", line.extra);
     }
 
-    if line.flags.contains(Flags::ALIG) {}
+    if line.flags.contains(Flags::ALIG) {
+        /* ? */
+    }
 
     draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y);
 }

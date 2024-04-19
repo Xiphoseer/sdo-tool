@@ -6,6 +6,8 @@
 //!
 //! [potrace]: https://potrace.sourceforge.net/potrace.pdf
 
+use std::cmp::Ordering;
+
 /// Cardinal Direction
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -23,16 +25,14 @@ pub enum Dir {
 impl Dir {
     #[allow(dead_code)]
     fn of((ax, ay): (u32, u32), (bx, by): (u32, u32)) -> Dir {
-        if ax == bx {
-            if ay < by {
+        match ax.cmp(&bx) {
+            Ordering::Less => Dir::Right,
+            Ordering::Equal => if ay < by {
                 Dir::Down
             } else {
                 Dir::Up
-            }
-        } else if ax < bx {
-            Dir::Right
-        } else {
-            Dir::Left
+            },
+            Ordering::Greater => Dir::Left,
         }
     }
 
@@ -162,7 +162,7 @@ pub fn straight_up_to(points: &[(u32, u32)], i: usize) -> usize {
         j = (j + 1) % n;
     }
 
-    return 0;
+    0
 }
 
 #[cfg(test)]

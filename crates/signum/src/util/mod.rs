@@ -17,13 +17,13 @@ pub mod data;
 #[serde(transparent)]
 pub struct Bytes16(pub u16);
 
-impl<'a> Debug for Bytes16 {
+impl Debug for Bytes16 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "0x{:04X}", self.0)
     }
 }
 
-impl<'a> Display for Bytes16 {
+impl Display for Bytes16 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "0x{:04X}", self.0)
     }
@@ -34,7 +34,7 @@ impl<'a> Display for Bytes16 {
 #[serde(transparent)]
 pub struct Bytes32(pub u32);
 
-impl<'a> Debug for Bytes32 {
+impl Debug for Bytes32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "0x{:08X}", self.0)
     }

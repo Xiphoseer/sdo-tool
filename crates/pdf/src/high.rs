@@ -239,8 +239,8 @@ pub struct Resources<'a> {
 impl<'a> Default for Resources<'a> {
     fn default() -> Self {
         Resources {
-            fonts: Resource::Immediate(Box::new(Dict::new())),
-            x_objects: Resource::Immediate(Box::new(Dict::new())),
+            fonts: Resource::Immediate(Box::default()),
+            x_objects: Resource::Immediate(Box::default()),
             proc_sets: vec![ProcSet::PDF, ProcSet::Text],
         }
     }

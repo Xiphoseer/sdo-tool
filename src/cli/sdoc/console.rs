@@ -17,7 +17,7 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
-    for (_index, k) in data.iter().copied().enumerate() {
+    for k in data {
         let chr = antikro::decode(k.cval);
         if chr == '\0' {
             println!("<NUL:{}>", k.offset);

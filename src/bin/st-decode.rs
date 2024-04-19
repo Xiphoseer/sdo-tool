@@ -14,7 +14,7 @@ fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let opt: DecodeOpts = DecodeOpts::from_args();
 
-    let buffer = std::fs::read(&opt.file)?;
+    let buffer = std::fs::read(opt.file)?;
 
     let mut decoded = String::with_capacity(buffer.len());
     for byte in buffer {

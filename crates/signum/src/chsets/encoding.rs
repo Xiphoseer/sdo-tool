@@ -180,11 +180,11 @@ pub fn decode_atari(byte: u8) -> char {
 
 /// Decode an ATARI-ST String into an UTF-8 String
 pub fn decode_atari_str(input: &[u8]) -> Cow<'_, str> {
-    if let Some(pos) = input.iter().copied().position(|p| p >= 127 || p < 32) {
+    if let Some(pos) = input.iter().copied().position(|p| !(32..127).contains(&p)) {
         let (first, rest) = input.split_at(pos);
         let start = unsafe { std::str::from_utf8_unchecked(first) };
         let mut string = start.to_owned();
-        string.extend(rest.into_iter().copied().map(decode_atari));
+        string.extend(rest.iter().copied().map(decode_atari));
         Cow::Owned(string)
     } else {
         Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(input) })

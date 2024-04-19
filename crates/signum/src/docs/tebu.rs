@@ -349,9 +349,9 @@ pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
         pages.push(i);
     }
     match it.finish() {
-        Ok((_rest, ())) => {
-            if _rest.len() > 0 {
-                info!("{} bytes remaining in tebu", _rest.len());
+        Ok((rest, ())) => {
+            if !rest.is_empty() {
+                info!("{} bytes remaining in tebu", rest.len());
             }
         }
         Err(e) => {

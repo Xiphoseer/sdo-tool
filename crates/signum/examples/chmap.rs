@@ -12,7 +12,7 @@ pub struct Opts {
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let opts = Opts::from_args();
-    let input = std::fs::read_to_string(&opts.file)?;
+    let input = std::fs::read_to_string(opts.file)?;
     let mapping = p_mapping_file(&input)?;
 
     let mut table = Table::new();

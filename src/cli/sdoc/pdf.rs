@@ -94,7 +94,7 @@ pub fn prepare_document(
     //
     // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
 
-    for (_index, page) in doc.tebu.iter().enumerate() {
+    for page in &doc.tebu {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
         let mut x_objects: DictResource<XObject> = BTreeMap::new();
@@ -150,7 +150,7 @@ pub fn prepare_document(
         assert!(width as i32 <= a4_width, "Please file a bug!");
 
         let xmargin = (a4_width - width as i32) / 2;
-        let ymargin = (a4_height - height as i32) / 2;
+        let ymargin = (a4_height - height) / 2;
 
         let left = xmargin as f32 + meta.xoffset.unwrap_or(0) as f32;
         let left = left - page_info.format.left as f32 * 8.0 / 10.0;

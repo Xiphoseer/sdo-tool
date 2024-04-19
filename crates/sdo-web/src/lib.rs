@@ -1,3 +1,5 @@
+#![allow(non_snake_case)] // wasm_bindgen macro
+
 use image::ImageOutputFormat;
 use js_sys::{Array, Uint8Array};
 use log::{info, Level};
@@ -132,7 +134,7 @@ impl Handle {
     }
 
     fn blob_image_el(blob: &Blob) -> Result<HtmlImageElement, JsValue> {
-        let url = Url::create_object_url_with_blob(&blob)?;
+        let url = Url::create_object_url_with_blob(blob)?;
         let el_image = HtmlImageElement::new()?;
         el_image.set_src(&url);
         Ok(el_image)
@@ -172,7 +174,7 @@ impl Handle {
     }
 
     pub fn parse_sdoc(&self, data: &[u8]) -> Result<(), JsValue> {
-        match parse_sdoc0001_container(&data) {
+        match parse_sdoc0001_container(data) {
             Ok((_rest, container)) => {
                 let doc = match SDoc::unpack(container) {
                     Ok(res) => {
@@ -258,10 +260,10 @@ impl Handle {
                 log::info!("Parsed Printer Font");
                 let el_table = self.document.create_element("table")?;
                 self.output.append_child(&el_table)?;
-                for (_rdx, crow) in pset.chars.chunks(16).enumerate() {
+                for crow in pset.chars.chunks(16) {
                     let el_tr = self.document.create_element("tr")?;
                     el_table.append_child(&el_tr)?;
-                    for (_idx, c) in crow.iter().enumerate() {
+                    for c in crow {
                         //log::info!("Char {:x}{:x} {}x{}", rdx, idx, c.width, c.height);
                         let el_td = self.document.create_element("td")?;
                         el_tr.append_child(&el_td)?;

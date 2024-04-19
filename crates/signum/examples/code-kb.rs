@@ -256,7 +256,7 @@ fn main() -> color_eyre::Result<()> {
 
     let mut contents: Vec<u8> = Vec::new();
     write_font(&mut contents)?;
-    std::fs::write(&opts.file, contents)?;
+    std::fs::write(opts.file, contents)?;
 
     Ok(())
 }

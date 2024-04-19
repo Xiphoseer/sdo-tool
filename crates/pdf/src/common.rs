@@ -1,9 +1,7 @@
 //! Common structs and enums
 
 use std::{
-    collections::BTreeMap,
-    fmt, io,
-    ops::{Add, Deref, DerefMut, Mul},
+    collections::BTreeMap, fmt, io, ops::{Add, Deref, DerefMut, Mul}
 };
 
 //use pdf::primitive::PdfString;
@@ -590,18 +588,13 @@ impl ToDict for StreamMetadata {
 }
 
 /// Indicates whether the PDF is trapped
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 #[allow(missing_docs)]
 pub enum Trapped {
     True,
     False,
+    #[default]
     Unknown,
-}
-
-impl Default for Trapped {
-    fn default() -> Self {
-        Trapped::Unknown
-    }
 }
 
 impl Serialize for Trapped {

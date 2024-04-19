@@ -10,9 +10,10 @@ mod de;
 use de::{deserialize_opt_i32, deserialize_opt_string};
 
 /// The format to export the document into
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum Format {
     /// Plain utf-8 text
+    #[default]
     Plain,
     /// Text with formatting annotations (Documents)
     Html,
@@ -44,12 +45,6 @@ impl fmt::Display for FormatError {
             "Use one of `plain`, `html`, `pdf`, `ps`, `png`, `pbm` or `pdraw`"
         )?;
         Ok(())
-    }
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::Plain
     }
 }
 

@@ -69,7 +69,7 @@ impl<'a> HtmlGen<'a> {
         let mut last_char_width: u8 = 0;
         let mut style = Style::default();
 
-        for (_index, k) in data.iter().copied().enumerate() {
+        for k in data {
             let cset = self.fc.cset(k.cset as usize);
             let mapping = cset.and_then(|c| c.map()).unwrap_or_default();
             let chr = mapping.decode(k.cval);

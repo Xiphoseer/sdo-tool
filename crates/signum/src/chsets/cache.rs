@@ -176,7 +176,7 @@ impl ChsetCache {
     }
 
     /// Get a specific printer charset
-    pub fn pset<'a>(&'a self, pk: PrinterKind, index: usize) -> Option<&PSet<'a>> {
+    pub fn pset(&self, pk: PrinterKind, index: usize) -> Option<&PSet<'_>> {
         self.cset(index).and_then(|cset| cset.printer(pk))
     }
 
@@ -278,8 +278,8 @@ impl DocumentFontCacheInfo {
     }*/
 
     /// Get print options for a CSet
-    pub fn of<'a>(
-        cset: &cset::CSet<'a>,
+    pub fn of(
+        cset: &cset::CSet<'_>,
         fc: &mut ChsetCache,
         mut print_driver: Option<FontKind>,
     ) -> Self {

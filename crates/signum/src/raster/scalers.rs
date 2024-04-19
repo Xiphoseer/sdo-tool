@@ -22,7 +22,7 @@ pub struct VScaler<'a> {
 impl<'a> VScaler<'a> {
     pub(crate) fn new(image: &'a Page, w: usize, h: usize, sel: ImageArea) -> Self {
         let iubpl = image.bytes_per_line() as usize;
-        let pixel_v_len = (h as usize) / (sel.h as usize);
+        let pixel_v_len = h / (sel.h as usize);
         let ivpixel_rem = 0;
         let ibyte_index = (sel.y as usize) * iubpl + (sel.x as usize) / 8;
         let skip_bits = sel.x % 8;
@@ -33,7 +33,7 @@ impl<'a> VScaler<'a> {
             w,
             h,
             image,
-            pixel_h_len: (w as usize) / (sel.w as usize),
+            pixel_h_len: w / (sel.w as usize),
             pixel_v_len,
             vpixel_count: 0,
             last_vcount: 0,

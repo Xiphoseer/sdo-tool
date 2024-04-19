@@ -131,7 +131,7 @@ pub fn write_char_stream<W: Write>(
     let gc_w = box_width as i32 * fpx as i32;
     let gc_h = box_height as i32 * fpy as i32;
     let gc_x = ll_x as i32 * fpx as i32;
-    let gc_y = ll_y as i32 * fpy as i32;
+    let gc_y = ll_y * fpy as i32;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{collections::HashMap, fmt, hint::unreachable_unchecked};
 
 use data::BIT_STRING;
