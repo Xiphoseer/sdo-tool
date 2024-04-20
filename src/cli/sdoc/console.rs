@@ -1,7 +1,10 @@
 use color_eyre::eyre;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::{
-    chsets::{cache::ChsetCache, encoding::antikro},
+    chsets::{
+        cache::{ChsetCache, DocumentFontCacheInfo},
+        encoding::antikro,
+    },
     docs::{
         hcim::ImageSite,
         pbuf::Page,
@@ -13,7 +16,7 @@ use crate::cli::opt::Format;
 
 use super::Document;
 
-fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
+fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
@@ -79,7 +82,7 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
             print!("<b>");
         }
 
-        let width = if let Some(eset) = &doc.print.eset(fc, k.cset) {
+        let width = if let Some(eset) = print.eset(fc, k.cset) {
             eset.chars[k.cval as usize].width
         } else {
             // default for fonts that are missing
@@ -114,26 +117,32 @@ fn print_tebu_data(doc: &Document, fc: &ChsetCache, data: &[Char]) {
     }
 }
 
-pub fn print_line(doc: &Document, fc: &ChsetCache, line: &Line, skip: u16) {
-    if line.flags.contains(Flags::FLAG) && doc.opt.format == Format::Html {
+pub fn print_line(
+    format: Format,
+    print: &DocumentFontCacheInfo,
+    fc: &ChsetCache,
+    line: &Line,
+    skip: u16,
+) {
+    if line.flags.contains(Flags::FLAG) && format == Format::Html {
         println!("<F: {}>", line.extra);
     }
 
-    if line.flags.contains(Flags::PARA) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::PARA) && format == Format::Html {
         print!("<p>");
     }
 
-    print_tebu_data(doc, fc, &line.data);
+    print_tebu_data(print, fc, &line.data);
 
-    if line.flags.contains(Flags::ALIG) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::ALIG) && format == Format::Html {
         print!("<A>");
     }
 
-    if line.flags.contains(Flags::LINE) && doc.opt.format == Format::Html {
+    if line.flags.contains(Flags::LINE) && format == Format::Html {
         print!("<br>");
     }
 
-    if doc.opt.format == Format::Plain {
+    if format == Format::Plain {
         println!();
     } else {
         println!("{{{}}}", skip);
@@ -214,7 +223,11 @@ fn print_img_sites(sites: &[ImageSite]) {
     image_table.printstd();
 }
 
-pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
+pub fn output_console(
+    doc: &Document,
+    fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+) -> eyre::Result<()> {
     print_pages(&doc.pages[..]);
 
     for page_text in &doc.tebu {
@@ -225,7 +238,7 @@ pub fn output_console(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
         for (skip, line) in &page_text.content {
-            print_line(doc, fc, line, *skip);
+            print_line(doc.opt.format, print, fc, line, *skip);
         }
         println!(
             "{:04X} -------------- [END OF PAGE {} ({})] ---------------",

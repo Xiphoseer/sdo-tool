@@ -1,7 +1,9 @@
 //! Common structs and enums
 
 use std::{
-    collections::BTreeMap, fmt, io, ops::{Add, Deref, DerefMut, Mul}
+    collections::BTreeMap,
+    fmt, io,
+    ops::{Add, Deref, DerefMut, Mul},
 };
 
 //use pdf::primitive::PdfString;

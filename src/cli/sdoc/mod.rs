@@ -48,7 +48,6 @@ impl Pos {
 pub struct Document<'a> {
     // Configuration
     opt: &'a Options,
-    pub print: DocumentFontCacheInfo,
     pages: Vec<Option<pbuf::Page>>,
     page_count: usize,
     // tebu
@@ -56,6 +55,10 @@ pub struct Document<'a> {
     // hcim
     pub(crate) images: Vec<Page>,
     pub(crate) sites: Vec<ImageSite>,
+}
+
+pub struct DocumentInfo {
+    pub fonts: DocumentFontCacheInfo,
 }
 
 impl<'a> Document<'a> {
@@ -78,7 +81,6 @@ impl<'a> Document<'a> {
     pub fn new(opt: &'a Options) -> Self {
         Document {
             opt,
-            print: DocumentFontCacheInfo::default(),
             pages: vec![],
             page_count: 0,
             tebu: vec![],
@@ -87,14 +89,16 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(&mut self, fc: &mut ChsetCache, part: Buf<'_>) -> eyre::Result<()> {
+    fn process_cset(
+        &mut self,
+        fc: &mut ChsetCache,
+        part: Buf<'_>,
+    ) -> eyre::Result<DocumentFontCacheInfo> {
         info!("Loading 'cset' chunk");
         let charsets = util::load(<cset::CSet as docs::Chunk>::parse, part.0)?;
         info!("CHSETS: {:?}", charsets.names);
 
-        self.print = DocumentFontCacheInfo::of(&charsets, fc, self.opt.print_driver);
-
-        Ok(())
+        Ok(fc.load(&charsets))
     }
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
@@ -183,14 +187,15 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn output(&self, fc: &ChsetCache) -> eyre::Result<()> {
+    fn output(&self, fc: &ChsetCache, print: &DocumentFontCacheInfo) -> eyre::Result<()> {
+        let pd = print.print_driver(self.opt.print_driver);
         match self.opt.format {
-            Format::Html => html::output_html(self, fc),
-            Format::Plain => console::output_console(self, fc),
-            Format::PostScript => ps::output_postscript(self, fc),
+            Format::Html => html::output_html(self, fc, print),
+            Format::Plain => console::output_console(self, fc, print),
+            Format::PostScript => ps::output_postscript(self, fc, print, pd),
             Format::PDraw => pdraw::output_pdraw(self),
-            Format::Png => imgseq::output_print(self, fc),
-            Format::Pdf => pdf::output_pdf(self, fc),
+            Format::Png => imgseq::output_print(self, fc, print, pd),
+            Format::Pdf => pdf::output_pdf(self, fc, print, pd),
             Format::DviPsBitmapFont | Format::CcItt6 => {
                 error!("Document can't be formatted as a font");
                 Ok(())
@@ -210,15 +215,23 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    pub fn process_sdoc(&mut self, input: &[u8], fc: &mut ChsetCache) -> eyre::Result<()> {
+    pub fn process_sdoc(
+        &mut self,
+        input: &[u8],
+        fc: &mut ChsetCache,
+    ) -> eyre::Result<DocumentInfo> {
         let (rest, sdoc) = parse_sdoc0001_container(input)
             .finish()
             .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
 
+        let mut dfci = None;
         for Chunk { tag, buf } in sdoc.chunks {
             match tag {
                 FourCC::_0001 => self.process_0001(buf),
-                FourCC::_CSET => self.process_cset(fc, buf),
+                FourCC::_CSET => {
+                    dfci = Some(self.process_cset(fc, buf)?);
+                    Ok(())
+                }
                 FourCC::_SYSP => self.process_sysp(buf),
                 FourCC::_PBUF => self.process_pbuf(buf),
                 FourCC::_TEBU => self.process_tebu(buf),
@@ -234,7 +247,8 @@ impl<'a> Document<'a> {
             println!("remaining: {:#?}", Buf(rest));
         }
 
-        Ok(())
+        let fonts = dfci.ok_or_else(|| eyre!("Document has no CSET chunk"))?;
+        Ok(DocumentInfo { fonts })
     }
 }
 
@@ -244,10 +258,10 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
     let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);
     let mut fc = ChsetCache::new(chsets_folder);
-    document.process_sdoc(input, &mut fc)?;
+    let di = document.process_sdoc(input, &mut fc)?;
 
     // Output the document
-    document.output(&fc)?;
+    document.output(&fc, &di.fonts)?;
 
     Ok(())
 }

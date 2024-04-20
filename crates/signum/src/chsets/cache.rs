@@ -190,6 +190,40 @@ impl ChsetCache {
         self.chsets.get(index)
     }
 
+    /// Load a CSET section into the font cache, returning a document specific info struct.
+    pub fn load(&mut self, cset: &cset::CSet<'_>) -> DocumentFontCacheInfo {
+        let mut all_eset = true;
+        let mut all_p24 = true;
+        let mut all_l30 = true;
+        let mut all_p09 = true;
+
+        let mut chsets = [FontCacheInfo::EMPTY; 8];
+
+        for (index, &name) in cset.names.iter().enumerate() {
+            if name.is_empty() {
+                continue;
+            }
+            chsets[index].name = Some(name.to_string());
+            if let Some(cset_cache_index) = self.load_cset(name) {
+                let cset = self
+                    .cset(cset_cache_index)
+                    .expect("invalid index returned by load_cset");
+                chsets[index].index = Some(cset_cache_index);
+                all_eset &= cset.e24().is_some();
+                all_p24 &= cset.p24().is_some();
+                all_l30 &= cset.l30().is_some();
+                all_p09 &= cset.p09().is_some();
+            }
+        }
+        DocumentFontCacheInfo {
+            all_eset,
+            all_l30,
+            all_p24,
+            all_p09,
+            chsets,
+        }
+    }
+
     /// Load a character set
     pub fn load_cset(&mut self, name: &BStr) -> Option<usize> {
         let name = decode_atari_str(name.as_ref()).into_owned();
@@ -261,82 +295,51 @@ impl FontCacheInfo {
 /// Print Options for a Document
 #[derive(Default)]
 pub struct DocumentFontCacheInfo {
-    /// Chosen Printer Driver
-    print_driver: Option<FontKind>,
+    // /// Chosen Printer Driver
+    // print_driver: Option<FontKind>,
+    all_eset: bool,
+    all_p24: bool,
+    all_l30: bool,
+    all_p09: bool,
+
     /// Character sets used by this document
     pub chsets: [FontCacheInfo; 8],
 }
 
 impl DocumentFontCacheInfo {
     /// Get the preferred print driver
-    pub fn print_driver(&self) -> Option<FontKind> {
-        self.print_driver
-    }
-
-    /*pub fn from_cache<'a>(&self, fc: &'a ChsetCache) -> [Option<&'a FontInfo>; 8] {
-
-    }*/
-
-    /// Get print options for a CSet
-    pub fn of(
-        cset: &cset::CSet<'_>,
-        fc: &mut ChsetCache,
-        mut print_driver: Option<FontKind>,
-    ) -> Self {
-        let mut all_eset = true;
-        let mut all_p24 = true;
-        let mut all_l30 = true;
-        let mut all_p09 = true;
-
-        let mut chsets = [FontCacheInfo::EMPTY; 8];
-
-        for (index, &name) in cset.names.iter().enumerate() {
-            if name.is_empty() {
-                continue;
-            }
-            chsets[index].name = Some(name.to_string());
-            if let Some(cset_cache_index) = fc.load_cset(name) {
-                let cset = fc
-                    .cset(cset_cache_index)
-                    .expect("invalid index returned by load_cset");
-                chsets[index].index = Some(cset_cache_index);
-                all_eset &= cset.e24().is_some();
-                all_p24 &= cset.p24().is_some();
-                all_l30 &= cset.l30().is_some();
-                all_p09 &= cset.p09().is_some();
-            }
-        }
+    pub fn print_driver(&self, mut print_driver: Option<FontKind>) -> Option<FontKind> {
         // Print info on which sets are available
-        if all_eset {
+        if self.all_eset {
             info!("Editor fonts available for all character sets");
         }
-        if all_p24 {
+        if self.all_p24 {
             info!("Printer fonts (24-needle) available for all character sets");
         }
-        if all_l30 {
+        if self.all_l30 {
             info!("Printer fonts (laser/30) available for all character sets");
         }
-        if all_p09 {
+        if self.all_p09 {
             info!("Printer fonts (9-needle) available for all character sets");
         }
 
         // If none was set, choose one strategy
         if let Some(pd) = print_driver {
             match pd {
-                FontKind::Editor if !all_eset => {
+                FontKind::Editor if !self.all_eset => {
                     warn!("Explicitly chosen editor print-driver but not all fonts are available");
                 }
-                FontKind::Printer(PrinterKind::Needle24) if !all_p24 => {
+                FontKind::Printer(PrinterKind::Needle24) if !self.all_p24 => {
                     warn!(
                         "Explicitly chosen 24-needle print-driver but not all fonts are available"
                     );
                 }
-                FontKind::Printer(PrinterKind::Needle9) if !all_p09 => {
+                FontKind::Printer(PrinterKind::Needle9) if !self.all_p09 => {
                     warn!(
                         "Explicitly chosen 9-needle print-driver but not all fonts are available"
                     );
                 }
-                FontKind::Printer(PrinterKind::Laser30) if !all_l30 => {
+                FontKind::Printer(PrinterKind::Laser30) if !self.all_l30 => {
                     warn!(
                         "Explicitly chosen laser/30 print-driver but not all fonts are available"
                     );
@@ -345,22 +348,23 @@ impl DocumentFontCacheInfo {
                     // All fonts available
                 }
             }
-        } else if all_l30 {
+        } else if self.all_l30 {
             print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
-        } else if all_p24 {
+        } else if self.all_p24 {
             print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
-        } else if all_p09 {
+        } else if self.all_p09 {
             print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
-        } else if all_eset {
+        } else if self.all_eset {
             print_driver = Some(FontKind::Editor);
         } else {
             warn!("No print-driver has all fonts available.");
         }
-        Self {
-            print_driver,
-            chsets,
-        }
+        print_driver
     }
+
+    /*pub fn from_cache<'a>(&self, fc: &'a ChsetCache) -> [Option<&'a FontInfo>; 8] {
+
+    }*/
 
     /// Get the editor charset by index
     pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'f>> {

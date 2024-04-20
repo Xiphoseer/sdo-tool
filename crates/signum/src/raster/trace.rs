@@ -27,11 +27,13 @@ impl Dir {
     fn of((ax, ay): (u32, u32), (bx, by): (u32, u32)) -> Dir {
         match ax.cmp(&bx) {
             Ordering::Less => Dir::Right,
-            Ordering::Equal => if ay < by {
-                Dir::Down
-            } else {
-                Dir::Up
-            },
+            Ordering::Equal => {
+                if ay < by {
+                    Dir::Down
+                } else {
+                    Dir::Up
+                }
+            }
             Ordering::Greater => Dir::Left,
         }
     }

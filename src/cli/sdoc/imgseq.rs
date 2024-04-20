@@ -3,7 +3,11 @@ use std::path::PathBuf;
 use color_eyre::eyre;
 use image::ImageFormat;
 use signum::{
-    chsets::{cache::ChsetCache, FontKind},
+    chsets::{
+        cache::{ChsetCache, DocumentFontCacheInfo},
+        printer::PrinterKind,
+        FontKind,
+    },
     docs::tebu::{Char, Flags, Line},
     raster::{DrawPrintErr, Page},
 };
@@ -11,8 +15,9 @@ use signum::{
 use super::{Document, Pos};
 
 fn draw_chars(
-    doc: &Document,
     fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+    pd: Option<FontKind>,
     data: &[Char],
     page: &mut Page,
     x: &mut u16,
@@ -20,33 +25,12 @@ fn draw_chars(
 ) {
     for te in data {
         *x += te.offset;
-        match doc.print.print_driver() {
+        match pd {
             Some(FontKind::Editor) => {
-                if let Some(eset) = doc.print.eset(fc, te.cset) {
-                    let ch = &eset.chars[te.cval as usize];
-                    let x = *x; // No skew compensation (18/15)
-                    let y = y * 2;
-                    match page.draw_echar(x, y, ch) {
-                        Ok(()) => {}
-                        Err(DrawPrintErr::OutOfBounds) => {
-                            eprintln!("Char out of bounds {:?}", te);
-                        }
-                    }
-                }
+                print_echar(print, fc, te, x, y, page);
             }
             Some(FontKind::Printer(pk)) => {
-                if let Some(eset) = doc.print.pset(fc, te.cset, pk) {
-                    let ch = &eset.chars[te.cval as usize];
-                    let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
-                    let x = fk.scale_x(*x);
-                    let y = fk.scale_y(y);
-                    match page.draw_printer_char(x, y, ch) {
-                        Ok(()) => {}
-                        Err(DrawPrintErr::OutOfBounds) => {
-                            eprintln!("Char out of bounds {:?}", te);
-                        }
-                    }
-                }
+                print_pchar(print, fc, te, pk, x, y, page);
             }
             None => {
                 continue;
@@ -55,9 +39,54 @@ fn draw_chars(
     }
 }
 
-fn draw_line(
-    doc: &Document,
+fn print_pchar(
+    print: &DocumentFontCacheInfo,
     fc: &ChsetCache,
+    te: &Char,
+    pk: PrinterKind,
+    x: &mut u16,
+    y: u16,
+    page: &mut Page,
+) {
+    if let Some(eset) = print.pset(fc, te.cset, pk) {
+        let ch = &eset.chars[te.cval as usize];
+        let fk = FontKind::Printer(pk); // FIXME: pattern after @-binding
+        let x = fk.scale_x(*x);
+        let y = fk.scale_y(y);
+        match page.draw_printer_char(x, y, ch) {
+            Ok(()) => {}
+            Err(DrawPrintErr::OutOfBounds) => {
+                eprintln!("Char out of bounds {:?}", te);
+            }
+        }
+    }
+}
+
+fn print_echar(
+    print: &DocumentFontCacheInfo,
+    fc: &ChsetCache,
+    te: &Char,
+    x: &mut u16,
+    y: u16,
+    page: &mut Page,
+) {
+    if let Some(eset) = print.eset(fc, te.cset) {
+        let ch = &eset.chars[te.cval as usize];
+        let x = *x; // No skew compensation (18/15)
+        let y = y * 2;
+        match page.draw_echar(x, y, ch) {
+            Ok(()) => {}
+            Err(DrawPrintErr::OutOfBounds) => {
+                eprintln!("Char out of bounds {:?}", te);
+            }
+        }
+    }
+}
+
+fn draw_line(
+    fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+    pd: Option<FontKind>,
     line: &Line,
     skip: u16,
     page: &mut Page,
@@ -69,14 +98,17 @@ fn draw_line(
         println!("<F: {}>", line.extra);
     }
 
-    if line.flags.contains(Flags::ALIG) {
-        /* ? */
-    }
+    if line.flags.contains(Flags::ALIG) { /* ? */ }
 
-    draw_chars(doc, fc, &line.data, page, &mut pos.x, pos.y);
+    draw_chars(fc, print, pd, &line.data, page, &mut pos.x, pos.y);
 }
 
-pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
+pub fn output_print(
+    doc: &Document,
+    fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+    pd: Option<FontKind>,
+) -> eyre::Result<()> {
     let out_path: PathBuf = if let Some(path) = &doc.opt.out {
         path.clone()
     } else {
@@ -97,7 +129,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
             }
         }
 
-        let (mut page, mut pos) = if let Some(print_driver) = doc.print.print_driver() {
+        let (mut page, mut pos) = if let Some(print_driver) = pd {
             let width_units: u16 = pbuf_entry.format.left + pbuf_entry.format.right + 20;
             let height_units: u16 =
                 pbuf_entry.format.header + pbuf_entry.format.length + pbuf_entry.format.footer;
@@ -118,7 +150,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
 
         for (skip, line) in &page_text.content {
             pos.x = 10;
-            draw_line(doc, fc, line, *skip, &mut page, &mut pos);
+            draw_line(fc, print, pd, line, *skip, &mut page, &mut pos);
         }
 
         for site in doc.sites.iter().filter(|x| x.page == pbuf_entry.phys_pnr) {
@@ -127,7 +159,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
                 site.sel.w, site.sel.h, site.sel.x, site.sel.y, site.img, site.site.x, site.site.y
             );
 
-            if let Some(pd) = doc.print.print_driver() {
+            if let Some(pd) = pd {
                 let px = pd.scale_x(10 + site.site.x);
                 let w = pd.scale_x(site.site.w);
                 let py = pd.scale_y(10 + site.site.y - site._5 / 2);

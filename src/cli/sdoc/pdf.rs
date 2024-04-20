@@ -13,7 +13,7 @@ use pdf_create::{
 };
 use sdo_pdf::{font::Fonts, sdoc::Contents};
 use signum::chsets::{
-    cache::{ChsetCache, FontCacheInfo},
+    cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
     FontKind, UseTableVec,
 };
 
@@ -61,13 +61,13 @@ const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 pub fn prepare_document(
     hnd: &mut Handle,
     doc: &Document,
+    print: &DocumentFontCacheInfo,
     meta: &Meta,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
-    for (cset, info) in doc
-        .print
+    for (cset, info) in print
         .chsets
         .iter()
         .map(FontCacheInfo::index)
@@ -199,7 +199,7 @@ pub fn prepare_document(
 
                 let csu = te.cset as usize;
                 let fi = infos[csu].ok_or_else(|| {
-                    let font_name = doc.print.chsets[csu].name().unwrap_or("");
+                    let font_name = print.chsets[csu].name().unwrap_or("");
                     eyre!("Missing font #{}: {:?}", csu, font_name)
                 })?;
                 prev_width = fi.width(te.cval) as i32;
@@ -239,7 +239,12 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
     }
 }
 
-pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Handle<'a>> {
+pub fn process_doc<'a>(
+    doc: &'a Document,
+    fc: &'a ChsetCache,
+    print: &DocumentFontCacheInfo,
+    pd: Option<FontKind>,
+) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
     let meta = doc_meta(doc)?;
@@ -247,12 +252,9 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
 
     let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
-    use_table_vec.append(&doc.print.chsets, use_matrix);
+    use_table_vec.append(&print.chsets, use_matrix);
 
-    let pd = doc
-        .print
-        .print_driver()
-        .ok_or_else(|| eyre!("No printer type selected"))?;
+    let pd = pd.ok_or_else(|| eyre!("No printer type selected"))?;
 
     let pk = if let FontKind::Printer(pk) = pd {
         pk
@@ -266,12 +268,17 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, &meta, &font_info)?;
+    prepare_document(&mut hnd, doc, print, &meta, &font_info)?;
     Ok(hnd)
 }
 
-pub fn output_pdf(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    let hnd = process_doc(doc, fc)?;
+pub fn output_pdf(
+    doc: &Document,
+    fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+    pd: Option<FontKind>,
+) -> eyre::Result<()> {
+    let hnd = process_doc(doc, fc, print, pd)?;
     handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
     Ok(())
 }

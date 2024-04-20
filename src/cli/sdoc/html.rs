@@ -2,7 +2,10 @@ use std::fmt::{self, Write};
 
 use color_eyre::eyre;
 use signum::{
-    chsets::{cache::ChsetCache, encoding::antikro},
+    chsets::{
+        cache::{ChsetCache, DocumentFontCacheInfo},
+        encoding::antikro,
+    },
     docs::tebu::{Char, Flags, Line, Style},
 };
 
@@ -12,6 +15,7 @@ struct HtmlGen<'a> {
     out: String,
     doc: &'a Document<'a>,
     fc: &'a ChsetCache,
+    print: &'a DocumentFontCacheInfo,
 
     par: bool,
     protected: bool,
@@ -19,7 +23,11 @@ struct HtmlGen<'a> {
 }
 
 impl<'a> HtmlGen<'a> {
-    fn new(doc: &'a Document, fc: &'a ChsetCache) -> Result<Self, fmt::Error> {
+    fn new(
+        doc: &'a Document,
+        fc: &'a ChsetCache,
+        print: &'a DocumentFontCacheInfo,
+    ) -> Result<Self, fmt::Error> {
         let file_name = doc.opt.file.file_name().unwrap().to_string_lossy();
         let mut out = String::new();
         writeln!(out, "<!DOCTYPE html>")?;
@@ -52,6 +60,7 @@ impl<'a> HtmlGen<'a> {
         Ok(Self {
             doc,
             fc,
+            print,
             out,
             par: false,
             skip: 0,
@@ -146,7 +155,7 @@ impl<'a> HtmlGen<'a> {
                 write!(self.out, "<u>")?;
             }
 
-            let mut width = if let Some(eset) = &self.doc.print.eset(self.fc, k.cset) {
+            let mut width = if let Some(eset) = &self.print.eset(self.fc, k.cset) {
                 eset.chars[k.cval as usize].width
             } else {
                 // default for fonts that are missing
@@ -259,8 +268,12 @@ impl<'a> HtmlGen<'a> {
     }
 }
 
-pub fn output_html(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    let mut gen = HtmlGen::new(doc, fc)?;
+pub fn output_html(
+    doc: &Document,
+    fc: &ChsetCache,
+    print: &DocumentFontCacheInfo,
+) -> eyre::Result<()> {
+    let mut gen = HtmlGen::new(doc, fc, print)?;
     gen.body()?;
 
     let path = if let Some(out) = &doc.opt.out {

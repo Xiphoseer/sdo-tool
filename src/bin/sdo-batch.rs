@@ -100,8 +100,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         let mut document = Document::new(&doc_opt);
 
         info!("Loading document file '{}'", doc_file.display());
-        document.process_sdoc(input, &mut fc)?;
-        documents.push(document);
+        let di = document.process_sdoc(input, &mut fc)?;
+        documents.push((document, di));
     }
 
     // Preprare output
@@ -110,9 +110,9 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     prepare_meta(&mut hnd, &script.meta)?;
 
     let mut use_table_vec = UseTableVec::new();
-    for doc in &documents {
+    for (doc, di) in &documents {
         let use_matrix = doc.use_matrix();
-        use_table_vec.append(&doc.print.chsets, use_matrix);
+        use_table_vec.append(&di.fonts.chsets, use_matrix);
     }
 
     // FIXME: Auto-Detect from font cache
@@ -125,8 +125,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         hnd.res.fonts.push(font);
     }
 
-    for doc in &documents {
-        prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
+    for (doc, di) in &documents {
+        prepare_document(&mut hnd, doc, &di.fonts, &script.meta, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {
