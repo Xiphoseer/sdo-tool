@@ -137,3 +137,18 @@ impl Deref for FourCC {
         &self.0
     }
 }
+
+/// A 16 bit position
+pub struct Pos {
+    /// horizontal
+    pub x: u16,
+    /// vertical
+    pub y: u16,
+}
+
+impl Pos {
+    /// Create a new point
+    pub fn new(x: u16, y: u16) -> Self {
+        Self { x, y }
+    }
+}

@@ -2,11 +2,13 @@
 
 use std::fmt;
 
+mod doc;
 mod page;
 mod scalers;
 mod trace;
 mod util;
 
+pub use doc::render_doc_page;
 pub use page::Page;
 pub use trace::{straight_up_to, Dir};
 

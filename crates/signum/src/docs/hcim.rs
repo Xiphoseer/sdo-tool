@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use log::{debug, error, info};
 use nom::{
     bytes::{
         complete::{tag, take_until},
@@ -16,6 +17,7 @@ use serde::Serialize;
 
 use crate::{
     images::imc::{decode_imc, MonochromeScreen},
+    raster::Page,
     util::{Buf, Bytes16, Bytes32, FourCC},
 };
 
@@ -86,6 +88,29 @@ pub struct Hcim<'a> {
     pub sites: Vec<ImageSite>,
     /// The table of images
     pub images: Vec<Buf<'a>>,
+}
+
+impl Hcim<'_> {
+    /// Decode all images
+    pub fn decode_images(&self) -> Vec<(String, Page)> {
+        let mut images = Vec::with_capacity(self.header.img_count as usize);
+
+        for img in &self.images {
+            match parse_image(img.0) {
+                Ok((_imgrest, im)) => {
+                    debug!("Found image {:?}", im.key);
+                    let page = Page::from(im.image);
+                    images.push((im.key.into_owned(), page));
+                }
+                Err(e) => {
+                    error!("Error: {}", e);
+                    images.push((String::new(), Page::new(0, 0)));
+                }
+            }
+        }
+        info!("Found {} image(s)", images.len());
+        images
+    }
 }
 
 /// Parse an entry in the images table

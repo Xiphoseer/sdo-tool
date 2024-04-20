@@ -1,7 +1,10 @@
 use color_eyre::eyre;
-use signum::docs::tebu::{Char, Line};
+use signum::{
+    docs::tebu::{Char, Line},
+    util::Pos,
+};
 
-use super::{Document, Pos};
+use super::Document;
 
 fn print_char_cmds(data: &[Char], x: &mut u16, y: u16) {
     for te in data {

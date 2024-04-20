@@ -12,7 +12,7 @@ use signum::{
         self,
         container::{parse_sdoc0001_container, Chunk},
         cset::{self},
-        hcim::{parse_hcim, parse_image, ImageSite},
+        hcim::{parse_hcim, ImageSite},
         header::parse_header,
         pbuf::{self, parse_pbuf},
         sysp::parse_sysp,
@@ -34,17 +34,6 @@ mod pdraw;
 mod ps;
 mod ps_proc;
 
-struct Pos {
-    x: u16,
-    y: u16,
-}
-
-impl Pos {
-    fn new(x: u16, y: u16) -> Self {
-        Self { x, y }
-    }
-}
-
 pub struct Document<'a> {
     // Configuration
     opt: &'a Options,
@@ -53,12 +42,12 @@ pub struct Document<'a> {
     // tebu
     tebu: Vec<PageText>,
     // hcim
-    pub(crate) images: Vec<Page>,
     pub(crate) sites: Vec<ImageSite>,
 }
 
 pub struct DocumentInfo {
     pub fonts: DocumentFontCacheInfo,
+    pub images: Vec<(String, Page)>,
 }
 
 impl<'a> Document<'a> {
@@ -84,7 +73,6 @@ impl<'a> Document<'a> {
             pages: vec![],
             page_count: 0,
             tebu: vec![],
-            images: vec![],
             sites: vec![],
         }
     }
@@ -144,58 +132,44 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    fn process_hcim(&mut self, part: Buf) -> eyre::Result<()> {
+    fn process_hcim(&mut self, part: Buf) -> eyre::Result<Vec<(String, Page)>> {
         info!("Loading 'hcim' chunk");
         let (rest, hcim) = parse_hcim(part.0).finish().map_err(to_err_tree(part.0))?;
-
-        debug!("{:?}", hcim.header);
 
         let out_img = self.opt.with_images.as_ref();
         if let Some(out_img) = out_img {
             std::fs::create_dir_all(out_img)?;
         }
 
-        let mut images = Vec::with_capacity(hcim.header.img_count as usize);
-
-        for (index, img) in hcim.images.iter().enumerate() {
-            match parse_image(img.0) {
-                Ok((_imgrest, im)) => {
-                    debug!("Found image {:?}", im.key);
-                    let page = Page::from(im.image);
-                    if let Some(out_img) = out_img {
-                        let name = format!("{:02}-{}.png", index, im.key);
-                        let path = out_img.join(name);
-                        let img = page.to_image();
-                        img.save_with_format(&path, ImageFormat::Png)?;
-                    }
-                    images.push(page);
-                }
-                Err(e) => {
-                    error!("Error: {}", e);
-                }
+        let images = hcim.decode_images();
+        for (index, (key, page)) in images.iter().enumerate() {
+            if let Some(out_img) = out_img {
+                let name = format!("{:02}-{}.png", index, key);
+                let path = out_img.join(name);
+                let img = page.to_image();
+                img.save_with_format(&path, ImageFormat::Png)?;
             }
         }
-        info!("Found {} image(s)", images.len());
 
-        self.images = images;
         self.sites = hcim.sites;
 
         if !rest.is_empty() {
             println!("{:#?}", Buf(rest));
         }
 
-        Ok(())
+        Ok(images)
     }
 
-    fn output(&self, fc: &ChsetCache, print: &DocumentFontCacheInfo) -> eyre::Result<()> {
+    fn output(&self, fc: &ChsetCache, info: &DocumentInfo) -> eyre::Result<()> {
+        let print = &info.fonts;
         let pd = print.print_driver(self.opt.print_driver);
         match self.opt.format {
             Format::Html => html::output_html(self, fc, print),
             Format::Plain => console::output_console(self, fc, print),
             Format::PostScript => ps::output_postscript(self, fc, print, pd),
             Format::PDraw => pdraw::output_pdraw(self),
-            Format::Png => imgseq::output_print(self, fc, print, pd),
-            Format::Pdf => pdf::output_pdf(self, fc, print, pd),
+            Format::Png => imgseq::output_print(self, fc, info, pd),
+            Format::Pdf => pdf::output_pdf(self, fc, info, pd),
             Format::DviPsBitmapFont | Format::CcItt6 => {
                 error!("Document can't be formatted as a font");
                 Ok(())
@@ -225,6 +199,7 @@ impl<'a> Document<'a> {
             .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
 
         let mut dfci = None;
+        let mut images = vec![];
         for Chunk { tag, buf } in sdoc.chunks {
             match tag {
                 FourCC::_0001 => self.process_0001(buf),
@@ -235,7 +210,10 @@ impl<'a> Document<'a> {
                 FourCC::_SYSP => self.process_sysp(buf),
                 FourCC::_PBUF => self.process_pbuf(buf),
                 FourCC::_TEBU => self.process_tebu(buf),
-                FourCC::_HCIM => self.process_hcim(buf),
+                FourCC::_HCIM => {
+                    images = self.process_hcim(buf)?;
+                    Ok(())
+                }
                 _ => {
                     info!("Found unknown chunk '{}' ({} bytes)", tag, buf.0.len());
                     Ok(())
@@ -248,7 +226,7 @@ impl<'a> Document<'a> {
         }
 
         let fonts = dfci.ok_or_else(|| eyre!("Document has no CSET chunk"))?;
-        Ok(DocumentInfo { fonts })
+        Ok(DocumentInfo { fonts, images })
     }
 }
 
@@ -261,7 +239,7 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
     let di = document.process_sdoc(input, &mut fc)?;
 
     // Output the document
-    document.output(&fc, &di.fonts)?;
+    document.output(&fc, &di)?;
 
     Ok(())
 }

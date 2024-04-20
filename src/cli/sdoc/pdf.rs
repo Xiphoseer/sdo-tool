@@ -13,13 +13,13 @@ use pdf_create::{
 };
 use sdo_pdf::{font::Fonts, sdoc::Contents};
 use signum::chsets::{
-    cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
+    cache::{ChsetCache, FontCacheInfo},
     FontKind, UseTableVec,
 };
 
 use crate::cli::opt::Meta;
 
-use super::Document;
+use super::{Document, DocumentInfo};
 
 pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     // Metadata
@@ -61,10 +61,11 @@ const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 pub fn prepare_document(
     hnd: &mut Handle,
     doc: &Document,
-    print: &DocumentFontCacheInfo,
+    di: &DocumentInfo,
     meta: &Meta,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
+    let print = &di.fonts;
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
     for (cset, info) in print
@@ -107,7 +108,7 @@ pub fn prepare_document(
                 //let area = width * height;
 
                 let img_num = site.img as usize;
-                let im = &doc.images[img_num];
+                let (_, im) = &di.images[img_num];
                 let data = im.select(site.sel);
 
                 let img_index = hnd.res.x_objects.len();
@@ -242,7 +243,7 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
 pub fn process_doc<'a>(
     doc: &'a Document,
     fc: &'a ChsetCache,
-    print: &DocumentFontCacheInfo,
+    di: &DocumentInfo,
     pd: Option<FontKind>,
 ) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
@@ -252,7 +253,7 @@ pub fn process_doc<'a>(
 
     let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
-    use_table_vec.append(&print.chsets, use_matrix);
+    use_table_vec.append(&di.fonts.chsets, use_matrix);
 
     let pd = pd.ok_or_else(|| eyre!("No printer type selected"))?;
 
@@ -268,17 +269,17 @@ pub fn process_doc<'a>(
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, print, &meta, &font_info)?;
+    prepare_document(&mut hnd, doc, di, &meta, &font_info)?;
     Ok(hnd)
 }
 
 pub fn output_pdf(
     doc: &Document,
     fc: &ChsetCache,
-    print: &DocumentFontCacheInfo,
+    di: &DocumentInfo,
     pd: Option<FontKind>,
 ) -> eyre::Result<()> {
-    let hnd = process_doc(doc, fc, print, pd)?;
+    let hnd = process_doc(doc, fc, di, pd)?;
     handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
     Ok(())
 }
