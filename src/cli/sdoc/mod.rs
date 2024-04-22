@@ -5,13 +5,13 @@ use log::{debug, error, info};
 use nom_supreme::error::ErrorTree;
 use signum::{
     chsets::{
-        cache::{ChsetCache, DocumentFontCacheInfo},
+        cache::{ChsetCache, DocumentFontCacheInfo, LocalFS, VFS},
         UseMatrix,
     },
     docs::{
         self,
         container::{parse_sdoc0001_container, Chunk},
-        cset::{self},
+        cset,
         hcim::{parse_hcim, ImageSite},
         header::parse_header,
         pbuf::{self, parse_pbuf},
@@ -77,16 +77,18 @@ impl<'a> Document<'a> {
         }
     }
 
-    fn process_cset(
+    fn process_cset<FS: VFS>(
         &mut self,
         fc: &mut ChsetCache,
+        fs: &FS,
         part: Buf<'_>,
     ) -> eyre::Result<DocumentFontCacheInfo> {
         info!("Loading 'cset' chunk");
         let charsets = util::load(<cset::CSet as docs::Chunk>::parse, part.0)?;
         info!("CHSETS: {:?}", charsets.names);
 
-        Ok(fc.load(&charsets))
+        let dfci = futures_lite::future::block_on(fc.load(fs, &charsets));
+        Ok(dfci)
     }
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
@@ -189,9 +191,10 @@ impl<'a> Document<'a> {
         Ok(())
     }
 
-    pub fn process_sdoc(
+    pub fn process_sdoc<FS: VFS>(
         &mut self,
         input: &[u8],
+        fs: &FS,
         fc: &mut ChsetCache,
     ) -> eyre::Result<DocumentInfo> {
         let (rest, sdoc) = parse_sdoc0001_container(input)
@@ -204,7 +207,7 @@ impl<'a> Document<'a> {
             match tag {
                 FourCC::_0001 => self.process_0001(buf),
                 FourCC::_CSET => {
-                    dfci = Some(self.process_cset(fc, buf)?);
+                    dfci = Some(self.process_cset(fc, fs, buf)?);
                     Ok(())
                 }
                 FourCC::_SYSP => self.process_sysp(buf),
@@ -235,8 +238,9 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
 
     let folder = opt.file.parent().unwrap();
     let chsets_folder = folder.join(&opt.chsets_path);
-    let mut fc = ChsetCache::new(chsets_folder);
-    let di = document.process_sdoc(input, &mut fc)?;
+    let fs = LocalFS::new(chsets_folder);
+    let mut fc = ChsetCache::new();
+    let di = document.process_sdoc(input, &fs, &mut fc)?;
 
     // Output the document
     document.output(&fc, &di)?;

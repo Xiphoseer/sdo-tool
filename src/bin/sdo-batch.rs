@@ -12,7 +12,11 @@ use pdf_create::{
     high::{self, Handle},
 };
 use sdo_pdf::font::Fonts;
-use signum::chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec};
+use signum::chsets::{
+    cache::{ChsetCache, LocalFS},
+    printer::PrinterKind,
+    UseTableVec,
+};
 use structopt::StructOpt;
 
 use sdo_tool::cli::{
@@ -72,7 +76,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
             chsets_folder.display()
         )
     })?;
-    let mut fc = ChsetCache::new(chsets_folder);
+    let fs = LocalFS::new(chsets_folder);
+    let mut fc = ChsetCache::new();
 
     // Prepare output folder
     if opt.out != Path::new("-") {
@@ -100,7 +105,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         let mut document = Document::new(&doc_opt);
 
         info!("Loading document file '{}'", doc_file.display());
-        let di = document.process_sdoc(input, &mut fc)?;
+        let di = document.process_sdoc(input, &fs, &mut fc)?;
         documents.push((document, di));
     }
 

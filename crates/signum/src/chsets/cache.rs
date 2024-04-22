@@ -1,6 +1,12 @@
 //! # Implementation of a charset cache
 
-use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs::{self, ReadDir},
+    future::Future,
+    io,
+    path::{Path, PathBuf},
+};
 
 use bstr::BStr;
 use log::{info, warn};
@@ -20,15 +26,21 @@ use crate::{
 
 use super::{encoding::decode_atari_str, FontKind};
 
-fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
+#[allow(clippy::manual_flatten)]
+async fn find_font_file<FS: VFS>(
+    fs: &FS,
+    cset_folder: &Path,
+    name: &str,
+    extension: &str,
+) -> Option<PathBuf> {
     let cset_file = cset_folder.join(name);
     let editor_cset_file = cset_file.with_extension(extension);
 
-    if editor_cset_file.exists() && editor_cset_file.is_file() {
+    if fs.is_file(&editor_cset_file).await {
         return Some(editor_cset_file);
     }
 
-    let mut dir_iter = match std::fs::read_dir(cset_folder) {
+    let mut dir_iter = match fs.read_dir(cset_folder).await {
         Ok(i) => i,
         Err(e) => {
             warn!("Could not find CHSET folder: {}", e);
@@ -36,14 +48,17 @@ fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<Pat
         }
     };
 
-    dir_iter.find_map(|entry| {
-        entry
-            .ok()
-            .as_ref()
-            .map(DirEntry::path)
-            .filter(|p| p.is_dir())
-            .and_then(|cset_folder| find_font_file(&cset_folder, name, extension))
-    })
+    while let Some(entry) = dir_iter.next().await {
+        if let Ok(de) = entry {
+            let subfolder = fs.dir_entry_path(&de);
+            if fs.is_dir(&subfolder).await {
+                if let Some(path) = find_font_file(fs, &subfolder, name, extension).await {
+                    return Some(path);
+                }
+            }
+        }
+    }
+    None
 }
 
 fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPSet> {
@@ -153,20 +168,100 @@ impl<'a> CSet {
     }
 }
 
+/// Async Iterator trait
+pub trait AsyncIterator {
+    /// Single item
+    type Item;
+
+    /// Next method
+    fn next(&mut self) -> impl Future<Output = Option<Self::Item>>;
+}
+
+/// Virtual File System used for loading fonts
+pub trait VFS {
+    /// Error type
+    type Error: std::fmt::Display;
+    /// Directory iterator
+    type DirIter: AsyncIterator<Item = Result<Self::DirEntry, Self::Error>>;
+    /// Directory entry
+    type DirEntry;
+
+    /// Return the root path of the VFS
+    fn root(&self) -> impl Future<Output = PathBuf> + 'static;
+
+    /// Check whether the path is a file
+    fn is_file(&self, path: &Path) -> impl Future<Output = bool>;
+
+    /// Check whether the path is a directory
+    fn is_dir(&self, path: &Path) -> impl Future<Output = bool>;
+
+    /// Read a directory
+    fn read_dir(&self, path: &Path) -> impl Future<Output = Result<Self::DirIter, Self::Error>>;
+
+    /// Get the path of a directory entry
+    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf;
+}
+
+/// VFS for the Local File System ([`std::fs`])
+pub struct LocalFS {
+    chsets_folder: PathBuf,
+}
+
+impl LocalFS {
+    /// Create a new instance rooted at `chsets_folder`
+    pub fn new(chsets_folder: PathBuf) -> Self {
+        Self { chsets_folder }
+    }
+}
+
+impl VFS for LocalFS {
+    fn root(&self) -> impl Future<Output = PathBuf> + 'static {
+        std::future::ready(self.chsets_folder.to_owned())
+    }
+
+    fn is_file(&self, path: &Path) -> impl Future<Output = bool> {
+        std::future::ready(path.is_file())
+    }
+
+    fn is_dir(&self, path: &Path) -> impl Future<Output = bool> {
+        std::future::ready(path.is_dir())
+    }
+
+    async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
+        std::fs::read_dir(path)
+    }
+
+    type Error = io::Error;
+
+    type DirIter = fs::ReadDir;
+
+    type DirEntry = fs::DirEntry;
+
+    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
+        entry.path()
+    }
+}
+
+impl AsyncIterator for ReadDir {
+    type Item = Result<fs::DirEntry, io::Error>;
+
+    async fn next(&mut self) -> Option<Self::Item> {
+        <Self as Iterator>::next(self)
+    }
+}
+
 /// A simple cache for charsets
 pub struct ChsetCache {
-    chsets_folder: PathBuf,
     chsets: Vec<CSet>,
     names: HashMap<String, usize>,
 }
 
 impl ChsetCache {
     /// Create a new instance
-    pub fn new(chsets_folder: PathBuf) -> Self {
+    pub fn new() -> Self {
         ChsetCache {
             chsets: Vec::with_capacity(8),
             names: HashMap::new(),
-            chsets_folder,
         }
     }
 
@@ -191,7 +286,7 @@ impl ChsetCache {
     }
 
     /// Load a CSET section into the font cache, returning a document specific info struct.
-    pub fn load(&mut self, cset: &cset::CSet<'_>) -> DocumentFontCacheInfo {
+    pub async fn load<FS: VFS>(&mut self, fs: &FS, cset: &cset::CSet<'_>) -> DocumentFontCacheInfo {
         let mut all_eset = true;
         let mut all_p24 = true;
         let mut all_l30 = true;
@@ -204,7 +299,7 @@ impl ChsetCache {
                 continue;
             }
             chsets[index].name = Some(name.to_string());
-            if let Some(cset_cache_index) = self.load_cset(name) {
+            if let Some(cset_cache_index) = self.load_cset(fs, name).await {
                 let cset = self
                     .cset(cset_cache_index)
                     .expect("invalid index returned by load_cset");
@@ -225,13 +320,13 @@ impl ChsetCache {
     }
 
     /// Load a character set
-    pub fn load_cset(&mut self, name: &BStr) -> Option<usize> {
+    pub async fn load_cset<FS: VFS>(&mut self, fs: &FS, name: &BStr) -> Option<usize> {
         let name = decode_atari_str(name.as_ref()).into_owned();
         if let Some(index) = self.names.get(&name) {
             return Some(*index);
         }
 
-        let cset = match find_font_file(&self.chsets_folder, &name, "E24") {
+        let cset = match find_font_file(fs, &fs.root().await, &name, "E24").await {
             Some(editor_cset_file) => {
                 // Load all font files
                 CSet {
@@ -263,6 +358,12 @@ impl ChsetCache {
         // Add lookup and return
         self.names.insert(name, new_index);
         Some(new_index)
+    }
+}
+
+impl Default for ChsetCache {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

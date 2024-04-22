@@ -5,7 +5,12 @@ use js_sys::{Array, Uint8Array};
 use log::{info, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
-    chsets::{editor::parse_eset, encoding::decode_atari_str, printer::parse_ps24},
+    chsets::{
+        cache::{AsyncIterator, VFS},
+        editor::parse_eset,
+        encoding::decode_atari_str,
+        printer::parse_ps24,
+    },
     docs::{
         container::parse_sdoc0001_container,
         four_cc,
@@ -15,12 +20,15 @@ use signum::{
     raster,
     util::FourCC,
 };
-use std::io::Cursor;
+use std::{io::Cursor, path::Path};
+use vfs::OriginPrivateFS;
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Event, HtmlCanvasElement,
-    HtmlElement, HtmlImageElement, ImageBitmap, Url,
+    console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Event,
+    HtmlCanvasElement, HtmlElement, HtmlImageElement, ImageBitmap, Url,
 };
+
+mod vfs;
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -71,6 +79,7 @@ pub struct Module {
 pub struct Handle {
     document: Document,
     output: HtmlElement,
+    fs: OriginPrivateFS,
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
 }
 
@@ -84,10 +93,38 @@ impl Handle {
                 .document()
                 .ok_or(JsValue::NULL)?,
             output,
+            fs: OriginPrivateFS::new(),
             closures: Vec::new(),
         };
         log::info!("New handle created!");
         Ok(h)
+    }
+
+    #[wasm_bindgen]
+    pub async fn init(&mut self) -> Result<(), JsValue> {
+        self.fs.init().await?;
+
+        let _x = self.fs.root().await;
+        log::info!("_x: {:?}", _x);
+        let _y1 = self.fs.is_file(Path::new("ANTIKRO.P24")).await;
+        let _y2 = self.fs.is_file(Path::new("ANTIKRO.X24")).await;
+        log::info!("_y {} {}", _y1, _y2);
+
+        match self.fs.read_dir(Path::new("")).await {
+            Ok(mut z) => {
+                console::log_1(&z.0);
+                while let Some(z) = z.next().await {
+                    match z {
+                        Ok(entry) => {
+                            console::log_2(&entry.1.display().to_string().into(), &entry.0)
+                        }
+                        Err(e) => console::log_1(&e.0),
+                    }
+                }
+            }
+            Err(_e) => log::info!("{:?}", _e.0),
+        }
+        Ok(())
     }
 
     fn write0001(&self, header: &header::Header<'_>) -> Result<(), JsValue> {

@@ -57,6 +57,7 @@
 
       const outputEl = document.getElementById("output");
       const h = new Handle(outputEl);
+      await h.init();
 
       async function runFile(file) {
         const buf = await file.arrayBuffer();

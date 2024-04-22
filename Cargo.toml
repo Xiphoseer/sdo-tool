@@ -22,6 +22,7 @@ signum = { path = "crates/signum", features = ["image"] }
 pdf = "0.7"
 ron = "0.6"
 serde = "1.0"
+futures-lite = "2.3.0"
 
 [dependencies.image]
 default-features = false
