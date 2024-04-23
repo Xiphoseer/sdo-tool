@@ -37,6 +37,7 @@ async fn find_font_file<FS: VFS>(
     name: &str,
     extension: &str,
 ) -> Option<PathBuf> {
+    info!("Searching font {} in {:?}", name, cset_folder.display());
     let cset_file = cset_folder.join(name);
     let editor_cset_file = cset_file.with_extension(extension);
 
@@ -326,16 +327,15 @@ impl ChsetCache {
                 continue;
             }
             chsets[index].name = Some(name.to_string());
-            if let Some(cset_cache_index) = self.load_cset(fs, name).await {
-                let cset = self
-                    .cset(cset_cache_index)
-                    .expect("invalid index returned by load_cset");
-                chsets[index].index = Some(cset_cache_index);
-                all_eset &= cset.e24().is_some();
-                all_p24 &= cset.p24().is_some();
-                all_l30 &= cset.l30().is_some();
-                all_p09 &= cset.p09().is_some();
-            }
+            let cset_cache_index = self.load_cset(fs, name).await;
+            let cset = self
+                .cset(cset_cache_index)
+                .expect("invalid index returned by load_cset");
+            chsets[index].index = Some(cset_cache_index);
+            all_eset &= cset.e24().is_some();
+            all_p24 &= cset.p24().is_some();
+            all_l30 &= cset.l30().is_some();
+            all_p09 &= cset.p09().is_some();
         }
         DocumentFontCacheInfo {
             all_eset,
@@ -347,10 +347,10 @@ impl ChsetCache {
     }
 
     /// Load a character set
-    pub async fn load_cset<FS: VFS>(&mut self, fs: &FS, name: &BStr) -> Option<usize> {
+    pub async fn load_cset<FS: VFS>(&mut self, fs: &FS, name: &BStr) -> usize {
         let name = decode_atari_str(name.as_ref()).into_owned();
         if let Some(index) = self.names.get(&name) {
-            return Some(*index);
+            return *index;
         }
 
         let cset = match find_font_file(fs, &fs.root().await, &name, "E24").await {
@@ -384,7 +384,7 @@ impl ChsetCache {
 
         // Add lookup and return
         self.names.insert(name, new_index);
-        Some(new_index)
+        new_index
     }
 }
 

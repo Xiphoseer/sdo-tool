@@ -27,6 +27,7 @@ fn parse_cset_str<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
 /// long and possibly nul-terminated.
 ///
 /// The name corresponds to the font files in the `CHSETS` directory.
+#[derive(Debug)]
 pub struct CSet<'a> {
     /// The names of each file
     pub names: Vec<&'a BStr>,

@@ -114,39 +114,6 @@ impl Handle {
     #[wasm_bindgen]
     pub async fn init(&mut self) -> Result<(), JsValue> {
         self.fs.init().await?;
-
-        /*
-        let _x = self.fs.root().await;
-        log::info!("_x: {:?}", _x);
-        let _y1 = self.fs.is_file(Path::new("ANTIKRO.P24")).await;
-        let _y2 = self.fs.is_file(Path::new("ANTIKRO.X24")).await;
-        log::info!("_y {} {}", _y1, _y2);
-        */
-
-        match self.fc.load_cset(&self.fs, BStr::new("ANTIKRO")).await {
-            Some(index) => {
-                console::log_2(&"Font Index".into(), &index.into());
-            }
-            None => {
-                console::warn_1(&"Font Loading Failed".into());
-            }
-        }
-
-        /*match self.fs.read_dir(Path::new("CHSETS")).await {
-            Ok(mut z) => {
-                console::log_1(&z.0);
-                while let Some(z) = z.next().await {
-                    match z {
-                        Ok(entry) => {
-                            console::log_2(&entry.1.display().to_string().into(), &entry.0)
-                        }
-                        Err(e) => console::log_1(&e.0),
-                    }
-                }
-            }
-            Err(_e) => log::info!("{:?}", _e.0),
-        }*/
-
         Ok(())
     }
 
@@ -419,7 +386,7 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
+    pub async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
 
@@ -437,7 +404,7 @@ impl Handle {
             match four_cc {
                 FourCC::SDOC => {
                     let doc = self.parse_sdoc(&data)?;
-                    self.sdoc_card(&card_body, &doc)?;
+                    self.sdoc_card(&card_body, &doc).await?;
                 }
                 FourCC::ESET => {
                     // self.parse_eset(&data)
@@ -482,7 +449,7 @@ impl Handle {
         Ok(card_body)
     }
 
-    fn sdoc_card(&self, card_body: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
+    async fn sdoc_card(&mut self, card_body: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
         let header_info = self.document.create_element("div")?;
         header_info.class_list().add_1("mb-2")?;
         let mut text = format!(
@@ -498,16 +465,48 @@ impl Handle {
         chset_list
             .class_list()
             .add_2("list-group", "list-group-horizontal-md")?;
-        for chset in doc.charsets.iter().cloned().filter(|c| !c.is_empty()) {
+        info!("Loading charsets");
+        for chset in doc.cset.names.iter().cloned().filter(|c| !c.is_empty()) {
+            info!("Loading {}", chset);
+            let (cls, tooltip) = {
+                let cset_index = self.fc.load_cset(&self.fs, chset).await;
+                console::log_2(&"Font Index".into(), &cset_index.into());
+                let cset = self.fc.cset(cset_index).unwrap();
+                if cset.e24().is_none() {
+                    (
+                        "list-group-item-danger",
+                        format!("Missing Editor Font {chset}.E24"),
+                    )
+                } else {
+                    let mut missing = vec![];
+                    if cset.p24().is_none() {
+                        missing.push(format!("{chset}.P24"));
+                    }
+                    if cset.p09().is_none() {
+                        missing.push(format!("{chset}.P09"));
+                    }
+                    if cset.l30().is_none() {
+                        missing.push(format!("{chset}.L30"));
+                    }
+                    if missing.is_empty() {
+                        ("list-group-item-success", "All fonts present".to_string())
+                    } else {
+                        (
+                            "list-group-item-warning",
+                            format!("Missing Printer Font {}", missing.join(", ")),
+                        )
+                    }
+                }
+            };
+
             let chset_li = self.document.create_element("li")?;
-            chset_li
-                .class_list()
-                .add_2("list-group-item", "list-group-item-warning")?;
+            chset_li.class_list().add_2("list-group-item", cls)?;
             let text = decode_atari_str(chset);
             chset_li.set_text_content(Some(text.as_ref()));
-            chset_li.set_attribute("title", "Missing Printer Font")?;
+            chset_li.set_attribute("title", &tooltip)?;
             chset_list.append_child(&chset_li)?;
         }
+        info!("Done Loading charsets");
         card_body.append_child(&chset_list)?;
 
         Ok(())

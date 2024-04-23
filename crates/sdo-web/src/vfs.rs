@@ -8,8 +8,8 @@ use std::{
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    console, window, FileSystemDirectoryHandle, FileSystemFileHandle,
-    FileSystemGetDirectoryOptions, FileSystemHandleKind, StorageManager,
+    window, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemGetDirectoryOptions,
+    FileSystemHandleKind, StorageManager,
 };
 
 /// Browser Origin Private File System
@@ -88,20 +88,19 @@ async fn resolve_dir(
     h: &FileSystemDirectoryHandle,
     path: &Path,
     create: bool,
-) -> Result<FileSystemDirectoryHandle, JsError> {
+) -> Result<FileSystemDirectoryHandle, JsValue> {
     let mut curr = h.clone();
+    let mut opt = FileSystemGetDirectoryOptions::new();
+    if create {
+        opt.create(true); // bug?
+    }
     for p in path {
         if let Some(s) = p.to_str() {
-            if let Ok(result) = JsFuture::from(curr.get_directory_handle_with_options(
-                s,
-                FileSystemGetDirectoryOptions::new().create(create),
-            ))
-            .await
-            {
-                curr = result.unchecked_into::<FileSystemDirectoryHandle>();
-            }
+            curr = JsFuture::from(curr.get_directory_handle_with_options(s, &opt))
+                .await?
+                .unchecked_into::<FileSystemDirectoryHandle>();
         } else {
-            return Err(JsError::new("Not Found"));
+            return Err(JsError::new("Not Found").into());
         }
     }
     Ok(curr)
@@ -147,10 +146,12 @@ impl VFS for OriginPrivateFS {
 
     async fn is_dir(&self, path: &Path) -> bool {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
-        resolve_dir(root, path, false)
+
+        let result = resolve_dir(root, path, false)
             .await
             .map(|f| f.kind() == FileSystemHandleKind::Directory)
-            .unwrap_or(false)
+            .unwrap_or(false);
+        result
     }
 
     async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {

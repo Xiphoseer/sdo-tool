@@ -2,7 +2,6 @@
 //!
 //! This module contains the datastructures and parsers for reading SDO files.
 
-use bstr::BStr;
 use log::info;
 use nom::{
     combinator::map,
@@ -57,8 +56,8 @@ pub use error::Error;
 pub struct SDoc<'a> {
     /// The header of the document
     pub header: Header<'a>,
-    /// Character sets in this document
-    pub charsets: Vec<&'a BStr>,
+    /// Character sets
+    pub cset: CSet<'a>,
     /// System Paramters
     pub sysp: SysP,
     /// Page Buffer
@@ -77,7 +76,7 @@ impl<'a> SDoc<'a> {
     /// Unpack a document from a container
     pub fn unpack(container: SDocContainer<'a>) -> Result<Self, Error> {
         let mut header = None;
-        let mut charsets = Vec::new();
+        let mut cset = None;
         let mut sysp = None;
         let mut pbuf = None;
         let mut tebu = None;
@@ -90,7 +89,7 @@ impl<'a> SDoc<'a> {
                     header = Some(Header::unpack(chunk)?);
                 }
                 FourCC::_CSET => {
-                    charsets = CSet::unpack(chunk)?.names;
+                    cset = Some(CSet::unpack(chunk)?);
                 }
                 SysP::TAG => {
                     sysp = Some(SysP::unpack(chunk)?);
@@ -112,12 +111,12 @@ impl<'a> SDoc<'a> {
 
         Ok(Self {
             header: header.ok_or(Error::MissingTag(Header::TAG))?,
-            charsets,
-            other,
+            cset: cset.ok_or(Error::MissingTag(CSet::TAG))?,
             sysp: sysp.ok_or(Error::MissingTag(SysP::TAG))?,
             pbuf: pbuf.ok_or(Error::MissingTag(PBuf::TAG))?,
             tebu: tebu.ok_or(Error::MissingTag(TeBu::TAG))?,
             hcim,
+            other,
         })
     }
 }
