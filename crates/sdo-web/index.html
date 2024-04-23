@@ -105,6 +105,15 @@
         uploadFiles(event.target);
       });
       uploadFiles(inputField);
+
+      async function addToCollection() {
+        await h.add_to_collection();
+      }
+
+      const addToCollectionBtn = document.getElementById("add-to-collection");
+      addToCollectionBtn.addEventListener('click', (event) => {
+        addToCollection();
+      });
     }
 
     run();

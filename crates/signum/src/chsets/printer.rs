@@ -209,6 +209,11 @@ impl OwnedPSet {
     /// Load a character set
     pub fn load(path: &Path, kind: PrinterKind) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
+        Self::load_from_buffer(buffer, kind)
+    }
+
+    /// Load a character set from a byte buffer
+    pub fn load_from_buffer(buffer: Vec<u8>, kind: PrinterKind) -> Result<Self, LoadError> {
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };

@@ -6,6 +6,7 @@ use std::{
     future::Future,
     io,
     path::{Path, PathBuf},
+    pin::Pin,
 };
 
 use bstr::BStr;
@@ -25,6 +26,9 @@ use crate::{
 };
 
 use super::{encoding::decode_atari_str, FontKind};
+
+#[allow(dead_code)]
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 #[allow(clippy::manual_flatten)]
 async fn find_font_file<FS: VFS>(
@@ -52,7 +56,9 @@ async fn find_font_file<FS: VFS>(
         if let Ok(de) = entry {
             let subfolder = fs.dir_entry_path(&de);
             if fs.is_dir(&subfolder).await {
-                if let Some(path) = find_font_file(fs, &subfolder, name, extension).await {
+                // Note: need to box the future here because this is async recursion.
+                let fut = Box::pin(find_font_file(fs, &subfolder, name, extension));
+                if let Some(path) = fut.await {
                     return Some(path);
                 }
             }
@@ -61,10 +67,19 @@ async fn find_font_file<FS: VFS>(
     None
 }
 
-fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPSet> {
+async fn load_printer_font<FS: VFS>(
+    fs: &FS,
+    printer_cset_file: &Path,
+    pk: PrinterKind,
+) -> Option<OwnedPSet> {
     let extension = pk.extension();
-    let printer_cset_file = editor_cset_file.with_extension(extension);
-    match OwnedPSet::load(&printer_cset_file, pk) {
+    let printer_cset_file = printer_cset_file.with_extension(extension);
+    let buffer = fs
+        .read(&printer_cset_file)
+        .await
+        .inspect_err(|e| warn!("Failed to load {:?}: {}", printer_cset_file, e))
+        .ok()?;
+    match OwnedPSet::load_from_buffer(buffer, pk) {
         Ok(pset) => {
             info!("Loaded printer font file '{}'", printer_cset_file.display());
             Some(pset)
@@ -104,8 +119,13 @@ fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
     }
 }
 
-fn load_editor_font(editor_cset_file: &Path) -> Option<OwnedESet> {
-    match OwnedESet::load(editor_cset_file) {
+async fn load_editor_font<FS: VFS>(fs: &FS, editor_cset_file: &Path) -> Option<OwnedESet> {
+    let buffer = fs
+        .read(editor_cset_file)
+        .await
+        .map_err(|e| warn!("Failed to load {:?}: {}", editor_cset_file, e))
+        .ok()?;
+    match OwnedESet::load_from_buf(buffer) {
         Ok(eset) => {
             info!("Loaded editor font file '{}'", editor_cset_file.display());
             Some(eset)
@@ -198,6 +218,9 @@ pub trait VFS {
     /// Read a directory
     fn read_dir(&self, path: &Path) -> impl Future<Output = Result<Self::DirIter, Self::Error>>;
 
+    /// Read a file
+    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>>;
+
     /// Get the path of a directory entry
     fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf;
 }
@@ -239,6 +262,10 @@ impl VFS for LocalFS {
 
     fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
         entry.path()
+    }
+
+    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>> {
+        std::future::ready(std::fs::read(path))
     }
 }
 
@@ -331,10 +358,10 @@ impl ChsetCache {
                 // Load all font files
                 CSet {
                     name: name.clone(),
-                    e24: load_editor_font(&editor_cset_file),
-                    p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
-                    p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
-                    l30: load_printer_font(&editor_cset_file, PrinterKind::Laser30),
+                    e24: load_editor_font(fs, &editor_cset_file).await,
+                    p09: load_printer_font(fs, &editor_cset_file, PrinterKind::Needle9).await,
+                    p24: load_printer_font(fs, &editor_cset_file, PrinterKind::Needle24).await,
+                    l30: load_printer_font(fs, &editor_cset_file, PrinterKind::Laser30).await,
                     map: load_mapping_file(&editor_cset_file),
                 }
             }

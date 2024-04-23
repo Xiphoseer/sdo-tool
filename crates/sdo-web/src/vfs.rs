@@ -8,14 +8,30 @@ use std::{
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    console, window, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemHandleKind,
-    StorageManager,
+    console, window, FileSystemDirectoryHandle, FileSystemFileHandle,
+    FileSystemGetDirectoryOptions, FileSystemHandleKind, StorageManager,
 };
 
 /// Browser Origin Private File System
 pub struct OriginPrivateFS {
     storage: StorageManager,
     root: Option<FileSystemDirectoryHandle>,
+}
+
+impl OriginPrivateFS {
+    pub fn root_dir(&self) -> Result<&FileSystemDirectoryHandle, JsValue> {
+        let root = self
+            .root
+            .as_ref()
+            .ok_or_else(|| JsError::new("OPFS not initialized"))?;
+        Ok(root)
+    }
+
+    pub async fn chset_dir(&self) -> Result<FileSystemDirectoryHandle, JsValue> {
+        let root = self.root_dir()?;
+        let dir = resolve_dir(root, Path::new("CHSETS"), true).await?;
+        Ok(dir)
+    }
 }
 
 #[derive(Debug)]
@@ -71,15 +87,21 @@ pub struct DirIter(pub js_sys::AsyncIterator, PathBuf);
 async fn resolve_dir(
     h: &FileSystemDirectoryHandle,
     path: &Path,
-) -> Result<FileSystemDirectoryHandle, js_sys::Error> {
+    create: bool,
+) -> Result<FileSystemDirectoryHandle, JsError> {
     let mut curr = h.clone();
     for p in path {
         if let Some(s) = p.to_str() {
-            if let Ok(result) = JsFuture::from(curr.get_directory_handle(s)).await {
+            if let Ok(result) = JsFuture::from(curr.get_directory_handle_with_options(
+                s,
+                FileSystemGetDirectoryOptions::new().create(create),
+            ))
+            .await
+            {
                 curr = result.unchecked_into::<FileSystemDirectoryHandle>();
             }
         } else {
-            return Err(js_sys::Error::new("Not Found"));
+            return Err(JsError::new("Not Found"));
         }
     }
     Ok(curr)
@@ -88,9 +110,9 @@ async fn resolve_dir(
 async fn resolve_file(
     root: &FileSystemDirectoryHandle,
     path: &Path,
-) -> Result<FileSystemFileHandle, js_sys::Error> {
+) -> Result<FileSystemFileHandle, JsValue> {
     let dir = if let Some(parent) = path.parent() {
-        resolve_dir(root, parent).await?
+        resolve_dir(root, parent, false).await?
     } else {
         root.clone()
     };
@@ -101,7 +123,7 @@ async fn resolve_file(
             return Ok(file);
         }
     }
-    Err(js_sys::Error::new("Not Found"))
+    Err(JsError::new("Not Found").into())
 }
 
 impl VFS for OriginPrivateFS {
@@ -125,7 +147,7 @@ impl VFS for OriginPrivateFS {
 
     async fn is_dir(&self, path: &Path) -> bool {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
-        resolve_dir(root, path)
+        resolve_dir(root, path, false)
             .await
             .map(|f| f.kind() == FileSystemHandleKind::Directory)
             .unwrap_or(false)
@@ -133,7 +155,7 @@ impl VFS for OriginPrivateFS {
 
     async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
-        let dir = resolve_dir(root, path).await?;
+        let dir = resolve_dir(root, path, false).await?;
         let iter =
             try_iter_async(dir.as_ref())?.ok_or_else(|| JsError::new("Not async iterable"))?;
         Ok(DirIter(iter, path.to_owned()))
@@ -141,6 +163,19 @@ impl VFS for OriginPrivateFS {
 
     fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
         entry.1.clone()
+    }
+
+    async fn read(&self, path: &Path) -> Result<Vec<u8>, Self::Error> {
+        let root = self.root_dir()?;
+        let file_handle = resolve_file(root, path).await?;
+        let file = JsFuture::from(file_handle.get_file())
+            .await?
+            .unchecked_into::<web_sys::File>();
+        let array_buffer = JsFuture::from(file.array_buffer())
+            .await?
+            .unchecked_into::<js_sys::ArrayBuffer>();
+        let uint8_buf = js_sys::Uint8Array::new(&array_buffer);
+        Ok(uint8_buf.to_vec())
     }
 }
 
@@ -177,7 +212,6 @@ impl OriginPrivateFS {
         let dir_handle = FileSystemDirectoryHandle::unchecked_from_js(
             JsFuture::from(self.storage.get_directory()).await?,
         );
-        console::log_2(&"_dir_handle".into(), &dir_handle);
         self.root = Some(dir_handle);
         Ok(())
     }

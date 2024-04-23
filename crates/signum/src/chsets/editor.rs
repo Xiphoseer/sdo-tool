@@ -57,6 +57,11 @@ impl OwnedESet {
     /// Load an editor charset
     pub fn load(path: &Path) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
+        Self::load_from_buf(buffer)
+    }
+
+    /// Load an editor charset
+    pub fn load_from_buf(buffer: Vec<u8>) -> Result<Self, LoadError> {
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };

@@ -30,7 +30,10 @@ web-sys = { version = "0.3.68", features = [
     "StorageManager",
     "FileSystemDirectoryHandle",
     "FileSystemFileHandle",
-    "FileSystemHandleKind"
+    "FileSystemHandleKind",
+    "FileSystemGetFileOptions",
+    "FileSystemGetDirectoryOptions",
+    "FileSystemWritableFileStream"
 ] }
 signum = { path = "../signum", features = ["image"] }
 sdo-util = { path = "../sdo-util" }

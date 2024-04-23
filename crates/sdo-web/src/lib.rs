@@ -1,12 +1,13 @@
 #![allow(non_snake_case)] // wasm_bindgen macro
 
+use bstr::BStr;
 use image::ImageOutputFormat;
 use js_sys::{Array, Uint8Array};
 use log::{info, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::{AsyncIterator, VFS},
+        cache::{AsyncIterator, ChsetCache, FontCacheInfo, VFS},
         editor::parse_eset,
         encoding::decode_atari_str,
         printer::parse_ps24,
@@ -20,11 +21,13 @@ use signum::{
     raster,
     util::FourCC,
 };
-use std::{fmt::Write, io::Cursor, path::Path};
+use std::{fmt::Write, future::IntoFuture, io::Cursor, path::Path};
 use vfs::OriginPrivateFS;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Element, Event,
+    FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
     HtmlCanvasElement, HtmlElement, HtmlImageElement, ImageBitmap, Url,
 };
 
@@ -84,6 +87,8 @@ pub struct Handle {
     fs: OriginPrivateFS,
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
 
+    fc: ChsetCache,
+
     staged: Vec<(String, Uint8Array, FourCC)>,
 }
 
@@ -98,6 +103,7 @@ impl Handle {
                 .ok_or(JsValue::NULL)?,
             output,
             fs: OriginPrivateFS::new(),
+            fc: ChsetCache::new(),
             closures: Vec::new(),
             staged: Vec::new(),
         };
@@ -109,13 +115,24 @@ impl Handle {
     pub async fn init(&mut self) -> Result<(), JsValue> {
         self.fs.init().await?;
 
+        /*
         let _x = self.fs.root().await;
         log::info!("_x: {:?}", _x);
         let _y1 = self.fs.is_file(Path::new("ANTIKRO.P24")).await;
         let _y2 = self.fs.is_file(Path::new("ANTIKRO.X24")).await;
         log::info!("_y {} {}", _y1, _y2);
+        */
 
-        match self.fs.read_dir(Path::new("")).await {
+        match self.fc.load_cset(&self.fs, BStr::new("ANTIKRO")).await {
+            Some(index) => {
+                console::log_2(&"Font Index".into(), &index.into());
+            }
+            None => {
+                console::warn_1(&"Font Loading Failed".into());
+            }
+        }
+
+        /*match self.fs.read_dir(Path::new("CHSETS")).await {
             Ok(mut z) => {
                 console::log_1(&z.0);
                 while let Some(z) = z.next().await {
@@ -128,7 +145,8 @@ impl Handle {
                 }
             }
             Err(_e) => log::info!("{:?}", _e.0),
-        }
+        }*/
+
         Ok(())
     }
 
@@ -377,6 +395,30 @@ impl Handle {
     }
 
     #[wasm_bindgen]
+    pub async fn add_to_collection(&mut self) -> Result<(), JsValue> {
+        let root_dir = self.fs.root_dir()?;
+        let chset_dir = self.fs.chset_dir().await?;
+        let mut opts = FileSystemGetFileOptions::new();
+        opts.create(true);
+        for (name, data, four_cc) in self.staged.drain(..) {
+            let dir = match four_cc {
+                FourCC::ESET | FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => &chset_dir,
+                _ => root_dir,
+            };
+            let r = JsFuture::from(dir.get_file_handle_with_options(&name, &opts))
+                .await?
+                .unchecked_into::<FileSystemFileHandle>();
+            let w = JsFuture::from(r.create_writable())
+                .await?
+                .unchecked_into::<FileSystemWritableFileStream>();
+            let o = JsFuture::from(w.write_with_buffer_source(&data)?).await?;
+            assert_eq!(o, JsValue::UNDEFINED);
+            console::info_3(&"Added".into(), &name.into(), &"to collection!".into());
+        }
+        Ok(())
+    }
+
+    #[wasm_bindgen]
     pub fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
@@ -463,6 +505,7 @@ impl Handle {
                 .add_2("list-group-item", "list-group-item-warning")?;
             let text = decode_atari_str(chset);
             chset_li.set_text_content(Some(text.as_ref()));
+            chset_li.set_attribute("title", "Missing Printer Font")?;
             chset_list.append_child(&chset_li)?;
         }
         card_body.append_child(&chset_list)?;
