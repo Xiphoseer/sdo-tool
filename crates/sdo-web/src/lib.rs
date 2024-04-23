@@ -20,19 +20,21 @@ use signum::{
     raster,
     util::FourCC,
 };
-use std::{io::Cursor, path::Path};
+use std::{fmt::Write, io::Cursor, path::Path};
 use vfs::OriginPrivateFS;
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Event,
+    console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Element, Event,
     HtmlCanvasElement, HtmlElement, HtmlImageElement, ImageBitmap, Url,
 };
 
 mod vfs;
 
+/*
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
+*/
 
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]
@@ -81,6 +83,8 @@ pub struct Handle {
     output: HtmlElement,
     fs: OriginPrivateFS,
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
+
+    staged: Vec<(String, Uint8Array, FourCC)>,
 }
 
 #[wasm_bindgen]
@@ -95,6 +99,7 @@ impl Handle {
             output,
             fs: OriginPrivateFS::new(),
             closures: Vec::new(),
+            staged: Vec::new(),
         };
         log::info!("New handle created!");
         Ok(h)
@@ -127,7 +132,7 @@ impl Handle {
         Ok(())
     }
 
-    fn write0001(&self, header: &header::Header<'_>) -> Result<(), JsValue> {
+    fn _write0001(&self, header: &header::Header<'_>) -> Result<(), JsValue> {
         log::info!("Created: {}", &header.ctime);
         log::info!("Modified: {}", &header.mtime);
         let el_header = self.document.create_element("section")?;
@@ -137,7 +142,7 @@ impl Handle {
         Ok(())
     }
 
-    fn write_cset(&self, charsets: &[&bstr::BStr]) -> Result<(), JsValue> {
+    fn _write_cset(&self, charsets: &[&bstr::BStr]) -> Result<(), JsValue> {
         let el_cset = self.document.create_element("section")?;
         let ar = Array::new();
         let mut html = "<h3>Character Sets</h3><ol>".to_string();
@@ -177,7 +182,7 @@ impl Handle {
         Ok(el_image)
     }
 
-    fn write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
+    fn _write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
         let el_hcim = self.document.create_element("section")?;
         let heading = self.document.create_element("h3")?;
         heading.set_inner_html("Embedded Images");
@@ -210,59 +215,53 @@ impl Handle {
         Ok(())
     }
 
-    pub fn parse_sdoc(&self, data: &[u8]) -> Result<(), JsValue> {
-        match parse_sdoc0001_container(data) {
-            Ok((_rest, container)) => {
-                let doc = match SDoc::unpack(container) {
-                    Ok(res) => {
-                        log("Parsing complete");
-                        res
-                    }
-                    Err(_e) => {
-                        log(&format!("Failed to parse: {:?}", _e));
-                        return Ok(());
-                    }
-                };
+    /*
+    self.write0001(&doc.header)?;
 
-                self.write0001(&doc.header)?;
+    // cset
+    self.write_cset(&doc.charsets)?;
 
-                // cset
-                self.write_cset(&doc.charsets)?;
-
-                // sysp
-                if let Ok(sysp) = serde_wasm_bindgen::to_value(&doc.sysp) {
-                    log_val("sysp", &sysp);
-                }
-
-                // pbuf
-                if let Ok(pbuf) = serde_wasm_bindgen::to_value(&doc.pbuf) {
-                    log_val("pbuf", &pbuf);
-                }
-
-                // tebu
-                if let Ok(tebu) = serde_wasm_bindgen::to_value(&doc.tebu) {
-                    log_val("tebu", &tebu);
-                }
-
-                // hcim
-                if let Some(hcim) = &doc.hcim {
-                    self.write_hcim(hcim)?;
-                }
-
-                for (key, val) in &doc.other {
-                    if let Ok(bytes) = serde_wasm_bindgen::to_value(&val.0) {
-                        log_val(&key.to_string(), &bytes)
-                    }
-                }
-            }
-            Err(_) => {
-                console_log!("Failed to parse SDO container");
-            }
-        }
-        Ok(())
+    // sysp
+    if let Ok(sysp) = serde_wasm_bindgen::to_value(&doc.sysp) {
+        log_val("sysp", &sysp);
     }
 
-    fn parse_eset(&self, data: &[u8]) -> Result<(), JsValue> {
+    // pbuf
+    if let Ok(pbuf) = serde_wasm_bindgen::to_value(&doc.pbuf) {
+        log_val("pbuf", &pbuf);
+    }
+
+    // tebu
+    if let Ok(tebu) = serde_wasm_bindgen::to_value(&doc.tebu) {
+        log_val("tebu", &tebu);
+    }
+
+    // hcim
+    if let Some(hcim) = &doc.hcim {
+        self.write_hcim(hcim)?;
+    }
+
+    for (key, val) in &doc.other {
+        if let Ok(bytes) = serde_wasm_bindgen::to_value(&val.0) {
+            log_val(&key.to_string(), &bytes)
+        }
+    }
+     */
+
+    fn parse_sdoc<'a>(&self, data: &'a [u8]) -> Result<SDoc<'a>, JsValue> {
+        match parse_sdoc0001_container(data) {
+            Ok((_rest, container)) => match SDoc::unpack(container) {
+                Ok(res) => {
+                    log("Parsing complete");
+                    Ok(res)
+                }
+                Err(e) => Err(JsError::new(&format!("Failed to parse: {:?}", e)).into()),
+            },
+            Err(_e) => Err(JsError::new("Failed to parse SDO container").into()),
+        }
+    }
+
+    fn _parse_eset(&self, data: &[u8]) -> Result<(), JsValue> {
         log::info!("Signum Editor Bitmap Font");
         match parse_eset(data) {
             Ok((_, eset)) => {
@@ -290,7 +289,7 @@ impl Handle {
         Ok(())
     }
 
-    fn parse_ps24(&mut self, data: &[u8]) -> Result<(), JsValue> {
+    fn _parse_ps24(&mut self, data: &[u8]) -> Result<(), JsValue> {
         log::info!("Signum 24-Needle Printer Bitmap Font");
         match parse_ps24(data) {
             Ok((_, pset)) => {
@@ -371,23 +370,112 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub fn do_stuff(&mut self, name: &str, data: &[u8]) -> Result<(), JsValue> {
-        info!("Parsing file '{}'", name);
+    pub fn reset(&mut self) -> Result<(), JsValue> {
         self.output.set_inner_html("");
+        self.staged.clear();
+        Ok(())
+    }
 
-        if let Ok((_, four_cc)) = four_cc(data) {
+    #[wasm_bindgen]
+    pub fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
+        let data = arr.to_vec();
+        info!("Parsing file '{}'", name);
+
+        if let Ok((_, four_cc)) = four_cc(&data) {
+            if ACCEPT.contains(&four_cc) {
+                self.staged.push((name.to_owned(), arr, four_cc))
+            } else {
+                log::warn!("Unknown File Format '{}'", four_cc);
+                return Ok(());
+            }
+            let card = self.document.create_element("div")?;
+            card.class_list()
+                .add_2("card", decode_atari_str(&FourCC::SDOC).as_ref())?;
+            let card_body = self.card_body(name, four_cc)?;
             match four_cc {
-                FourCC::SDOC => self.parse_sdoc(data),
-                FourCC::ESET => self.parse_eset(data),
-                FourCC::PS24 => self.parse_ps24(data),
+                FourCC::SDOC => {
+                    let doc = self.parse_sdoc(&data)?;
+                    self.sdoc_card(&card_body, &doc)?;
+                }
+                FourCC::ESET => {
+                    // self.parse_eset(&data)
+                }
+                FourCC::PS24 => {
+                    // self.parse_ps24(&data)
+                }
                 k => {
                     log::warn!("Unknown File Format '{}'", k);
-                    Ok(())
                 }
             }
+            card.append_child(&card_body)?;
+            self.output.append_child(&card)?;
+            Ok(())
         } else {
             log::warn!("File is less than 4 bytes long");
             Ok(())
         }
     }
+
+    fn card_body(&self, name: &str, four_cc: FourCC) -> Result<Element, JsValue> {
+        let card_body = self.document.create_element("div")?;
+        card_body.class_list().add_1("card-body")?;
+        let card_title = self.document.create_element("h5")?;
+        card_title.class_list().add_1("card-title")?;
+        card_title.set_text_content(Some(name));
+        card_body.append_child(&card_title)?;
+        let card_subtitle = self.document.create_element("h6")?;
+        card_subtitle
+            .class_list()
+            .add_3("card-subtitle", "mb-2", "text-body-secondary")?;
+        card_subtitle.set_text_content(Some(match four_cc {
+            FourCC::SDOC => "Signum! Document",
+            FourCC::ESET => "Signum! Editor Font",
+            FourCC::PS24 => "Signum! 24-Needle Printer Font",
+            FourCC::PS09 => "Signum! 9-Needle Printer Font",
+            FourCC::LS30 => "Signum! Laser Printer Font",
+            FourCC::BIMC => "Signum! Hardcopy Image",
+            _ => "Unknown",
+        }));
+        card_body.append_child(&card_subtitle)?;
+        Ok(card_body)
+    }
+
+    fn sdoc_card(&self, card_body: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
+        let header_info = self.document.create_element("div")?;
+        header_info.class_list().add_1("mb-2")?;
+        let mut text = format!(
+            "Created: {} | Modified: {}",
+            doc.header.ctime, doc.header.mtime
+        );
+        if let Some(hcim) = &doc.hcim {
+            write!(text, " | Embedded images: {}", hcim.header.img_count).unwrap();
+        }
+        header_info.set_text_content(Some(&text));
+        card_body.append_child(&header_info)?;
+        let chset_list = self.document.create_element("ol")?;
+        chset_list
+            .class_list()
+            .add_2("list-group", "list-group-horizontal-md")?;
+        for chset in doc.charsets.iter().cloned().filter(|c| !c.is_empty()) {
+            let chset_li = self.document.create_element("li")?;
+            chset_li
+                .class_list()
+                .add_2("list-group-item", "list-group-item-warning")?;
+            let text = decode_atari_str(chset);
+            chset_li.set_text_content(Some(text.as_ref()));
+            chset_list.append_child(&chset_li)?;
+        }
+        card_body.append_child(&chset_list)?;
+
+        Ok(())
+    }
 }
+
+const ACCEPT: &[FourCC] = &[
+    FourCC::SDOC,
+    FourCC::ESET,
+    FourCC::PS09,
+    FourCC::PS24,
+    FourCC::LS30,
+    FourCC::BIMC,
+];
