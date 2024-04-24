@@ -2,8 +2,8 @@
 
 use bstr::BStr;
 use image::ImageOutputFormat;
-use js_sys::{Array, ArrayBuffer, Uint8Array};
-use log::{info, Level};
+use js_sys::{Array, ArrayBuffer, JsString, Uint8Array};
+use log::{info, warn, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
@@ -18,7 +18,7 @@ use signum::{
         hcim::{parse_image, Hcim},
         header, SDoc,
     },
-    raster::{self, render_editor_text},
+    raster::{self, render_doc_page, render_editor_text},
     util::FourCC,
 };
 use std::{fmt::Write, io::Cursor};
@@ -91,6 +91,13 @@ fn js_four_cc(arr: &Uint8Array) -> Option<FourCC> {
             arr.get_index(3),
         ]))
     }
+}
+
+async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsValue> {
+    let buf = JsFuture::from(file.array_buffer())
+        .await?
+        .unchecked_into::<ArrayBuffer>();
+    Ok(Uint8Array::new(&buf))
 }
 
 #[wasm_bindgen]
@@ -390,6 +397,16 @@ impl Handle {
         Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
     }
 
+    fn input_file(&self, name: &str) -> Result<web_sys::File, JsValue> {
+        let iter = self.input_files()?;
+        for file in iter.flatten() {
+            if file.name() == name {
+                return Ok(file);
+            }
+        }
+        Err(JsError::new("File not found").into())
+    }
+
     #[wasm_bindgen]
     pub async fn add_to_collection(&mut self) -> Result<(), JsValue> {
         self.fc.reset();
@@ -399,10 +416,7 @@ impl Handle {
         opts.create(true);
         for file in self.input_files()? {
             let file = file?;
-            let arr_buf = JsFuture::from(file.array_buffer())
-                .await?
-                .unchecked_into::<ArrayBuffer>();
-            let data = Uint8Array::new(&arr_buf);
+            let data = js_file_data(&file).await?;
 
             let four_cc =
                 js_four_cc(&data).ok_or_else(|| JsError::new("Failed to parse file format"))?;
@@ -432,6 +446,58 @@ impl Handle {
             let heading = self.document.create_element("h2")?;
             heading.set_text_content(Some(rest));
             self.output.append_child(&heading)?;
+
+            let file = self.input_file(rest)?;
+            let data = js_file_data(&file).await?.to_vec();
+
+            if let Ok((_, four_cc)) = four_cc(&data) {
+                match four_cc {
+                    FourCC::SDOC => {
+                        let sdoc = self.parse_sdoc(&data)?;
+                        let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
+                        let pd = dfci
+                            .print_driver(None)
+                            .ok_or(JsError::new("No print driver available"))?;
+
+                        let images = sdoc
+                            .hcim
+                            .as_ref()
+                            .map(|hcim| hcim.decode_images())
+                            .unwrap_or_default();
+                        let image_sites = sdoc
+                            .hcim
+                            .as_ref()
+                            .map(|hcim| hcim.sites.as_slice())
+                            .unwrap_or(&[]);
+                        for page_text in &sdoc.tebu.pages {
+                            let index = page_text.index as usize;
+                            if let Some((pbuf_entry, _)) = sdoc.pbuf.pages[index].as_ref() {
+                                let page = render_doc_page(
+                                    page_text,
+                                    pbuf_entry,
+                                    image_sites,
+                                    &images,
+                                    pd,
+                                    &self.fc,
+                                    &dfci,
+                                );
+                                let list_item = self.document.create_element("div")?;
+                                list_item.class_list().add_1("list-group-item")?;
+
+                                let blob = self.page_as_blob(&page)?;
+                                let img = Self::blob_image_el(&blob)?;
+                                img.class_list().add_1("container-fluid")?;
+                                list_item.append_child(&img)?;
+
+                                self.output.append_child(&list_item)?;
+                            } else {
+                                warn!("Missing page {index}");
+                            }
+                        }
+                    }
+                    _ => warn!("Unknown format: {}", four_cc),
+                }
+            }
         } else if matches!(fragment, "" | "#" | "#/") {
             self.on_change().await?;
         }

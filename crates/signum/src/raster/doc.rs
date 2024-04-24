@@ -49,6 +49,7 @@ fn print_echar(
 }
 
 /// Print a single page
+#[must_use]
 pub fn render_doc_page(
     page_text: &tebu::PageText,
     pbuf_entry: &pbuf::Page,
