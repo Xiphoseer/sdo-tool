@@ -2,7 +2,7 @@
 
 use bstr::BStr;
 use image::ImageOutputFormat;
-use js_sys::{Array, Uint8Array};
+use js_sys::{Array, ArrayBuffer, Uint8Array};
 use log::{info, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
@@ -27,8 +27,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Element, Event,
-    FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
-    HtmlCanvasElement, HtmlElement, HtmlImageElement, ImageBitmap, Url,
+    FileList, FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
+    HtmlCanvasElement, HtmlElement, HtmlImageElement, HtmlInputElement, ImageBitmap, Url,
 };
 
 mod vfs;
@@ -80,22 +80,34 @@ pub struct Module {
     callback: Closure<dyn FnMut(Event)>,
 }
 
+fn js_four_cc(arr: &Uint8Array) -> Option<FourCC> {
+    if arr.length() <= 4 {
+        None
+    } else {
+        Some(FourCC::new([
+            arr.get_index(0),
+            arr.get_index(1),
+            arr.get_index(2),
+            arr.get_index(3),
+        ]))
+    }
+}
+
 #[wasm_bindgen]
 pub struct Handle {
     document: Document,
     output: HtmlElement,
+    input: HtmlInputElement,
     fs: OriginPrivateFS,
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
 
     fc: ChsetCache,
-
-    staged: Vec<(String, Uint8Array, FourCC)>,
 }
 
 #[wasm_bindgen]
 impl Handle {
     #[wasm_bindgen(constructor)]
-    pub fn new(output: HtmlElement) -> Result<Handle, JsValue> {
+    pub fn new(output: HtmlElement, input: HtmlInputElement) -> Result<Handle, JsValue> {
         let h = Self {
             document: window()
                 .ok_or(JsValue::NULL)?
@@ -105,7 +117,7 @@ impl Handle {
             fs: OriginPrivateFS::new(),
             fc: ChsetCache::new(),
             closures: Vec::new(),
-            staged: Vec::new(),
+            input,
         };
         log::info!("New handle created!");
         Ok(h)
@@ -360,8 +372,22 @@ impl Handle {
     #[wasm_bindgen]
     pub fn reset(&mut self) -> Result<(), JsValue> {
         self.output.set_inner_html("");
-        self.staged.clear();
         Ok(())
+    }
+
+    fn input_file_list(&self) -> Result<FileList, JsValue> {
+        let files = self
+            .input
+            .files()
+            .ok_or_else(|| JsError::new("Not a file input"))?;
+        Ok(files)
+    }
+
+    fn input_files(&self) -> Result<impl Iterator<Item = Result<web_sys::File, JsValue>>, JsValue> {
+        let files = self.input_file_list()?;
+        let file_iter =
+            js_sys::try_iter(&files)?.ok_or_else(|| JsError::new("Not a file iterator"))?;
+        Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
     }
 
     #[wasm_bindgen]
@@ -371,7 +397,17 @@ impl Handle {
         let chset_dir = self.fs.chset_dir().await?;
         let mut opts = FileSystemGetFileOptions::new();
         opts.create(true);
-        for (name, data, four_cc) in self.staged.drain(..) {
+        for file in self.input_files()? {
+            let file = file?;
+            let arr_buf = JsFuture::from(file.array_buffer())
+                .await?
+                .unchecked_into::<ArrayBuffer>();
+            let data = Uint8Array::new(&arr_buf);
+
+            let four_cc =
+                js_four_cc(&data).ok_or_else(|| JsError::new("Failed to parse file format"))?;
+            let name = file.name();
+            // (name, data, four_cc)
             let dir = match four_cc {
                 FourCC::ESET | FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => &chset_dir,
                 _ => root_dir,
@@ -390,17 +426,36 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
+    pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
+        self.output.set_inner_html("");
+        if let Some(rest) = fragment.strip_prefix("#/staged/") {
+            let heading = self.document.create_element("h2")?;
+            heading.set_text_content(Some(rest));
+            self.output.append_child(&heading)?;
+        } else if matches!(fragment, "" | "#" | "#/") {
+            self.on_change().await?;
+        }
+        Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub async fn on_change(&mut self) -> Result<(), JsValue> {
+        self.reset()?;
+        for file in self.input_files()? {
+            let file = file?;
+            let arr = JsFuture::from(file.array_buffer())
+                .await?
+                .unchecked_into::<ArrayBuffer>();
+            self.stage(&file.name(), Uint8Array::new(&arr)).await?;
+        }
+        Ok(())
+    }
+
+    async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
 
         if let Ok((_, four_cc)) = four_cc(&data) {
-            if ACCEPT.contains(&four_cc) {
-                self.staged.push((name.to_owned(), arr, four_cc))
-            } else {
-                log::warn!("Unknown File Format '{}'", four_cc);
-                return Ok(());
-            }
             let card = self.document.create_element("a")?;
             let kind = decode_atari_str(&FourCC::SDOC);
             card.class_list()
@@ -414,13 +469,7 @@ impl Handle {
                 }
                 FourCC::ESET => {
                     let eset = self.parse_eset(&data)?;
-                    let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
-                    let text = BStr::new(chset.as_bytes());
-                    let page = render_editor_text(text, &eset)
-                        .map_err(|_| JsError::new("Failed to render editor font name"))?;
-                    let blob = self.page_as_blob(&page)?;
-                    let img = Self::blob_image_el(&blob)?;
-                    card.append_child(&img)?;
+                    self.eset_card(&card, &eset, name)?;
                 }
                 FourCC::PS24 => {
                     // self.parse_ps24(&data)
@@ -459,7 +508,23 @@ impl Handle {
         Ok(())
     }
 
-    async fn sdoc_card(&mut self, card_body: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
+    fn eset_card(
+        &mut self,
+        list_item: &Element,
+        eset: &ESet<'_>,
+        name: &str,
+    ) -> Result<(), JsValue> {
+        let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
+        let text = BStr::new(chset.as_bytes());
+        let page = render_editor_text(text, eset)
+            .map_err(|_| JsError::new("Failed to render editor font name"))?;
+        let blob = self.page_as_blob(&page)?;
+        let img = Self::blob_image_el(&blob)?;
+        list_item.append_child(&img)?;
+        Ok(())
+    }
+
+    async fn sdoc_card(&mut self, list_item: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
         let header_info = self.document.create_element("div")?;
         header_info.class_list().add_1("mb-2")?;
         let mut text = format!(
@@ -470,7 +535,7 @@ impl Handle {
             write!(text, " | Embedded images: {}", hcim.header.img_count).unwrap();
         }
         header_info.set_text_content(Some(&text));
-        card_body.append_child(&header_info)?;
+        list_item.append_child(&header_info)?;
         let chset_list = self.document.create_element("ol")?;
         chset_list
             .class_list()
@@ -517,7 +582,7 @@ impl Handle {
             chset_list.append_child(&chset_li)?;
         }
         info!("Done Loading charsets");
-        card_body.append_child(&chset_list)?;
+        list_item.append_child(&chset_list)?;
 
         Ok(())
     }

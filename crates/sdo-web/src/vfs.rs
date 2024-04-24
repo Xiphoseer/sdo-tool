@@ -146,12 +146,10 @@ impl VFS for OriginPrivateFS {
 
     async fn is_dir(&self, path: &Path) -> bool {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
-
-        let result = resolve_dir(root, path, false)
+        resolve_dir(root, path, false)
             .await
             .map(|f| f.kind() == FileSystemHandleKind::Directory)
-            .unwrap_or(false);
-        result
+            .unwrap_or(false)
     }
 
     async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {

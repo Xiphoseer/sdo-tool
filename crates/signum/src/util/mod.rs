@@ -116,6 +116,11 @@ impl FourCC {
     pub fn as_bstr(&self) -> &BStr {
         self.0.as_bstr()
     }
+
+    /// Create a new FourCC
+    pub const fn new(buf: [u8; 4]) -> Self {
+        Self(buf)
+    }
 }
 
 impl fmt::Debug for FourCC {

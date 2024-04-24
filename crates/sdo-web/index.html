@@ -54,7 +54,7 @@
         </button>
       </div>
     </div>
-    
+
     <section id="output" class="list-group">
 
     </section>
@@ -70,14 +70,15 @@
       await init();
 
       const outputEl = document.getElementById("output");
-      const h = new Handle(outputEl);
+      const inputField = document.getElementById("upload");
+      const h = new Handle(outputEl, inputField);
       await h.init();
 
-      async function uploadFile(file) {
+      /*async function uploadFile(file) {
         const buf = await file.arrayBuffer();
         const arr = new Uint8Array(buf);
         await h.stage(file.name, arr);
-      }
+      }*/
 
       /*
       const dirHandle = await navigator.storage.getDirectory();
@@ -86,6 +87,7 @@
         console.log({ key, value });
       }*/
 
+      /*
       async function uploadFiles(field) {
         h.reset();
         for (const file of field.files) {
@@ -99,12 +101,13 @@
           // await newFile.write(file);
         }
       }
+      */
 
-      const inputField = document.getElementById("upload");
+
       inputField.addEventListener('change', (event) => {
-        uploadFiles(event.target);
+        h.on_change();
       });
-      uploadFiles(inputField);
+      h.on_change();
 
       async function addToCollection() {
         await h.add_to_collection();
@@ -114,6 +117,14 @@
       addToCollectionBtn.addEventListener('click', (event) => {
         addToCollection();
       });
+
+      async function onHashChange(hash) {
+        await h.open(hash);
+      }
+
+      addEventListener('hashchange', (event) => {
+        onHashChange(new URL(event.newURL).hash)
+      })
     }
 
     run();
