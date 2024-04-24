@@ -3,12 +3,14 @@
 use std::fmt;
 
 mod doc;
+mod font;
 mod page;
 mod scalers;
 mod trace;
 mod util;
 
 pub use doc::render_doc_page;
+pub use font::render_editor_text;
 pub use page::Page;
 pub use trace::{straight_up_to, Dir};
 

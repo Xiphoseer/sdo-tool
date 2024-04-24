@@ -386,6 +386,11 @@ impl ChsetCache {
         self.names.insert(name, new_index);
         new_index
     }
+
+    /// Reset the font cache
+    pub fn reset(&mut self) {
+        let _ = std::mem::replace(self, ChsetCache::new());
+    }
 }
 
 impl Default for ChsetCache {

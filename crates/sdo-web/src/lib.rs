@@ -7,8 +7,8 @@ use log::{info, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::{AsyncIterator, ChsetCache, FontCacheInfo, VFS},
-        editor::parse_eset,
+        cache::ChsetCache,
+        editor::{parse_eset, ESet},
         encoding::decode_atari_str,
         printer::parse_ps24,
     },
@@ -18,10 +18,10 @@ use signum::{
         hcim::{parse_image, Hcim},
         header, SDoc,
     },
-    raster,
+    raster::{self, render_editor_text},
     util::FourCC,
 };
-use std::{fmt::Write, future::IntoFuture, io::Cursor, path::Path};
+use std::{fmt::Write, io::Cursor};
 use vfs::OriginPrivateFS;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -246,32 +246,35 @@ impl Handle {
         }
     }
 
-    fn _parse_eset(&self, data: &[u8]) -> Result<(), JsValue> {
+    fn _eset_kb(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
+        let kb_img = KB_DRAW
+            .to_page(eset)
+            .or(Err("Failed to draw Keyboard Map"))?;
+        let np_img = NP_DRAW.to_page(eset).or(Err("Failed to draw Numpad Map"))?;
+
+        let kb_blob = self.page_as_blob(&kb_img)?;
+        let np_blob = self.page_as_blob(&np_img)?;
+
+        let kb_img_el = Self::blob_image_el(&kb_blob)?;
+        let np_img_el = Self::blob_image_el(&np_blob)?;
+
+        self.output.append_child(&kb_img_el)?;
+        self.output.append_child(&np_img_el)?;
+        Ok(())
+    }
+
+    fn parse_eset<'a>(&self, data: &'a [u8]) -> Result<ESet<'a>, JsValue> {
         log::info!("Signum Editor Bitmap Font");
         match parse_eset(data) {
             Ok((_, eset)) => {
                 log::info!("Parsed Editor Font");
-                let kb_img = KB_DRAW
-                    .to_page(&eset)
-                    .or(Err("Failed to draw Keyboard Map"))?;
-                let np_img = NP_DRAW
-                    .to_page(&eset)
-                    .or(Err("Failed to draw Numpad Map"))?;
-
-                let kb_blob = self.page_as_blob(&kb_img)?;
-                let np_blob = self.page_as_blob(&np_img)?;
-
-                let kb_img_el = Self::blob_image_el(&kb_blob)?;
-                let np_img_el = Self::blob_image_el(&np_blob)?;
-
-                self.output.append_child(&kb_img_el)?;
-                self.output.append_child(&np_img_el)?;
+                Ok(eset)
             }
             Err(e) => {
                 log::error!("Failed to parse editor font: {}", e);
+                Err(JsError::new("Failed to parse editor font").into())
             }
         }
-        Ok(())
     }
 
     fn _parse_ps24(&mut self, data: &[u8]) -> Result<(), JsValue> {
@@ -363,6 +366,7 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn add_to_collection(&mut self) -> Result<(), JsValue> {
+        self.fc.reset();
         let root_dir = self.fs.root_dir()?;
         let chset_dir = self.fs.chset_dir().await?;
         let mut opts = FileSystemGetFileOptions::new();
@@ -397,17 +401,26 @@ impl Handle {
                 log::warn!("Unknown File Format '{}'", four_cc);
                 return Ok(());
             }
-            let card = self.document.create_element("div")?;
+            let card = self.document.create_element("a")?;
+            let kind = decode_atari_str(&FourCC::SDOC);
             card.class_list()
-                .add_2("card", decode_atari_str(&FourCC::SDOC).as_ref())?;
-            let card_body = self.card_body(name, four_cc)?;
+                .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
+            card.set_attribute("href", &format!("#/staged/{name}"))?;
+            self.card_body(&card, name, four_cc)?;
             match four_cc {
                 FourCC::SDOC => {
                     let doc = self.parse_sdoc(&data)?;
-                    self.sdoc_card(&card_body, &doc).await?;
+                    self.sdoc_card(&card, &doc).await?;
                 }
                 FourCC::ESET => {
-                    // self.parse_eset(&data)
+                    let eset = self.parse_eset(&data)?;
+                    let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
+                    let text = BStr::new(chset.as_bytes());
+                    let page = render_editor_text(text, &eset)
+                        .map_err(|_| JsError::new("Failed to render editor font name"))?;
+                    let blob = self.page_as_blob(&page)?;
+                    let img = Self::blob_image_el(&blob)?;
+                    card.append_child(&img)?;
                 }
                 FourCC::PS24 => {
                     // self.parse_ps24(&data)
@@ -416,7 +429,6 @@ impl Handle {
                     log::warn!("Unknown File Format '{}'", k);
                 }
             }
-            card.append_child(&card_body)?;
             self.output.append_child(&card)?;
             Ok(())
         } else {
@@ -425,9 +437,7 @@ impl Handle {
         }
     }
 
-    fn card_body(&self, name: &str, four_cc: FourCC) -> Result<Element, JsValue> {
-        let card_body = self.document.create_element("div")?;
-        card_body.class_list().add_1("card-body")?;
+    fn card_body(&self, card_body: &Element, name: &str, four_cc: FourCC) -> Result<(), JsValue> {
         let card_title = self.document.create_element("h5")?;
         card_title.class_list().add_1("card-title")?;
         card_title.set_text_content(Some(name));
@@ -446,7 +456,7 @@ impl Handle {
             _ => "Unknown",
         }));
         card_body.append_child(&card_subtitle)?;
-        Ok(card_body)
+        Ok(())
     }
 
     async fn sdoc_card(&mut self, card_body: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
