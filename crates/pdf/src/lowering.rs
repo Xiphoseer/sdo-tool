@@ -104,6 +104,7 @@ pub(crate) trait Lowerable<'a> {
     fn name() -> &'static str;
 }
 
+#[allow(dead_code)]
 pub(crate) struct LowerFontCtx<'a> {
     pub text_streams: LowerBox<'a, Ascii85Stream<'a>>,
     pub encodings: LowerBox<'a, Encoding<'a>>,

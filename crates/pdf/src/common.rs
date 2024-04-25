@@ -590,18 +590,13 @@ impl ToDict for StreamMetadata {
 }
 
 /// Indicates whether the PDF is trapped
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 #[allow(missing_docs)]
 pub enum Trapped {
     True,
     False,
+    #[default]
     Unknown,
-}
-
-impl Default for Trapped {
-    fn default() -> Self {
-        Trapped::Unknown
-    }
 }
 
 impl Serialize for Trapped {

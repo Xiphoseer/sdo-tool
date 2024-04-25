@@ -34,7 +34,7 @@ fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     let opts: Opts = Opts::from_args();
-    let buffer = std::fs::read(&opts.file)?;
+    let buffer = std::fs::read(opts.file)?;
 
     let decoder: Decoder<'_, ErrorTree<&[u8]>> = Decoder::new(&buffer);
     for event in decoder {

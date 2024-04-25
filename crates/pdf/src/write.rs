@@ -166,7 +166,7 @@ impl<'a, 'b> PdfArr<'a, 'b> {
     }
 
     /// Write the next entry
-    pub fn entry(&mut self, value: &dyn Serialize) -> io::Result<&mut Self> {
+    pub fn entry<S: Serialize>(&mut self, value: &S) -> io::Result<&mut Self> {
         self.check_first()?;
         value.write(self.f)?;
         Ok(self)

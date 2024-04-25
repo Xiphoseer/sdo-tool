@@ -12,11 +12,14 @@ use pdf_create::{
     high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
 };
 use sdo_pdf::{font::Fonts, sdoc::Contents};
-use signum::chsets::{cache::ChsetCache, FontKind, UseTableVec};
+use signum::chsets::{
+    cache::{ChsetCache, FontCacheInfo},
+    FontKind, UseTableVec,
+};
 
 use crate::cli::opt::Meta;
 
-use super::Document;
+use super::{Document, DocumentInfo};
 
 pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
     // Metadata
@@ -58,21 +61,31 @@ const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 pub fn prepare_document(
     hnd: &mut Handle,
     doc: &Document,
+    di: &DocumentInfo,
     meta: &Meta,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
+    let print = &di.fonts;
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
-    for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
-        if let Some(fc_index) = fc_index {
-            let key = FONTS[cset].to_owned();
-            if let Some(info) = font_info.get(fc_index) {
-                let index = font_info.index(info);
-                let value = Resource::Global { index };
-                fonts.insert(key, value);
-                infos[cset] = Some(info);
-            }
-        }
+    for (cset, info) in print
+        .chsets
+        .iter()
+        .map(FontCacheInfo::index)
+        .enumerate()
+        .filter_map(|(cset, fc_index)| {
+            fc_index
+                .and_then(|fc_index| font_info.get(fc_index))
+                .map(|info| (cset, info))
+        })
+    {
+        fonts.insert(
+            FONTS[cset].to_owned(),
+            Resource::Global {
+                index: font_info.index(info),
+            },
+        );
+        infos[cset] = Some(info);
     }
 
     let font_dict = hnd.res.font_dicts.len();
@@ -82,7 +95,7 @@ pub fn prepare_document(
     //
     // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
 
-    for (_index, page) in doc.tebu.iter().enumerate() {
+    for page in &doc.tebu {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
 
         let mut x_objects: DictResource<XObject> = BTreeMap::new();
@@ -95,7 +108,7 @@ pub fn prepare_document(
                 //let area = width * height;
 
                 let img_num = site.img as usize;
-                let im = &doc.images[img_num];
+                let (_, im) = &di.images[img_num];
                 let data = im.select(site.sel);
 
                 let img_index = hnd.res.x_objects.len();
@@ -138,7 +151,7 @@ pub fn prepare_document(
         assert!(width as i32 <= a4_width, "Please file a bug!");
 
         let xmargin = (a4_width - width as i32) / 2;
-        let ymargin = (a4_height - height as i32) / 2;
+        let ymargin = (a4_height - height) / 2;
 
         let left = xmargin as f32 + meta.xoffset.unwrap_or(0) as f32;
         let left = left - page_info.format.left as f32 * 8.0 / 10.0;
@@ -187,7 +200,7 @@ pub fn prepare_document(
 
                 let csu = te.cset as usize;
                 let fi = infos[csu].ok_or_else(|| {
-                    let font_name = doc.cset[csu].as_deref().unwrap_or("");
+                    let font_name = print.chsets[csu].name().unwrap_or("");
                     eyre!("Missing font #{}: {:?}", csu, font_name)
                 })?;
                 prev_width = fi.width(te.cval) as i32;
@@ -227,7 +240,12 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
     }
 }
 
-pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Handle<'a>> {
+pub fn process_doc<'a>(
+    doc: &'a Document,
+    fc: &'a ChsetCache,
+    di: &DocumentInfo,
+    pd: Option<FontKind>,
+) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
     let meta = doc_meta(doc)?;
@@ -235,11 +253,9 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
 
     let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
-    use_table_vec.append(&doc.chsets, use_matrix);
+    use_table_vec.append(&di.fonts.chsets, use_matrix);
 
-    let pd = doc
-        .print_driver
-        .ok_or_else(|| eyre!("No printer type selected"))?;
+    let pd = pd.ok_or_else(|| eyre!("No printer type selected"))?;
 
     let pk = if let FontKind::Printer(pk) = pd {
         pk
@@ -253,12 +269,17 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, &meta, &font_info)?;
+    prepare_document(&mut hnd, doc, di, &meta, &font_info)?;
     Ok(hnd)
 }
 
-pub fn output_pdf(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    let hnd = process_doc(doc, fc)?;
+pub fn output_pdf(
+    doc: &Document,
+    fc: &ChsetCache,
+    di: &DocumentInfo,
+    pd: Option<FontKind>,
+) -> eyre::Result<()> {
+    let hnd = process_doc(doc, fc, di, pd)?;
     handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
     Ok(())
 }

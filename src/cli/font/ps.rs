@@ -24,7 +24,7 @@ pub fn write_ls30_ps_bitmap(
 
     let mut cc = 0;
     for (i, chr) in font.chars.iter().enumerate() {
-        let used = use_table.map(|arr| arr.chars[i as usize] > 0);
+        let used = use_table.map(|arr| arr.chars[i] > 0);
         if chr.width > 0 && used != Some(false) {
             let char_header = CharHeader::from_signum(chr);
             let head_iter = char_header.iter();

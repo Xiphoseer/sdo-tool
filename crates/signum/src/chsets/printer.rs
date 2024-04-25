@@ -1,15 +1,19 @@
 //! # The printer charsets
 
 use super::LoadError;
-use crate::util::Buf;
+use crate::{
+    docs::four_cc,
+    util::{Buf, FourCC},
+};
 use nom::{
     bytes::complete::{tag, take},
     combinator::verify,
+    error::{ErrorKind, ParseError},
     multi::count,
     number::complete::{be_u32, u8},
     Finish, IResult,
 };
-use std::{ops::Deref, path::Path};
+use std::path::Path;
 
 #[derive(Debug, Copy, Clone)]
 /// The supported kinds of printers
@@ -93,7 +97,7 @@ pub struct PSet<'a> {
     pub chars: Vec<PSetChar<'a>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 /// A single printer character
 pub struct PSetChar<'a> {
     /// The distance to the top of the line box
@@ -106,6 +110,20 @@ pub struct PSetChar<'a> {
     pub bitmap: &'a [u8],
 }
 
+/// An owned version of a PSetChar
+pub struct OwnedPSetChar {
+    inner: PSetChar<'static>,
+    #[allow(dead_code)]
+    buffer: Box<[u8]>,
+}
+
+impl<'a> OwnedPSetChar {
+    /// Get the borrowed version of this struct
+    pub fn borrowed(&'a self) -> &PSetChar<'a> {
+        &self.inner
+    }
+}
+
 /// A struct to hold information on computed character dimensions
 pub struct HBounds {
     /// The number of bits that are zero in every line from the left
@@ -115,6 +133,20 @@ pub struct HBounds {
 }
 
 impl PSetChar<'_> {
+    /// Create an owned version of this character
+    pub fn owned(&self) -> OwnedPSetChar {
+        let buffer = self.bitmap.to_vec().into_boxed_slice();
+        OwnedPSetChar {
+            inner: PSetChar {
+                top: self.top,
+                height: self.height,
+                width: self.width,
+                bitmap: unsafe { std::mem::transmute(buffer.as_ref()) },
+            },
+            buffer,
+        }
+    }
+
     /// Compute the horizontal bounds of the char
     pub fn hbounds(&self) -> HBounds {
         let width = self.width as usize * 8;
@@ -156,10 +188,19 @@ pub struct OwnedPSet {
     buffer: Vec<u8>,
 }
 
+/*
 impl Deref for OwnedPSet {
     type Target = PSet<'static>;
 
     fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+ */
+
+impl<'a> OwnedPSet {
+    /// Get a borrowed version of this Owned Set
+    pub fn borrowed(&'a self) -> &'a PSet<'a> {
         &self.inner
     }
 }
@@ -168,6 +209,11 @@ impl OwnedPSet {
     /// Load a character set
     pub fn load(path: &Path, kind: PrinterKind) -> Result<Self, LoadError> {
         let buffer = std::fs::read(path)?;
+        Self::load_from_buffer(buffer, kind)
+    }
+
+    /// Load a character set from a byte buffer
+    pub fn load_from_buffer(buffer: Vec<u8>, kind: PrinterKind) -> Result<Self, LoadError> {
         // SAFETY: this is safe, because `buffer` is plain data and
         // drop order between `inner` and `buffer` really doesn't matter.
         let input: &'static [u8] = unsafe { std::mem::transmute(&buffer[..]) };
@@ -244,4 +290,20 @@ pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
 pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
     let (input, _) = tag(b"ls30")(input)?;
     parse_font(input, PrinterKind::Laser30)
+}
+
+/// Parse any printer font
+pub fn parse_pset(input: &[u8]) -> IResult<&[u8], PSet> {
+    let (input, cc) = four_cc(input)?;
+    match cc {
+        FourCC::PS24 => parse_font(input, PrinterKind::Needle24),
+        FourCC::PS09 => parse_font(input, PrinterKind::Needle9),
+        FourCC::LS30 => parse_font(input, PrinterKind::Laser30),
+        _ => {
+            let e: ErrorKind = ErrorKind::Tag;
+            Err(nom::Err::Error(nom::error::Error::from_error_kind(
+                input, e,
+            )))
+        }
+    }
 }

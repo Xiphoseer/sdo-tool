@@ -1,28 +1,51 @@
 //! # Implementation of a charset cache
 
-use std::{collections::HashMap, fs::DirEntry, path::Path, path::PathBuf};
-
-use log::{info, warn};
-
-use crate::chsets::{
-    editor::ESet,
-    editor::OwnedESet,
-    encoding::{p_mapping_file, Mapping},
-    printer::OwnedPSet,
-    printer::PSet,
-    printer::PrinterKind,
-    LoadError,
+use std::{
+    collections::HashMap,
+    fs::{self, ReadDir},
+    future::Future,
+    io,
+    path::{Path, PathBuf},
+    pin::Pin,
 };
 
-fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<PathBuf> {
+use bstr::BStr;
+use log::{info, warn};
+
+use crate::{
+    chsets::{
+        editor::ESet,
+        editor::OwnedESet,
+        encoding::{p_mapping_file, Mapping},
+        printer::OwnedPSet,
+        printer::PSet,
+        printer::PrinterKind,
+        LoadError,
+    },
+    docs::cset,
+};
+
+use super::{encoding::decode_atari_str, FontKind};
+
+#[allow(dead_code)]
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+
+#[allow(clippy::manual_flatten)]
+async fn find_font_file<FS: VFS>(
+    fs: &FS,
+    cset_folder: &Path,
+    name: &str,
+    extension: &str,
+) -> Option<PathBuf> {
+    info!("Searching font {} in {:?}", name, cset_folder.display());
     let cset_file = cset_folder.join(name);
     let editor_cset_file = cset_file.with_extension(extension);
 
-    if editor_cset_file.exists() && editor_cset_file.is_file() {
+    if fs.is_file(&editor_cset_file).await {
         return Some(editor_cset_file);
     }
 
-    let mut dir_iter = match std::fs::read_dir(cset_folder) {
+    let mut dir_iter = match fs.read_dir(cset_folder).await {
         Ok(i) => i,
         Err(e) => {
             warn!("Could not find CHSET folder: {}", e);
@@ -30,20 +53,34 @@ fn find_font_file(cset_folder: &Path, name: &str, extension: &str) -> Option<Pat
         }
     };
 
-    dir_iter.find_map(|entry| {
-        entry
-            .ok()
-            .as_ref()
-            .map(DirEntry::path)
-            .filter(|p| p.is_dir())
-            .and_then(|cset_folder| find_font_file(&cset_folder, name, extension))
-    })
+    while let Some(entry) = dir_iter.next().await {
+        if let Ok(de) = entry {
+            let subfolder = fs.dir_entry_path(&de);
+            if fs.is_dir(&subfolder).await {
+                // Note: need to box the future here because this is async recursion.
+                let fut = Box::pin(find_font_file(fs, &subfolder, name, extension));
+                if let Some(path) = fut.await {
+                    return Some(path);
+                }
+            }
+        }
+    }
+    None
 }
 
-fn load_printer_font(editor_cset_file: &Path, pk: PrinterKind) -> Option<OwnedPSet> {
+async fn load_printer_font<FS: VFS>(
+    fs: &FS,
+    printer_cset_file: &Path,
+    pk: PrinterKind,
+) -> Option<OwnedPSet> {
     let extension = pk.extension();
-    let printer_cset_file = editor_cset_file.with_extension(extension);
-    match OwnedPSet::load(&printer_cset_file, pk) {
+    let printer_cset_file = printer_cset_file.with_extension(extension);
+    let buffer = fs
+        .read(&printer_cset_file)
+        .await
+        .inspect_err(|e| warn!("Failed to load {:?}: {}", printer_cset_file, e))
+        .ok()?;
+    match OwnedPSet::load_from_buffer(buffer, pk) {
         Ok(pset) => {
             info!("Loaded printer font file '{}'", printer_cset_file.display());
             Some(pset)
@@ -83,8 +120,13 @@ fn load_mapping_file(editor_cset_file: &Path) -> Option<Mapping> {
     }
 }
 
-fn load_editor_font(editor_cset_file: &Path) -> Option<OwnedESet> {
-    match OwnedESet::load(editor_cset_file) {
+async fn load_editor_font<FS: VFS>(fs: &FS, editor_cset_file: &Path) -> Option<OwnedESet> {
+    let buffer = fs
+        .read(editor_cset_file)
+        .await
+        .map_err(|e| warn!("Failed to load {:?}: {}", editor_cset_file, e))
+        .ok()?;
+    match OwnedESet::load_from_buf(buffer) {
         Ok(eset) => {
             info!("Loaded editor font file '{}'", editor_cset_file.display());
             Some(eset)
@@ -124,43 +166,130 @@ pub struct CSet {
 }
 
 #[rustfmt::skip]
-impl CSet {
+impl<'a> CSet {
     /// The the name of the character set
     pub fn name(&self) -> &str { &self.name }
     /// Get the unicode mapping
     pub fn map(&self) -> Option<&Mapping> { self.map.as_ref() }
     /// Get the laser printer bitmaps
-    pub fn l30(&self) -> Option<&PSet<'static>> { self.l30.as_deref() }
+    pub fn l30(&'a self) -> Option<&PSet<'a>> { self.l30.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 24-needle printer bitmaps
-    pub fn p24(&self) -> Option<&PSet<'static>> { self.p24.as_deref() }
+    pub fn p24(&'a self) -> Option<&PSet<'a>> { self.p24.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 9-needle printer bitmaps
-    pub fn p09(&self) -> Option<&PSet<'static>> { self.p09.as_deref() }
+    pub fn p09(&'a self) -> Option<&PSet<'a>> { self.p09.as_ref().map(OwnedPSet::borrowed) }
     /// Get the editor bitmaps
     pub fn e24(&self) -> Option<&ESet<'static>> { self.e24.as_deref() }
     /// Get the bitmaps for the specified printer kind
-    pub fn printer(&self, pk: PrinterKind) -> Option<&PSet<'static>> {
+    pub fn printer(&'a self, pk: PrinterKind) -> Option<&PSet<'a>> {
         match pk {
-            PrinterKind::Needle9 => self.p09.as_deref(),
-            PrinterKind::Needle24 => self.p24.as_deref(),
-            PrinterKind::Laser30 => self.l30.as_deref(),
+            PrinterKind::Needle9 => self.p09.as_ref().map(OwnedPSet::borrowed),
+            PrinterKind::Needle24 => self.p24.as_ref().map(OwnedPSet::borrowed),
+            PrinterKind::Laser30 => self.l30.as_ref().map(OwnedPSet::borrowed),
         }
+    }
+}
+
+/// Async Iterator trait
+pub trait AsyncIterator {
+    /// Single item
+    type Item;
+
+    /// Next method
+    fn next(&mut self) -> impl Future<Output = Option<Self::Item>>;
+}
+
+/// Virtual File System used for loading fonts
+pub trait VFS {
+    /// Error type
+    type Error: std::fmt::Display;
+    /// Directory iterator
+    type DirIter: AsyncIterator<Item = Result<Self::DirEntry, Self::Error>>;
+    /// Directory entry
+    type DirEntry;
+
+    /// Return the root path of the VFS
+    fn root(&self) -> impl Future<Output = PathBuf> + 'static;
+
+    /// Check whether the path is a file
+    fn is_file(&self, path: &Path) -> impl Future<Output = bool>;
+
+    /// Check whether the path is a directory
+    fn is_dir(&self, path: &Path) -> impl Future<Output = bool>;
+
+    /// Read a directory
+    fn read_dir(&self, path: &Path) -> impl Future<Output = Result<Self::DirIter, Self::Error>>;
+
+    /// Read a file
+    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>>;
+
+    /// Get the path of a directory entry
+    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf;
+}
+
+/// VFS for the Local File System ([`std::fs`])
+pub struct LocalFS {
+    chsets_folder: PathBuf,
+}
+
+impl LocalFS {
+    /// Create a new instance rooted at `chsets_folder`
+    pub fn new(chsets_folder: PathBuf) -> Self {
+        Self { chsets_folder }
+    }
+}
+
+impl VFS for LocalFS {
+    fn root(&self) -> impl Future<Output = PathBuf> + 'static {
+        std::future::ready(self.chsets_folder.to_owned())
+    }
+
+    fn is_file(&self, path: &Path) -> impl Future<Output = bool> {
+        std::future::ready(path.is_file())
+    }
+
+    fn is_dir(&self, path: &Path) -> impl Future<Output = bool> {
+        std::future::ready(path.is_dir())
+    }
+
+    async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
+        std::fs::read_dir(path)
+    }
+
+    type Error = io::Error;
+
+    type DirIter = fs::ReadDir;
+
+    type DirEntry = fs::DirEntry;
+
+    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
+        entry.path()
+    }
+
+    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>> {
+        std::future::ready(std::fs::read(path))
+    }
+}
+
+impl AsyncIterator for ReadDir {
+    type Item = Result<fs::DirEntry, io::Error>;
+
+    async fn next(&mut self) -> Option<Self::Item> {
+        <Self as Iterator>::next(self)
     }
 }
 
 /// A simple cache for charsets
 pub struct ChsetCache {
-    chsets_folder: PathBuf,
     chsets: Vec<CSet>,
     names: HashMap<String, usize>,
 }
 
 impl ChsetCache {
     /// Create a new instance
-    pub fn new(chsets_folder: PathBuf) -> Self {
+    pub fn new() -> Self {
         ChsetCache {
             chsets: Vec::with_capacity(8),
             names: HashMap::new(),
-            chsets_folder,
         }
     }
 
@@ -170,7 +299,7 @@ impl ChsetCache {
     }
 
     /// Get a specific printer charset
-    pub fn pset(&self, pk: PrinterKind, index: usize) -> Option<&PSet<'static>> {
+    pub fn pset(&self, pk: PrinterKind, index: usize) -> Option<&PSet<'_>> {
         self.cset(index).and_then(|cset| cset.printer(pk))
     }
 
@@ -184,28 +313,62 @@ impl ChsetCache {
         self.chsets.get(index)
     }
 
+    /// Load a CSET section into the font cache, returning a document specific info struct.
+    pub async fn load<FS: VFS>(&mut self, fs: &FS, cset: &cset::CSet<'_>) -> DocumentFontCacheInfo {
+        let mut all_eset = true;
+        let mut all_p24 = true;
+        let mut all_l30 = true;
+        let mut all_p09 = true;
+
+        let mut chsets = [FontCacheInfo::EMPTY; 8];
+
+        for (index, &name) in cset.names.iter().enumerate() {
+            if name.is_empty() {
+                continue;
+            }
+            chsets[index].name = Some(name.to_string());
+            let cset_cache_index = self.load_cset(fs, name).await;
+            let cset = self
+                .cset(cset_cache_index)
+                .expect("invalid index returned by load_cset");
+            chsets[index].index = Some(cset_cache_index);
+            all_eset &= cset.e24().is_some();
+            all_p24 &= cset.p24().is_some();
+            all_l30 &= cset.l30().is_some();
+            all_p09 &= cset.p09().is_some();
+        }
+        DocumentFontCacheInfo {
+            all_eset,
+            all_l30,
+            all_p24,
+            all_p09,
+            chsets,
+        }
+    }
+
     /// Load a character set
-    pub fn load_cset(&mut self, name: &str) -> Option<usize> {
-        if let Some(index) = self.names.get(name) {
-            return Some(*index);
+    pub async fn load_cset<FS: VFS>(&mut self, fs: &FS, name: &BStr) -> usize {
+        let name = decode_atari_str(name.as_ref()).into_owned();
+        if let Some(index) = self.names.get(&name) {
+            return *index;
         }
 
-        let cset = match find_font_file(&self.chsets_folder, name, "E24") {
+        let cset = match find_font_file(fs, &fs.root().await, &name, "E24").await {
             Some(editor_cset_file) => {
                 // Load all font files
                 CSet {
-                    name: name.to_owned(),
-                    e24: load_editor_font(&editor_cset_file),
-                    p09: load_printer_font(&editor_cset_file, PrinterKind::Needle9),
-                    p24: load_printer_font(&editor_cset_file, PrinterKind::Needle24),
-                    l30: load_printer_font(&editor_cset_file, PrinterKind::Laser30),
+                    name: name.clone(),
+                    e24: load_editor_font(fs, &editor_cset_file).await,
+                    p09: load_printer_font(fs, &editor_cset_file, PrinterKind::Needle9).await,
+                    p24: load_printer_font(fs, &editor_cset_file, PrinterKind::Needle24).await,
+                    l30: load_printer_font(fs, &editor_cset_file, PrinterKind::Laser30).await,
                     map: load_mapping_file(&editor_cset_file),
                 }
             }
             None => {
                 warn!("Editor font for `{}` not found!", name);
                 CSet {
-                    name: name.to_owned(),
+                    name: name.clone(),
                     e24: None,
                     p09: None,
                     p24: None,
@@ -220,7 +383,140 @@ impl ChsetCache {
         self.chsets.push(cset);
 
         // Add lookup and return
-        self.names.insert(name.to_owned(), new_index);
-        Some(new_index)
+        self.names.insert(name, new_index);
+        new_index
+    }
+
+    /// Reset the font cache
+    pub fn reset(&mut self) {
+        let _ = std::mem::replace(self, ChsetCache::new());
+    }
+}
+
+impl Default for ChsetCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Printer options for a single font
+#[derive(Default, Clone)]
+pub struct FontCacheInfo {
+    index: Option<usize>,
+    name: Option<String>,
+}
+
+impl FontCacheInfo {
+    /// Get the index
+    pub fn index(&self) -> Option<usize> {
+        self.index
+    }
+
+    /// Get the name
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+}
+
+impl FontCacheInfo {
+    const EMPTY: Self = Self {
+        index: None,
+        name: None,
+    };
+}
+
+/// Print Options for a Document
+#[derive(Default)]
+pub struct DocumentFontCacheInfo {
+    // /// Chosen Printer Driver
+    // print_driver: Option<FontKind>,
+    all_eset: bool,
+    all_p24: bool,
+    all_l30: bool,
+    all_p09: bool,
+
+    /// Character sets used by this document
+    pub chsets: [FontCacheInfo; 8],
+}
+
+impl DocumentFontCacheInfo {
+    /// Get the preferred print driver
+    pub fn print_driver(&self, mut print_driver: Option<FontKind>) -> Option<FontKind> {
+        // Print info on which sets are available
+        if self.all_eset {
+            info!("Editor fonts available for all character sets");
+        }
+        if self.all_p24 {
+            info!("Printer fonts (24-needle) available for all character sets");
+        }
+        if self.all_l30 {
+            info!("Printer fonts (laser/30) available for all character sets");
+        }
+        if self.all_p09 {
+            info!("Printer fonts (9-needle) available for all character sets");
+        }
+
+        // If none was set, choose one strategy
+        if let Some(pd) = print_driver {
+            match pd {
+                FontKind::Editor if !self.all_eset => {
+                    warn!("Explicitly chosen editor print-driver but not all fonts are available");
+                }
+                FontKind::Printer(PrinterKind::Needle24) if !self.all_p24 => {
+                    warn!(
+                        "Explicitly chosen 24-needle print-driver but not all fonts are available"
+                    );
+                }
+                FontKind::Printer(PrinterKind::Needle9) if !self.all_p09 => {
+                    warn!(
+                        "Explicitly chosen 9-needle print-driver but not all fonts are available"
+                    );
+                }
+                FontKind::Printer(PrinterKind::Laser30) if !self.all_l30 => {
+                    warn!(
+                        "Explicitly chosen laser/30 print-driver but not all fonts are available"
+                    );
+                }
+                _ => {
+                    // All fonts available
+                }
+            }
+        } else if self.all_l30 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Laser30));
+        } else if self.all_p24 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Needle24));
+        } else if self.all_p09 {
+            print_driver = Some(FontKind::Printer(PrinterKind::Needle9));
+        } else if self.all_eset {
+            print_driver = Some(FontKind::Editor);
+        } else {
+            warn!("No print-driver has all fonts available.");
+        }
+        print_driver
+    }
+
+    /*pub fn from_cache<'a>(&self, fc: &'a ChsetCache) -> [Option<&'a FontInfo>; 8] {
+
+    }*/
+
+    /// Get the editor charset by index
+    pub fn eset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f ESet<'f>> {
+        self.cset(fc, cset).and_then(CSet::e24)
+    }
+
+    /// Get the printer character set by index
+    pub fn pset<'f>(&self, fc: &'f ChsetCache, cset: u8, pk: PrinterKind) -> Option<&'f PSet<'f>> {
+        self.cset(fc, cset).and_then(match pk {
+            PrinterKind::Needle24 => CSet::p24,
+            PrinterKind::Needle9 => CSet::p09,
+            PrinterKind::Laser30 => CSet::l30,
+        })
+    }
+
+    /// Get the `cache::CSet` by index
+    pub fn cset<'f>(&self, fc: &'f ChsetCache, cset: u8) -> Option<&'f CSet> {
+        self.chsets[cset as usize]
+            .index
+            .and_then(|index| fc.cset(index))
     }
 }

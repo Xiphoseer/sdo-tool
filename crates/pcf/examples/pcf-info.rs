@@ -42,7 +42,7 @@ fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     let opts: Opts = Opts::from_args();
-    let buffer = std::fs::read(&opts.file)?;
+    let buffer = std::fs::read(opts.file)?;
     let (_, header) = p_pcf_header(&buffer)
         .finish()
         .map_err(to_err_tree(&buffer[..]))?;

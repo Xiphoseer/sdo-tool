@@ -596,7 +596,7 @@ pub enum Err {
 }
 
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms, dead_code)]
 enum Cmd {
     X,
     MP(ModePrefix),
@@ -1240,7 +1240,7 @@ fn black15(state: u16) -> Option<(u16, Rem)> {
 
 fn white(state: u16, off: u8) -> Option<(u16, Rem)> {
     match off {
-        0 | 1 | 2 | 3 => None,
+        0..=3 => None,
         4 => white4(state),
         5 => white5(state),
         6 => white6(state),

@@ -10,9 +10,15 @@ use nom::{
     sequence::tuple,
     IResult,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+use crate::util::FourCC;
+
+use super::Chunk;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 /// A GEMDOS date
+#[serde(transparent)]
 pub struct Date(pub u16);
 
 impl fmt::Display for Date {
@@ -24,8 +30,9 @@ impl fmt::Display for Date {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 /// A GEMDOS time
+#[serde(transparent)]
 pub struct Time(pub u16);
 
 impl fmt::Display for Time {
@@ -37,7 +44,7 @@ impl fmt::Display for Time {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 /// A GEMDOS date and time
 pub struct DateTime {
     /// The date part
@@ -52,16 +59,18 @@ impl fmt::Display for DateTime {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// The header of a signum file
 pub struct Header<'a> {
     /// Leading bytes, usually all zero
+    #[serde(skip)]
     pub lead: &'a [u8],
     /// The created time
     pub ctime: DateTime,
     /// The last modified time
     pub mtime: DateTime,
     /// Trailing bytes, usually all zero
+    #[serde(skip)]
     pub trail: &'a [u8],
 }
 
@@ -97,4 +106,15 @@ pub fn parse_header<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a
             trail,
         },
     ))
+}
+
+impl<'a> Chunk<'a> for Header<'a> {
+    const TAG: crate::util::FourCC = FourCC::_0001;
+
+    fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    where
+        E: ParseError<&'a [u8]>,
+    {
+        parse_header(input)
+    }
 }

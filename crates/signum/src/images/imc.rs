@@ -102,6 +102,18 @@ impl MonochromeScreen {
     pub fn into_inner(self) -> Vec<u8> {
         self.0
     }
+
+    /// Output the screen as a Portable Bitmap (PBM)
+    pub fn write_as_pbm<W: std::fmt::Write>(&self, out: &mut W) -> std::fmt::Result {
+        writeln!(out, "P1 640 400")?;
+        for line in self.0.chunks(8) {
+            for byte in line {
+                write!(out, "{:08b}", byte)?;
+            }
+            writeln!(out)?;
+        }
+        Ok(())
+    }
 }
 
 /// Parse a plain IMC file to a screen buffer.

@@ -12,7 +12,11 @@ use pdf_create::{
     high::{self, Handle},
 };
 use sdo_pdf::font::Fonts;
-use signum::chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec};
+use signum::chsets::{
+    cache::{ChsetCache, LocalFS},
+    printer::PrinterKind,
+    UseTableVec,
+};
 use structopt::StructOpt;
 
 use sdo_tool::cli::{
@@ -72,7 +76,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
             chsets_folder.display()
         )
     })?;
-    let mut fc = ChsetCache::new(chsets_folder);
+    let fs = LocalFS::new(chsets_folder);
+    let mut fc = ChsetCache::new();
 
     // Prepare output folder
     if opt.out != Path::new("-") {
@@ -100,8 +105,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         let mut document = Document::new(&doc_opt);
 
         info!("Loading document file '{}'", doc_file.display());
-        document.process_sdoc(input, &mut fc)?;
-        documents.push(document);
+        let di = document.process_sdoc(input, &fs, &mut fc)?;
+        documents.push((document, di));
     }
 
     // Preprare output
@@ -110,9 +115,9 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     prepare_meta(&mut hnd, &script.meta)?;
 
     let mut use_table_vec = UseTableVec::new();
-    for doc in &documents {
+    for (doc, di) in &documents {
         let use_matrix = doc.use_matrix();
-        use_table_vec.append(&doc.chsets, use_matrix);
+        use_table_vec.append(&di.fonts.chsets, use_matrix);
     }
 
     // FIXME: Auto-Detect from font cache
@@ -125,8 +130,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         hnd.res.fonts.push(font);
     }
 
-    for doc in &documents {
-        prepare_document(&mut hnd, doc, &script.meta, &font_info)?;
+    for (doc, di) in &documents {
+        prepare_document(&mut hnd, doc, di, &script.meta, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {

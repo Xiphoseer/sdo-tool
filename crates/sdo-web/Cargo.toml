@@ -1,0 +1,45 @@
+[package]
+name = "sdo-web"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+js-sys = "0.3.61"
+wasm-bindgen = "0.2.84"
+web-sys = { version = "0.3.68", features = [
+    "Window",
+    "Document",
+    "HtmlElement",
+    "HtmlInputElement",
+    "DomTokenList",
+    "Event",
+    "Blob",
+    "FileReader",
+    "FileList",
+    "File",
+    "BlobPropertyBag",
+    "HtmlImageElement",
+    "Url",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "ImageBitmap",
+    "Navigator",
+    "StorageManager",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "FileSystemHandleKind",
+    "FileSystemGetFileOptions",
+    "FileSystemGetDirectoryOptions",
+    "FileSystemWritableFileStream"
+] }
+signum = { path = "../signum", features = ["image"] }
+sdo-util = { path = "../sdo-util" }
+serde-wasm-bindgen = "0.4.5"
+console_log = { version = "1.0.0", features = ["wasm-bindgen"] }
+log = "0.4.17"
+image = { version = "0.24", default-features = false, features = ["png"] }
+bstr = "1.4.0"
+wasm-bindgen-futures = "0.4.42"

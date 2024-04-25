@@ -10,7 +10,7 @@ use nom::{
 };
 use thiserror::Error;
 
-use std::char::REPLACEMENT_CHARACTER;
+use std::{borrow::Cow, char::REPLACEMENT_CHARACTER};
 
 /// A mapping table for a charset
 #[derive(Debug)]
@@ -132,13 +132,13 @@ pub const ATARI_CHAR_MAP_1: [char; 12] = [
 
 /// The ATARI-ST character encoding upper half
 pub const ATARI_CHAR_MAP_UPPER: [char; 128] = [
-    '\u{00C7}', '\u{00FC}', '\u{00E9}', '\u{00E2}', //
-    '\u{00E4}', '\u{00E0}', '\u{00E5}', '\u{00E7}', //
-    '\u{00EA}', '\u{00EB}', '\u{00E8}', '\u{00EF}', //
-    '\u{00EE}', '\u{00EC}', '\u{00C4}', '\u{00C5}', //
-    '\u{00C9}', '\u{00E6}', '\u{00C6}', '\u{00F4}', //
-    '\u{00F6}', '\u{00F2}', '\u{00FB}', '\u{00F9}', //
-    '\u{00FF}', '\u{00D6}', '\u{00DC}', '\u{00A2}', //
+    '\u{00C7}', '\u{00FC}', '\u{00E9}', '\u{00E2}', // 0x80
+    '\u{00E4}', '\u{00E0}', '\u{00E5}', '\u{00E7}', // 0x84
+    '\u{00EA}', '\u{00EB}', '\u{00E8}', '\u{00EF}', // 0x88
+    '\u{00EE}', '\u{00EC}', '\u{00C4}', '\u{00C5}', // 0x8C
+    '\u{00C9}', '\u{00E6}', '\u{00C6}', '\u{00F4}', // 0x90
+    '\u{00F6}', '\u{00F2}', '\u{00FB}', '\u{00F9}', // 0x94
+    '\u{00FF}', '\u{00D6}', '\u{00DC}', '\u{00A2}', // 0x98
     '\u{00A3}', '\u{00A5}', '\u{00DF}', '\u{0192}', //
     '\u{00E1}', '\u{00ED}', '\u{00F3}', '\u{00FA}', //
     '\u{00F1}', '\u{00D1}', '\u{00AA}', '\u{00BA}', //
@@ -175,6 +175,19 @@ pub fn decode_atari(byte: u8) -> char {
         127 => '\u{2302}',
         128..=255 => ATARI_CHAR_MAP_UPPER[(byte - 128) as usize],
         _ => REPLACEMENT_CHARACTER,
+    }
+}
+
+/// Decode an ATARI-ST String into an UTF-8 String
+pub fn decode_atari_str(input: &[u8]) -> Cow<'_, str> {
+    if let Some(pos) = input.iter().copied().position(|p| !(32..127).contains(&p)) {
+        let (first, rest) = input.split_at(pos);
+        let start = unsafe { std::str::from_utf8_unchecked(first) };
+        let mut string = start.to_owned();
+        string.extend(rest.iter().copied().map(decode_atari));
+        Cow::Owned(string)
+    } else {
+        Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(input) })
     }
 }
 
@@ -298,5 +311,23 @@ pub mod pris_11 {
             0x00..=0x7f => MAP[byte as usize],
             _ => RCH,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    #[test]
+    fn test_decode() {
+        assert_eq!(
+            Cow::Borrowed("ANTIKRO"),
+            super::decode_atari_str(b"ANTIKRO")
+        );
+
+        assert_eq!(
+            super::decode_atari_str(b"S\x9ATT"),
+            Cow::<'static, str>::Owned("SÜTT".to_string())
+        )
     }
 }

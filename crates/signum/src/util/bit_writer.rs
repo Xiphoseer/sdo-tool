@@ -1,14 +1,8 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 #[rustfmt::skip]
 #[repr(u8)]
 #[allow(dead_code)]
-enum State { S0, S1, S2, S3, S4, S5, S6, S7 }
-
-impl Default for State {
-    fn default() -> State {
-        State::S0
-    }
-}
+enum State { #[default] S0, S1, S2, S3, S4, S5, S6, S7 }
 
 impl State {
     /*#[rustfmt::skip]
@@ -89,7 +83,7 @@ impl BitWriter {
     pub fn write_bits(&mut self, val: usize, mut todo: usize) {
         let avail = self.state.as_usize() + 1;
         if avail < 8 {
-            if (todo as usize) < avail {
+            if todo < avail {
                 self.curr <<= todo;
                 let mask = (1 << todo) - 1;
                 self.curr |= (val & mask) as u8;

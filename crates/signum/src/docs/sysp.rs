@@ -1,12 +1,13 @@
 //! # (`sysp`) The system parameters
 
 use nom::{bytes::streaming::take, error::ParseError, number::complete::be_u16, IResult};
+use serde::Serialize;
 
-use crate::util::{Bytes16, Bytes32};
+use crate::util::{Bytes16, Bytes32, FourCC};
 
 use super::{bytes16, bytes32};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 /// The system parameters chunk
 pub struct SysP {
     /// Width of a space
@@ -76,4 +77,15 @@ pub fn parse_sysp<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
             _opts_4: opts_4,
         },
     ))
+}
+
+impl<'a> super::Chunk<'a> for SysP {
+    const TAG: crate::util::FourCC = FourCC::_SYSP;
+
+    fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    where
+        E: ParseError<&'a [u8]>,
+    {
+        parse_sysp(input)
+    }
 }

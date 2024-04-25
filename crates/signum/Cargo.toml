@@ -15,11 +15,13 @@ thiserror = "1.0"
 bitflags = "1.2"
 displaydoc = "0.1"
 log = "0.4"
+bstr = "1.2.0"
+serde = { version = "1.0.152", features = ["derive"] }
 
 [dependencies.image]
 optional = true
 default-features = false
-version = "0.23"
+version = "0.24"
 features = ["png"]
 
 [dev-dependencies]
