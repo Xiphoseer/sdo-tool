@@ -29,6 +29,14 @@ jobs:
         uses: actions/checkout@v3
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Build the Studio
+        working-directory: ./crates/sdo-web
+        run: wasm-pack build --target web
+      - name: Copy studio files to site
+        run: |
+          mkdir ./docs/studio
+          cp -r ./crates/sdo-web/pkg ./docs/studio/
+          cp ./crates/sdo-web/index.html ./docs/studio
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Build with Jekyll
@@ -36,14 +44,6 @@ jobs:
         with:
           source: ./docs
           destination: ./_site
-      - name: Build the Studio
-        working-directory: ./crates/sdo-web
-        run: wasm-pack build --target web
-      - name: Copy studio files to site
-        run: |
-          mkdir ./_site/studio
-          cp -r ./crates/sdo-web/pkg ./_site/studio/
-          cp ./crates/sdo-web/index.html ./_site/studio
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 
