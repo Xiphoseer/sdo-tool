@@ -106,6 +106,7 @@ pub struct Handle {
     output: HtmlElement,
     input: HtmlInputElement,
     fs: OriginPrivateFS,
+    #[allow(dead_code)]
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
 
     fc: ChsetCache,
@@ -153,7 +154,7 @@ impl Handle {
         for chr in charsets {
             let name = decode_atari_str(chr.as_ref());
             html.push_str("<li>");
-            ar.push(js_sys::JsString::from(name.as_ref()).as_ref());
+            ar.push(JsString::from(name.as_ref()).as_ref());
             html.push_str(&name);
             html.push_str("</li>");
         }
@@ -653,12 +654,3 @@ impl Handle {
         Ok(())
     }
 }
-
-const ACCEPT: &[FourCC] = &[
-    FourCC::SDOC,
-    FourCC::ESET,
-    FourCC::PS09,
-    FourCC::PS24,
-    FourCC::LS30,
-    FourCC::BIMC,
-];

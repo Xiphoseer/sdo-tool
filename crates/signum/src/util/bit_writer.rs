@@ -90,7 +90,7 @@ impl BitWriter {
                 self.state = unsafe {
                     // This is safe, because `todo < avail < 8`
                     // and state + 1 = avail, so todo <= state
-                    std::mem::transmute((avail - 1 - todo) as u8)
+                    std::mem::transmute::<u8, State>((avail - 1 - todo) as u8)
                 };
                 return;
             } else {
@@ -113,7 +113,7 @@ impl BitWriter {
         self.curr = (mask & val) as u8;
         self.state = unsafe {
             // This is safe, because todo < 8 as per the loop above
-            std::mem::transmute((7 - todo) as u8)
+            std::mem::transmute::<u8, State>((7 - todo) as u8)
         };
     }
 

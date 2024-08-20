@@ -65,6 +65,12 @@ impl UseTable {
     }
 }
 
+impl Default for UseTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Matrix of character usage in a single document
 pub struct UseMatrix {
     /// One entry for each charset
@@ -77,6 +83,12 @@ impl UseMatrix {
         Self {
             csets: [UseTable::new(); 8],
         }
+    }
+}
+
+impl Default for UseMatrix {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -141,7 +141,7 @@ impl PSetChar<'_> {
                 top: self.top,
                 height: self.height,
                 width: self.width,
-                bitmap: unsafe { std::mem::transmute(buffer.as_ref()) },
+                bitmap: unsafe { std::mem::transmute::<&[u8], &[u8]>(buffer.as_ref()) },
             },
             buffer,
         }
