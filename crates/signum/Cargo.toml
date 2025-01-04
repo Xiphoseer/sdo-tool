@@ -13,7 +13,7 @@ homepage = "https://xiphoseer.github.io/sdo-tool/implementation#signum"
 nom = "6.1.0"
 thiserror = "1.0"
 bitflags = "1.2"
-displaydoc = "0.1"
+displaydoc = "0.2"
 log = "0.4"
 bstr = "1.2.0"
 serde = { version = "1.0.152", features = ["derive"] }
