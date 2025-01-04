@@ -9,7 +9,7 @@ use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     window, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemGetDirectoryOptions,
-    FileSystemHandleKind, StorageManager,
+    FileSystemHandle, FileSystemHandleKind, StorageManager,
 };
 
 /// Browser Origin Private File System
@@ -74,13 +74,29 @@ impl AsyncIterator for DirIter {
             let val = next.value();
             let pair = val.unchecked_ref::<js_sys::Array>();
             let key = pair.at(0).as_string().unwrap();
-            let value = pair.at(1);
+            let value = pair.at(1).unchecked_into::<_>();
             Some(Ok(DirEntry(value, self.1.join(key))))
         }
     }
 }
 
-pub struct DirEntry(pub JsValue, pub PathBuf);
+pub struct DirEntry(pub FileSystemHandle, pub PathBuf);
+
+impl fmt::Display for DirEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.name().fmt(f)
+    }
+}
+
+impl fmt::Debug for DirEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DirEntry")
+            .field("name", &self.0.name())
+            .field("kind", &self.0.kind())
+            .field("path", &self.1)
+            .finish()
+    }
+}
 
 pub struct DirIter(pub js_sys::AsyncIterator, PathBuf);
 
