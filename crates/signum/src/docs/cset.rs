@@ -1,5 +1,7 @@
 //! # (`cset`) The character set chunk
 
+use std::borrow::Cow;
+
 use bstr::BStr;
 use nom::{bytes::complete::take, combinator::map, error::ParseError, multi::many0, IResult};
 
@@ -10,8 +12,8 @@ use super::Chunk;
 /// Parse the `cset` chunk
 pub fn parse_cset<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
-) -> IResult<&'a [u8], Vec<&'a BStr>, E> {
-    many0(parse_cset_str)(input)
+) -> IResult<&'a [u8], Vec<Cow<'a, BStr>>, E> {
+    many0(map(parse_cset_str, Cow::Borrowed))(input)
 }
 
 fn parse_cset_str<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], &'a BStr, E> {
@@ -30,13 +32,23 @@ fn parse_cset_str<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
 #[derive(Debug)]
 pub struct CSet<'a> {
     /// The names of each file
-    pub names: Vec<&'a BStr>,
+    pub names: Vec<Cow<'a, BStr>>,
 }
 
 impl<'a> CSet<'a> {
     /// Create a new character set
-    pub fn new(names: Vec<&'a BStr>) -> Self {
+    pub fn new(names: Vec<Cow<'a, BStr>>) -> Self {
         Self { names }
+    }
+
+    /// Turn this instance into an owned variant
+    pub fn into_owned(self) -> CSet<'static> {
+        let names = self
+            .names
+            .into_iter()
+            .map(|name| Cow::Owned(name.into_owned()))
+            .collect();
+        CSet { names }
     }
 }
 

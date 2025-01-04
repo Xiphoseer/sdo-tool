@@ -1,6 +1,6 @@
 //! # (`0001`) The header of a document.
 
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 use nom::{
     bytes::streaming::take,
@@ -64,14 +64,26 @@ impl fmt::Display for DateTime {
 pub struct Header<'a> {
     /// Leading bytes, usually all zero
     #[serde(skip)]
-    pub lead: &'a [u8],
+    pub lead: Cow<'a, [u8]>,
     /// The created time
     pub ctime: DateTime,
     /// The last modified time
     pub mtime: DateTime,
     /// Trailing bytes, usually all zero
     #[serde(skip)]
-    pub trail: &'a [u8],
+    pub trail: Cow<'a, [u8]>,
+}
+
+impl Header<'_> {
+    /// Turn this instance into an owned variant
+    pub fn into_owned(self) -> Header<'static> {
+        Header {
+            lead: Cow::Owned(self.lead.into_owned()),
+            ctime: self.ctime,
+            mtime: self.mtime,
+            trail: Cow::Owned(self.trail.into_owned()),
+        }
+    }
 }
 
 /// Parse the time as a 16 bit integer
@@ -102,10 +114,10 @@ pub fn parse_header<'a, E: ParseError<&'a [u8]>>(
     Ok((
         rest,
         Header {
-            lead,
+            lead: Cow::Borrowed(lead),
             ctime,
             mtime,
-            trail,
+            trail: Cow::Borrowed(trail),
         },
     ))
 }

@@ -1,5 +1,7 @@
 //! # (`pbuf`) The page buffer
 
+use std::borrow::Cow;
+
 use nom::{
     bytes::{complete::tag, streaming::take},
     error::ParseError,
@@ -8,7 +10,7 @@ use nom::{
 };
 use serde::Serialize;
 
-use crate::util::{Buf, Bytes16, FourCC};
+use crate::util::{Bytes16, FourCC};
 
 use super::bytes16;
 
@@ -22,7 +24,29 @@ pub struct PBuf<'a> {
     /// The logical number for the first page
     pub first_page_nr: u32,
     /// A sparse map of pages, ordered by their index
-    pub pages: Vec<Option<(Page, Buf<'a>)>>,
+    pub pages: Vec<Option<PageData<'a>>>,
+}
+
+impl PBuf<'_> {
+    /// Turn this page buffer into an owned variant by allocating data
+    pub fn into_owned(self) -> PBuf<'static> {
+        let PBuf {
+            page_count,
+            elem_len,
+            first_page_nr,
+            pages,
+        } = self;
+        let pages = pages
+            .into_iter()
+            .map(|page| page.map(|(page, buf)| (page, Cow::Owned(buf.into_owned()))))
+            .collect();
+        PBuf {
+            page_count,
+            elem_len,
+            first_page_nr,
+            pages,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -67,6 +91,9 @@ pub struct Page {
     pub vis_pnr: u8,
 }
 
+/// Page header with data
+pub type PageData<'a> = (Page, Cow<'a, [u8]>);
+
 fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PageFormat, E> {
     let (input, length) = be_u16(input)?;
     let (input, left) = be_u16(input)?;
@@ -86,9 +113,7 @@ fn parse_margin<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8
     ))
 }
 
-fn parse_page<'a, E: ParseError<&'a [u8]>>(
-    input: &'a [u8],
-) -> IResult<&'a [u8], (Page, Buf<'a>), E> {
+fn parse_page<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PageData<'a>, E> {
     let (input, phys_pnr) = be_u16(input)?;
     let (input, log_pnr) = be_u16(input)?;
 
@@ -112,7 +137,7 @@ fn parse_page<'a, E: ParseError<&'a [u8]>>(
                 intern,
                 vis_pnr,
             },
-            Buf(rest),
+            Cow::Borrowed(rest),
         ),
     ))
 }

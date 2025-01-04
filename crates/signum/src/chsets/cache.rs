@@ -322,7 +322,7 @@ impl ChsetCache {
 
         let mut chsets = [FontCacheInfo::EMPTY; 8];
 
-        for (index, &name) in cset.names.iter().enumerate() {
+        for (index, name) in cset.names.iter().enumerate() {
             if name.is_empty() {
                 continue;
             }

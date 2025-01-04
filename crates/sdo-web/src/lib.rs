@@ -7,10 +7,11 @@ use log::{info, warn, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::ChsetCache,
+        cache::{ChsetCache, DocumentFontCacheInfo},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
         printer::parse_ps24,
+        FontKind,
     },
     docs::{
         container::parse_sdoc0001_container,
@@ -18,7 +19,7 @@ use signum::{
         hcim::{parse_image, Hcim},
         header, SDoc,
     },
-    raster::{self, render_doc_page, render_editor_text},
+    raster::{self, render_doc_page, render_editor_text, Page},
     util::FourCC,
 };
 use std::{fmt::Write, io::Cursor};
@@ -100,6 +101,13 @@ async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsValue> {
     Ok(Uint8Array::new(&buf))
 }
 
+pub struct ActiveDocument {
+    sdoc: SDoc<'static>,
+    dfci: DocumentFontCacheInfo,
+    pd: FontKind,
+    images: Vec<(String, Page)>,
+}
+
 #[wasm_bindgen]
 pub struct Handle {
     document: Document,
@@ -108,8 +116,9 @@ pub struct Handle {
     fs: OriginPrivateFS,
     #[allow(dead_code)]
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
-
     fc: ChsetCache,
+
+    active: Option<ActiveDocument>,
 }
 
 #[wasm_bindgen]
@@ -126,6 +135,7 @@ impl Handle {
             fc: ChsetCache::new(),
             closures: Vec::new(),
             input,
+            active: None,
         };
         log::info!("New handle created!");
         Ok(h)
@@ -441,8 +451,52 @@ impl Handle {
     }
 
     #[wasm_bindgen]
+    pub async fn render(&mut self, requested_index: usize) -> Result<bool, JsValue> {
+        if let Some(ActiveDocument {
+            sdoc,
+            dfci,
+            pd,
+            images,
+        }) = &self.active
+        {
+            if let Some(page_text) = sdoc.tebu.pages.get(requested_index) {
+                let index = page_text.index as usize;
+                log::info!("Rendering page {} ({})", requested_index, index);
+                if let Some((pbuf_entry, _)) = sdoc.pbuf.pages[index].as_ref() {
+                    let page = render_doc_page(
+                        page_text,
+                        pbuf_entry,
+                        sdoc.image_sites(),
+                        images,
+                        *pd,
+                        &self.fc,
+                        dfci,
+                    );
+                    let list_item = self.document.create_element("div")?;
+                    list_item.class_list().add_1("list-group-item")?;
+
+                    let blob = self.page_as_blob(&page)?;
+                    let img = Self::blob_image_el(&blob)?;
+                    img.class_list().add_1("container-fluid")?;
+                    list_item.append_child(&img)?;
+
+                    self.output.append_child(&list_item)?;
+                } else {
+                    warn!("Missing page {index}");
+                }
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    #[wasm_bindgen]
     pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
         self.output.set_inner_html("");
+        self.active = None;
         if let Some(rest) = fragment.strip_prefix("#/staged/") {
             let heading = self.document.create_element("h2")?;
             heading.set_text_content(Some(rest));
@@ -459,42 +513,18 @@ impl Handle {
                         let pd = dfci
                             .print_driver(None)
                             .ok_or(JsError::new("No print driver available"))?;
-
                         let images = sdoc
                             .hcim
                             .as_ref()
                             .map(|hcim| hcim.decode_images())
                             .unwrap_or_default();
-                        let image_sites = sdoc
-                            .hcim
-                            .as_ref()
-                            .map(|hcim| hcim.sites.as_slice())
-                            .unwrap_or(&[]);
-                        for page_text in &sdoc.tebu.pages {
-                            let index = page_text.index as usize;
-                            if let Some((pbuf_entry, _)) = sdoc.pbuf.pages[index].as_ref() {
-                                let page = render_doc_page(
-                                    page_text,
-                                    pbuf_entry,
-                                    image_sites,
-                                    &images,
-                                    pd,
-                                    &self.fc,
-                                    &dfci,
-                                );
-                                let list_item = self.document.create_element("div")?;
-                                list_item.class_list().add_1("list-group-item")?;
 
-                                let blob = self.page_as_blob(&page)?;
-                                let img = Self::blob_image_el(&blob)?;
-                                img.class_list().add_1("container-fluid")?;
-                                list_item.append_child(&img)?;
-
-                                self.output.append_child(&list_item)?;
-                            } else {
-                                warn!("Missing page {index}");
-                            }
-                        }
+                        self.active = Some(ActiveDocument {
+                            sdoc: sdoc.into_owned(),
+                            dfci,
+                            pd,
+                            images,
+                        });
                     }
                     _ => warn!("Unknown format: {}", four_cc),
                 }
@@ -608,7 +638,7 @@ impl Handle {
             .class_list()
             .add_2("list-group", "list-group-horizontal-md")?;
         info!("Loading charsets");
-        for chset in doc.cset.names.iter().cloned().filter(|c| !c.is_empty()) {
+        for chset in doc.cset.names.iter().filter(|c| !c.is_empty()) {
             info!("Loading {}", chset);
             let (cls, tooltip) = {
                 let cset_index = self.fc.load_cset(&self.fs, chset).await;

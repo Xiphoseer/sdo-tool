@@ -2,6 +2,7 @@
 //!
 //! This module contains the datastructures and parsers for reading SDO files.
 
+use hcim::ImageSite;
 use log::info;
 use nom::{
     combinator::map,
@@ -10,9 +11,9 @@ use nom::{
     Finish, IResult,
 };
 
-use crate::util::{Buf, Bytes16, Bytes32, FourCC};
+use crate::util::{Bytes16, Bytes32, FourCC};
 use fmt::Debug;
-use std::{collections::BTreeMap, fmt};
+use std::{borrow::Cow, collections::BTreeMap, fmt};
 
 use self::{
     container::SDocContainer, cset::CSet, hcim::Hcim, header::Header, pbuf::PBuf, sysp::SysP,
@@ -67,12 +68,52 @@ pub struct SDoc<'a> {
     /// Hardcopy Images
     pub hcim: Option<Hcim<'a>>,
     /// Other unparsed chunks
-    pub other: BTreeMap<FourCC, Buf<'a>>,
+    pub other: BTreeMap<FourCC, Cow<'a, [u8]>>,
 }
 
 type NomErr<'a> = nom::error::Error<&'a [u8]>;
 
 impl<'a> SDoc<'a> {
+    /// Turn this into an owned variant
+    ///
+    /// Allocates all previously borrowed buffers
+    pub fn into_owned(self) -> SDoc<'static> {
+        let SDoc {
+            header,
+            cset,
+            sysp,
+            pbuf,
+            tebu,
+            hcim,
+            other,
+        } = self;
+        let header = header.into_owned();
+        let cset = cset.into_owned();
+        let pbuf = pbuf.into_owned();
+        let hcim = hcim.map(Hcim::into_owned);
+        let other = other
+            .into_iter()
+            .map(|(key, value)| (key, Cow::Owned(value.into_owned())))
+            .collect();
+        SDoc {
+            header,
+            cset,
+            sysp,
+            pbuf,
+            tebu,
+            hcim,
+            other,
+        }
+    }
+
+    /// Get a slice of all image sites
+    pub fn image_sites(&self) -> &[ImageSite] {
+        self.hcim
+            .as_ref()
+            .map(|hcim| hcim.sites.as_slice())
+            .unwrap_or(&[])
+    }
+
     /// Unpack a document from a container
     pub fn unpack(container: SDocContainer<'a>) -> Result<Self, Error> {
         let mut header = None;
@@ -104,7 +145,7 @@ impl<'a> SDoc<'a> {
                     hcim = Some(Hcim::unpack(chunk)?);
                 }
                 _ => {
-                    other.insert(chunk.tag, chunk.buf);
+                    other.insert(chunk.tag, Cow::Borrowed(chunk.buf.0));
                 }
             }
         }
@@ -148,7 +189,7 @@ pub trait Chunk<'a>: Sized {
 
     /// Unpack a chunk into its typed version
     fn unpack(chunk: container::Chunk<'a>) -> Result<Self, Error> {
-        let input = chunk.buf.0;
+        let input = &chunk.buf.0;
         let chunk_tag = chunk.tag;
         let chunk_len = chunk.buf.0.len();
         let map_err = move |e: nom::error::Error<&'a [u8]>| Error::Nom {

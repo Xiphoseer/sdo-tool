@@ -122,11 +122,23 @@
         addToCollection();
       });
 
-      async function onHashChange(hash) {
+      async function render(index) {
+        if (await h.render(index)) {
+          console.log("Finished page", index);
+          setTimeout(() => render(index + 1));
+        }
+      }
+
+      async function handle(hash) {
         await h.open(hash);
+        render(0);
+      }
+
+      async function onHashChange(hash) {
+        handle(hash)
       }
       // Init
-      h.open(decodeURIComponent(window.location.hash));
+      handle(decodeURIComponent(window.location.hash));
 
       addEventListener('hashchange', (event) => {
         onHashChange(decodeURIComponent(new URL(event.newURL).hash))

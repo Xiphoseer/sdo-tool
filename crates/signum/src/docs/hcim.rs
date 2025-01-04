@@ -92,7 +92,7 @@ pub struct Hcim<'a> {
 }
 
 impl Hcim<'_> {
-    /// Turn this instance into
+    /// Turn this instance into an owned variant
     pub fn into_owned(self) -> Hcim<'static> {
         let images = self
             .images
