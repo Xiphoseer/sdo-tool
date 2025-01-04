@@ -10,7 +10,7 @@ repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/signum"
 homepage = "https://xiphoseer.github.io/sdo-tool/implementation#signum"
 
 [dependencies]
-nom = "6.1.0"
+nom = "7"
 thiserror = "1.0"
 bitflags = "1.2"
 displaydoc = "0.2"

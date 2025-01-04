@@ -12,7 +12,7 @@ log = "0.4"
 pretty_env_logger = "0.4"
 bitflags = "1.2"
 thiserror = "1.0"
-nom-supreme = "0.4"
+nom-supreme = "0.8"
 ccitt-t4-t6 = { path = "crates/ccitt" }
 pdf-create = { path = "crates/pdf" }
 sdo-pdf = { path = "crates/sdo-pdf" }
