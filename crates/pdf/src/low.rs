@@ -207,7 +207,7 @@ pub struct Ascii85Stream<'a> {
     pub meta: StreamMetadata,
 }
 
-impl<'a> Serialize for Ascii85Stream<'a> {
+impl Serialize for Ascii85Stream<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut buf = Vec::new();
         let len = ascii_85_encode(self.data.as_ref(), &mut buf)?;
@@ -228,7 +228,7 @@ pub enum XObject<'a> {
     Image(Ascii85Stream<'a>),
 }
 
-impl<'a> Serialize for XObject<'a> {
+impl Serialize for XObject<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         match self {
             Self::Image(i) => i.write(f),

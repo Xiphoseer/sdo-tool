@@ -45,7 +45,7 @@ impl Debug for Bytes32 {
 #[serde(transparent)]
 pub struct Buf<'a>(pub &'a [u8]);
 
-impl<'a> Debug for Buf<'a> {
+impl Debug for Buf<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let max = self.0.len();
         if f.alternate() {
@@ -66,7 +66,7 @@ impl<'a> Debug for Buf<'a> {
     }
 }
 
-impl<'a> Display for Buf<'a> {
+impl Display for Buf<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Buf as Debug>::fmt(self, f)
     }

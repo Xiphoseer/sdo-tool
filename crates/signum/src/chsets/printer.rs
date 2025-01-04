@@ -119,7 +119,7 @@ pub struct OwnedPSetChar {
 
 impl<'a> OwnedPSetChar {
     /// Get the borrowed version of this struct
-    pub fn borrowed(&'a self) -> &PSetChar<'a> {
+    pub fn borrowed(&'a self) -> &'a PSetChar<'a> {
         &self.inner
     }
 }

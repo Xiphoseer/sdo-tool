@@ -176,7 +176,7 @@ pub struct Type3Font<'a> {
     pub to_unicode: Option<Ascii85Stream<'a>>,
 }
 
-impl<'a> Default for Type3Font<'a> {
+impl Default for Type3Font<'_> {
     fn default() -> Self {
         Self {
             font_bbox: Rectangle {
@@ -236,7 +236,7 @@ pub struct Resources<'a> {
     pub proc_sets: Vec<ProcSet>,
 }
 
-impl<'a> Default for Resources<'a> {
+impl Default for Resources<'_> {
     fn default() -> Self {
         Resources {
             fonts: Resource::Immediate(Box::default()),
@@ -280,7 +280,7 @@ pub struct Handle<'a> {
     pub output_intents: Vec<OutputIntent>,
 }
 
-impl<'a> Default for Handle<'a> {
+impl Default for Handle<'_> {
     fn default() -> Self {
         Handle::new()
     }
@@ -295,7 +295,7 @@ pub struct Ascii85Stream<'a> {
     pub meta: StreamMetadata,
 }
 
-impl<'a> Handle<'a> {
+impl Handle<'_> {
     /// Creates a new handle
     pub fn new() -> Self {
         Self {

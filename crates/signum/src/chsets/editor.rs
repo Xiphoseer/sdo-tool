@@ -91,7 +91,7 @@ pub const ECHAR_NULL: EChar<'static> = EChar {
     buf: &[],
 };
 
-impl<'a> ESet<'a> {
+impl ESet<'_> {
     /// Print a representation of the charset to the console
     ///
     /// FIXME: make this generic over `io::Write` or `fmt::Write`?

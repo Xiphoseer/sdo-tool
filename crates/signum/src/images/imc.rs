@@ -73,7 +73,7 @@ struct ImcState<'src> {
     a5: &'src [u8],
 }
 
-impl<'src> ImcState<'src> {
+impl ImcState<'_> {
     fn proc_h(&mut self, a0: &mut [u8]) {
         let mut d1 = self.a5[0];
         self.a5 = &self.a5[1..];

@@ -14,7 +14,7 @@ where
 
 struct OptStringVisitor;
 
-impl<'de> Visitor<'de> for OptStringVisitor {
+impl Visitor<'_> for OptStringVisitor {
     type Value = Option<String>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -45,7 +45,7 @@ where
 
 struct _OptPathVisitor;
 
-impl<'de> Visitor<'de> for _OptPathVisitor {
+impl Visitor<'_> for _OptPathVisitor {
     type Value = Option<PathBuf>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -76,7 +76,7 @@ where
 
 struct OptI32Visitor;
 
-impl<'de> Visitor<'de> for OptI32Visitor {
+impl Visitor<'_> for OptI32Visitor {
     type Value = Option<i32>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

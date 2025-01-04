@@ -219,7 +219,7 @@ pub fn parse_hcim_img_ref<'a, E: ParseError<&'a [u8]>>(
 }
 
 /// Parse a `hcim` chunk
-pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Hcim, E> {
+pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Hcim<'a>, E> {
     let (input, header) = parse_hcim_header(input)?;
     let (input, buf) = take(header.header_length as usize)(input)?;
     let (_, sites) = count(parse_hcim_img_ref, header.site_count as usize)(buf)?;

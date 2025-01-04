@@ -67,18 +67,6 @@ impl BitWriter {
         }
     }
 
-    /// Write a single bit
-    /*pub fn write(&mut self, b: bool) {
-        self.curr <<= 1;
-        if b {
-            self.curr |= 1;
-        }
-        if self.state.tick() {
-            self.buffer.push(self.curr);
-            self.curr = 0;
-        }
-    }*/
-
     /// Write {off} bits of {val}
     pub fn write_bits(&mut self, val: usize, mut todo: usize) {
         let avail = self.state.as_usize() + 1;

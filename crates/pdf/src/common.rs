@@ -122,7 +122,7 @@ impl Serialize for PageLabel {
 
 struct BTreeSer<'a, A, B>(&'a BTreeMap<A, B>);
 
-impl<'a, A, B> Serialize for BTreeSer<'a, A, B>
+impl<A, B> Serialize for BTreeSer<'_, A, B>
 where
     A: Serialize,
     B: Serialize,

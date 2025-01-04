@@ -77,7 +77,7 @@ pub struct HScaler<'a, 'b> {
     icurr: bool,
 }
 
-impl<'a, 'b> HScaler<'a, 'b> {
+impl HScaler<'_, '_> {
     pub(crate) fn next(&mut self) -> bool {
         if self.vscaler.pixel_h_len == 0 {
             while self.last_hcount < self.hpixel_count * self.vscaler.sel_w / self.vscaler.w {

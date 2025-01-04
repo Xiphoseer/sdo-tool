@@ -94,7 +94,9 @@ pub fn p_datetime<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
 }
 
 /// Parse the header (`0001`) chunk
-pub fn parse_header<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Header, E> {
+pub fn parse_header<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Header<'a>, E> {
     let (rest, (lead, ctime, mtime, trail)) =
         tuple((take(0x48usize), p_datetime, p_datetime, rest))(input)?;
     Ok((

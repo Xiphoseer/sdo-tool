@@ -172,15 +172,15 @@ impl<'a> CSet {
     /// Get the unicode mapping
     pub fn map(&self) -> Option<&Mapping> { self.map.as_ref() }
     /// Get the laser printer bitmaps
-    pub fn l30(&'a self) -> Option<&PSet<'a>> { self.l30.as_ref().map(OwnedPSet::borrowed) }
+    pub fn l30(&'a self) -> Option<&'a PSet<'a>> { self.l30.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 24-needle printer bitmaps
-    pub fn p24(&'a self) -> Option<&PSet<'a>> { self.p24.as_ref().map(OwnedPSet::borrowed) }
+    pub fn p24(&'a self) -> Option<&'a PSet<'a>> { self.p24.as_ref().map(OwnedPSet::borrowed) }
     /// Get the 9-needle printer bitmaps
-    pub fn p09(&'a self) -> Option<&PSet<'a>> { self.p09.as_ref().map(OwnedPSet::borrowed) }
+    pub fn p09(&'a self) -> Option<&'a PSet<'a>> { self.p09.as_ref().map(OwnedPSet::borrowed) }
     /// Get the editor bitmaps
     pub fn e24(&self) -> Option<&ESet<'static>> { self.e24.as_deref() }
     /// Get the bitmaps for the specified printer kind
-    pub fn printer(&'a self, pk: PrinterKind) -> Option<&PSet<'a>> {
+    pub fn printer(&'a self, pk: PrinterKind) -> Option<&'a PSet<'a>> {
         match pk {
             PrinterKind::Needle9 => self.p09.as_ref().map(OwnedPSet::borrowed),
             PrinterKind::Needle24 => self.p24.as_ref().map(OwnedPSet::borrowed),

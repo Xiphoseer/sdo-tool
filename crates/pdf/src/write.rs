@@ -17,7 +17,7 @@ pub struct PdfDict<'a, 'b> {
     f: &'b mut Formatter<'a>,
 }
 
-impl<'a, 'b> PdfDict<'a, 'b> {
+impl PdfDict<'_, '_> {
     fn check_first(&mut self) -> io::Result<()> {
         if self.first {
             if self.f.indent > 0 {
@@ -155,7 +155,7 @@ pub struct PdfArr<'a, 'b> {
     f: &'b mut Formatter<'a>,
 }
 
-impl<'a, 'b> PdfArr<'a, 'b> {
+impl PdfArr<'_, '_> {
     fn check_first(&mut self) -> io::Result<()> {
         if self.first {
             write!(self.f.inner, "[")?;

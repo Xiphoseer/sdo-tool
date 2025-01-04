@@ -57,7 +57,7 @@ pub struct TextBufferHeader {
 /// Parse a `tebu` chunk header
 pub fn parse_tebu_header<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
-) -> IResult<&[u8], TextBufferHeader, E> {
+) -> IResult<&'a [u8], TextBufferHeader, E> {
     let (input, lines_total) = be_u32(input)?;
 
     Ok((
@@ -266,7 +266,9 @@ impl<'a> LineBuf<'a> {
     }
 }
 
-fn parse_line_buf<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], LineBuf, E> {
+fn parse_line_buf<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], LineBuf<'a>, E> {
     let (input, skip) = be_u16(input)?;
     let (input, data) = length_data(be_u16)(input)?;
     Ok((input, LineBuf { skip, data }))

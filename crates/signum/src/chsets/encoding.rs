@@ -31,7 +31,7 @@ pub const ANTIKRO_MAP: Mapping = Mapping {
     chars: antikro::MAP,
 };
 
-impl<'a> Default for &'a Mapping {
+impl Default for &'_ Mapping {
     fn default() -> Self {
         &ANTIKRO_MAP
     }
