@@ -173,8 +173,8 @@ impl Handle {
         Blob::new_with_u8_array_sequence_and_options(
             &Array::from_iter([Uint8Array::from(buffer.get_ref().as_slice())]),
             &{
-                let mut bag = BlobPropertyBag::new();
-                bag.type_("image/png");
+                let bag = BlobPropertyBag::new();
+                bag.set_type("image/png");
                 bag
             },
         )
@@ -343,7 +343,7 @@ impl Handle {
                     let img = _v.dyn_into::<ImageBitmap>().unwrap();
                     let w = img.width() * 10;
                     let h = img.height() * 10;
-                    ctx.set_fill_style(&"green".into());
+                    ctx.set_fill_style_str("green");
                     //ctx.fill_rect(0.0, 0.0, 150.0, 100.0);
                     ctx.draw_image_with_image_bitmap_and_dw_and_dh(
                         &img, 10.0, 10.0, w as f64, h as f64,
@@ -355,7 +355,7 @@ impl Handle {
                         ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
                     }
 
-                    ctx.set_stroke_style(&"blue".into());
+                    ctx.set_stroke_style_str("blue");
                     if let Some(mut iter) = page.first_outline() {
                         log_val("Test", &JsValue::TRUE);
                         let (x0, y0) = iter.next().unwrap();
@@ -413,8 +413,8 @@ impl Handle {
         self.fc.reset();
         let root_dir = self.fs.root_dir()?;
         let chset_dir = self.fs.chset_dir().await?;
-        let mut opts = FileSystemGetFileOptions::new();
-        opts.create(true);
+        let opts = FileSystemGetFileOptions::new();
+        opts.set_create(true);
         for file in self.input_files()? {
             let file = file?;
             let data = js_file_data(&file).await?;

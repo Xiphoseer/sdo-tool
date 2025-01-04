@@ -106,9 +106,9 @@ async fn resolve_dir(
     create: bool,
 ) -> Result<FileSystemDirectoryHandle, JsValue> {
     let mut curr = h.clone();
-    let mut opt = FileSystemGetDirectoryOptions::new();
+    let opt = FileSystemGetDirectoryOptions::new();
     if create {
-        opt.create(true); // bug?
+        opt.set_create(true); // bug?
     }
     for p in path {
         if let Some(s) = p.to_str() {
