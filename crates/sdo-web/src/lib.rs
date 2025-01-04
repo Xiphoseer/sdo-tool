@@ -631,8 +631,10 @@ impl Handle {
         let header_info = self.document.create_element("div")?;
         header_info.class_list().add_1("mb-2")?;
         let mut text = format!(
-            "Created: {} | Modified: {}",
-            doc.header.ctime, doc.header.mtime
+            "Created: {} | Modified: {} | Text Pages: {}",
+            doc.header.ctime,
+            doc.header.mtime,
+            doc.tebu.pages.len()
         );
         if let Some(hcim) = &doc.hcim {
             write!(text, " | Embedded images: {}", hcim.header.img_count).unwrap();
