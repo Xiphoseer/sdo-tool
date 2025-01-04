@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path, usize};
+use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre};
 use log::{debug, info};

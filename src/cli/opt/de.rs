@@ -40,12 +40,12 @@ pub(super) fn _deserialize_opt_path<'de, D>(deserializer: D) -> Result<Option<Pa
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_string(OptPathVisitor)
+    deserializer.deserialize_string(_OptPathVisitor)
 }
 
-struct OptPathVisitor;
+struct _OptPathVisitor;
 
-impl<'de> Visitor<'de> for OptPathVisitor {
+impl<'de> Visitor<'de> for _OptPathVisitor {
     type Value = Option<PathBuf>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
