@@ -451,7 +451,7 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub async fn render(&mut self, requested_index: usize) -> Result<bool, JsValue> {
+    pub async fn render(&mut self, requested_index: usize) -> Result<Blob, JsValue> {
         if let Some(ActiveDocument {
             sdoc,
             dfci,
@@ -472,25 +472,31 @@ impl Handle {
                         &self.fc,
                         dfci,
                     );
-                    let list_item = self.document.create_element("div")?;
-                    list_item.class_list().add_1("list-group-item")?;
+                    //let list_item = self.document.create_element("div")?;
+                    //list_item.class_list().add_1("list-group-item")?;
 
                     let blob = self.page_as_blob(&page)?;
-                    let img = Self::blob_image_el(&blob)?;
-                    img.class_list().add_1("container-fluid")?;
-                    list_item.append_child(&img)?;
+                    Ok(blob)
+                    //let img = Self::blob_image_el(&blob)?;
+                    //img.class_list().add_1("container-fluid")?;
+                    //list_item.append_child(&img)?;
 
-                    self.output.append_child(&list_item)?;
+                    //self.output.append_child(&list_item)?;
                 } else {
                     warn!("Missing page {index}");
+                    Err("Missing page in pbuf".into())
                 }
-                Ok(true)
             } else {
-                Ok(false)
+                Err("Missing page in tebu".into())
             }
         } else {
-            Ok(false)
+            Err("No document active for rendering".into())
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn has_active(&self) -> bool {
+        self.active.is_some()
     }
 
     #[wasm_bindgen]

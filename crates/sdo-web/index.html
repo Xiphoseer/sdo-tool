@@ -60,6 +60,9 @@
     <div class="row g-3 justify-content-center">
       <div class="col-12">
         <section id="output" class="list-group"></section>
+        <nav aria-label="page navigation">
+          <ul id="pagination" class="pagination justify-content-center p-2"></ul>
+        </nav>
       </div>
     </div>
   </main>
@@ -74,6 +77,7 @@
       await init();
 
       const outputEl = document.getElementById("output");
+      const paginationEl = document.getElementById("pagination");
       const inputField = document.getElementById("upload");
       const h = new Handle(outputEl, inputField);
       await h.init();
@@ -122,16 +126,88 @@
         addToCollection();
       });
 
-      async function render(index) {
-        if (await h.render(index)) {
+      async function renderOne(index) {
+        const blob = await h.render(index);
+        if (blob) {
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(blob);
+          img.classList.add("container-fluid");
+          const listItem = document.createElement("div");
+          listItem.classList.add("list-group-item");
+          listItem.appendChild(img);
+          outputEl.appendChild(listItem);
           console.log("Finished page", index);
-          setTimeout(() => render(index + 1));
+          //setTimeout(() => renderOne(index + 1));
         }
       }
 
+      async function renderReplaceOne(index) {
+        const blob = await h.render(index);
+        if (blob) {
+          const li = outputEl.children[1];
+          console.log("li", li);
+          const img = li.children[0];
+          console.log("img", img);
+          img.src = URL.createObjectURL(blob);
+        }
+      }
+
+      async function render() {
+        await renderOne(0);
+      }
+
+      let currentPage = 0;
+
+      function clearPagination() {
+        paginationEl.innerHTML = "";
+        currentPage = 0;
+      }
+
+      function onPrev(event) {
+        //console.log(event);
+        event.preventDefault();
+        renderReplaceOne(--currentPage);
+      }
+
+      function onNext(event) {
+        //console.log(event);
+        event.preventDefault();
+        renderReplaceOne(++currentPage);
+      }
+
+      function setupPagination() {
+        clearPagination();
+        
+        // Previous
+        const prev = document.createElement("li");
+        prev.classList.add("page-item");
+        const prevLink = document.createElement("a");
+        prevLink.text = "Previous";
+        prevLink.href = "#";
+        prevLink.classList.add("page-link");
+        prevLink.addEventListener('click', onPrev);
+        prev.appendChild(prevLink);
+        paginationEl.appendChild(prev);
+
+        // Next
+        const next = document.createElement("li");
+        next.classList.add("page-item");
+        const nextLink = document.createElement("a");
+        nextLink.text = "Next";
+        nextLink.href = "#";
+        nextLink.classList.add("page-link");
+        nextLink.addEventListener('click', onNext);
+        next.appendChild(nextLink);
+        paginationEl.appendChild(next);
+      }
+
       async function handle(hash) {
+        clearPagination();
         await h.open(hash);
-        render(0);
+        if (h.has_active()) {
+          setupPagination();
+          render();
+        }
       }
 
       async function onHashChange(hash) {
