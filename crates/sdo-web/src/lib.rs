@@ -192,8 +192,8 @@ impl Handle {
         let heading = self.document.create_element("h3")?;
         heading.set_inner_html("Embedded Images");
         el_hcim.append_child(&heading)?;
-        for (i, _im) in hcim.images.iter().enumerate() {
-            match parse_image(_im.0) {
+        for (i, im) in hcim.images.iter().enumerate() {
+            match parse_image(im) {
                 Ok((_rest, image)) => {
                     let blob = self.page_as_blob(&image.image.into())?;
 

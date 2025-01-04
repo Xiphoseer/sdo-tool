@@ -8,6 +8,7 @@ use nom::{
         complete::{tag, take_until},
         streaming::take,
     },
+    combinator::map,
     error::ParseError,
     multi::count,
     number::complete::{be_u16, be_u32},
@@ -87,7 +88,7 @@ pub struct Hcim<'a> {
     /// The table of sites
     pub sites: Vec<ImageSite>,
     /// The table of images
-    pub images: Vec<Buf<'a>>,
+    pub images: Vec<Cow<'a, [u8]>>,
 }
 
 impl Hcim<'_> {
@@ -96,7 +97,7 @@ impl Hcim<'_> {
         let mut images = Vec::with_capacity(self.header.img_count as usize);
 
         for img in &self.images {
-            match parse_image(img.0) {
+            match parse_image(img) {
                 Ok((_imgrest, im)) => {
                     debug!("Found image {:?}", im.key);
                     let page = Page::from(im.image);
@@ -116,10 +117,10 @@ impl Hcim<'_> {
 /// Parse an entry in the images table
 pub fn parse_image_buf<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
-) -> IResult<&'a [u8], Buf<'a>, E> {
+) -> IResult<&'a [u8], &'a [u8], E> {
     let (input, length2) = be_u32(input)?;
     let (input, buf2) = take((length2 - 4) as usize)(input)?;
-    Ok((input, Buf(buf2)))
+    Ok((input, buf2))
 }
 
 #[derive(Debug)]
@@ -223,7 +224,10 @@ pub fn parse_hcim<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
     let (input, header) = parse_hcim_header(input)?;
     let (input, buf) = take(header.header_length as usize)(input)?;
     let (_, sites) = count(parse_hcim_img_ref, header.site_count as usize)(buf)?;
-    let (input, images) = count(parse_image_buf, header.img_count as usize)(input)?;
+    let (input, images) = count(
+        map(parse_image_buf, Cow::Borrowed),
+        header.img_count as usize,
+    )(input)?;
 
     Ok((
         input,
