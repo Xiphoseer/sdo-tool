@@ -24,7 +24,7 @@ use crate::{
 
 use super::{bytes16, bytes32, Chunk};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 /// The header of a HCIM chunk
 pub struct HcimHeader {
     /// The length of the site_table
@@ -39,7 +39,7 @@ pub struct HcimHeader {
     pub d: Bytes32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[allow(non_snake_case)]
 /// Information on an image site
 ///
@@ -80,7 +80,7 @@ pub struct ImageArea {
     pub h: u16,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 /// A partially parsed HCIM
 pub struct Hcim<'a> {
     /// The header
@@ -92,6 +92,21 @@ pub struct Hcim<'a> {
 }
 
 impl Hcim<'_> {
+    /// Turn this instance into
+    pub fn into_owned(self) -> Hcim<'static> {
+        let images = self
+            .images
+            .into_iter()
+            .map(Cow::into_owned)
+            .map(Cow::Owned)
+            .collect();
+        Hcim {
+            header: self.header,
+            sites: self.sites,
+            images,
+        }
+    }
+
     /// Decode all images
     pub fn decode_images(&self) -> Vec<(String, Page)> {
         let mut images = Vec::with_capacity(self.header.img_count as usize);
