@@ -1,7 +1,8 @@
 use core::fmt;
-use js_sys::{Function, Object, Reflect, Symbol};
-use signum::chsets::cache::{AsyncIterator, VFS};
+use js_sys::Object;
+use signum::chsets::cache::{AsyncIterator, VfsDirEntry, VFS};
 use std::{
+    borrow::Cow,
     future::Future,
     path::{Path, PathBuf},
 };
@@ -11,6 +12,8 @@ use web_sys::{
     window, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemGetDirectoryOptions,
     FileSystemHandle, FileSystemHandleKind, StorageManager,
 };
+
+use crate::glue::{fs_file_handle_get_file, js_file_data, try_iter_async};
 
 /// Browser Origin Private File System
 pub struct OriginPrivateFS {
@@ -27,15 +30,25 @@ impl OriginPrivateFS {
         Ok(root)
     }
 
+    pub fn chsets_path() -> &'static Path {
+        Path::new("CHSETS")
+    }
+
     pub async fn chset_dir(&self) -> Result<FileSystemDirectoryHandle, JsValue> {
         let root = self.root_dir()?;
-        let dir = resolve_dir(root, Path::new("CHSETS"), true).await?;
+        let dir = resolve_dir(root, Self::chsets_path(), true).await?;
         Ok(dir)
     }
 }
 
 #[derive(Debug)]
 pub struct Error(pub JsValue);
+
+impl From<Error> for JsValue {
+    fn from(value: Error) -> Self {
+        value.0
+    }
+}
 
 impl From<js_sys::Error> for Error {
     fn from(value: js_sys::Error) -> Self {
@@ -80,7 +93,26 @@ impl AsyncIterator for DirIter {
     }
 }
 
-pub struct DirEntry(pub FileSystemHandle, pub PathBuf);
+pub struct Directory {
+    inner: FileSystemDirectoryHandle,
+    path: PathBuf,
+}
+
+impl Directory {
+    pub async fn read_dir(&self) -> Result<DirIter, Error> {
+        let iter =
+            try_iter_async(&self.inner)?.ok_or_else(|| JsError::new("Not async iterable"))?;
+        Ok(DirIter(iter, self.path.clone()))
+    }
+}
+
+pub struct DirEntry(FileSystemHandle, PathBuf);
+
+impl VfsDirEntry for DirEntry {
+    fn path(&self) -> std::borrow::Cow<'_, Path> {
+        Cow::Borrowed(&self.1)
+    }
+}
 
 impl fmt::Display for DirEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -148,6 +180,8 @@ impl VFS for OriginPrivateFS {
 
     type DirEntry = DirEntry;
 
+    type File = web_sys::File;
+
     fn root(&self) -> impl Future<Output = PathBuf> + 'static {
         std::future::ready(PathBuf::from(self.root.as_deref().unwrap().name()))
     }
@@ -160,6 +194,10 @@ impl VFS for OriginPrivateFS {
             .unwrap_or(false)
     }
 
+    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool {
+        entry.0.kind() == FileSystemHandleKind::File
+    }
+
     async fn is_dir(&self, path: &Path) -> bool {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
         resolve_dir(root, path, false)
@@ -168,47 +206,36 @@ impl VFS for OriginPrivateFS {
             .unwrap_or(false)
     }
 
-    async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
-        let root = self.root.as_ref().expect("Uninitialized OPFS");
-        let dir = resolve_dir(root, path, false).await?;
-        let iter =
-            try_iter_async(dir.as_ref())?.ok_or_else(|| JsError::new("Not async iterable"))?;
-        Ok(DirIter(iter, path.to_owned()))
+    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool {
+        entry.0.kind() == FileSystemHandleKind::Directory
     }
 
-    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
-        entry.1.clone()
+    async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
+        let dir = self.directory(path).await?;
+        dir.read_dir().await
+    }
+
+    async fn open(&self, path: &Path) -> Result<Self::File, Self::Error> {
+        let root = self.root_dir()?;
+        let file_handle = resolve_file(root, path).await?;
+        let file = fs_file_handle_get_file(&file_handle).await?;
+        Ok(file)
     }
 
     async fn read(&self, path: &Path) -> Result<Vec<u8>, Self::Error> {
-        let root = self.root_dir()?;
-        let file_handle = resolve_file(root, path).await?;
-        let file = JsFuture::from(file_handle.get_file())
-            .await?
-            .unchecked_into::<web_sys::File>();
-        let array_buffer = JsFuture::from(file.array_buffer())
-            .await?
-            .unchecked_into::<js_sys::ArrayBuffer>();
-        let uint8_buf = js_sys::Uint8Array::new(&array_buffer);
+        let file = self.open(path).await?;
+        let uint8_buf = js_file_data(&file).await?;
         Ok(uint8_buf.to_vec())
     }
-}
 
-pub fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterator>, JsValue> {
-    let async_iter_sym = Symbol::async_iterator();
-    let iter_fn = Reflect::get(val, async_iter_sym.as_ref())?;
-
-    let iter_fn: Function = match iter_fn.dyn_into() {
-        Ok(iter_fn) => iter_fn,
-        Err(_) => return Ok(None),
-    };
-
-    let it: js_sys::AsyncIterator = match iter_fn.call0(val)?.dyn_into() {
-        Ok(it) => it,
-        Err(_) => return Ok(None),
-    };
-
-    Ok(Some(it))
+    async fn open_dir_entry(&self, dir_entry: &Self::DirEntry) -> Result<Self::File, Self::Error> {
+        let file_handle = dir_entry
+            .0
+            .dyn_ref::<FileSystemFileHandle>()
+            .ok_or_else(|| JsError::new("not a file"))?;
+        let file = fs_file_handle_get_file(file_handle).await?;
+        Ok(file)
+    }
 }
 
 impl OriginPrivateFS {
@@ -221,6 +248,15 @@ impl OriginPrivateFS {
             storage,
             root: None,
         }
+    }
+
+    async fn directory(&self, path: &Path) -> Result<Directory, Error> {
+        let root = self.root.as_ref().expect("Uninitialized OPFS");
+        let inner = resolve_dir(root, path, false).await?;
+        Ok(Directory {
+            inner,
+            path: path.to_owned(),
+        })
     }
 
     pub async fn init(&mut self) -> Result<(), JsValue> {

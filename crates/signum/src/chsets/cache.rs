@@ -1,8 +1,9 @@
 //! # Implementation of a charset cache
 
 use std::{
+    borrow::Cow,
     collections::HashMap,
-    fs::{self, ReadDir},
+    fs,
     future::Future,
     io,
     path::{Path, PathBuf},
@@ -55,7 +56,7 @@ async fn find_font_file<FS: VFS>(
 
     while let Some(entry) = dir_iter.next().await {
         if let Ok(de) = entry {
-            let subfolder = fs.dir_entry_path(&de);
+            let subfolder = de.path();
             if fs.is_dir(&subfolder).await {
                 // Note: need to box the future here because this is async recursion.
                 let fut = Box::pin(find_font_file(fs, &subfolder, name, extension));
@@ -198,6 +199,12 @@ pub trait AsyncIterator {
     fn next(&mut self) -> impl Future<Output = Option<Self::Item>>;
 }
 
+/// Directory entry for VFS
+pub trait VfsDirEntry {
+    /// Return the path represented by this entry
+    fn path(&self) -> Cow<'_, Path>;
+}
+
 /// Virtual File System used for loading fonts
 pub trait VFS {
     /// Error type
@@ -205,7 +212,9 @@ pub trait VFS {
     /// Directory iterator
     type DirIter: AsyncIterator<Item = Result<Self::DirEntry, Self::Error>>;
     /// Directory entry
-    type DirEntry;
+    type DirEntry: VfsDirEntry;
+    /// Open file
+    type File;
 
     /// Return the root path of the VFS
     fn root(&self) -> impl Future<Output = PathBuf> + 'static;
@@ -213,17 +222,29 @@ pub trait VFS {
     /// Check whether the path is a file
     fn is_file(&self, path: &Path) -> impl Future<Output = bool>;
 
+    /// Check whether the directory entry is a file
+    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool;
+
     /// Check whether the path is a directory
     fn is_dir(&self, path: &Path) -> impl Future<Output = bool>;
+
+    /// Check whether the directory entry is a directory
+    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool;
 
     /// Read a directory
     fn read_dir(&self, path: &Path) -> impl Future<Output = Result<Self::DirIter, Self::Error>>;
 
+    /// Open a file
+    fn open(&self, path: &Path) -> impl Future<Output = Result<Self::File, Self::Error>>;
+
+    /// Open a file
+    fn open_dir_entry(
+        &self,
+        dir_entry: &Self::DirEntry,
+    ) -> impl Future<Output = Result<Self::File, Self::Error>>;
+
     /// Read a file
     fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>>;
-
-    /// Get the path of a directory entry
-    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf;
 }
 
 /// VFS for the Local File System ([`std::fs`])
@@ -238,6 +259,12 @@ impl LocalFS {
     }
 }
 
+impl VfsDirEntry for std::fs::DirEntry {
+    fn path(&self) -> Cow<'_, Path> {
+        Cow::Owned(std::fs::DirEntry::path(self))
+    }
+}
+
 impl VFS for LocalFS {
     fn root(&self) -> impl Future<Output = PathBuf> + 'static {
         std::future::ready(self.chsets_folder.to_owned())
@@ -247,8 +274,16 @@ impl VFS for LocalFS {
         std::future::ready(path.is_file())
     }
 
+    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool {
+        entry.path().is_file()
+    }
+
     fn is_dir(&self, path: &Path) -> impl Future<Output = bool> {
         std::future::ready(path.is_dir())
+    }
+
+    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool {
+        entry.path().is_dir()
     }
 
     async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
@@ -261,16 +296,24 @@ impl VFS for LocalFS {
 
     type DirEntry = fs::DirEntry;
 
-    fn dir_entry_path(&self, entry: &Self::DirEntry) -> PathBuf {
-        entry.path()
+    type File = fs::File;
+
+    fn open(&self, path: &Path) -> impl Future<Output = Result<Self::File, Self::Error>> {
+        std::future::ready(std::fs::File::open(path))
     }
 
     fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>> {
-        std::future::ready(std::fs::read(path))
+        std::future::ready(std::fs::read(path)) // FIXME: async
+    }
+
+    async fn open_dir_entry(&self, dir_entry: &Self::DirEntry) -> Result<Self::File, Self::Error> {
+        let path = dir_entry.path();
+        let file = self.open(&path).await?;
+        Ok(file)
     }
 }
 
-impl AsyncIterator for ReadDir {
+impl AsyncIterator for fs::ReadDir {
     type Item = Result<fs::DirEntry, io::Error>;
 
     async fn next(&mut self) -> Option<Self::Item> {

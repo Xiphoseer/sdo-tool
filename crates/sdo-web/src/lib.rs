@@ -1,13 +1,14 @@
 #![allow(non_snake_case)] // wasm_bindgen macro
 
 use bstr::BStr;
+use glue::js_file_data;
 use image::ImageOutputFormat;
-use js_sys::{Array, ArrayBuffer, JsString, Uint8Array};
+use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::{ChsetCache, DocumentFontCacheInfo},
+        cache::{AsyncIterator, ChsetCache, DocumentFontCacheInfo, VfsDirEntry, VFS},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
         printer::parse_ps24,
@@ -22,7 +23,7 @@ use signum::{
     raster::{self, render_doc_page, render_editor_text, Page},
     util::FourCC,
 };
-use std::{fmt::Write, io::Cursor};
+use std::{ffi::OsStr, fmt::Write, io::Cursor};
 use vfs::OriginPrivateFS;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -32,6 +33,7 @@ use web_sys::{
     HtmlCanvasElement, HtmlElement, HtmlImageElement, HtmlInputElement, ImageBitmap, Url,
 };
 
+mod glue;
 mod vfs;
 
 /*
@@ -92,13 +94,6 @@ fn js_four_cc(arr: &Uint8Array) -> Option<FourCC> {
             arr.get_index(3),
         ]))
     }
-}
-
-async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsValue> {
-    let buf = JsFuture::from(file.array_buffer())
-        .await?
-        .unchecked_into::<ArrayBuffer>();
-    Ok(Uint8Array::new(&buf))
 }
 
 pub struct ActiveDocument {
@@ -472,16 +467,9 @@ impl Handle {
                         &self.fc,
                         dfci,
                     );
-                    //let list_item = self.document.create_element("div")?;
-                    //list_item.class_list().add_1("list-group-item")?;
 
                     let blob = self.page_as_blob(&page)?;
                     Ok(blob)
-                    //let img = Self::blob_image_el(&blob)?;
-                    //img.class_list().add_1("container-fluid")?;
-                    //list_item.append_child(&img)?;
-
-                    //self.output.append_child(&list_item)?;
                 } else {
                     warn!("Missing page {index}");
                     Err("Missing page in pbuf".into())
@@ -544,6 +532,24 @@ impl Handle {
             }
         } else if matches!(fragment, "" | "#" | "#/") {
             self.on_change().await?;
+        } else if matches!(fragment, "#/CHSETS/") {
+            self.list_chsets().await?;
+        }
+        Ok(())
+    }
+
+    async fn list_chsets(&mut self) -> Result<(), JsValue> {
+        let mut iter = self.fs.read_dir(OriginPrivateFS::chsets_path()).await?;
+        while let Some(next) = iter.next().await {
+            let entry = next?;
+            if self.fs.is_file_entry(&entry) {
+                let path = entry.path();
+                let name = path.file_name().map(OsStr::to_string_lossy);
+                let _name = name.as_deref().unwrap_or("");
+
+                let file = self.fs.open_dir_entry(&entry).await?;
+                let _data = js_file_data(&file).await?;
+            }
         }
         Ok(())
     }
@@ -553,12 +559,20 @@ impl Handle {
         self.reset()?;
         for file in self.input_files()? {
             let file = file?;
-            let arr = JsFuture::from(file.array_buffer())
-                .await?
-                .unchecked_into::<ArrayBuffer>();
-            self.stage(&file.name(), Uint8Array::new(&arr)).await?;
+            let arr = js_file_data(&file).await?;
+            self.stage(&file.name(), arr).await?;
         }
         Ok(())
+    }
+
+    fn card(&self, name: &str, four_cc: FourCC, href: &str) -> Result<Element, JsValue> {
+        let card = self.document.create_element("a")?;
+        let kind = decode_atari_str(&four_cc);
+        card.class_list()
+            .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
+        card.set_attribute("href", href)?;
+        self.card_body(&card, name, four_cc)?;
+        Ok(card)
     }
 
     async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
@@ -566,12 +580,8 @@ impl Handle {
         info!("Parsing file '{}'", name);
 
         if let Ok((_, four_cc)) = four_cc(&data) {
-            let card = self.document.create_element("a")?;
-            let kind = decode_atari_str(&FourCC::SDOC);
-            card.class_list()
-                .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
-            card.set_attribute("href", &format!("#/staged/{name}"))?;
-            self.card_body(&card, name, four_cc)?;
+            let href = format!("#/staged/{name}");
+            let card = self.card(name, four_cc, &href)?;
             match four_cc {
                 FourCC::SDOC => {
                     let doc = self.parse_sdoc(&data)?;
