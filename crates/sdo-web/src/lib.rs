@@ -418,7 +418,7 @@ impl Handle {
         Err(JsError::new("File not found").into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addToCollection)]
     pub async fn add_to_collection(&mut self) -> Result<(), JsValue> {
         self.fc.reset();
         let root_dir = self.fs.root_dir()?;
@@ -494,9 +494,16 @@ impl Handle {
         }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = hasActive)]
     pub fn has_active(&self) -> bool {
         self.active.is_some()
+    }
+
+    #[wasm_bindgen(js_name = activePageCount)]
+    pub fn active_page_count(&self) -> Option<usize> {
+        self.active
+            .as_ref()
+            .map(|active| active.sdoc.tebu.pages.len())
     }
 
     #[wasm_bindgen]

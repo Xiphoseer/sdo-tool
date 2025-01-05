@@ -59,6 +59,9 @@
 
     <div class="row g-3 justify-content-center">
       <div class="col-12">
+        <div id="progress" class="progress mb-2" role="progressbar" aria-label="Render progress" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" style="height: 8px">
+          <div class="progress-bar" style="width: 0%"></div>
+        </div>
         <section id="output" class="list-group"></section>
         <nav aria-label="page navigation">
           <ul id="pagination" class="pagination justify-content-center p-2"></ul>
@@ -70,159 +73,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
     crossorigin="anonymous"></script>
-  <script type="module">
-    import init, { Handle } from './pkg/sdo_web.js';
-
-    async function run() {
-      await init();
-
-      const outputEl = document.getElementById("output");
-      const paginationEl = document.getElementById("pagination");
-      const inputField = document.getElementById("upload");
-      const h = new Handle(outputEl, inputField);
-      await h.init();
-
-      /*async function uploadFile(file) {
-        const buf = await file.arrayBuffer();
-        const arr = new Uint8Array(buf);
-        await h.stage(file.name, arr);
-      }*/
-
-      /*
-      const dirHandle = await navigator.storage.getDirectory();
-      console.log(dirHandle);
-      for await (const [key, value] of dirHandle.entries()) {
-        console.log({ key, value });
-      }*/
-
-      /*
-      async function uploadFiles(field) {
-        h.reset();
-        for (const file of field.files) {
-          await uploadFile(file);
-          console.log(`Completed '${file.name}'`);
-
-          // const handle = await dirHandle.getFileHandle(file.name, { create: true });
-          // console.log("creating file");
-          // const newFile = await handle.createWritable();
-          // console.log("writing file");
-          // await newFile.write(file);
-        }
-      }
-      */
-
-
-      inputField.addEventListener('change', (event) => {
-        window.location.hash = '';
-        h.on_change();
-      });
-
-      async function addToCollection() {
-        await h.add_to_collection();
-      }
-
-      const addToCollectionBtn = document.getElementById("add-to-collection");
-      addToCollectionBtn.addEventListener('click', (event) => {
-        addToCollection();
-      });
-
-      async function renderOne(index) {
-        const blob = await h.render(index);
-        if (blob) {
-          const img = document.createElement("img");
-          img.src = URL.createObjectURL(blob);
-          img.classList.add("container-fluid");
-          const listItem = document.createElement("div");
-          listItem.classList.add("list-group-item");
-          listItem.appendChild(img);
-          outputEl.appendChild(listItem);
-          console.log("Finished page", index);
-          //setTimeout(() => renderOne(index + 1));
-        }
-      }
-
-      async function renderReplaceOne(index) {
-        const blob = await h.render(index);
-        if (blob) {
-          const li = outputEl.children[1];
-          console.log("li", li);
-          const img = li.children[0];
-          console.log("img", img);
-          img.src = URL.createObjectURL(blob);
-        }
-      }
-
-      async function render() {
-        await renderOne(0);
-      }
-
-      let currentPage = 0;
-
-      function clearPagination() {
-        paginationEl.innerHTML = "";
-        currentPage = 0;
-      }
-
-      function onPrev(event) {
-        //console.log(event);
-        event.preventDefault();
-        renderReplaceOne(--currentPage);
-      }
-
-      function onNext(event) {
-        //console.log(event);
-        event.preventDefault();
-        renderReplaceOne(++currentPage);
-      }
-
-      function setupPagination() {
-        clearPagination();
-        
-        // Previous
-        const prev = document.createElement("li");
-        prev.classList.add("page-item");
-        const prevLink = document.createElement("a");
-        prevLink.text = "Previous";
-        prevLink.href = "#";
-        prevLink.classList.add("page-link");
-        prevLink.addEventListener('click', onPrev);
-        prev.appendChild(prevLink);
-        paginationEl.appendChild(prev);
-
-        // Next
-        const next = document.createElement("li");
-        next.classList.add("page-item");
-        const nextLink = document.createElement("a");
-        nextLink.text = "Next";
-        nextLink.href = "#";
-        nextLink.classList.add("page-link");
-        nextLink.addEventListener('click', onNext);
-        next.appendChild(nextLink);
-        paginationEl.appendChild(next);
-      }
-
-      async function handle(hash) {
-        clearPagination();
-        await h.open(hash);
-        if (h.has_active()) {
-          setupPagination();
-          render();
-        }
-      }
-
-      async function onHashChange(hash) {
-        handle(hash)
-      }
-      // Init
-      handle(decodeURIComponent(window.location.hash));
-
-      addEventListener('hashchange', (event) => {
-        onHashChange(decodeURIComponent(new URL(event.newURL).hash))
-      })
-    }
-
-    run();
-  </script>
+  <script type="module" src="index.mjs"></script>
 </body>
 
 </html>
