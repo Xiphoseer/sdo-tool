@@ -37,6 +37,7 @@ jobs:
           mkdir ./docs/studio
           cp -r ./crates/sdo-web/pkg ./docs/studio/
           cp ./crates/sdo-web/index.html ./docs/studio
+          cp ./crates/sdo-web/index.mjs ./docs/studio
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Build with Jekyll
