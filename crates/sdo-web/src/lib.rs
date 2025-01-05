@@ -24,7 +24,7 @@ use signum::{
     util::FourCC,
 };
 use std::{ffi::OsStr, fmt::Write, io::Cursor};
-use vfs::OriginPrivateFS;
+use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -538,17 +538,36 @@ impl Handle {
         Ok(())
     }
 
+    async fn list_chset_entry(&mut self, entry: &DirEntry) -> Result<(), JsValue> {
+        let path = entry.path();
+        let name = path.file_name().map(OsStr::to_string_lossy);
+        let name = name.as_deref().unwrap_or("");
+
+        let file = self.fs.open_dir_entry(entry).await?;
+        let data = js_file_data(&file).await?.to_vec();
+
+        let (_, four_cc) = four_cc(&data).map_err(JsError::from)?;
+        let href = format!("#/CHSETS/{}", name);
+        let card = self.card(name, four_cc, &href)?;
+        if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
+            console::error_3(
+                &JsValue::from_str("Failed to generate preview"),
+                &JsValue::from_str(name),
+                &e,
+            );
+        }
+        self.output.append_child(&card)?;
+        Ok(())
+    }
+
     async fn list_chsets(&mut self) -> Result<(), JsValue> {
         let mut iter = self.fs.read_dir(OriginPrivateFS::chsets_path()).await?;
         while let Some(next) = iter.next().await {
             let entry = next?;
             if self.fs.is_file_entry(&entry) {
-                let path = entry.path();
-                let name = path.file_name().map(OsStr::to_string_lossy);
-                let _name = name.as_deref().unwrap_or("");
-
-                let file = self.fs.open_dir_entry(&entry).await?;
-                let _data = js_file_data(&file).await?;
+                if let Err(e) = self.list_chset_entry(&entry).await {
+                    console::log_1(&e);
+                }
             }
         }
         Ok(())
@@ -575,6 +594,32 @@ impl Handle {
         Ok(card)
     }
 
+    async fn card_preview(
+        &mut self,
+        card: &Element,
+        name: &str,
+        four_cc: FourCC,
+        data: &[u8],
+    ) -> Result<(), JsValue> {
+        match four_cc {
+            FourCC::SDOC => {
+                let doc = self.parse_sdoc(data)?;
+                self.sdoc_card(card, &doc).await?;
+            }
+            FourCC::ESET => {
+                let eset = self.parse_eset(data)?;
+                self.eset_card(card, &eset, name)?;
+            }
+            FourCC::PS24 => {
+                // self.parse_ps24(&data)
+            }
+            k => {
+                log::warn!("Unknown File Format '{}'", k);
+            }
+        }
+        Ok(())
+    }
+
     async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
@@ -582,21 +627,12 @@ impl Handle {
         if let Ok((_, four_cc)) = four_cc(&data) {
             let href = format!("#/staged/{name}");
             let card = self.card(name, four_cc, &href)?;
-            match four_cc {
-                FourCC::SDOC => {
-                    let doc = self.parse_sdoc(&data)?;
-                    self.sdoc_card(&card, &doc).await?;
-                }
-                FourCC::ESET => {
-                    let eset = self.parse_eset(&data)?;
-                    self.eset_card(&card, &eset, name)?;
-                }
-                FourCC::PS24 => {
-                    // self.parse_ps24(&data)
-                }
-                k => {
-                    log::warn!("Unknown File Format '{}'", k);
-                }
+            if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
+                console::error_3(
+                    &JsValue::from_str("Failed to generate preview"),
+                    &JsValue::from_str(name),
+                    &e,
+                );
             }
             self.output.append_child(&card)?;
             Ok(())
