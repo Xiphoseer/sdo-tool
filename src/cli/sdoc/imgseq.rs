@@ -34,15 +34,7 @@ pub fn output_print(
                 continue;
             }
         }
-        let page = render_doc_page(
-            page_text,
-            pbuf_entry,
-            &doc.sites,
-            &info.images,
-            pd,
-            fc,
-            &info.fonts,
-        );
+        let page = render_doc_page(page_text, pbuf_entry, &doc.sites, info, pd, fc);
         let image = page.to_image();
         let file_name = format!("page-{}.png", pbuf_entry.log_pnr);
         println!("Saving {}", file_name);

@@ -270,10 +270,10 @@ pub struct Res<'a> {
 
 impl Res<'_> {
     /// Push an XObject, returning the index it was pushed at
-    pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> usize {
+    pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> Resource<XObject> {
         let index = self.x_objects.len();
         self.x_objects.push(value.into());
-        index
+        Resource::Global { index }
     }
 }
 

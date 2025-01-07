@@ -455,10 +455,9 @@ impl Handle {
                         page_text,
                         pbuf_entry,
                         sdoc.image_sites(),
-                        &di.images,
+                        di,
                         *pd,
                         &self.fc,
-                        &di.fonts,
                     );
 
                     let blob = self.page_as_blob(&page)?;
@@ -515,10 +514,7 @@ impl Handle {
 
                         self.active = Some(ActiveDocument {
                             sdoc: sdoc.into_owned(),
-                            di: DocumentInfo {
-                                fonts: dfci,
-                                images,
-                            },
+                            di: DocumentInfo::new(dfci, images),
                             pd,
                         });
                     }

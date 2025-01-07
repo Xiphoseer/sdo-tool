@@ -211,7 +211,20 @@ pub struct DocumentInfo {
     /// Information on how to locate the font information in a [crate::chsets::cache::ChsetCache]
     pub fonts: DocumentFontCacheInfo,
     /// Decoded images embedded in the document
-    pub images: Vec<(String, Page)>,
+    images: Vec<(String, Page)>,
+}
+
+impl DocumentInfo {
+    /// Create a new instance
+    pub fn new(fonts: DocumentFontCacheInfo, images: Vec<(String, Page)>) -> Self {
+        Self { fonts, images }
+    }
+
+    /// Get the image associated with the given index
+    pub fn image_at(&self, img: u16) -> &Page {
+        let (_, page) = &self.images[img as usize];
+        page
+    }
 }
 
 /// Common adjustments to the graphics state for rendering

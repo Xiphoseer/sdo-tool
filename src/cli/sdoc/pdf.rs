@@ -3,13 +3,10 @@ use std::{collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 use color_eyre::eyre::{self, eyre, OptionExt};
 use log::{debug, info};
 use pdf_create::{
-    common::{
-        ColorIs, ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet,
-        Rectangle,
-    },
-    high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
+    common::{OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle},
+    high::{DictResource, Handle, Page, Resource, Resources, XObject},
 };
-use sdo_pdf::{font::Fonts, prepare_info, sdoc::Contents, MetaInfo};
+use sdo_pdf::{font::Fonts, image_for_site, prepare_info, sdoc::Contents, MetaInfo};
 use signum::{
     chsets::{
         cache::{ChsetCache, FontCacheInfo},
@@ -79,37 +76,21 @@ pub fn prepare_document(
 
         let mut x_objects: DictResource<XObject> = BTreeMap::new();
         let mut img = vec![];
-        for (index, site) in doc
-            .sites
+        let image_sites = &doc.sites[..];
+        for (index, site) in image_sites
             .iter()
             .enumerate()
             .filter(|(_, site)| site.page == page_info.phys_pnr)
         {
             let key = format!("I{}", index);
-            let width = site.sel.w as usize;
-            let height = site.sel.h as usize;
-            //let area = width * height;
-
-            let img_num = site.img as usize;
-            let (_, im) = &di.images[img_num];
-            let data = im.select(site.sel);
-
-            let img_index = hnd.res.push_xobject(Image {
-                meta: ImageMetadata {
-                    width,
-                    height,
-                    color_space: ColorSpace::DeviceGray,
-                    bits_per_component: 1,
-                    image_mask: true,
-                    decode: ColorIs::One,
-                },
-                data,
-            });
             debug!(
                 "Adding image from #{} on page {} as /{}",
-                img_num, page_info.log_pnr, &key
+                site.img, page_info.log_pnr, &key
             );
-            x_objects.insert(key.clone(), Resource::Global { index: img_index });
+
+            let image = image_for_site(di, site);
+
+            x_objects.insert(key.clone(), hnd.res.push_xobject(image));
             img.push((site, key));
         }
 

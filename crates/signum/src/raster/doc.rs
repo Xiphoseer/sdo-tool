@@ -4,7 +4,7 @@ use crate::{
         printer::PrinterKind,
         FontKind,
     },
-    docs::{hcim, pbuf, tebu},
+    docs::{hcim, pbuf, tebu, DocumentInfo},
     util::Pos,
 };
 
@@ -54,10 +54,9 @@ pub fn render_doc_page(
     page_text: &tebu::PageText,
     pbuf_entry: &pbuf::Page,
     image_sites: &[hcim::ImageSite],
-    images: &[(String, Page)],
+    di: &DocumentInfo,
     pd: FontKind,
     fc: &ChsetCache,
-    print: &DocumentFontCacheInfo,
 ) -> Page {
     let fmt = &pbuf_entry.format;
     let width = pd.scale_x(fmt.left + fmt.right + 20);
@@ -68,9 +67,9 @@ pub fn render_doc_page(
 
     #[allow(clippy::type_complexity)]
     let print_char: Box<dyn Fn(&tebu::Char, &mut u16, u16, &mut Page)> = match pd {
-        FontKind::Editor => Box::new(move |te, x, y, p| print_echar(print, fc, te, x, y, p)),
+        FontKind::Editor => Box::new(move |te, x, y, p| print_echar(&di.fonts, fc, te, x, y, p)),
         FontKind::Printer(pk) => {
-            Box::new(move |te, x, y, p| print_pchar(print, fc, te, pk, x, y, p))
+            Box::new(move |te, x, y, p| print_pchar(&di.fonts, fc, te, pk, x, y, p))
         }
     };
     for (skip, line) in &page_text.content {
@@ -97,7 +96,7 @@ pub fn render_doc_page(
         let w = pd.scale_x(site.site.w);
         let py = pd.scale_y(10 + site.site.y - site._5 / 2);
         let h = pd.scale_y(site.site.h / 2);
-        let (_, image) = &images[site.img as usize];
+        let image = di.image_at(site.img);
         page.draw_image(px, py, w, h, image, site.sel);
     }
     page

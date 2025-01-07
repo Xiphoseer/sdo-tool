@@ -219,7 +219,7 @@ impl<'a> Document<'a> {
         }
 
         let fonts = dfci.ok_or_else(|| eyre!("Document has no CSET chunk"))?;
-        Ok(DocumentInfo { fonts, images })
+        Ok(DocumentInfo::new(fonts, images))
     }
 }
 
