@@ -121,6 +121,26 @@ impl FourCC {
     pub const fn new(buf: [u8; 4]) -> Self {
         Self(buf)
     }
+
+    /// Return a human readable name of the file format identified by this four-character-code
+    ///
+    /// ```
+    /// # use signum::util::FourCC;
+    /// assert_eq!(FourCC::SDOC.file_format_name(), Some("Signum! Document"));
+    /// ```
+    ///
+    /// Returns `None` if the format is unknown
+    pub const fn file_format_name(&self) -> Option<&'static str> {
+        match *self {
+            Self::SDOC => Some("Signum! Document"),
+            Self::ESET => Some("Signum! Editor Font"),
+            Self::PS24 => Some("Signum! 24-Needle Printer Font"),
+            Self::PS09 => Some("Signum! 9-Needle Printer Font"),
+            Self::LS30 => Some("Signum! Laser Printer Font"),
+            Self::BIMC => Some("Signum! Hardcopy Image"),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Debug for FourCC {

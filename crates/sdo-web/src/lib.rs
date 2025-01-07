@@ -8,7 +8,7 @@ use log::{info, warn, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::{AsyncIterator, ChsetCache, DocumentFontCacheInfo, VfsDirEntry, VFS},
+        cache::{AsyncIterator, ChsetCache, VfsDirEntry, VFS},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
         printer::parse_ps24,
@@ -18,9 +18,9 @@ use signum::{
         container::parse_sdoc0001_container,
         four_cc,
         hcim::{parse_image, Hcim},
-        header, SDoc,
+        header, DocumentInfo, SDoc,
     },
-    raster::{self, render_doc_page, render_editor_text, Page},
+    raster::{self, render_doc_page, render_editor_text},
     util::FourCC,
 };
 use std::{ffi::OsStr, fmt::Write, io::Cursor};
@@ -98,9 +98,8 @@ fn js_four_cc(arr: &Uint8Array) -> Option<FourCC> {
 
 pub struct ActiveDocument {
     sdoc: SDoc<'static>,
-    dfci: DocumentFontCacheInfo,
+    di: DocumentInfo,
     pd: FontKind,
-    images: Vec<(String, Page)>,
 }
 
 #[wasm_bindgen]
@@ -447,13 +446,7 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn render(&mut self, requested_index: usize) -> Result<Blob, JsValue> {
-        if let Some(ActiveDocument {
-            sdoc,
-            dfci,
-            pd,
-            images,
-        }) = &self.active
-        {
+        if let Some(ActiveDocument { sdoc, di, pd }) = &self.active {
             if let Some(page_text) = sdoc.tebu.pages.get(requested_index) {
                 let index = page_text.index as usize;
                 log::info!("Rendering page {} ({})", requested_index, index);
@@ -462,10 +455,10 @@ impl Handle {
                         page_text,
                         pbuf_entry,
                         sdoc.image_sites(),
-                        images,
+                        &di.images,
                         *pd,
                         &self.fc,
-                        dfci,
+                        &di.fonts,
                     );
 
                     let blob = self.page_as_blob(&page)?;
@@ -522,9 +515,11 @@ impl Handle {
 
                         self.active = Some(ActiveDocument {
                             sdoc: sdoc.into_owned(),
-                            dfci,
+                            di: DocumentInfo {
+                                fonts: dfci,
+                                images,
+                            },
                             pd,
-                            images,
                         });
                     }
                     _ => warn!("Unknown format: {}", four_cc),
@@ -651,15 +646,7 @@ impl Handle {
         card_subtitle
             .class_list()
             .add_3("card-subtitle", "mb-2", "text-body-secondary")?;
-        card_subtitle.set_text_content(Some(match four_cc {
-            FourCC::SDOC => "Signum! Document",
-            FourCC::ESET => "Signum! Editor Font",
-            FourCC::PS24 => "Signum! 24-Needle Printer Font",
-            FourCC::PS09 => "Signum! 9-Needle Printer Font",
-            FourCC::LS30 => "Signum! Laser Printer Font",
-            FourCC::BIMC => "Signum! Hardcopy Image",
-            _ => "Unknown",
-        }));
+        card_subtitle.set_text_content(Some(four_cc.file_format_name().unwrap_or("Unknown")));
         card_body.append_child(&card_subtitle)?;
         Ok(())
     }

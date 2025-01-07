@@ -2,7 +2,11 @@ use nom_supreme::{
     error::ErrorTree,
     final_parser::{ByteOffset, ExtractContext},
 };
-use signum::nom::{Finish, IResult};
+use signum::{
+    docs::Chunk,
+    nom::{Finish, IResult},
+    util::Buf,
+};
 
 pub(super) fn to_err_tree<'a>(
     original_input: &'a [u8],
@@ -19,5 +23,15 @@ where
     F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,
 {
     let (_, result) = fun(input).finish().map_err(to_err_tree(input))?;
+    Ok(result)
+}
+
+pub(super) fn load_chunk<'a, T: Chunk<'a>>(input: &'a [u8]) -> Result<T, ErrorTree<usize>> {
+    let (rest, result) = T::parse::<ErrorTree<&'a [u8]>>(input)
+        .finish()
+        .map_err(to_err_tree(input))?;
+    if !rest.is_empty() {
+        log::warn!("Unparsed rest after {}: {:#?}", T::TAG, Buf(rest));
+    }
     Ok(result)
 }

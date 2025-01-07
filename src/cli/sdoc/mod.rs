@@ -9,20 +9,19 @@ use signum::{
         UseMatrix,
     },
     docs::{
-        self,
         container::{parse_sdoc0001_container, Chunk},
-        cset,
-        hcim::{parse_hcim, ImageSite},
+        cset::CSet,
+        hcim::{Hcim, ImageSite},
         header::parse_header,
-        pbuf::{self, parse_pbuf},
-        sysp::parse_sysp,
+        pbuf::{self, PBuf},
+        sysp::SysP,
         tebu::{parse_page_text, parse_tebu_header, PageText},
+        DocumentInfo,
     },
     nom::{multi::count, Finish},
     raster::Page,
     util::{Buf, FourCC},
 };
-use util::to_err_tree;
 
 use super::util;
 
@@ -43,11 +42,6 @@ pub struct Document<'a> {
     tebu: Vec<PageText>,
     // hcim
     pub(crate) sites: Vec<ImageSite>,
-}
-
-pub struct DocumentInfo {
-    pub fonts: DocumentFontCacheInfo,
-    pub images: Vec<(String, Page)>,
 }
 
 impl<'a> Document<'a> {
@@ -84,7 +78,7 @@ impl<'a> Document<'a> {
         part: Buf<'_>,
     ) -> eyre::Result<DocumentFontCacheInfo> {
         info!("Loading 'cset' chunk");
-        let charsets = util::load(<cset::CSet as docs::Chunk>::parse, part.0)?;
+        let charsets = util::load_chunk::<CSet>(part.0)?;
         info!("CHSETS: {:?}", charsets.names);
 
         let dfci = futures_lite::future::block_on(fc.load(fs, &charsets));
@@ -93,14 +87,14 @@ impl<'a> Document<'a> {
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
         info!("Loading 'sysp' chunk");
-        let sysp = util::load(parse_sysp, part.0)?;
+        let sysp = util::load_chunk::<SysP>(part.0)?;
         debug!("{:?}", sysp);
         Ok(())
     }
 
     fn process_pbuf(&mut self, part: Buf<'_>) -> eyre::Result<()> {
         info!("Loading 'pbuf' chunk");
-        let pbuf = util::load(parse_pbuf, part.0)?;
+        let pbuf = util::load_chunk::<PBuf>(part.0)?;
 
         debug!(
             "PageBuffer {{ page_count: {}, elem_len: {}, first_page_nr: {} }}",
@@ -136,7 +130,7 @@ impl<'a> Document<'a> {
 
     fn process_hcim(&mut self, part: Buf) -> eyre::Result<Vec<(String, Page)>> {
         info!("Loading 'hcim' chunk");
-        let (rest, hcim) = parse_hcim(part.0).finish().map_err(to_err_tree(part.0))?;
+        let hcim = util::load_chunk::<Hcim>(part.0)?;
 
         let out_img = self.opt.with_images.as_ref();
         if let Some(out_img) = out_img {
@@ -154,10 +148,6 @@ impl<'a> Document<'a> {
         }
 
         self.sites = hcim.sites;
-
-        if !rest.is_empty() {
-            println!("{:#?}", Buf(rest));
-        }
 
         Ok(images)
     }

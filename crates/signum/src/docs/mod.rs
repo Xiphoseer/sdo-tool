@@ -11,7 +11,11 @@ use nom::{
     Finish, IResult,
 };
 
-use crate::util::{Bytes16, Bytes32, FourCC};
+use crate::{
+    chsets::cache::DocumentFontCacheInfo,
+    raster::Page,
+    util::{Bytes16, Bytes32, FourCC},
+};
 use fmt::Debug;
 use std::{borrow::Cow, collections::BTreeMap, fmt};
 
@@ -200,4 +204,12 @@ pub trait Chunk<'a>: Sized {
         let (_, head) = Self::parse::<NomErr<'a>>(input).finish().map_err(map_err)?;
         Ok(head)
     }
+}
+
+/// Information commonly used in preparing document output
+pub struct DocumentInfo {
+    /// Information on how to locate the font information in a [crate::chsets::cache::ChsetCache]
+    pub fonts: DocumentFontCacheInfo,
+    /// Decoded images embedded in the document
+    pub images: Vec<(String, Page)>,
 }
