@@ -213,3 +213,11 @@ pub struct DocumentInfo {
     /// Decoded images embedded in the document
     pub images: Vec<(String, Page)>,
 }
+
+/// Common adjustments to the graphics state for rendering
+pub struct Overrides {
+    /// Horizontal offset for rendering
+    pub xoffset: i32,
+    /// Vertical offset for rendering
+    pub yoffset: i32,
+}

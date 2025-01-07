@@ -112,7 +112,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     // Preprare output
     let mut hnd = Handle::new();
 
-    prepare_meta(&mut hnd, &script.meta)?;
+    prepare_meta(&mut hnd, &script.meta.to_pdf_meta())?;
 
     let mut use_table_vec = UseTableVec::new();
     for (doc, di) in &documents {
@@ -130,8 +130,9 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         hnd.res.fonts.push(font);
     }
 
+    let overrides = script.meta.to_overrides();
     for (doc, di) in &documents {
-        prepare_document(&mut hnd, doc, di, &script.meta, &font_info)?;
+        prepare_document(&mut hnd, doc, di, &overrides, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {

@@ -1,8 +1,9 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromStr};
 
 use pdf_create::high;
+use sdo_pdf::MetaInfo;
 use serde::Deserialize;
-use signum::chsets::FontKind;
+use signum::{chsets::FontKind, docs::Overrides};
 use structopt::StructOpt;
 use thiserror::*;
 
@@ -173,6 +174,39 @@ pub struct Meta {
     #[structopt(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]
     pub subject: Option<String>,
+}
+
+impl Meta {
+    /// Get the [MetaInfo] for PDF generation
+    pub fn pdf_meta_info(&self, file_name: &str) -> MetaInfo {
+        MetaInfo {
+            author: self.title.to_owned(),
+            title: Some(
+                match self.title.as_deref() {
+                    Some(title) => title,
+                    None => file_name,
+                }
+                .to_owned(),
+            ),
+            subject: self.subject.to_owned(),
+        }
+    }
+
+    /// Get the [MetaInfo] for PDF generation
+    pub fn to_pdf_meta(&self) -> MetaInfo {
+        MetaInfo {
+            author: self.title.to_owned(),
+            title: self.title.to_owned(),
+            subject: self.subject.to_owned(),
+        }
+    }
+
+    pub fn to_overrides(&self) -> Overrides {
+        Overrides {
+            xoffset: self.xoffset.unwrap_or(0),
+            yoffset: self.yoffset.unwrap_or(0),
+        }
+    }
 }
 
 fn chsets_path() -> PathBuf {

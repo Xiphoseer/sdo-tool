@@ -1,48 +1,27 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path};
+use std::{collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
-use color_eyre::eyre::{self, eyre};
+use color_eyre::eyre::{self, eyre, OptionExt};
 use log::{debug, info};
 use pdf_create::{
-    chrono::Local,
     common::{
         ColorIs, ColorSpace, ImageMetadata, OutputIntent, OutputIntentSubtype, PdfString, ProcSet,
         Rectangle,
     },
-    encoding::pdf_doc_encode,
     high::{DictResource, Handle, Image, Page, Resource, Resources, XObject},
 };
-use sdo_pdf::{font::Fonts, sdoc::Contents};
-use signum::chsets::{
-    cache::{ChsetCache, FontCacheInfo},
-    FontKind, UseTableVec,
+use sdo_pdf::{font::Fonts, prepare_info, sdoc::Contents, MetaInfo};
+use signum::{
+    chsets::{
+        cache::{ChsetCache, FontCacheInfo},
+        FontKind, UseTableVec,
+    },
+    docs::Overrides,
 };
-
-use crate::cli::opt::Meta;
 
 use super::{Document, DocumentInfo};
 
-pub fn prepare_meta(hnd: &mut Handle, meta: &Meta) -> eyre::Result<()> {
-    // Metadata
-    if let Some(author) = &meta.author {
-        let author = pdf_doc_encode(author)?;
-        hnd.info.author = Some(PdfString::new(author));
-    }
-    if let Some(subject) = &meta.subject {
-        let subject = pdf_doc_encode(subject)?;
-        hnd.info.subject = Some(PdfString::new(subject));
-    }
-    if let Some(title) = &meta.title {
-        let title = pdf_doc_encode(title)?;
-        hnd.info.title = Some(PdfString::new(title));
-    }
-    let creator = pdf_doc_encode("SIGNUM © 1986-93 F. Schmerbeck")?;
-    hnd.info.creator = Some(PdfString::new(creator));
-    let producer = pdf_doc_encode("Signum! Document Toolbox")?;
-    hnd.info.producer = Some(PdfString::new(producer));
-
-    let now = Local::now();
-    hnd.info.creation_date = Some(now);
-    hnd.info.mod_date = Some(now);
+pub fn prepare_meta(hnd: &mut Handle, meta: &MetaInfo) -> eyre::Result<()> {
+    prepare_info(&mut hnd.info, meta)?;
 
     // Output intents
     hnd.output_intents.push(OutputIntent {
@@ -62,7 +41,7 @@ pub fn prepare_document(
     hnd: &mut Handle,
     doc: &Document,
     di: &DocumentInfo,
-    meta: &Meta,
+    meta: &Overrides,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
     let print = &di.fonts;
@@ -153,9 +132,9 @@ pub fn prepare_document(
         let xmargin = (a4_width - width as i32) / 2;
         let ymargin = (a4_height - height) / 2;
 
-        let left = xmargin as f32 + meta.xoffset.unwrap_or(0) as f32;
+        let left = xmargin as f32 + meta.xoffset as f32;
         let left = left - page_info.format.left as f32 * 8.0 / 10.0;
-        let top = ymargin as f32 + meta.yoffset.unwrap_or(0) as f32;
+        let top = ymargin as f32 + meta.yoffset as f32;
         let top = a4_height as f32 - top - 8.0;
         let media_box = Rectangle::media_box(a4_width, a4_height);
 
@@ -225,19 +204,19 @@ pub fn prepare_document(
     Ok(())
 }
 
-fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
+fn doc_meta(doc: &Document) -> eyre::Result<(MetaInfo, Overrides)> {
     let meta = doc.opt.meta()?;
-    if meta.title.is_none() {
-        let mut meta = meta.into_owned();
-        let file_name = doc.opt.file.file_name().unwrap();
-        let title = file_name
-            .to_str()
-            .ok_or_else(|| eyre!("File name contains invalid characters"))?;
-        meta.title = Some(title.to_owned());
-        Ok(Cow::Owned(meta))
-    } else {
-        Ok(meta)
-    }
+    let file_name = doc
+        .opt
+        .file
+        .file_name()
+        .ok_or_eyre("expect file to have name")?;
+    let file_name = file_name
+        .to_str()
+        .ok_or_eyre("File name contains invalid characters")?;
+    let info = meta.pdf_meta_info(file_name);
+    let overrides = meta.to_overrides();
+    Ok((info, overrides))
 }
 
 pub fn process_doc<'a>(
@@ -248,7 +227,7 @@ pub fn process_doc<'a>(
 ) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
-    let meta = doc_meta(doc)?;
+    let (meta, overrides) = doc_meta(doc)?;
     prepare_meta(&mut hnd, &meta)?;
 
     let use_matrix = doc.use_matrix();
@@ -269,7 +248,7 @@ pub fn process_doc<'a>(
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, di, &meta, &font_info)?;
+    prepare_document(&mut hnd, doc, di, &overrides, &font_info)?;
     Ok(hnd)
 }
 
