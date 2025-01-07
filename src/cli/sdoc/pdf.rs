@@ -1,12 +1,17 @@
 use std::{collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre, OptionExt};
-use log::{debug, info};
+use log::info;
 use pdf_create::{
-    common::{OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle},
+    common::{MediaBox, OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle},
     high::{DictResource, Handle, Page, Resource, Resources, XObject},
 };
-use sdo_pdf::{font::Fonts, image_for_site, prepare_info, sdoc::Contents, MetaInfo};
+use sdo_pdf::{
+    font::Fonts,
+    prepare_info,
+    sdoc::{write_pdf_page, Contents},
+    write_pdf_page_images, MetaInfo,
+};
 use signum::{
     chsets::{
         cache::{ChsetCache, FontCacheInfo},
@@ -38,7 +43,7 @@ pub fn prepare_document(
     hnd: &mut Handle,
     doc: &Document,
     di: &DocumentInfo,
-    meta: &Overrides,
+    overrides: &Overrides,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
     let print = &di.fonts;
@@ -73,111 +78,44 @@ pub fn prepare_document(
 
     for page in &doc.tebu {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
-
-        let mut x_objects: DictResource<XObject> = BTreeMap::new();
-        let mut img = vec![];
         let image_sites = &doc.sites[..];
-        for (index, site) in image_sites
-            .iter()
-            .enumerate()
-            .filter(|(_, site)| site.page == page_info.phys_pnr)
-        {
-            let key = format!("I{}", index);
-            debug!(
-                "Adding image from #{} on page {} as /{}",
-                site.img, page_info.log_pnr, &key
-            );
+        let res = &mut hnd.res;
 
-            let image = image_for_site(di, site);
+        let media_box = MediaBox::A4;
+        let mut contents = Contents::for_page(page_info, &media_box, overrides);
 
-            x_objects.insert(key.clone(), hnd.res.push_xobject(image));
-            img.push((site, key));
-        }
+        let mut x_objects = DictResource::<XObject>::new();
 
-        let mut proc_sets = vec![ProcSet::PDF, ProcSet::Text];
-        if !img.is_empty() {
-            proc_sets.push(ProcSet::ImageB);
-        }
+        let has_images = write_pdf_page_images(
+            &mut contents,
+            di,
+            page_info,
+            image_sites,
+            res,
+            &mut x_objects,
+        );
+
+        let proc_sets = {
+            let mut sets = vec![ProcSet::PDF, ProcSet::Text];
+            if has_images {
+                sets.push(ProcSet::ImageB);
+            }
+            sets
+        };
         let resources = Resources {
             fonts: Resource::Global { index: font_dict },
             x_objects: Resource::Immediate(Box::new(x_objects)),
             proc_sets,
         };
 
-        let a4_width = 592;
-        let a4_height = 842;
-
-        let width = page_info.format.width() * 72 / 90;
-        let height = page_info.format.length as i32 * 72 / 54;
-
-        assert!(width as i32 <= a4_width, "Please file a bug!");
-
-        let xmargin = (a4_width - width as i32) / 2;
-        let ymargin = (a4_height - height) / 2;
-
-        let left = xmargin as f32 + meta.xoffset as f32;
-        let left = left - page_info.format.left as f32 * 8.0 / 10.0;
-        let top = ymargin as f32 + meta.yoffset as f32;
-        let top = a4_height as f32 - top - 8.0;
-        let media_box = Rectangle::media_box(a4_width, a4_height);
-
-        let mut contents = Contents::new(top, left);
-
-        for (site, key) in img {
-            contents.image(site, &key).unwrap();
-        }
-
         let mut contents = contents.start_text(1.0, -1.0);
 
-        for (skip, line) in &page.content {
-            contents.next_line(0, *skip as u32 + 1);
-
-            const FONTUNITS_PER_SIGNUM_X: i32 = 800;
-            let mut prev_width = 0;
-            for te in &line.data {
-                let x = te.offset as i32;
-
-                let is_wide = te.style.wide;
-                let is_tall = te.style.tall;
-
-                let font_size = if is_tall { 2 } else { 1 };
-                let font_width = match (is_tall, is_wide) {
-                    (true, true) => 100,
-                    (true, false) => 50,
-                    (false, true) => 200,
-                    (false, false) => 100,
-                };
-
-                contents.cset(te.cset, font_size);
-                contents.fwidth(font_width);
-
-                let mut diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
-                if diff != 0 {
-                    if is_wide {
-                        diff /= 2;
-                    }
-                    contents.xoff(-diff);
-                }
-                contents.byte(te.cval);
-
-                let csu = te.cset as usize;
-                let fi = infos[csu].ok_or_else(|| {
-                    let font_name = print.chsets[csu].name().unwrap_or("");
-                    eyre!("Missing font #{}: {:?}", csu, font_name)
-                })?;
-                prev_width = fi.width(te.cval) as i32;
-                if is_wide {
-                    prev_width *= 2;
-                }
-            }
-
-            contents.flush();
-        }
+        write_pdf_page(&mut contents, print, &infos, page)?;
 
         let contents = contents.into_inner();
 
         let page = Page {
-            media_box,
+            media_box: Rectangle::from(media_box),
             resources,
             contents,
         };

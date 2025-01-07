@@ -277,6 +277,29 @@ impl<P: Default> Default for Point<P> {
     }
 }
 
+/// A media box definition
+#[derive(Debug, Copy, Clone)]
+pub struct MediaBox {
+    /// The width (in millimeters)
+    pub width: i32,
+    /// The height (in millimeters)
+    pub height: i32,
+}
+
+impl MediaBox {
+    /// An A4 Media Box
+    pub const A4: Self = Self {
+        width: 592,
+        height: 842,
+    };
+}
+
+impl From<MediaBox> for Rectangle<i32> {
+    fn from(value: MediaBox) -> Self {
+        Rectangle::media_box(value.width, value.height)
+    }
+}
+
 /// A primitive rectangle
 #[derive(Debug, Copy, Clone)]
 pub struct Rectangle<P> {
@@ -289,7 +312,7 @@ pub struct Rectangle<P> {
 impl Rectangle<i32> {
     /// The media box for A4 Paper (Portrait)
     pub fn a4_media_box() -> Self {
-        Self::media_box(592, 842)
+        Self::from(MediaBox::A4)
     }
 
     /// The media box for A4 Paper (Portrait)

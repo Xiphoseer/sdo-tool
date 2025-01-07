@@ -1,7 +1,12 @@
 use std::io::{self, Write};
 
-use pdf_create::write::write_string;
-use signum::docs::hcim::ImageSite;
+use pdf_create::{common::MediaBox, write::write_string};
+use signum::{
+    chsets::cache::DocumentFontCacheInfo,
+    docs::{hcim::ImageSite, pbuf, tebu::PageText, Overrides},
+};
+
+use crate::font::FontInfo;
 
 /// The `Contents` stream of a PDF
 #[derive(Default)]
@@ -12,6 +17,31 @@ pub struct Contents {
 }
 
 impl Contents {
+    pub fn for_page(
+        page_info: &pbuf::Page,
+        media_box: &MediaBox,
+        overrides: &Overrides,
+    ) -> Contents {
+        let width = page_info.format.width() * 72 / 90;
+        let height = page_info.format.length as i32 * 72 / 54;
+
+        assert!(width as i32 <= media_box.width, "Please file a bug!");
+
+        let xmargin = (media_box.width - width as i32) / 2;
+        let ymargin = (media_box.height - height) / 2;
+
+        let left = {
+            let left = xmargin as f32 + overrides.xoffset as f32;
+            left - page_info.format.left as f32 * 8.0 / 10.0
+        };
+        let top = {
+            let top = ymargin as f32 + overrides.yoffset as f32;
+            media_box.height as f32 - top - 8.0
+        };
+
+        Contents::new(top, left)
+    }
+
     /// Create a new stream
     pub fn new(top: f32, left: f32) -> Self {
         let mut inner = Vec::new();
@@ -77,6 +107,59 @@ pub struct TextContents {
 
     line_y: u32,
     line_x: u32,
+}
+
+pub fn write_pdf_page(
+    contents: &mut TextContents,
+    print: &DocumentFontCacheInfo,
+    infos: &[Option<&FontInfo>; 8],
+    page: &PageText,
+) -> Result<(), crate::Error> {
+    for (skip, line) in &page.content {
+        contents.next_line(0, *skip as u32 + 1);
+
+        const FONTUNITS_PER_SIGNUM_X: i32 = 800;
+        let mut prev_width = 0;
+        for te in &line.data {
+            let x = te.offset as i32;
+
+            let is_wide = te.style.wide;
+            let is_tall = te.style.tall;
+
+            let font_size = if is_tall { 2 } else { 1 };
+            let font_width = match (is_tall, is_wide) {
+                (true, true) => 100,
+                (true, false) => 50,
+                (false, true) => 200,
+                (false, false) => 100,
+            };
+
+            contents.cset(te.cset, font_size);
+            contents.fwidth(font_width);
+
+            let mut diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
+            if diff != 0 {
+                if is_wide {
+                    diff /= 2;
+                }
+                contents.xoff(-diff);
+            }
+            contents.byte(te.cval);
+
+            let csu = te.cset as usize;
+            let fi = infos[csu].ok_or_else(|| {
+                let font_name = print.chsets[csu].name().unwrap_or("");
+                crate::Error::MissingFont(csu, font_name.to_owned())
+            })?;
+            prev_width = fi.width(te.cval) as i32;
+            if is_wide {
+                prev_width *= 2;
+            }
+        }
+
+        contents.flush();
+    }
+    Ok(())
 }
 
 impl TextContents {
