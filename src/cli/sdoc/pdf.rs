@@ -79,36 +79,38 @@ pub fn prepare_document(
 
         let mut x_objects: DictResource<XObject> = BTreeMap::new();
         let mut img = vec![];
-        for (index, site) in doc.sites.iter().enumerate() {
-            if site.page == page_info.phys_pnr {
-                let key = format!("I{}", index);
-                let width = site.sel.w as usize;
-                let height = site.sel.h as usize;
-                //let area = width * height;
+        for (index, site) in doc
+            .sites
+            .iter()
+            .enumerate()
+            .filter(|(_, site)| site.page == page_info.phys_pnr)
+        {
+            let key = format!("I{}", index);
+            let width = site.sel.w as usize;
+            let height = site.sel.h as usize;
+            //let area = width * height;
 
-                let img_num = site.img as usize;
-                let (_, im) = &di.images[img_num];
-                let data = im.select(site.sel);
+            let img_num = site.img as usize;
+            let (_, im) = &di.images[img_num];
+            let data = im.select(site.sel);
 
-                let img_index = hnd.res.x_objects.len();
-                hnd.res.x_objects.push(XObject::Image(Image {
-                    meta: ImageMetadata {
-                        width,
-                        height,
-                        color_space: ColorSpace::DeviceGray,
-                        bits_per_component: 1,
-                        image_mask: true,
-                        decode: ColorIs::One,
-                    },
-                    data,
-                }));
-                debug!(
-                    "Adding image from #{} on page {} as /{}",
-                    img_num, page_info.log_pnr, &key
-                );
-                x_objects.insert(key.clone(), Resource::Global { index: img_index });
-                img.push((site, key));
-            }
+            let img_index = hnd.res.push_xobject(Image {
+                meta: ImageMetadata {
+                    width,
+                    height,
+                    color_space: ColorSpace::DeviceGray,
+                    bits_per_component: 1,
+                    image_mask: true,
+                    decode: ColorIs::One,
+                },
+                data,
+            });
+            debug!(
+                "Adding image from #{} on page {} as /{}",
+                img_num, page_info.log_pnr, &key
+            );
+            x_objects.insert(key.clone(), Resource::Global { index: img_index });
+            img.push((site, key));
         }
 
         let mut proc_sets = vec![ProcSet::PDF, ProcSet::Text];

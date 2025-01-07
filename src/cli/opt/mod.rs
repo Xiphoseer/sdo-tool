@@ -180,7 +180,7 @@ impl Meta {
     /// Get the [MetaInfo] for PDF generation
     pub fn pdf_meta_info(&self, file_name: &str) -> MetaInfo {
         MetaInfo {
-            author: self.title.to_owned(),
+            author: self.author.to_owned(),
             title: Some(
                 match self.title.as_deref() {
                     Some(title) => title,

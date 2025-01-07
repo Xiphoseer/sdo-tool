@@ -221,6 +221,12 @@ pub struct Image {
     pub data: Vec<u8>,
 }
 
+impl From<Image> for XObject {
+    fn from(value: Image) -> Self {
+        XObject::Image(value)
+    }
+}
+
 /// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
 /// A referenced or immediate dict of resources
@@ -260,6 +266,15 @@ pub struct Res<'a> {
     pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
+}
+
+impl Res<'_> {
+    /// Push an XObject, returning the index it was pushed at
+    pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> usize {
+        let index = self.x_objects.len();
+        self.x_objects.push(value.into());
+        index
+    }
 }
 
 /// Entrypoint to the high-level API
