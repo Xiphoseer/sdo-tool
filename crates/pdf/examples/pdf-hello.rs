@@ -22,13 +22,13 @@ pub fn main() -> eyre::Result<()> {
     doc.res.fonts.push(Font::Type3(Type3Font::default()));
 
     let mut fonts = BTreeMap::new();
-    fonts.insert(String::from("CSET0"), Resource::Global { index: 0 });
-    fonts.insert(String::from("CSET1"), Resource::Global { index: 1 });
+    fonts.insert(String::from("CSET0"), Resource::global(0));
+    fonts.insert(String::from("CSET1"), Resource::global(1));
 
     doc.res.font_dicts.push(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::global(0),
         ..Default::default()
     };
 

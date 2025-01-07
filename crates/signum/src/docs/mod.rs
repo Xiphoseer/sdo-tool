@@ -234,3 +234,11 @@ pub struct Overrides {
     /// Vertical offset for rendering
     pub yoffset: i32,
 }
+
+/// Trait for providing document context to a generator
+pub trait GenerationContext {
+    /// Get a slice of all image sites (from hcim)
+    fn image_sites(&self) -> &[ImageSite];
+    /// Get the document information
+    fn document_info(&self) -> &DocumentInfo;
+}

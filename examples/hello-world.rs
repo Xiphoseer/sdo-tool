@@ -54,13 +54,13 @@ pub fn main() -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
     if let Some(font) = type3_font(Some(&efont), &pfont, &use_table, None, None) {
         doc.res.fonts.push(Font::Type3(font));
-        fonts.insert(String::from("C0"), Resource::Global { index: 0 });
+        fonts.insert(String::from("C0"), Resource::global(0));
     }
 
     doc.res.font_dicts.push(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::global(0),
         ..Default::default()
     };
 

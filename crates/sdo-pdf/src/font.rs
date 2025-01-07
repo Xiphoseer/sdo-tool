@@ -6,12 +6,12 @@ use std::{
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
     common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet, StreamMetadata},
-    high::{Ascii85Stream, Font, Type3Font},
+    high::{Ascii85Stream, DictResource, Font, Resource, Type3Font},
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::chsets::{
-    cache::ChsetCache,
+    cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
     editor::ESet,
     encoding::Mapping,
     printer::{PSet, PSetChar, PrinterKind},
@@ -316,4 +316,32 @@ impl Fonts {
         }
         result
     }
+}
+
+pub const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+
+pub fn font_dict<'a>(
+    font_info: &'a Fonts,
+    print: &DocumentFontCacheInfo,
+) -> (DictResource<Font<'static>>, [Option<&'a FontInfo>; 8]) {
+    let mut infos = [None; 8];
+    let mut dict = DictResource::new();
+    for (cset, info) in print
+        .chsets
+        .iter()
+        .map(FontCacheInfo::index)
+        .enumerate()
+        .filter_map(|(cset, fc_index)| {
+            fc_index
+                .and_then(|fc_index| font_info.get(fc_index))
+                .map(|info| (cset, info))
+        })
+    {
+        dict.insert(
+            FONTS[cset].to_owned(),
+            Resource::global(font_info.index(info)),
+        );
+        infos[cset] = Some(info);
+    }
+    (dict, infos)
 }

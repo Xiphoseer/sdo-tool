@@ -1,6 +1,6 @@
 //! High-Level API
 
-use std::{borrow::Cow, io};
+use std::{borrow::Cow, io, marker::PhantomData};
 
 use chrono::{DateTime, Local};
 use io::Write;
@@ -139,21 +139,43 @@ pub enum Destination {
     PageFitH(usize, usize),
 }
 
+/// This struct represents a global resource
+#[derive(Debug, Copy, Clone)]
+pub struct GlobalResource<T> {
+    /// The index into the global list
+    pub(crate) index: usize,
+    /// Marker for contained T
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<T> From<GlobalResource<T>> for Resource<T> {
+    fn from(value: GlobalResource<T>) -> Self {
+        Resource::Global(value)
+    }
+}
+
 /// This enum represents a resource of type T for use in a dictionary.
 ///
 /// It does not implement serialize, because it's possible that an index needs to be resolved
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Resource<T> {
     /// Use the resource at {index} from the global list
-    Global {
-        /// The index into the global list
-        index: usize,
-    },
+    Global(GlobalResource<T>),
     /// Use the value in the box
     Immediate(Box<T>),
 }
 
-#[derive(Debug)]
+impl<T> Resource<T> {
+    /// New global resource reference with the given index
+    pub fn global(index: usize) -> Self {
+        Self::Global(GlobalResource {
+            index,
+            _phantom: PhantomData,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 /// A type 3 font
 pub struct Type3Font<'a> {
     /// The name of the font
@@ -198,7 +220,7 @@ impl Default for Type3Font<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A Font resource
 pub enum Font<'a> {
     /// A type 3 font i.e. arbitrary glyph drawings
@@ -268,12 +290,28 @@ pub struct Res<'a> {
     pub encodings: Vec<Encoding<'a>>,
 }
 
-impl Res<'_> {
+impl<'a> Res<'a> {
     /// Push an XObject, returning the index it was pushed at
-    pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> Resource<XObject> {
+    pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> GlobalResource<XObject> {
         let index = self.x_objects.len();
         self.x_objects.push(value.into());
-        Resource::Global { index }
+        GlobalResource {
+            index,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Push a font dictionary, returning the index it was pushed at
+    pub fn push_font_dict(
+        &mut self,
+        value: DictResource<Font<'a>>,
+    ) -> GlobalResource<DictResource<Font<'static>>> {
+        let index = self.font_dicts.len();
+        self.font_dicts.push(value);
+        GlobalResource {
+            index,
+            _phantom: PhantomData,
+        }
     }
 }
 

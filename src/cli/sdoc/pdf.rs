@@ -1,23 +1,20 @@
-use std::{collections::BTreeMap, fs::File, io::BufWriter, path::Path};
+use std::{fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre, OptionExt};
 use log::info;
 use pdf_create::{
-    common::{MediaBox, OutputIntent, OutputIntentSubtype, PdfString, ProcSet, Rectangle},
-    high::{DictResource, Handle, Page, Resource, Resources, XObject},
+    common::{OutputIntent, OutputIntentSubtype, PdfString},
+    high::Handle,
 };
 use sdo_pdf::{
-    font::Fonts,
+    font::{font_dict, Fonts},
     prepare_info,
-    sdoc::{write_pdf_page, Contents},
-    write_pdf_page_images, MetaInfo,
+    sdoc::generate_pdf_page,
+    MetaInfo,
 };
 use signum::{
-    chsets::{
-        cache::{ChsetCache, FontCacheInfo},
-        FontKind, UseTableVec,
-    },
-    docs::Overrides,
+    chsets::{cache::ChsetCache, FontKind, UseTableVec},
+    docs::{hcim::ImageSite, GenerationContext, Overrides},
 };
 
 use super::{Document, DocumentInfo};
@@ -37,7 +34,20 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &MetaInfo) -> eyre::Result<()> {
     Ok(())
 }
 
-const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+struct GenCtx<'a> {
+    di: &'a DocumentInfo,
+    image_sites: &'a [ImageSite],
+}
+
+impl GenerationContext for GenCtx<'_> {
+    fn image_sites(&self) -> &[ImageSite] {
+        self.image_sites
+    }
+
+    fn document_info(&self) -> &DocumentInfo {
+        self.di
+    }
+}
 
 pub fn prepare_document(
     hnd: &mut Handle,
@@ -46,79 +56,28 @@ pub fn prepare_document(
     overrides: &Overrides,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
-    let print = &di.fonts;
-    let mut fonts = BTreeMap::new();
-    let mut infos = [None; 8];
-    for (cset, info) in print
-        .chsets
-        .iter()
-        .map(FontCacheInfo::index)
-        .enumerate()
-        .filter_map(|(cset, fc_index)| {
-            fc_index
-                .and_then(|fc_index| font_info.get(fc_index))
-                .map(|info| (cset, info))
-        })
-    {
-        fonts.insert(
-            FONTS[cset].to_owned(),
-            Resource::Global {
-                index: font_info.index(info),
-            },
-        );
-        infos[cset] = Some(info);
-    }
+    let gc = GenCtx {
+        di,
+        image_sites: &doc.sites[..],
+    };
 
-    let font_dict = hnd.res.font_dicts.len();
-    hnd.res.font_dicts.push(fonts);
+    let (fonts, infos) = font_dict(font_info, &di.fonts);
 
-    // PDF uses a unit length of 1/72 1/(18*4) of an inch by default
-    //
-    // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
+    let font_dict = hnd.res.push_font_dict(fonts);
 
     for page in &doc.tebu {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
-        let image_sites = &doc.sites[..];
         let res = &mut hnd.res;
 
-        let media_box = MediaBox::A4;
-        let mut contents = Contents::for_page(page_info, &media_box, overrides);
-
-        let mut x_objects = DictResource::<XObject>::new();
-
-        let has_images = write_pdf_page_images(
-            &mut contents,
-            di,
+        let page = generate_pdf_page(
+            &gc,
+            overrides,
+            &infos,
+            font_dict.clone(),
+            page,
             page_info,
-            image_sites,
             res,
-            &mut x_objects,
-        );
-
-        let proc_sets = {
-            let mut sets = vec![ProcSet::PDF, ProcSet::Text];
-            if has_images {
-                sets.push(ProcSet::ImageB);
-            }
-            sets
-        };
-        let resources = Resources {
-            fonts: Resource::Global { index: font_dict },
-            x_objects: Resource::Immediate(Box::new(x_objects)),
-            proc_sets,
-        };
-
-        let mut contents = contents.start_text(1.0, -1.0);
-
-        write_pdf_page(&mut contents, print, &infos, page)?;
-
-        let contents = contents.into_inner();
-
-        let page = Page {
-            media_box: Rectangle::from(media_box),
-            resources,
-            contents,
-        };
+        )?;
         hnd.pages.push(page);
     }
 

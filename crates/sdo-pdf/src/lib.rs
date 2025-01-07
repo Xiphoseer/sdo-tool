@@ -6,7 +6,6 @@ pub mod sdoc;
 
 use core::fmt;
 
-pub use image::write_pdf_page_images;
 pub use info::{prepare_info, MetaInfo};
 
 #[derive(Debug)]

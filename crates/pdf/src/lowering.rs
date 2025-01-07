@@ -3,17 +3,11 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
-    common::Encoding,
-    common::{ObjRef, StreamMetadata},
-    high::Ascii85Stream,
-    high::Destination,
-    high::DictResource,
-    high::Font,
-    high::Handle,
-    high::OutlineItem,
-    high::ResDictRes,
-    high::Resource,
-    high::XObject,
+    common::{Encoding, ObjRef, StreamMetadata},
+    high::{
+        Ascii85Stream, Destination, DictResource, Font, GlobalResource, Handle, OutlineItem,
+        ResDictRes, Resource, XObject,
+    },
     low,
     util::NextId,
 };
@@ -240,7 +234,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
         id_gen: &mut NextId,
     ) -> low::ResDictRes<T::Lower> {
         match res {
-            Resource::Global { index } => {
+            Resource::Global(GlobalResource { index, .. }) => {
                 if let Some((r, _)) = self.store.get(index) {
                     low::Resource::Ref(*r)
                 } else if let Some(font_dict) = self.res.get(*index) {
@@ -277,7 +271,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
         id_gen: &mut NextId,
     ) -> low::Resource<T::Lower> {
         match res {
-            Resource::Global { index } => {
+            Resource::Global(GlobalResource { index, .. }) => {
                 if let Some((r, _)) = self.store.get(index) {
                     low::Resource::Ref(*r)
                 } else if let Some(val) = self.res.get(*index) {
