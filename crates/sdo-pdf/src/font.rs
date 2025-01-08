@@ -320,28 +320,27 @@ impl Fonts {
 
 pub const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 
-pub fn font_dict<'a>(
-    font_info: &'a Fonts,
-    print: &DocumentFontCacheInfo,
-) -> (DictResource<Font<'static>>, [Option<&'a FontInfo>; 8]) {
-    let mut infos = [None; 8];
-    let mut dict = DictResource::new();
-    for (cset, info) in print
-        .chsets
-        .iter()
-        .map(FontCacheInfo::index)
-        .enumerate()
-        .filter_map(|(cset, fc_index)| {
-            fc_index
-                .and_then(|fc_index| font_info.get(fc_index))
-                .map(|info| (cset, info))
-        })
-    {
-        dict.insert(
-            FONTS[cset].to_owned(),
-            Resource::global(font_info.index(info)),
-        );
-        infos[cset] = Some(info);
+impl Fonts {
+    pub fn font_dict<'a>(
+        &'a self,
+        print: &DocumentFontCacheInfo,
+    ) -> (DictResource<Font<'static>>, [Option<&'a FontInfo>; 8]) {
+        let mut infos = [None; 8];
+        let mut dict = DictResource::new();
+        for (cset, info) in print
+            .chsets
+            .iter()
+            .map(FontCacheInfo::index)
+            .enumerate()
+            .filter_map(|(cset, fc_index)| {
+                fc_index
+                    .and_then(|fc_index| self.get(fc_index))
+                    .map(|info| (cset, info))
+            })
+        {
+            dict.insert(FONTS[cset].to_owned(), Resource::global(self.index(info)));
+            infos[cset] = Some(info);
+        }
+        (dict, infos)
     }
-    (dict, infos)
 }

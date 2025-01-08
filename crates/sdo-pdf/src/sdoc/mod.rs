@@ -1,6 +1,6 @@
 use pdf_create::{
     common::{MediaBox, ProcSet, Rectangle},
-    high::{DictResource, Font, GlobalResource, Page, Res, Resource, Resources, XObject},
+    high::{DictResource, Font, GlobalResource, Handle, Page, Res, Resource, Resources, XObject},
 };
 use signum::{
     chsets::cache::DocumentFontCacheInfo,
@@ -16,7 +16,10 @@ mod text;
 use contents::Contents;
 use text::TextContents;
 
-use crate::{font::FontInfo, image::image_for_site};
+use crate::{
+    font::{FontInfo, Fonts},
+    image::image_for_site,
+};
 
 /// Write the text for a PDF page
 fn write_pdf_page_text(
@@ -140,4 +143,32 @@ pub fn generate_pdf_page<GC: GenerationContext>(
         resources,
         contents,
     })
+}
+
+pub fn generate_pdf_pages<GC: GenerationContext>(
+    gc: &GC,
+    hnd: &mut Handle,
+    overrides: &Overrides,
+    font_info: &Fonts,
+) -> Result<(), crate::Error> {
+    let res = &mut hnd.res;
+    let pages = &mut hnd.pages;
+
+    let (fonts, infos) = font_info.font_dict(gc.fonts());
+    let font_dict = res.push_font_dict(fonts);
+    for page in gc.text_pages() {
+        let page_info = gc.page_at(page.index as usize).unwrap();
+
+        let page = generate_pdf_page(
+            gc,
+            overrides,
+            &infos,
+            font_dict.clone(),
+            page,
+            page_info,
+            res,
+        )?;
+        pages.push(page);
+    }
+    Ok(())
 }

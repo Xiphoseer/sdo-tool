@@ -6,15 +6,10 @@ use pdf_create::{
     common::{OutputIntent, OutputIntentSubtype, PdfString},
     high::Handle,
 };
-use sdo_pdf::{
-    font::{font_dict, Fonts},
-    prepare_info,
-    sdoc::generate_pdf_page,
-    MetaInfo,
-};
+use sdo_pdf::{font::Fonts, prepare_info, sdoc::generate_pdf_pages, MetaInfo};
 use signum::{
     chsets::{cache::ChsetCache, FontKind, UseTableVec},
-    docs::{hcim::ImageSite, GenerationContext, Overrides},
+    docs::{hcim::ImageSite, pbuf, tebu::PageText, GenerationContext, Overrides},
 };
 
 use super::{Document, DocumentInfo};
@@ -37,6 +32,19 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &MetaInfo) -> eyre::Result<()> {
 struct GenCtx<'a> {
     di: &'a DocumentInfo,
     image_sites: &'a [ImageSite],
+    text_pages: &'a [PageText],
+    pages: &'a [Option<pbuf::Page>],
+}
+
+impl<'a> GenCtx<'a> {
+    fn new(doc: &'a Document<'_>, di: &'a DocumentInfo) -> Self {
+        Self {
+            di,
+            image_sites: &doc.sites[..],
+            text_pages: &doc.tebu[..],
+            pages: &doc.pages[..],
+        }
+    }
 }
 
 impl GenerationContext for GenCtx<'_> {
@@ -47,6 +55,14 @@ impl GenerationContext for GenCtx<'_> {
     fn document_info(&self) -> &DocumentInfo {
         self.di
     }
+
+    fn text_pages(&self) -> &[PageText] {
+        self.text_pages
+    }
+
+    fn page_at(&self, index: usize) -> Option<&pbuf::Page> {
+        self.pages[index].as_ref()
+    }
 }
 
 pub fn prepare_document(
@@ -56,30 +72,9 @@ pub fn prepare_document(
     overrides: &Overrides,
     font_info: &Fonts,
 ) -> eyre::Result<()> {
-    let gc = GenCtx {
-        di,
-        image_sites: &doc.sites[..],
-    };
+    let gc = GenCtx::new(doc, di);
 
-    let (fonts, infos) = font_dict(font_info, &di.fonts);
-
-    let font_dict = hnd.res.push_font_dict(fonts);
-
-    for page in &doc.tebu {
-        let page_info = doc.pages[page.index as usize].as_ref().unwrap();
-        let res = &mut hnd.res;
-
-        let page = generate_pdf_page(
-            &gc,
-            overrides,
-            &infos,
-            font_dict.clone(),
-            page,
-            page_info,
-            res,
-        )?;
-        hnd.pages.push(page);
-    }
+    generate_pdf_pages(&gc, hnd, overrides, font_info)?;
 
     Ok(())
 }

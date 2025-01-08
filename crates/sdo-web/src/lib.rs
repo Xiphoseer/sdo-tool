@@ -18,8 +18,10 @@ use signum::{
     docs::{
         container::parse_sdoc0001_container,
         four_cc,
-        hcim::{parse_image, Hcim},
-        header, DocumentInfo, SDoc,
+        hcim::{parse_image, Hcim, ImageSite},
+        header, pbuf,
+        tebu::PageText,
+        DocumentInfo, GenerationContext, SDoc,
     },
     raster::{self, render_doc_page, render_editor_text},
     util::FourCC,
@@ -103,6 +105,24 @@ pub struct ActiveDocument {
     sdoc: SDoc<'static>,
     di: DocumentInfo,
     pd: FontKind,
+}
+
+impl GenerationContext for ActiveDocument {
+    fn image_sites(&self) -> &[ImageSite] {
+        self.sdoc.image_sites()
+    }
+
+    fn document_info(&self) -> &DocumentInfo {
+        &self.di
+    }
+
+    fn text_pages(&self) -> &[PageText] {
+        &self.sdoc.tebu.pages
+    }
+
+    fn page_at(&self, index: usize) -> Option<&pbuf::Page> {
+        self.sdoc.pbuf.page_at(index)
+    }
 }
 
 #[wasm_bindgen]

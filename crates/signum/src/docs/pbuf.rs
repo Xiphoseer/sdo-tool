@@ -47,6 +47,11 @@ impl PBuf<'_> {
             pages,
         }
     }
+
+    /// Get a specific page
+    pub fn page_at(&self, index: usize) -> Option<&Page> {
+        self.pages[index].as_ref().map(|(p, _)| p)
+    }
 }
 
 #[derive(Debug, Serialize)]

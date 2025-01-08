@@ -10,6 +10,7 @@ use nom::{
     number::complete::{be_u16, be_u32, le_u32},
     Finish, IResult,
 };
+use tebu::PageText;
 
 use crate::{
     chsets::cache::DocumentFontCacheInfo,
@@ -241,4 +242,15 @@ pub trait GenerationContext {
     fn image_sites(&self) -> &[ImageSite];
     /// Get the document information
     fn document_info(&self) -> &DocumentInfo;
+
+    /// Get the text pages
+    fn text_pages(&self) -> &[PageText];
+
+    /// Get a specific page buffer page
+    fn page_at(&self, index: usize) -> Option<&pbuf::Page>;
+
+    /// Get the document font-cache info
+    fn fonts(&self) -> &DocumentFontCacheInfo {
+        &self.document_info().fonts
+    }
 }
