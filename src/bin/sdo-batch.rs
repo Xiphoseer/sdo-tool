@@ -11,7 +11,7 @@ use pdf_create::{
     encoding::pdf_doc_encode,
     high::{self, Handle},
 };
-use sdo_pdf::font::Fonts;
+use sdo_pdf::{font::Fonts, sdoc::generate_pdf_pages};
 use signum::chsets::{
     cache::{ChsetCache, LocalFS},
     printer::PrinterKind,
@@ -20,8 +20,11 @@ use signum::chsets::{
 use structopt::StructOpt;
 
 use sdo_tool::cli::{
-    opt::DocScript, opt::Format, opt::Meta, opt::Options, opt::OutlineItem, sdoc::pdf::handle_out,
-    sdoc::pdf::prepare_document, sdoc::pdf::prepare_meta, sdoc::Document,
+    opt::{DocScript, Format, Meta, Options, OutlineItem},
+    sdoc::{
+        pdf::{handle_out, prepare_meta, GenCtx},
+        Document,
+    },
 };
 
 #[derive(StructOpt, Debug)]
@@ -116,8 +119,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     let mut use_table_vec = UseTableVec::new();
     for (doc, di) in &documents {
-        let use_matrix = doc.use_matrix();
-        use_table_vec.append(&di.fonts.chsets, use_matrix);
+        let use_matrix = doc.text_buffer().use_matrix();
+        use_table_vec.append(&di.fonts, use_matrix);
     }
 
     // FIXME: Auto-Detect from font cache
@@ -132,7 +135,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     let overrides = script.meta.to_overrides();
     for (doc, di) in &documents {
-        prepare_document(&mut hnd, doc, di, &overrides, &font_info)?;
+        let gc = GenCtx::new(doc, di);
+        generate_pdf_pages(&gc, &mut hnd, &overrides, &font_info)?;
     }
 
     for (key, value) in &script.page_labels {

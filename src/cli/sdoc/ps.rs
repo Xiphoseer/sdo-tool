@@ -42,7 +42,7 @@ fn output_ps_writer(
     pw.write_meta("EndProcSet")?;
     pw.name(DICT)?;
 
-    let use_matrix = doc.use_matrix();
+    let use_matrix = doc.tebu.use_matrix();
 
     pw.begin(|pw| {
         pw.isize(39158280)?;
@@ -120,7 +120,7 @@ fn output_ps_writer(
     let meta = &doc.opt.meta()?;
     let x_offset = meta.xoffset.unwrap_or(0);
 
-    for (index, page) in doc.tebu.iter().enumerate() {
+    for (index, page) in doc.tebu.pages.iter().enumerate() {
         let page_info = doc.pages[page.index as usize].as_ref().unwrap();
         let page_comment = format!("{} {}", page_info.log_pnr, page_info.phys_pnr);
         pw.write_meta_field("Page", &page_comment)?;

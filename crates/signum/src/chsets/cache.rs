@@ -479,7 +479,7 @@ pub struct DocumentFontCacheInfo {
     all_p09: bool,
 
     /// Character sets used by this document
-    pub chsets: [FontCacheInfo; 8],
+    chsets: [FontCacheInfo; 8],
 }
 
 impl DocumentFontCacheInfo {
@@ -561,5 +561,15 @@ impl DocumentFontCacheInfo {
         self.chsets[cset as usize]
             .index
             .and_then(|index| fc.cset(index))
+    }
+
+    /// Get the [FontCacheInfo] by (document) index
+    pub fn font_cache_info_at(&self, cset: usize) -> Option<&FontCacheInfo> {
+        self.chsets.get(cset)
+    }
+
+    /// Get all [FontCacheInfo]s
+    pub fn font_cache_info(&self) -> &[FontCacheInfo; 8] {
+        &self.chsets
     }
 }

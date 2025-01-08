@@ -230,7 +230,7 @@ pub fn output_console(
 ) -> eyre::Result<()> {
     print_pages(&doc.pages[..]);
 
-    for page_text in &doc.tebu {
+    for page_text in &doc.tebu.pages {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
         println!(

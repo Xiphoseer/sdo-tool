@@ -8,7 +8,7 @@ use pdf_create::{
 };
 use sdo_pdf::{font::Fonts, prepare_info, sdoc::generate_pdf_pages, MetaInfo};
 use signum::{
-    chsets::{cache::ChsetCache, FontKind, UseTableVec},
+    chsets::{cache::ChsetCache, FontKind, UseMatrix, UseTableVec},
     docs::{hcim::ImageSite, pbuf, tebu::PageText, GenerationContext, Overrides},
 };
 
@@ -29,7 +29,7 @@ pub fn prepare_meta(hnd: &mut Handle, meta: &MetaInfo) -> eyre::Result<()> {
     Ok(())
 }
 
-struct GenCtx<'a> {
+pub struct GenCtx<'a> {
     di: &'a DocumentInfo,
     image_sites: &'a [ImageSite],
     text_pages: &'a [PageText],
@@ -37,11 +37,11 @@ struct GenCtx<'a> {
 }
 
 impl<'a> GenCtx<'a> {
-    fn new(doc: &'a Document<'_>, di: &'a DocumentInfo) -> Self {
+    pub fn new(doc: &'a Document<'_>, di: &'a DocumentInfo) -> Self {
         Self {
             di,
             image_sites: &doc.sites[..],
-            text_pages: &doc.tebu[..],
+            text_pages: doc.text_pages(),
             pages: &doc.pages[..],
         }
     }
@@ -65,20 +65,6 @@ impl GenerationContext for GenCtx<'_> {
     }
 }
 
-pub fn prepare_document(
-    hnd: &mut Handle,
-    doc: &Document,
-    di: &DocumentInfo,
-    overrides: &Overrides,
-    font_info: &Fonts,
-) -> eyre::Result<()> {
-    let gc = GenCtx::new(doc, di);
-
-    generate_pdf_pages(&gc, hnd, overrides, font_info)?;
-
-    Ok(())
-}
-
 fn doc_meta(doc: &Document) -> eyre::Result<(MetaInfo, Overrides)> {
     let meta = doc.opt.meta()?;
     let file_name = doc
@@ -100,14 +86,14 @@ pub fn process_doc<'a>(
     di: &DocumentInfo,
     pd: Option<FontKind>,
 ) -> eyre::Result<Handle<'a>> {
-    let mut hnd = Handle::new();
-
     let (meta, overrides) = doc_meta(doc)?;
+    let gc = GenCtx::new(doc, di);
+
+    let mut hnd = Handle::new();
     prepare_meta(&mut hnd, &meta)?;
 
-    let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
-    use_table_vec.append(&di.fonts.chsets, use_matrix);
+    use_table_vec.append(gc.fonts(), UseMatrix::from(gc.text_pages()));
 
     let pd = pd.ok_or_else(|| eyre!("No printer type selected"))?;
 
@@ -123,7 +109,8 @@ pub fn process_doc<'a>(
         hnd.res.fonts.push(font);
     }
 
-    prepare_document(&mut hnd, doc, di, &overrides, &font_info)?;
+    generate_pdf_pages(&gc, &mut hnd, &overrides, &font_info)?;
+
     Ok(hnd)
 }
 

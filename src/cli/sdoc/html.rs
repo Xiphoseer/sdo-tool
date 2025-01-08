@@ -245,7 +245,7 @@ impl<'a> HtmlGen<'a> {
     }
 
     fn body(&mut self) -> fmt::Result {
-        for page_text in &self.doc.tebu {
+        for page_text in &self.doc.tebu.pages {
             let index = page_text.index as usize;
             let pbuf_entry = self.doc.pages[index].as_ref().unwrap();
             writeln!(

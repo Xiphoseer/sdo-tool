@@ -2,12 +2,8 @@ use crate::cli::opt::{Format, Options};
 use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use log::{debug, error, info};
-use nom_supreme::error::ErrorTree;
 use signum::{
-    chsets::{
-        cache::{ChsetCache, DocumentFontCacheInfo, LocalFS, VFS},
-        UseMatrix,
-    },
+    chsets::cache::{ChsetCache, DocumentFontCacheInfo, LocalFS, VFS},
     docs::{
         container::{parse_sdoc0001_container, Chunk},
         cset::CSet,
@@ -15,10 +11,10 @@ use signum::{
         header::parse_header,
         pbuf::{self, PBuf},
         sysp::SysP,
-        tebu::{parse_page_text, parse_tebu_header, PageText},
+        tebu::{PageText, TeBu},
         DocumentInfo,
     },
-    nom::{multi::count, Finish},
+    nom::Finish,
     raster::Page,
     util::{Buf, FourCC},
 };
@@ -39,36 +35,24 @@ pub struct Document<'a> {
     pages: Vec<Option<pbuf::Page>>,
     page_count: usize,
     // tebu
-    tebu: Vec<PageText>,
+    pub(crate) tebu: TeBu,
     // hcim
     pub(crate) sites: Vec<ImageSite>,
 }
 
 impl<'a> Document<'a> {
-    pub fn use_matrix(&self) -> UseMatrix {
-        let mut use_matrix = UseMatrix::new();
-
-        for page in &self.tebu {
-            for (_, line) in &page.content {
-                for tw in &line.data {
-                    let cval = tw.cval as usize;
-                    let cset = tw.cset as usize;
-                    use_matrix.csets[cset].chars[cval] += 1;
-                }
-            }
-        }
-
-        use_matrix
-    }
-
     pub fn new(opt: &'a Options) -> Self {
         Document {
             opt,
             pages: vec![],
             page_count: 0,
-            tebu: vec![],
+            tebu: TeBu::default(),
             sites: vec![],
         }
+    }
+
+    pub fn text_pages(&self) -> &[PageText] {
+        &self.tebu.pages
     }
 
     fn process_cset<FS: VFS>(
@@ -111,19 +95,7 @@ impl<'a> Document<'a> {
 
     fn process_tebu(&mut self, part: Buf) -> eyre::Result<()> {
         info!("Loading 'tebu' chunk");
-        let (rest, tebu_header) = parse_tebu_header::<ErrorTree<&[u8]>>(part.0).unwrap();
-        debug!("{:?}", tebu_header);
-
-        let (rest, tebu) = match count(parse_page_text::<ErrorTree<&[u8]>>, self.page_count)(rest) {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(eyre!("Failed to process pages: {}", e));
-            }
-        };
-        self.tebu = tebu;
-        if !rest.is_empty() {
-            debug!("rest(tebu): {:#?}", Buf(rest));
-        }
+        self.tebu = util::load_chunk::<TeBu>(part.0)?;
         info!("Loaded text for {} page(s)!", self.page_count);
         Ok(())
     }
@@ -220,6 +192,10 @@ impl<'a> Document<'a> {
 
         let fonts = dfci.ok_or_else(|| eyre!("Document has no CSET chunk"))?;
         Ok(DocumentInfo::new(fonts, images))
+    }
+
+    pub fn text_buffer(&self) -> &TeBu {
+        &self.tebu
     }
 }
 

@@ -25,7 +25,7 @@ pub fn output_print(
 
     let pd = pd.ok_or_else(|| eyre!("Print driver not set!"))?;
 
-    for page_text in &doc.tebu {
+    for page_text in &doc.tebu.pages {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
         println!("{}", page_text.skip);

@@ -11,7 +11,7 @@ use nom::{
 };
 use serde::Serialize;
 
-use crate::util::FourCC;
+use crate::{chsets::UseMatrix, util::FourCC};
 
 use super::bytes16;
 
@@ -48,7 +48,7 @@ pub struct Char {
 }
 
 /// The text buffer header
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct TextBufferHeader {
     /// The total number of lines in the buffer
     pub lines_total: u32,
@@ -69,7 +69,7 @@ pub fn parse_tebu_header<'a, E: ParseError<&'a [u8]>>(
 }
 
 /// The text buffer
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct TeBu {
     /// The header of the buffer
     pub header: TextBufferHeader,
@@ -77,6 +77,25 @@ pub struct TeBu {
     ///
     /// A line is a sequence of characters in the same vertical position
     pub pages: Vec<PageText>,
+}
+
+impl TeBu {
+    /// Return a [UseMatrix] for all pages in this text buffer chunk
+    pub fn use_matrix(&self) -> UseMatrix {
+        let mut use_matrix = UseMatrix::new();
+
+        for page in &self.pages {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    let cval = tw.cval as usize;
+                    let cset = tw.cset as usize;
+                    use_matrix.csets[cset].chars[cval] += 1;
+                }
+            }
+        }
+
+        use_matrix
+    }
 }
 
 #[derive(Clone)]
@@ -304,6 +323,24 @@ pub struct PageText {
     pub rskip: u16,
     /// The content
     pub content: Vec<(u16, Line)>,
+}
+
+impl From<&[PageText]> for UseMatrix {
+    fn from(value: &[PageText]) -> Self {
+        let mut use_matrix = UseMatrix::new();
+
+        for page in value {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    let cval = tw.cval as usize;
+                    let cset = tw.cset as usize;
+                    use_matrix.csets[cset].chars[cval] += 1;
+                }
+            }
+        }
+
+        use_matrix
+    }
 }
 
 /// Parse the text of an entire page

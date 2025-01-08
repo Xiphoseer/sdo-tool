@@ -278,6 +278,10 @@ impl Fonts {
         self.info[fc_index].as_ref()
     }
 
+    pub fn info<'a>(&'a self, fci: &FontCacheInfo) -> Option<&'a FontInfo> {
+        fci.index().and_then(|fc_index| self.get(fc_index))
+    }
+
     pub fn new(fonts_capacity: usize, base: usize) -> Self {
         Fonts {
             info: Vec::with_capacity(fonts_capacity),
@@ -328,15 +332,10 @@ impl Fonts {
         let mut infos = [None; 8];
         let mut dict = DictResource::new();
         for (cset, info) in print
-            .chsets
+            .font_cache_info()
             .iter()
-            .map(FontCacheInfo::index)
             .enumerate()
-            .filter_map(|(cset, fc_index)| {
-                fc_index
-                    .and_then(|fc_index| self.get(fc_index))
-                    .map(|info| (cset, info))
-            })
+            .filter_map(|(cset, fci)| self.info(fci).map(|info| (cset, info)))
         {
             dict.insert(FONTS[cset].to_owned(), Resource::global(self.index(info)));
             infos[cset] = Some(info);

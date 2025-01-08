@@ -3,7 +3,7 @@ use pdf_create::{
     high::{DictResource, Font, GlobalResource, Handle, Page, Res, Resource, Resources, XObject},
 };
 use signum::{
-    chsets::cache::DocumentFontCacheInfo,
+    chsets::cache::{DocumentFontCacheInfo, FontCacheInfo},
     docs::{
         pbuf,
         tebu::{self, PageText},
@@ -61,7 +61,10 @@ fn write_pdf_page_text(
 
             let csu = te.cset as usize;
             let fi = infos[csu].ok_or_else(|| {
-                let font_name = print.chsets[csu].name().unwrap_or("");
+                let font_name = print
+                    .font_cache_info_at(csu)
+                    .and_then(FontCacheInfo::name)
+                    .unwrap_or("");
                 crate::Error::MissingFont(csu, font_name.to_owned())
             })?;
             prev_width = fi.width(te.cval) as i32;
