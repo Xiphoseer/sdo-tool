@@ -1,7 +1,7 @@
 use js_sys::{ArrayBuffer, Function, Reflect, Symbol, Uint8Array};
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::FileSystemFileHandle;
+use web_sys::{FileList, FileSystemFileHandle, HtmlInputElement};
 
 pub(crate) async fn fs_file_handle_get_file(
     file_handle: &FileSystemFileHandle,
@@ -22,6 +22,23 @@ pub(crate) async fn js_file_array_buffer(file: &web_sys::File) -> Result<ArrayBu
         .await?
         .unchecked_into::<ArrayBuffer>();
     Ok(array_buffer)
+}
+
+/// Return the [FileList] for the given input element
+pub(crate) fn js_input_file_list(input: &HtmlInputElement) -> Result<FileList, JsValue> {
+    let files = input
+        .files()
+        .ok_or_else(|| JsError::new("Not a file input"))?;
+    Ok(files)
+}
+
+/// Return an iterator over the [web_sys::File]s in the given input element
+pub(crate) fn js_input_files_iter(
+    input: &HtmlInputElement,
+) -> Result<impl Iterator<Item = Result<web_sys::File, JsValue>>, JsValue> {
+    let files = js_input_file_list(input)?;
+    let file_iter = js_sys::try_iter(&files)?.ok_or_else(|| JsError::new("Not a file iterator"))?;
+    Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
 }
 
 pub(crate) fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterator>, JsValue> {

@@ -1,8 +1,9 @@
 #![allow(non_snake_case)] // wasm_bindgen macro
 
 use bstr::BStr;
-use glue::js_file_data;
-use image::ImageOutputFormat;
+use convert::page_as_blob;
+use dom::blob_image_el;
+use glue::{js_file_data, js_input_files_iter};
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
@@ -23,16 +24,18 @@ use signum::{
     raster::{self, render_doc_page, render_editor_text},
     util::FourCC,
 };
-use std::{ffi::OsStr, fmt::Write, io::Cursor};
+use std::{ffi::OsStr, fmt::Write};
 use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    console, window, Blob, BlobPropertyBag, CanvasRenderingContext2d, Document, Element, Event,
-    FileList, FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
-    HtmlCanvasElement, HtmlElement, HtmlImageElement, HtmlInputElement, ImageBitmap, Url,
+    console, window, Blob, CanvasRenderingContext2d, Document, Element, Event,
+    FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
+    HtmlCanvasElement, HtmlElement, HtmlInputElement, ImageBitmap,
 };
 
+mod convert;
+mod dom;
 mod glue;
 mod vfs;
 
@@ -169,28 +172,6 @@ impl Handle {
         Ok(())
     }
 
-    fn page_as_blob(&self, page: &raster::Page) -> Result<Blob, JsValue> {
-        let mut buffer = Cursor::new(Vec::<u8>::new());
-        page.to_alpha_image()
-            .write_to(&mut buffer, ImageOutputFormat::Png)
-            .unwrap();
-        Blob::new_with_u8_array_sequence_and_options(
-            &Array::from_iter([Uint8Array::from(buffer.get_ref().as_slice())]),
-            &{
-                let bag = BlobPropertyBag::new();
-                bag.set_type("image/png");
-                bag
-            },
-        )
-    }
-
-    fn blob_image_el(blob: &Blob) -> Result<HtmlImageElement, JsValue> {
-        let url = Url::create_object_url_with_blob(blob)?;
-        let el_image = HtmlImageElement::new()?;
-        el_image.set_src(&url);
-        Ok(el_image)
-    }
-
     fn _write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
         let el_hcim = self.document.create_element("section")?;
         let heading = self.document.create_element("h3")?;
@@ -199,10 +180,10 @@ impl Handle {
         for (i, im) in hcim.images.iter().enumerate() {
             match parse_image(im) {
                 Ok((_rest, image)) => {
-                    let blob = self.page_as_blob(&image.image.into())?;
+                    let blob = page_as_blob(&image.image.into())?;
 
                     let el_figure = self.document.create_element("figure")?;
-                    let el_image = Self::blob_image_el(&blob)?;
+                    let el_image = blob_image_el(&blob)?;
                     el_figure.append_child(&el_image)?;
 
                     let el_figcaption = self.document.create_element("figcaption")?;
@@ -276,11 +257,11 @@ impl Handle {
             .or(Err("Failed to draw Keyboard Map"))?;
         let np_img = NP_DRAW.to_page(eset).or(Err("Failed to draw Numpad Map"))?;
 
-        let kb_blob = self.page_as_blob(&kb_img)?;
-        let np_blob = self.page_as_blob(&np_img)?;
+        let kb_blob = page_as_blob(&kb_img)?;
+        let np_blob = page_as_blob(&np_img)?;
 
-        let kb_img_el = Self::blob_image_el(&kb_blob)?;
-        let np_img_el = Self::blob_image_el(&np_blob)?;
+        let kb_img_el = blob_image_el(&kb_blob)?;
+        let np_img_el = blob_image_el(&np_blob)?;
 
         self.output.append_child(&kb_img_el)?;
         self.output.append_child(&np_img_el)?;
@@ -317,8 +298,8 @@ impl Handle {
                         el_tr.append_child(&el_td)?;
                         if c.height > 0 {
                             let page = raster::Page::from(c);
-                            let blob = self.page_as_blob(&page)?;
-                            let img_el = Self::blob_image_el(&blob)?;
+                            let blob = page_as_blob(&page)?;
+                            let img_el = blob_image_el(&blob)?;
                             el_td.append_child(&img_el)?;
                         }
                     }
@@ -326,7 +307,7 @@ impl Handle {
 
                 let char_capital_a = &pset.chars[b'A' as usize];
                 let page = raster::Page::from(char_capital_a);
-                let blob = self.page_as_blob(&page)?;
+                let blob = page_as_blob(&page)?;
 
                 let window = window().ok_or("expected window")?;
                 let _p = window.create_image_bitmap_with_blob(&blob)?;
@@ -387,29 +368,11 @@ impl Handle {
         Ok(())
     }
 
-    fn input_file_list(&self) -> Result<FileList, JsValue> {
-        let files = self
-            .input
-            .files()
-            .ok_or_else(|| JsError::new("Not a file input"))?;
-        Ok(files)
-    }
-
-    fn input_files(&self) -> Result<impl Iterator<Item = Result<web_sys::File, JsValue>>, JsValue> {
-        let files = self.input_file_list()?;
-        let file_iter =
-            js_sys::try_iter(&files)?.ok_or_else(|| JsError::new("Not a file iterator"))?;
-        Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
-    }
-
     fn input_file(&self, name: &str) -> Result<web_sys::File, JsValue> {
-        let iter = self.input_files()?;
-        for file in iter.flatten() {
-            if file.name() == name {
-                return Ok(file);
-            }
-        }
-        Err(JsError::new("File not found").into())
+        js_input_files_iter(&self.input)?
+            .flatten()
+            .find(|file| file.name() == name)
+            .ok_or_else(|| JsError::new("File not found").into())
     }
 
     #[wasm_bindgen(js_name = addToCollection)]
@@ -419,7 +382,7 @@ impl Handle {
         let chset_dir = self.fs.chset_dir().await?;
         let opts = FileSystemGetFileOptions::new();
         opts.set_create(true);
-        for file in self.input_files()? {
+        for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let data = js_file_data(&file).await?;
 
@@ -460,7 +423,7 @@ impl Handle {
                         &self.fc,
                     );
 
-                    let blob = self.page_as_blob(&page)?;
+                    let blob = page_as_blob(&page)?;
                     Ok(blob)
                 } else {
                     warn!("Missing page {index}");
@@ -567,7 +530,7 @@ impl Handle {
     #[wasm_bindgen]
     pub async fn on_change(&mut self) -> Result<(), JsValue> {
         self.reset()?;
-        for file in self.input_files()? {
+        for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let arr = js_file_data(&file).await?;
             self.stage(&file.name(), arr).await?;
@@ -657,8 +620,8 @@ impl Handle {
         let text = BStr::new(chset.as_bytes());
         let page = render_editor_text(text, eset)
             .map_err(|_| JsError::new("Failed to render editor font name"))?;
-        let blob = self.page_as_blob(&page)?;
-        let img = Self::blob_image_el(&blob)?;
+        let blob = page_as_blob(&page)?;
+        let img = blob_image_el(&blob)?;
         list_item.append_child(&img)?;
         Ok(())
     }
