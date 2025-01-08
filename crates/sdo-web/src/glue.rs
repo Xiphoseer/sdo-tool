@@ -1,7 +1,7 @@
-use js_sys::{ArrayBuffer, Function, Reflect, Symbol, Uint8Array};
+use js_sys::{Array, ArrayBuffer, Function, Reflect, Symbol, Uint8Array};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{FileList, FileSystemFileHandle, HtmlInputElement};
+use web_sys::{Blob, BlobPropertyBag, FileList, FileSystemFileHandle, HtmlInputElement};
 
 pub(crate) async fn fs_file_handle_get_file(
     file_handle: &FileSystemFileHandle,
@@ -56,4 +56,14 @@ pub(crate) fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterat
     };
 
     Ok(Some(it))
+}
+
+pub(crate) fn slice_to_blob(bytes: &[u8], mime_type: &str) -> Result<Blob, JsValue> {
+    // SAFETY: the UInt8Array is used to initialize the blob but does not leave this function
+    let parts = Array::from_iter([unsafe { Uint8Array::view(bytes) }]);
+    Blob::new_with_u8_array_sequence_and_options(&parts, &{
+        let bag = BlobPropertyBag::new();
+        bag.set_type(mime_type);
+        bag
+    })
 }

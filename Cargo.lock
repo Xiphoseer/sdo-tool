@@ -1105,6 +1105,7 @@ dependencies = [
  "image",
  "js-sys",
  "log",
+ "sdo-pdf",
  "sdo-util",
  "serde-wasm-bindgen",
  "signum",

@@ -4,6 +4,7 @@ use pdf_create::encoding::{pdf_doc_encode, PDFDocEncodingError};
 use pdf_create::high::{Handle, Info};
 
 /// Information to add into the PDF `/Info` dictionary
+#[derive(Debug, Clone, Default)]
 pub struct MetaInfo {
     /// Title
     pub title: Option<String>,

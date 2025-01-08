@@ -17,12 +17,12 @@ pub fn render_editor_text(text: &BStr, eset: &ESet) -> Result<Page, DrawPrintErr
             }
         })
         .sum::<u32>()
-        + 8;
-    let mut x = 4;
-    let mut page = Page::new(width, 24);
+        + 12;
+    let mut x = 6;
+    let mut page = Page::new(width, 30);
     for ci in text.iter() {
         if let Some(ch) = eset.chars.get(*ci as usize) {
-            page.draw_echar(x, 0, ch)?;
+            page.draw_echar(x, 2, ch)?;
             x += u16::from(ch.width) + 1;
         } else {
             x += 16;

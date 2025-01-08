@@ -7,6 +7,11 @@ async function run() {
     const paginationEl = document.getElementById("pagination");
     const progressEl = document.getElementById("progress");
     const inputField = document.getElementById("upload");
+
+    // Buttons
+    const addToCollectionBtn = document.getElementById('add-to-collection');
+    const exportToPdfBtn = document.getElementById('export-to-pdf');
+
     const h = new Handle(outputEl, inputField);
     await h.init();
 
@@ -49,10 +54,17 @@ async function run() {
         await h.addToCollection();
     }
 
-    const addToCollectionBtn = document.getElementById("add-to-collection");
-    addToCollectionBtn.addEventListener('click', (event) => {
-        addToCollection();
-    });
+    async function exportToPdf() {
+        return await h.exportToPdf();
+    }
+
+    addToCollectionBtn.addEventListener('click', addToCollection);
+    exportToPdfBtn.addEventListener('click', (_event) => exportToPdf().then(pdf => {
+        const url = URL.createObjectURL(pdf);
+        window.open(url);
+        //console.log(pdf);
+        
+    }).catch(console.error));
 
     let pages = [];
     let pageCount = 0;

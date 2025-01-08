@@ -1,11 +1,12 @@
 #![allow(non_snake_case)] // wasm_bindgen macro
 
 use bstr::BStr;
-use convert::page_as_blob;
+use convert::page_to_blob;
 use dom::blob_image_el;
-use glue::{js_file_data, js_input_files_iter};
+use glue::{js_file_data, js_input_files_iter, slice_to_blob};
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
+use sdo_pdf::{generate_pdf, MetaInfo};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
@@ -21,12 +22,12 @@ use signum::{
         hcim::{parse_image, Hcim, ImageSite},
         header, pbuf,
         tebu::PageText,
-        DocumentInfo, GenerationContext, SDoc,
+        DocumentInfo, GenerationContext, Overrides, SDoc,
     },
     raster::{self, render_doc_page, render_editor_text},
     util::FourCC,
 };
-use std::{ffi::OsStr, fmt::Write};
+use std::{ffi::OsStr, fmt::Write, io::BufWriter};
 use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -200,7 +201,7 @@ impl Handle {
         for (i, im) in hcim.images.iter().enumerate() {
             match parse_image(im) {
                 Ok((_rest, image)) => {
-                    let blob = page_as_blob(&image.image.into())?;
+                    let blob = page_to_blob(&image.image.into())?;
 
                     let el_figure = self.document.create_element("figure")?;
                     let el_image = blob_image_el(&blob)?;
@@ -277,8 +278,8 @@ impl Handle {
             .or(Err("Failed to draw Keyboard Map"))?;
         let np_img = NP_DRAW.to_page(eset).or(Err("Failed to draw Numpad Map"))?;
 
-        let kb_blob = page_as_blob(&kb_img)?;
-        let np_blob = page_as_blob(&np_img)?;
+        let kb_blob = page_to_blob(&kb_img)?;
+        let np_blob = page_to_blob(&np_img)?;
 
         let kb_img_el = blob_image_el(&kb_blob)?;
         let np_img_el = blob_image_el(&np_blob)?;
@@ -289,12 +290,8 @@ impl Handle {
     }
 
     fn parse_eset<'a>(&self, data: &'a [u8]) -> Result<ESet<'a>, JsValue> {
-        log::info!("Signum Editor Bitmap Font");
         match parse_eset(data) {
-            Ok((_, eset)) => {
-                log::info!("Parsed Editor Font");
-                Ok(eset)
-            }
+            Ok((_, eset)) => Ok(eset),
             Err(e) => {
                 log::error!("Failed to parse editor font: {}", e);
                 Err(JsError::new("Failed to parse editor font").into())
@@ -318,7 +315,7 @@ impl Handle {
                         el_tr.append_child(&el_td)?;
                         if c.height > 0 {
                             let page = raster::Page::from(c);
-                            let blob = page_as_blob(&page)?;
+                            let blob = page_to_blob(&page)?;
                             let img_el = blob_image_el(&blob)?;
                             el_td.append_child(&img_el)?;
                         }
@@ -327,7 +324,7 @@ impl Handle {
 
                 let char_capital_a = &pset.chars[b'A' as usize];
                 let page = raster::Page::from(char_capital_a);
-                let blob = page_as_blob(&page)?;
+                let blob = page_to_blob(&page)?;
 
                 let window = window().ok_or("expected window")?;
                 let _p = window.create_image_bitmap_with_blob(&blob)?;
@@ -385,6 +382,7 @@ impl Handle {
     #[wasm_bindgen]
     pub fn reset(&mut self) -> Result<(), JsValue> {
         self.output.set_inner_html("");
+        self.active = None;
         Ok(())
     }
 
@@ -422,9 +420,36 @@ impl Handle {
                 .unchecked_into::<FileSystemWritableFileStream>();
             let o = JsFuture::from(w.write_with_buffer_source(&data)?).await?;
             assert_eq!(o, JsValue::UNDEFINED);
+            let o = JsFuture::from(w.close()).await?;
+            assert_eq!(o, JsValue::UNDEFINED);
             console::info_3(&"Added".into(), &name.into(), &"to collection!".into());
         }
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = exportToPdf)]
+    pub async fn export_to_pdf(&mut self) -> Result<Blob, JsError> {
+        let active_doc = self
+            .active
+            .as_ref()
+            .ok_or_else(|| JsError::new("no active document"))?;
+        let overrides = Overrides {
+            xoffset: 0,
+            yoffset: 0,
+        };
+        let meta = MetaInfo::default();
+        let pk = match active_doc.pd {
+            FontKind::Editor => Err(JsError::new("editor font not supported")),
+            FontKind::Printer(printer_kind) => Ok(printer_kind),
+        }?;
+        let pdf = generate_pdf(&self.fc, pk, &meta, &overrides, active_doc)?;
+        let vec = Vec::new();
+        let mut writer = BufWriter::new(vec);
+        pdf.write(&mut writer)?;
+        let bytes = writer.into_inner()?;
+        let blob = slice_to_blob(&bytes, "application/pdf")
+            .map_err(|_v| JsError::new("failed to create pdf blob"))?;
+        Ok(blob)
     }
 
     #[wasm_bindgen]
@@ -443,7 +468,7 @@ impl Handle {
                         &self.fc,
                     );
 
-                    let blob = page_as_blob(&page)?;
+                    let blob = page_to_blob(&page)?;
                     Ok(blob)
                 } else {
                     warn!("Missing page {index}");
@@ -471,8 +496,7 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
-        self.output.set_inner_html("");
-        self.active = None;
+        self.reset()?;
         if let Some(rest) = fragment.strip_prefix("#/staged/") {
             let heading = self.document.create_element("h2")?;
             heading.set_text_content(Some(rest));
@@ -485,6 +509,7 @@ impl Handle {
                 match four_cc {
                     FourCC::SDOC => {
                         let sdoc = self.parse_sdoc(&data)?;
+                        self.fc.reset();
                         let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
                         let pd = dfci
                             .print_driver(None)
@@ -520,7 +545,8 @@ impl Handle {
         let file = self.fs.open_dir_entry(entry).await?;
         let data = js_file_data(&file).await?.to_vec();
 
-        let (_, four_cc) = four_cc(&data).map_err(JsError::from)?;
+        let (_, four_cc) = four_cc(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
+        info!("Loading {} ({})", name, four_cc);
         let href = format!("#/CHSETS/{}", name);
         let card = self.card(name, four_cc, &href)?;
         if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
@@ -540,16 +566,18 @@ impl Handle {
             let entry = next?;
             if self.fs.is_file_entry(&entry) {
                 if let Err(e) = self.list_chset_entry(&entry).await {
-                    console::log_1(&e);
+                    let path = entry.path();
+                    let path = path.to_string_lossy();
+                    console::log_2(&JsValue::from_str(&path), &e);
                 }
             }
         }
+        info!("Done listing charsets");
         Ok(())
     }
 
     #[wasm_bindgen]
     pub async fn on_change(&mut self) -> Result<(), JsValue> {
-        self.reset()?;
         for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let arr = js_file_data(&file).await?;
@@ -581,6 +609,7 @@ impl Handle {
                 self.sdoc_card(card, &doc).await?;
             }
             FourCC::ESET => {
+                log::info!("{}: Signum Editor Bitmap Font", name);
                 let eset = self.parse_eset(data)?;
                 self.eset_card(card, &eset, name)?;
             }
@@ -638,9 +667,11 @@ impl Handle {
     ) -> Result<(), JsValue> {
         let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
         let text = BStr::new(chset.as_bytes());
-        let page = render_editor_text(text, eset)
-            .map_err(|_| JsError::new("Failed to render editor font name"))?;
-        let blob = page_as_blob(&page)?;
+        let page = render_editor_text(text, eset).map_err(|v| {
+            let err = format!("Failed to render editor font name: {}", v);
+            JsError::new(&err)
+        })?;
+        let blob = page_to_blob(&page)?;
         let img = blob_image_el(&blob)?;
         list_item.append_child(&img)?;
         Ok(())
