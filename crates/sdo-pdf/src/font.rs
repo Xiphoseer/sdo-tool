@@ -10,12 +10,15 @@ use pdf_create::{
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
-use signum::chsets::{
-    cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
-    editor::ESet,
-    encoding::Mapping,
-    printer::{PSet, PSetChar, PrinterKind},
-    UseTable, UseTableVec,
+use signum::{
+    chsets::{
+        cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
+        editor::ESet,
+        encoding::Mapping,
+        printer::{PSet, PSetChar, PrinterKind},
+        UseMatrix, UseTable, UseTableVec,
+    },
+    docs::GenerationContext,
 };
 
 use crate::cmap::write_cmap;
@@ -342,4 +345,24 @@ impl Fonts {
         }
         (dict, infos)
     }
+}
+
+pub fn prepare_pdf_fonts<'f, GC: GenerationContext>(
+    fonts: &mut Vec<Font<'f>>,
+    gc: &GC,
+    fc: &'f ChsetCache,
+    pk: PrinterKind,
+) -> Fonts {
+    let use_table_vec = {
+        let mut v = UseTableVec::new();
+        v.append(gc.fonts(), UseMatrix::from(gc.text_pages()));
+        v
+    };
+
+    let mut font_info = Fonts::new(8, fonts.len());
+    // FIXME: is base correct?
+    for font in font_info.make_fonts(fc, use_table_vec, pk) {
+        fonts.push(font);
+    }
+    font_info
 }

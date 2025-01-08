@@ -1,7 +1,7 @@
 use pdf_create::chrono::Local;
-use pdf_create::common::PdfString;
+use pdf_create::common::{OutputIntent, OutputIntentSubtype, PdfString};
 use pdf_create::encoding::{pdf_doc_encode, PDFDocEncodingError};
-use pdf_create::high::Info;
+use pdf_create::high::{Handle, Info};
 
 /// Information to add into the PDF `/Info` dictionary
 pub struct MetaInfo {
@@ -33,5 +33,17 @@ pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodi
     let now = Local::now();
     info.creation_date = Some(now);
     info.mod_date = Some(now);
+    Ok(())
+}
+
+pub fn prepare_pdfa_output_intent(hnd: &mut Handle) -> crate::Result<()> {
+    // Output intents
+    hnd.output_intents.push(OutputIntent {
+        subtype: OutputIntentSubtype::GTS_PDFA1,
+        output_condition: None,
+        output_condition_identifier: PdfString::new("FOO"),
+        registry_name: None,
+        info: None,
+    });
     Ok(())
 }

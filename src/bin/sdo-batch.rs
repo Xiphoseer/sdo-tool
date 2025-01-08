@@ -11,7 +11,9 @@ use pdf_create::{
     encoding::pdf_doc_encode,
     high::{self, Handle},
 };
-use sdo_pdf::{font::Fonts, sdoc::generate_pdf_pages};
+use sdo_pdf::{
+    font::Fonts, prepare_info, prepare_pdfa_output_intent, sdoc::generate_pdf_pages, Pdf,
+};
 use signum::chsets::{
     cache::{ChsetCache, LocalFS},
     printer::PrinterKind,
@@ -22,7 +24,7 @@ use structopt::StructOpt;
 use sdo_tool::cli::{
     opt::{DocScript, Format, Meta, Options, OutlineItem},
     sdoc::{
-        pdf::{handle_out, prepare_meta, GenCtx},
+        pdf::{handle_out, GenCtx},
         Document,
     },
 };
@@ -115,7 +117,8 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     // Preprare output
     let mut hnd = Handle::new();
 
-    prepare_meta(&mut hnd, &script.meta.to_pdf_meta())?;
+    prepare_info(&mut hnd.info, &script.meta.to_pdf_meta())?;
+    prepare_pdfa_output_intent(&mut hnd)?;
 
     let mut use_table_vec = UseTableVec::new();
     for (doc, di) in &documents {
@@ -153,7 +156,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     hnd.outline.children = map_outline_items(&script.outline)?;
 
-    handle_out(Some(&opt.out), &opt.file, hnd)?;
+    handle_out(Some(&opt.out), &opt.file, Pdf::from_raw(hnd))?;
     Ok(())
 }
 
