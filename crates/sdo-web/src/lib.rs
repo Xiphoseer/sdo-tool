@@ -576,7 +576,7 @@ impl Handle {
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = onChange)]
     pub async fn on_change(&mut self) -> Result<(), JsValue> {
         for file in js_input_files_iter(&self.input)? {
             let file = file?;

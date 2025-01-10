@@ -49,11 +49,12 @@ async function run() {
     }
     */
 
-
-    inputField.addEventListener('change', (event) => {
+    async function onInputFieldChange(_event) {
         window.location.hash = '';
-        h.on_change();
-    });
+        await h.onChange().catch(onError);
+    }
+
+    inputField.addEventListener('change', onInputFieldChange);
 
     async function addToCollection() {
         await h.addToCollection();
@@ -67,9 +68,7 @@ async function run() {
     exportToPdfBtn.addEventListener('click', (_event) => exportToPdf().then(pdf => {
         const url = URL.createObjectURL(pdf);
         window.open(url);
-        //console.log(pdf);
-        
-    }).catch(console.error));
+    }).catch(onError));
 
     let pages = [];
     let pageCount = 0;
