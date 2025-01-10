@@ -1,5 +1,10 @@
 import init, { Handle } from './pkg/sdo_web.js';
 
+function onError(e) {
+    console.error(e);
+    alert(e instanceof Error ? `ERROR ${e.name}: ${e.message}` : e);
+}
+
 async function run() {
     await init();
 
@@ -13,7 +18,7 @@ async function run() {
     const exportToPdfBtn = document.getElementById('export-to-pdf');
 
     const h = new Handle(outputEl, inputField);
-    await h.init();
+    await h.init().catch(onError);
 
     /*async function uploadFile(file) {
     const buf = await file.arrayBuffer();
@@ -196,12 +201,13 @@ async function run() {
     async function onHashChange(hash) {
         handle(hash)
     }
-    // Init
-    handle(decodeURIComponent(window.location.hash));
 
     addEventListener('hashchange', (event) => {
         onHashChange(decodeURIComponent(new URL(event.newURL).hash))
     })
+
+    // Init
+    await handle(decodeURIComponent(window.location.hash)).catch(onError);
 }
 
 run();
