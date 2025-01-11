@@ -3,7 +3,9 @@
 use bstr::BStr;
 use convert::page_to_blob;
 use dom::blob_image_el;
-use glue::{js_error_with_cause, js_file_data, js_input_files_iter, slice_to_blob};
+use glue::{
+    js_error_with_cause, js_file_data, js_input_file_list, js_input_files_iter, slice_to_blob,
+};
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
 use sdo_pdf::{generate_pdf, MetaInfo};
@@ -13,7 +15,7 @@ use signum::{
         cache::{AsyncIterator, ChsetCache, VfsDirEntry, VFS},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
-        printer::{parse_ps24, PSet},
+        printer::{parse_ps24, PSet, PrinterKind},
         FontKind,
     },
     docs::{
@@ -34,7 +36,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     console, window, Blob, CanvasRenderingContext2d, Document, Element, Event,
     FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
-    HtmlCanvasElement, HtmlElement, HtmlInputElement, ImageBitmap,
+    HtmlAnchorElement, HtmlCanvasElement, HtmlElement, HtmlInputElement, ImageBitmap,
 };
 
 mod convert;
@@ -499,9 +501,15 @@ impl Handle {
                     let sdoc = self.parse_sdoc(&data)?;
                     self.fc.reset();
                     let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
-                    let pd = dfci
-                        .print_driver(None)
-                        .ok_or(JsError::new("No print driver available"))?;
+                    let pd = match dfci.print_driver(None) {
+                        Some(pd) => pd,
+                        None => {
+                            log::warn!(
+                                "Could not auto-select a font format, some fonts are not available"
+                            );
+                            FontKind::Printer(PrinterKind::Needle24)
+                        }
+                    };
                     let images = sdoc
                         .hcim
                         .as_ref()
@@ -538,7 +546,17 @@ impl Handle {
         ));
         container.append_child(&p)?;
 
-        // <button class="btn btn-primary btn-lg" type="button">Example button</button>
+        let file_list = js_input_file_list(&self.input)?;
+        if file_list.length() > 0 {
+            let button = self
+                .document
+                .create_element("a")?
+                .unchecked_into::<HtmlAnchorElement>();
+            button.class_list().add_3("btn", "btn-primary", "btn-lg")?;
+            button.set_href("#/staged/");
+            button.set_text_content(Some("See staged files"));
+            container.append_child(&button)?;
+        }
 
         node.append_child(&container)?;
         self.output.append_child(&node)?;
