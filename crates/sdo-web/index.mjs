@@ -98,12 +98,14 @@ async function run() {
         setProgress((index + 1) / pageCount * 100);
         if (blob) {
             pages.push(blob);
+            updatePagination();
             if (index == 0) {
                 append(blob, index);
             }
             console.log("Finished page", index);
         } else {
             pages.push(undefined);
+            updatePagination();
             console.log("Empty page", index);
         }
         const nextIndex = index + 1;
@@ -119,8 +121,28 @@ async function run() {
         await renderOne(0);
     }
 
+    function updatePagination() {
+        const prev = document.getElementById('page-prev');
+        const next = document.getElementById('page-next');
+
+        // check with the real number of rendered pages
+        if (currentPage + 1 < pages.length) {
+            next.classList.remove("disabled");
+        } else {
+            next.classList.add("disabled");
+        }
+
+        if (currentPage > 0) {
+            prev.classList.remove("disabled");
+        } else {
+            prev.classList.add("disabled");
+        }
+    }
+
     async function selectPage(index) {
         const blob = pages[index];
+        currentPage = index;
+        updatePagination();
         if (blob) {
             updatePageListItem(blob, pageIndicatorText(index));
         }
@@ -134,13 +156,11 @@ async function run() {
     }
 
     function onPrev(event) {
-        //console.log(event);
         event.preventDefault();
         selectPage(--currentPage);
     }
 
     function onNext(event) {
-        //console.log(event);
         event.preventDefault();
         selectPage(++currentPage);
     }
@@ -150,8 +170,10 @@ async function run() {
 
         // Previous
         const prev = document.createElement("li");
+        prev.id = "page-prev";
         prev.classList.add("page-item");
         const prevLink = document.createElement("a");
+        prevLink.id = "prev-link";
         prevLink.text = "Previous";
         prevLink.href = "#";
         prevLink.classList.add("page-link");
@@ -161,8 +183,10 @@ async function run() {
 
         // Next
         const next = document.createElement("li");
+        next.id = "page-next";
         next.classList.add("page-item");
         const nextLink = document.createElement("a");
+        nextLink.id = "next-link";
         nextLink.text = "Next";
         nextLink.href = "#";
         nextLink.classList.add("page-link");
