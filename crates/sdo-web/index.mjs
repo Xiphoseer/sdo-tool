@@ -18,11 +18,22 @@ async function run() {
     const exportToPdfBtn = document.getElementById('export-to-pdf');
     const fontCollectionLink = document.getElementById('font-collection-link');
 
-    const bsOffcanvas = new bootstrap.Offcanvas('#offcanvas');
+    //const bsOffcanvas = new bootstrap.Offcanvas('#offcanvas');
 
-    fontCollectionLink.addEventListener('click', (_event) => {
-        bsOffcanvas.hide();
-    });
+    /*fontCollectionLink.addEventListener('click', (_event) => {
+        //bsOffcanvas.hide();
+    });*/
+
+    const navLinks = document.querySelectorAll('.nav-item, .navbar-brand')
+    const menuToggle = document.getElementById('navbarNav')
+    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(menuToggle, {toggle: false})
+    navLinks.forEach((l) => {
+        l.addEventListener('click', () => { 
+            if (menuToggle.classList.contains('show')) {
+                bsCollapse.toggle()
+            }
+        })
+    })
 
     const h = new Handle(outputEl, inputField);
     await h.init().catch(onError);
