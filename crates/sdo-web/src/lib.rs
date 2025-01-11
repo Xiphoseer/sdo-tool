@@ -15,7 +15,7 @@ use signum::{
         cache::{AsyncIterator, ChsetCache, VfsDirEntry, VFS},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
-        printer::{parse_ps24, PSet, PrinterKind},
+        printer::{parse_pset, PSet, PrinterKind},
         FontKind,
     },
     docs::{
@@ -297,9 +297,9 @@ impl Handle {
         Ok(eset)
     }
 
-    fn parse_ps24<'a>(&mut self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
-        let (_, pset) = parse_ps24(data)
-            .map_err(|e| js_error_with_cause(e, "Failed to parse printer font (24-needle)"))?;
+    fn parse_pset<'a>(&mut self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
+        let (_, pset) =
+            parse_pset(data).map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
         Ok(pset)
     }
 
@@ -659,10 +659,10 @@ impl Handle {
                 log::info!("{name}: Parsed editor font");
                 self.eset_card(card, &eset, name)?;
             }
-            FourCC::PS24 => {
-                log::info!("{name}: Signum 24-Needle Printer Bitmap Font");
-                let pset = self.parse_ps24(data)?;
-                log::info!("{name}: Parsed printer font (24 needle)");
+            FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => {
+                log::info!("{name}: {}", four_cc.file_format_name().unwrap());
+                let pset = self.parse_pset(data)?;
+                log::info!("{name}: Parsed printer font");
                 self.pset_card(card, &pset, name)?;
             }
             k => {
