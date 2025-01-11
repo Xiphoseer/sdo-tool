@@ -18,12 +18,6 @@ async function run() {
     const exportToPdfBtn = document.getElementById('export-to-pdf');
     const fontCollectionLink = document.getElementById('font-collection-link');
 
-    //const bsOffcanvas = new bootstrap.Offcanvas('#offcanvas');
-
-    /*fontCollectionLink.addEventListener('click', (_event) => {
-        //bsOffcanvas.hide();
-    });*/
-
     const navLinks = document.querySelectorAll('.nav-item, .navbar-brand')
     const menuToggle = document.getElementById('navbarNav')
     const bsCollapse = bootstrap.Collapse.getOrCreateInstance(menuToggle, {toggle: false})
