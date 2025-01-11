@@ -16,6 +16,13 @@ async function run() {
     // Buttons
     const addToCollectionBtn = document.getElementById('add-to-collection');
     const exportToPdfBtn = document.getElementById('export-to-pdf');
+    const fontCollectionLink = document.getElementById('font-collection-link');
+
+    const bsOffcanvas = new bootstrap.Offcanvas('#offcanvas');
+
+    fontCollectionLink.addEventListener('click', (_event) => {
+        bsOffcanvas.hide();
+    });
 
     const h = new Handle(outputEl, inputField);
     await h.init().catch(onError);
@@ -116,7 +123,7 @@ async function run() {
         if (blob) {
             pages.push(blob);
             if (index == 0) {
-            append(blob, index);
+                append(blob, index);
             }
             console.log("Finished page", index);
         } else {
