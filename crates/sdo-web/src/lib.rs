@@ -4,7 +4,8 @@ use bstr::BStr;
 use convert::page_to_blob;
 use dom::blob_image_el;
 use glue::{
-    js_error_with_cause, js_file_data, js_input_file_list, js_input_files_iter, slice_to_blob,
+    fs_file_handle_get_file, js_directory_get_file_handle, js_error_with_cause, js_file_data,
+    js_input_file_list, js_input_files_iter, slice_to_blob,
 };
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
@@ -277,7 +278,6 @@ impl Handle {
             let el_tr = self.document.create_element("tr")?;
             el_table.append_child(&el_tr)?;
             for c in crow {
-                //log::info!("Char {:x}{:x} {}x{}", rdx, idx, c.width, c.height);
                 let el_td = self.document.create_element("td")?;
                 el_tr.append_child(&el_td)?;
                 if c.height > 0 {
@@ -289,6 +289,10 @@ impl Handle {
             }
         }
 
+        Ok(())
+    }
+
+    fn _trace_letter(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
         let char_capital_a = &pset.chars[b'A' as usize];
         let page = raster::Page::from(char_capital_a);
         let blob = page_to_blob(&page)?;
@@ -542,8 +546,34 @@ impl Handle {
             }
         } else if matches!(fragment, "" | "#" | "#/") {
             self.show_home().await?;
-        } else if matches!(fragment, "#/CHSETS/") {
-            self.list_chsets().await?;
+        } else if let Some(rest) = fragment.strip_prefix("#/CHSETS/") {
+            if rest.is_empty() {
+                self.list_chsets().await?;
+            } else {
+                self.show_chset(rest).await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn show_chset(&mut self, name: &str) -> Result<(), JsValue> {
+        let chsets = self.fs.chset_dir().await?;
+        let file_handle = js_directory_get_file_handle(&chsets, name).await?;
+        let file = fs_file_handle_get_file(&file_handle).await?;
+        let arr = js_file_data(&file).await?;
+        let four_cc = js_four_cc(&arr).ok_or(js_sys::Error::new("No four-cc: file too short"))?;
+        if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
+            let _data = arr.to_vec();
+            let h2 = self.document.create_element("h2")?;
+            h2.set_text_content(Some(name));
+            h2.append_with_str_1(" ")?;
+
+            let small = self.document.create_element("small")?;
+            small.class_list().add_1("text-secondary")?;
+            small.set_text_content(Some(font_kind.file_format_name()));
+            h2.append_child(&small)?;
+
+            self.output.append_child(&h2)?;
         }
         Ok(())
     }

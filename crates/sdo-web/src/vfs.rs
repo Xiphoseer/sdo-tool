@@ -13,7 +13,9 @@ use web_sys::{
     FileSystemHandle, FileSystemHandleKind, StorageManager,
 };
 
-use crate::glue::{fs_file_handle_get_file, js_file_data, try_iter_async};
+use crate::glue::{
+    fs_file_handle_get_file, js_directory_get_file_handle, js_file_data, try_iter_async,
+};
 
 /// Browser Origin Private File System
 pub struct OriginPrivateFS {
@@ -165,9 +167,7 @@ async fn resolve_file(
     };
     if let Some(name) = path.file_name() {
         if let Some(s) = name.to_str() {
-            let result = JsFuture::from(dir.get_file_handle(s)).await?;
-            let file = result.unchecked_into::<FileSystemFileHandle>();
-            return Ok(file);
+            return js_directory_get_file_handle(&dir, s).await;
         }
     }
     Err(JsError::new("Not Found").into())

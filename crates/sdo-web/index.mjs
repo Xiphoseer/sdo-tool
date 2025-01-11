@@ -89,8 +89,17 @@ async function run() {
     }
 
     function setProgress(percent) {
+        if (percent < 100) {
+            progressEl.style.removeProperty('display'); // reset display: none
+        } else {
+            clearProgress();
+        }
         const bar = progressEl.children[0];
         bar.style.width = `${percent}%`;
+    }
+
+    function clearProgress() {
+        progressEl.style.display = 'none';
     }
 
     async function renderOne(index) {
@@ -197,6 +206,7 @@ async function run() {
 
     async function handle(hash) {
         clearPagination();
+        clearProgress();
         await h.open(hash);
         if (h.hasActive()) {
             setupPagination();

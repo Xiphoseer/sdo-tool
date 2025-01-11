@@ -8,6 +8,8 @@ use std::{
 use bstr::{BStr, ByteSlice};
 use serde::{Deserialize, Serialize};
 
+use crate::chsets::{printer::PrinterKind, FontKind};
+
 pub mod bit_iter;
 pub(crate) mod bit_writer;
 pub mod data;
@@ -160,6 +162,29 @@ impl Deref for FourCC {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl From<FourCC> for Option<FontKind> {
+    fn from(value: FourCC) -> Self {
+        match value {
+            FourCC::LS30 => Some(FontKind::Printer(PrinterKind::Laser30)),
+            FourCC::PS24 => Some(FontKind::Printer(PrinterKind::Needle24)),
+            FourCC::PS09 => Some(FontKind::Printer(PrinterKind::Needle9)),
+            FourCC::ESET => Some(FontKind::Editor),
+            _ => None,
+        }
+    }
+}
+
+impl From<FourCC> for Option<PrinterKind> {
+    fn from(value: FourCC) -> Self {
+        match value {
+            FourCC::LS30 => Some(PrinterKind::Laser30),
+            FourCC::PS24 => Some(PrinterKind::Needle24),
+            FourCC::PS09 => Some(PrinterKind::Needle9),
+            _ => None,
+        }
     }
 }
 

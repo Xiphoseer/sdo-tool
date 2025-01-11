@@ -5,11 +5,13 @@
 //! for text in the editor, the `*.P24` format for 24-needle printers, the `*.P09` format
 //! for 9-needle printers and the `*.L30` format for laser printers.
 
-use std::{io, str::FromStr};
+use std::{convert::TryFrom, fmt, io, str::FromStr};
 
 use cache::DocumentFontCacheInfo;
 use printer::PrinterKind;
 use thiserror::*;
+
+use crate::util::FourCC;
 
 use self::cache::FontCacheInfo;
 
@@ -145,6 +147,12 @@ pub enum FontKind {
     Printer(PrinterKind),
 }
 
+impl fmt::Display for FontKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.file_format_name().fmt(f)
+    }
+}
+
 impl FontKind {
     /// Return the number of device points corresponding to the given vertical units.
     pub fn scale_y(&self, units: u16) -> u32 {
@@ -197,6 +205,14 @@ impl FontKind {
             Self::Printer(p) => p.extension(),
         }
     }
+
+    /// Get the file format name associated with this printer kind
+    pub fn file_format_name(&self) -> &'static str {
+        match self {
+            Self::Editor => "Signum! Editor Bitmap Font",
+            Self::Printer(p) => p.file_format_name(),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -215,6 +231,14 @@ impl FromStr for FontKind {
             "L30" => Ok(Self::Printer(PrinterKind::Laser30)),
             _ => Err(UnknownFontKind {}),
         }
+    }
+}
+
+impl TryFrom<FourCC> for FontKind {
+    type Error = UnknownFontKind;
+
+    fn try_from(value: FourCC) -> Result<Self, Self::Error> {
+        Option::<Self>::from(value).ok_or(UnknownFontKind {})
     }
 }
 

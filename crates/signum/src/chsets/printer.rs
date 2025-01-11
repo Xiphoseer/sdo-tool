@@ -5,6 +5,7 @@ use crate::{
     docs::four_cc,
     util::{Buf, FourCC},
 };
+use core::fmt;
 use nom::{
     bytes::complete::{tag, take},
     combinator::verify,
@@ -33,6 +34,15 @@ impl PrinterKind {
             Self::Needle24 => "P24",
             Self::Needle9 => "P9",
             Self::Laser30 => "L30",
+        }
+    }
+
+    /// Get the file format name for this printer kind
+    pub fn file_format_name(&self) -> &'static str {
+        match self {
+            Self::Needle24 => "Signum! 24-Needle Printer Bitmap Font",
+            Self::Needle9 => "Signum! 9-Needle Printer Bitmap Font",
+            Self::Laser30 => "Signum! Laser Printer Bitmap Font",
         }
     }
 
@@ -83,6 +93,12 @@ impl PrinterKind {
             Self::Needle24 => (360, 360),
             Self::Laser30 => (300, 300),
         }
+    }
+}
+
+impl fmt::Display for PrinterKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.file_format_name().fmt(f)
     }
 }
 

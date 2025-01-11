@@ -1,15 +1,16 @@
 use js_sys::{Array, ArrayBuffer, Function, Reflect, Symbol, Uint8Array};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Blob, BlobPropertyBag, FileList, FileSystemFileHandle, HtmlInputElement};
+use web_sys::{
+    Blob, BlobPropertyBag, FileList, FileSystemDirectoryHandle, FileSystemFileHandle,
+    HtmlInputElement,
+};
 
 pub(crate) async fn fs_file_handle_get_file(
     file_handle: &FileSystemFileHandle,
 ) -> Result<web_sys::File, JsValue> {
-    let file = JsFuture::from(file_handle.get_file())
-        .await?
-        .unchecked_into::<web_sys::File>();
-    Ok(file)
+    let file = JsFuture::from(file_handle.get_file()).await?;
+    Ok(file.unchecked_into::<web_sys::File>())
 }
 
 pub(crate) async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsValue> {
@@ -18,10 +19,8 @@ pub(crate) async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsV
 }
 
 pub(crate) async fn js_file_array_buffer(file: &web_sys::File) -> Result<ArrayBuffer, JsValue> {
-    let array_buffer = JsFuture::from(file.array_buffer())
-        .await?
-        .unchecked_into::<ArrayBuffer>();
-    Ok(array_buffer)
+    let array_buffer = JsFuture::from(file.array_buffer()).await?;
+    Ok(array_buffer.unchecked_into::<ArrayBuffer>())
 }
 
 /// Return the [FileList] for the given input element
@@ -39,6 +38,15 @@ pub(crate) fn js_input_files_iter(
     let files = js_input_file_list(input)?;
     let file_iter = js_sys::try_iter(&files)?.ok_or_else(|| JsError::new("Not a file iterator"))?;
     Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
+}
+
+/// Return a handle for the named file
+pub(crate) async fn js_directory_get_file_handle(
+    dir: &FileSystemDirectoryHandle,
+    s: &str,
+) -> Result<FileSystemFileHandle, JsValue> {
+    let result = JsFuture::from(dir.get_file_handle(s)).await?;
+    Ok(result.unchecked_into::<FileSystemFileHandle>())
 }
 
 pub(crate) fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterator>, JsValue> {
