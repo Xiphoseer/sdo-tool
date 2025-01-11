@@ -504,6 +504,7 @@ impl Handle {
                     let pd = match dfci.print_driver(None) {
                         Some(pd) => pd,
                         None => {
+                            // FIXME: pick the "best" format?
                             log::warn!(
                                 "Could not auto-select a font format, some fonts are not available"
                             );
