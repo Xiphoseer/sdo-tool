@@ -32,35 +32,6 @@ async function run() {
     const h = new Handle(outputEl, inputField);
     await h.init().catch(onError);
 
-    /*async function uploadFile(file) {
-    const buf = await file.arrayBuffer();
-    const arr = new Uint8Array(buf);
-    await h.stage(file.name, arr);
-    }*/
-
-    /*
-    const dirHandle = await navigator.storage.getDirectory();
-    console.log(dirHandle);
-    for await (const [key, value] of dirHandle.entries()) {
-    console.log({ key, value });
-    }*/
-
-    /*
-    async function uploadFiles(field) {
-    h.reset();
-    for (const file of field.files) {
-        await uploadFile(file);
-        console.log(`Completed '${file.name}'`);
-
-        // const handle = await dirHandle.getFileHandle(file.name, { create: true });
-        // console.log("creating file");
-        // const newFile = await handle.createWritable();
-        // console.log("writing file");
-        // await newFile.write(file);
-    }
-    }
-    */
-
     async function onInputFieldChange(_event) {
         window.location.hash = '/staged/';
         await h.onChange().catch(onError);
