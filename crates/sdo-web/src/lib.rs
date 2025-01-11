@@ -228,39 +228,6 @@ impl Handle {
         Ok(())
     }
 
-    /*
-    self.write0001(&doc.header)?;
-
-    // cset
-    self.write_cset(&doc.charsets)?;
-
-    // sysp
-    if let Ok(sysp) = serde_wasm_bindgen::to_value(&doc.sysp) {
-        log_val("sysp", &sysp);
-    }
-
-    // pbuf
-    if let Ok(pbuf) = serde_wasm_bindgen::to_value(&doc.pbuf) {
-        log_val("pbuf", &pbuf);
-    }
-
-    // tebu
-    if let Ok(tebu) = serde_wasm_bindgen::to_value(&doc.tebu) {
-        log_val("tebu", &tebu);
-    }
-
-    // hcim
-    if let Some(hcim) = &doc.hcim {
-        self.write_hcim(hcim)?;
-    }
-
-    for (key, val) in &doc.other {
-        if let Ok(bytes) = serde_wasm_bindgen::to_value(&val.0) {
-            log_val(&key.to_string(), &bytes)
-        }
-    }
-     */
-
     fn parse_sdoc<'a>(&self, data: &'a [u8]) -> Result<SDoc<'a>, JsValue> {
         match parse_sdoc0001_container(data) {
             Ok((_rest, container)) => match SDoc::unpack(container) {
