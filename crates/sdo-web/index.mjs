@@ -62,7 +62,7 @@ async function run() {
     */
 
     async function onInputFieldChange(_event) {
-        window.location.hash = '';
+        window.location.hash = '/staged/';
         await h.onChange().catch(onError);
     }
 

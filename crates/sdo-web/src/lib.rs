@@ -485,43 +485,77 @@ impl Handle {
             .map(|active| active.sdoc.tebu.pages.len())
     }
 
+    async fn show_staged(&mut self, rest: &str) -> Result<(), JsValue> {
+        let heading = self.document.create_element("h2")?;
+        heading.set_text_content(Some(rest));
+        self.output.append_child(&heading)?;
+
+        let file = self.input_file(rest)?;
+        let data = js_file_data(&file).await?.to_vec();
+
+        if let Ok((_, four_cc)) = four_cc(&data) {
+            match four_cc {
+                FourCC::SDOC => {
+                    let sdoc = self.parse_sdoc(&data)?;
+                    self.fc.reset();
+                    let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
+                    let pd = dfci
+                        .print_driver(None)
+                        .ok_or(JsError::new("No print driver available"))?;
+                    let images = sdoc
+                        .hcim
+                        .as_ref()
+                        .map(|hcim| hcim.decode_images())
+                        .unwrap_or_default();
+
+                    self.active = Some(ActiveDocument {
+                        sdoc: sdoc.into_owned(),
+                        di: DocumentInfo::new(dfci, images),
+                        pd,
+                    });
+                }
+                _ => warn!("Unknown format: {}", four_cc),
+            }
+        }
+        Ok(())
+    }
+
+    async fn show_home(&mut self) -> Result<(), JsValue> {
+        let node = self.document.create_element("div")?;
+        node.class_list()
+            .add_4("p-5", "mb-4", "bg-body-tertiary", "rounded-3")?;
+        let container = self.document.create_element("div")?;
+        container.class_list().add_2("container-fluid", "py-5")?;
+        let h1 = self.document.create_element("h1")?;
+        h1.class_list().add_2("display-5", "fw-bold")?;
+        h1.set_text_content(Some("Welcome to SDO Studio!"));
+        container.append_child(&h1)?;
+
+        let p = self.document.create_element("p")?;
+        p.class_list().add_2("col-md-8", "fs-4")?;
+        p.set_text_content(Some(
+            "Please select a file (*.SDO, *.E24, *.P24, *.P09, *.L30)",
+        ));
+        container.append_child(&p)?;
+
+        // <button class="btn btn-primary btn-lg" type="button">Example button</button>
+
+        node.append_child(&container)?;
+        self.output.append_child(&node)?;
+        Ok(())
+    }
+
     #[wasm_bindgen]
     pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
         self.reset()?;
         if let Some(rest) = fragment.strip_prefix("#/staged/") {
-            let heading = self.document.create_element("h2")?;
-            heading.set_text_content(Some(rest));
-            self.output.append_child(&heading)?;
-
-            let file = self.input_file(rest)?;
-            let data = js_file_data(&file).await?.to_vec();
-
-            if let Ok((_, four_cc)) = four_cc(&data) {
-                match four_cc {
-                    FourCC::SDOC => {
-                        let sdoc = self.parse_sdoc(&data)?;
-                        self.fc.reset();
-                        let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
-                        let pd = dfci
-                            .print_driver(None)
-                            .ok_or(JsError::new("No print driver available"))?;
-                        let images = sdoc
-                            .hcim
-                            .as_ref()
-                            .map(|hcim| hcim.decode_images())
-                            .unwrap_or_default();
-
-                        self.active = Some(ActiveDocument {
-                            sdoc: sdoc.into_owned(),
-                            di: DocumentInfo::new(dfci, images),
-                            pd,
-                        });
-                    }
-                    _ => warn!("Unknown format: {}", four_cc),
-                }
+            if rest.is_empty() {
+                self.on_change().await?;
+            } else {
+                self.show_staged(rest).await?;
             }
         } else if matches!(fragment, "" | "#" | "#/") {
-            self.on_change().await?;
+            self.show_home().await?;
         } else if matches!(fragment, "#/CHSETS/") {
             self.list_chsets().await?;
         }
