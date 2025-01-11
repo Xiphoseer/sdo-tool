@@ -10,7 +10,7 @@ mod trace;
 mod util;
 
 pub use doc::render_doc_page;
-pub use font::render_editor_text;
+pub use font::{render_editor_text, render_printer_char};
 pub use page::Page;
 pub use trace::{straight_up_to, Dir};
 

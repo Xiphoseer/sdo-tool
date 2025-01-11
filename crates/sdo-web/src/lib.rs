@@ -3,7 +3,7 @@
 use bstr::BStr;
 use convert::page_to_blob;
 use dom::blob_image_el;
-use glue::{js_file_data, js_input_files_iter, slice_to_blob};
+use glue::{js_error_with_cause, js_file_data, js_input_files_iter, slice_to_blob};
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
 use sdo_pdf::{generate_pdf, MetaInfo};
@@ -13,7 +13,7 @@ use signum::{
         cache::{AsyncIterator, ChsetCache, VfsDirEntry, VFS},
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
-        printer::parse_ps24,
+        printer::{parse_ps24, PSet},
         FontKind,
     },
     docs::{
@@ -24,7 +24,7 @@ use signum::{
         tebu::PageText,
         DocumentInfo, GenerationContext, Overrides, SDoc,
     },
-    raster::{self, render_doc_page, render_editor_text},
+    raster::{self, render_doc_page, render_editor_text, render_printer_char},
     util::FourCC,
 };
 use std::{ffi::OsStr, fmt::Write, io::BufWriter};
@@ -290,92 +290,83 @@ impl Handle {
     }
 
     fn parse_eset<'a>(&self, data: &'a [u8]) -> Result<ESet<'a>, JsValue> {
-        match parse_eset(data) {
-            Ok((_, eset)) => Ok(eset),
-            Err(e) => {
-                log::error!("Failed to parse editor font: {}", e);
-                Err(JsError::new("Failed to parse editor font").into())
-            }
-        }
+        let (_, eset) =
+            parse_eset(data).map_err(|e| js_error_with_cause(e, "Failed to parse editor font"))?;
+        Ok(eset)
     }
 
-    fn _parse_ps24(&mut self, data: &[u8]) -> Result<(), JsValue> {
-        log::info!("Signum 24-Needle Printer Bitmap Font");
-        match parse_ps24(data) {
-            Ok((_, pset)) => {
-                log::info!("Parsed Printer Font");
-                let el_table = self.document.create_element("table")?;
-                self.output.append_child(&el_table)?;
-                for crow in pset.chars.chunks(16) {
-                    let el_tr = self.document.create_element("tr")?;
-                    el_table.append_child(&el_tr)?;
-                    for c in crow {
-                        //log::info!("Char {:x}{:x} {}x{}", rdx, idx, c.width, c.height);
-                        let el_td = self.document.create_element("td")?;
-                        el_tr.append_child(&el_td)?;
-                        if c.height > 0 {
-                            let page = raster::Page::from(c);
-                            let blob = page_to_blob(&page)?;
-                            let img_el = blob_image_el(&blob)?;
-                            el_td.append_child(&img_el)?;
-                        }
-                    }
+    fn parse_ps24<'a>(&mut self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
+        let (_, pset) = parse_ps24(data)
+            .map_err(|e| js_error_with_cause(e, "Failed to parse printer font (24-needle)"))?;
+        Ok(pset)
+    }
+
+    fn _show_ps24(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
+        let el_table = self.document.create_element("table")?;
+        self.output.append_child(&el_table)?;
+        for crow in pset.chars.chunks(16) {
+            let el_tr = self.document.create_element("tr")?;
+            el_table.append_child(&el_tr)?;
+            for c in crow {
+                //log::info!("Char {:x}{:x} {}x{}", rdx, idx, c.width, c.height);
+                let el_td = self.document.create_element("td")?;
+                el_tr.append_child(&el_td)?;
+                if c.height > 0 {
+                    let page = raster::Page::from(c);
+                    let blob = page_to_blob(&page)?;
+                    let img_el = blob_image_el(&blob)?;
+                    el_td.append_child(&img_el)?;
                 }
-
-                let char_capital_a = &pset.chars[b'A' as usize];
-                let page = raster::Page::from(char_capital_a);
-                let blob = page_to_blob(&page)?;
-
-                let window = window().ok_or("expected window")?;
-                let _p = window.create_image_bitmap_with_blob(&blob)?;
-
-                let canvas = self
-                    .document
-                    .create_element("canvas")?
-                    .dyn_into::<HtmlCanvasElement>()?;
-                canvas.set_width(700);
-                canvas.set_height(900);
-                self.output.append_child(&canvas)?;
-                let ctx = canvas
-                    .get_context("2d")?
-                    .ok_or("context")?
-                    .dyn_into::<CanvasRenderingContext2d>()?;
-
-                let callback = Closure::new(move |_v: JsValue| {
-                    let img = _v.dyn_into::<ImageBitmap>().unwrap();
-                    let w = img.width() * 10;
-                    let h = img.height() * 10;
-                    ctx.set_fill_style_str("green");
-                    //ctx.fill_rect(0.0, 0.0, 150.0, 100.0);
-                    ctx.draw_image_with_image_bitmap_and_dw_and_dh(
-                        &img, 10.0, 10.0, w as f64, h as f64,
-                    )
-                    .unwrap();
-
-                    // Implement the rest of https://potrace.sourceforge.net/potrace.pdf
-                    for (x, y) in page.vertices() {
-                        ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
-                    }
-
-                    ctx.set_stroke_style_str("blue");
-                    if let Some(mut iter) = page.first_outline() {
-                        log_val("Test", &JsValue::TRUE);
-                        let (x0, y0) = iter.next().unwrap();
-                        ctx.begin_path();
-                        ctx.move_to((10 + x0 * 10) as f64, (10 + y0 * 10) as f64);
-                        for (x, y) in iter {
-                            ctx.line_to((10 + x * 10) as f64, (10 + y * 10) as f64);
-                        }
-                        ctx.stroke();
-                    }
-                });
-                let _ = _p.then(&callback);
-                self.closures.push(callback);
-            }
-            Err(e) => {
-                log::error!("Failed to parse printer font: {}", e);
             }
         }
+
+        let char_capital_a = &pset.chars[b'A' as usize];
+        let page = raster::Page::from(char_capital_a);
+        let blob = page_to_blob(&page)?;
+
+        let window = window().ok_or("expected window")?;
+        let _p = window.create_image_bitmap_with_blob(&blob)?;
+
+        let canvas = self
+            .document
+            .create_element("canvas")?
+            .dyn_into::<HtmlCanvasElement>()?;
+        canvas.set_width(700);
+        canvas.set_height(900);
+        self.output.append_child(&canvas)?;
+        let ctx = canvas
+            .get_context("2d")?
+            .ok_or("context")?
+            .dyn_into::<CanvasRenderingContext2d>()?;
+
+        let callback = Closure::new(move |_v: JsValue| {
+            let img = _v.dyn_into::<ImageBitmap>().unwrap();
+            let w = img.width() * 10;
+            let h = img.height() * 10;
+            ctx.set_fill_style_str("green");
+            //ctx.fill_rect(0.0, 0.0, 150.0, 100.0);
+            ctx.draw_image_with_image_bitmap_and_dw_and_dh(&img, 10.0, 10.0, w as f64, h as f64)
+                .unwrap();
+
+            // Implement the rest of https://potrace.sourceforge.net/potrace.pdf
+            for (x, y) in page.vertices() {
+                ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
+            }
+
+            ctx.set_stroke_style_str("blue");
+            if let Some(mut iter) = page.first_outline() {
+                log_val("Test", &JsValue::TRUE);
+                let (x0, y0) = iter.next().unwrap();
+                ctx.begin_path();
+                ctx.move_to((10 + x0 * 10) as f64, (10 + y0 * 10) as f64);
+                for (x, y) in iter {
+                    ctx.line_to((10 + x * 10) as f64, (10 + y * 10) as f64);
+                }
+                ctx.stroke();
+            }
+        });
+        let _ = _p.then(&callback);
+        self.closures.push(callback);
         Ok(())
     }
 
@@ -578,6 +569,7 @@ impl Handle {
 
     #[wasm_bindgen(js_name = onChange)]
     pub async fn on_change(&mut self) -> Result<(), JsValue> {
+        self.reset()?;
         for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let arr = js_file_data(&file).await?;
@@ -609,12 +601,16 @@ impl Handle {
                 self.sdoc_card(card, &doc).await?;
             }
             FourCC::ESET => {
-                log::info!("{}: Signum Editor Bitmap Font", name);
+                log::info!("{name}: Signum Editor Bitmap Font");
                 let eset = self.parse_eset(data)?;
+                log::info!("{name}: Parsed editor font");
                 self.eset_card(card, &eset, name)?;
             }
             FourCC::PS24 => {
-                // self.parse_ps24(&data)
+                log::info!("{name}: Signum 24-Needle Printer Bitmap Font");
+                let pset = self.parse_ps24(data)?;
+                log::info!("{name}: Parsed printer font (24 needle)");
+                self.pset_card(card, &pset, name)?;
             }
             k => {
                 log::warn!("Unknown File Format '{}'", k);
@@ -674,6 +670,29 @@ impl Handle {
         let blob = page_to_blob(&page)?;
         let img = blob_image_el(&blob)?;
         list_item.append_child(&img)?;
+        Ok(())
+    }
+
+    fn pset_card(
+        &mut self,
+        list_item: &Element,
+        pset: &PSet<'_>,
+        name: &str,
+    ) -> Result<(), JsValue> {
+        let ch = name
+            .chars()
+            .next()
+            .and_then(|c| c.try_into().ok())
+            .unwrap_or(b'A');
+        let page = render_printer_char(ch, pset)
+            .ok_or_else(|| JsError::new("Failed to render printer char"))?;
+        let (width, height) = (page.bit_width(), page.bit_height());
+        log::trace!("Page generated ({width}x{height})");
+        if width > 0 && height > 0 {
+            let blob = page_to_blob(&page)?;
+            let img = blob_image_el(&blob)?;
+            list_item.append_child(&img)?;
+        }
         Ok(())
     }
 

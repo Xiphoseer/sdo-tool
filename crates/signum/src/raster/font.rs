@@ -1,6 +1,6 @@
 use bstr::BStr;
 
-use crate::chsets::editor::ESet;
+use crate::chsets::{editor::ESet, printer::PSet};
 
 use super::{DrawPrintErr, Page};
 
@@ -29,4 +29,10 @@ pub fn render_editor_text(text: &BStr, eset: &ESet) -> Result<Page, DrawPrintErr
         }
     }
     Ok(page)
+}
+
+/// Get a character from a page
+pub fn render_printer_char(char: u8, pset: &PSet<'_>) -> Option<Page> {
+    let pchar = pset.chars.get(char as usize)?;
+    Some(Page::from(pchar))
 }

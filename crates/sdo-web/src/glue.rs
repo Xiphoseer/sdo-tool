@@ -67,3 +67,9 @@ pub(crate) fn slice_to_blob(bytes: &[u8], mime_type: &str) -> Result<Blob, JsVal
         bag
     })
 }
+
+pub(crate) fn js_error_with_cause<E: std::error::Error>(e: E, message: &str) -> js_sys::Error {
+    let err = js_sys::Error::new(message);
+    err.set_cause(&JsError::from(e).into());
+    err
+}

@@ -62,6 +62,16 @@ impl Page {
         }
     }
 
+    /// The width in B/W pixels
+    pub fn bit_width(&self) -> u32 {
+        self.width
+    }
+
+    /// The height in B/W pixels
+    pub fn bit_height(&self) -> u32 {
+        self.height
+    }
+
     /// Return the number of bytes per line
     pub fn bytes_per_line(&self) -> u32 {
         self.bytes_per_line
