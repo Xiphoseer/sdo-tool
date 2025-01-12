@@ -576,6 +576,16 @@ impl Handle {
             h2.append_child(&small)?;
 
             self.output.append_child(&h2)?;
+
+            match font_kind {
+                FontKind::Editor => {
+                    let _eset = self.parse_eset(&_data)?;
+                }
+                FontKind::Printer(_) => {
+                    let pset = self.parse_pset(&_data)?;
+                    self._show_ps24(&pset)?;
+                }
+            }
         }
         Ok(())
     }
