@@ -589,7 +589,9 @@ impl Handle {
             h2.append_with_str_1(" ")?;
 
             let small = self.document.create_element("small")?;
-            small.class_list().add_1("text-secondary")?;
+            small
+                .class_list()
+                .add_2("text-secondary", "d-inline-block")?;
             small.set_text_content(Some(font_kind.file_format_name()));
             h2.append_child(&small)?;
 
