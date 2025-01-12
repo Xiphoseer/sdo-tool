@@ -14,6 +14,7 @@ pub struct MetaInfo {
     pub subject: Option<String>,
 }
 
+/// Write PDF info data
 pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodingError> {
     if let Some(author) = &meta.author {
         let author = pdf_doc_encode(author)?;
@@ -37,6 +38,9 @@ pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodi
     Ok(())
 }
 
+/// Add a simple output intend for PDF/A
+/// 
+/// This is not yet properly implemented
 pub fn prepare_pdfa_output_intent(hnd: &mut Handle) -> crate::Result<()> {
     // Output intents
     hnd.output_intents.push(OutputIntent {

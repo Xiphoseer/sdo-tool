@@ -1,3 +1,5 @@
+//! # Fonts
+
 use std::{
     borrow::Cow,
     io::{self, Write},
@@ -6,7 +8,7 @@ use std::{
 use ccitt_t4_t6::g42d::encode::Encoder;
 use pdf_create::{
     common::{BaseEncoding, Dict, Encoding, Matrix, Point, Rectangle, SparseSet, StreamMetadata},
-    high::{Ascii85Stream, DictResource, Font, Resource, Type3Font},
+    high::{Ascii85Stream, DictResource, Font, GlobalResource, Res, Resource, Type3Font},
     write::PdfName,
 };
 use sdo_ps::dvips::CacheDevice;
@@ -23,6 +25,7 @@ use signum::{
 
 use crate::cmap::write_cmap;
 
+/// Names for all signum glyph positions, e.g. `Zfive`
 #[rustfmt::skip]
 pub const DEFAULT_NAMES: [&str; 128] = [
     "NUL",         "Zparenleft", "Zparenright", "Zslash",     "Zasterisk", "Zzero",     "Zone",        "Ztwo",
@@ -56,14 +59,15 @@ pub const DIFFERENCES: &[u8] = &[
     26, 27, 28, 29, 30, 31, 32, 64, 91, 92, 93, 123, 125, 127,
 ];
 
+/// Font metrics
 pub struct FontMetrics {
-    pub baseline: i32,
-    pub pixels_per_inch_x: u32,
-    pub pixels_per_inch_y: u32,
-    pub pixels_per_pdfunit_x: u32,
-    pub pixels_per_pdfunit_y: u32,
-    pub fontunits_per_pixel_x: u32,
-    pub fontunits_per_pixel_y: u32,
+    baseline: i32,
+    // pixels_per_inch_x: u32,
+    // pixels_per_inch_y: u32,
+    // pixels_per_pdfunit_x: u32,
+    // pixels_per_pdfunit_y: u32,
+    fontunits_per_pixel_x: u32,
+    fontunits_per_pixel_y: u32,
 }
 
 impl From<PrinterKind> for FontMetrics {
@@ -72,26 +76,26 @@ impl From<PrinterKind> for FontMetrics {
         let fontunits_per_inch = pdfunits_per_inch * 1000;
         let (pixels_per_inch_x, pixels_per_inch_y) = pk.resolution();
 
-        let pixels_per_pdfunit_x = pixels_per_inch_x / pdfunits_per_inch;
-        let pixels_per_pdfunit_y = pixels_per_inch_y / pdfunits_per_inch;
+        // let pixels_per_pdfunit_x = pixels_per_inch_x / pdfunits_per_inch;
+        // let pixels_per_pdfunit_y = pixels_per_inch_y / pdfunits_per_inch;
 
         let fontunits_per_pixel_x = fontunits_per_inch / pixels_per_inch_x;
         let fontunits_per_pixel_y = fontunits_per_inch / pixels_per_inch_y;
         Self {
             baseline: pk.baseline(),
 
-            pixels_per_inch_x,
-            pixels_per_inch_y,
+            // pixels_per_inch_x,
+            // pixels_per_inch_y,
 
-            pixels_per_pdfunit_x,
-            pixels_per_pdfunit_y,
-
+            // pixels_per_pdfunit_x,
+            // pixels_per_pdfunit_y,
             fontunits_per_pixel_x,
             fontunits_per_pixel_y,
         }
     }
 }
 
+/// Write a printer character to the stream
 pub fn write_char_stream<W: Write>(
     w: &mut W,
     pchar: &PSetChar,
@@ -114,13 +118,16 @@ pub fn write_char_stream<W: Write>(
     let ur_y = top - (pchar.top as i32);
     let ll_y = ur_y - pchar.height as i32;
 
+    let fpx = font_metrics.fontunits_per_pixel_x as i32;
+    let fpy = font_metrics.fontunits_per_pixel_y as i32;
+
     let cd = CacheDevice {
         w_x: dx as i16,
         w_y: 0,
-        ll_x: ll_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
-        ll_y: ll_y * font_metrics.fontunits_per_pixel_y as i32,
-        ur_x: ur_x as i32 * font_metrics.fontunits_per_pixel_x as i32,
-        ur_y: ur_y * font_metrics.fontunits_per_pixel_y as i32,
+        ll_x: ll_x as i32 * fpx,
+        ll_y: ll_y * fpy,
+        ur_x: ur_x as i32 * fpx,
+        ur_y: ur_y * fpy,
     };
     writeln!(
         w,
@@ -128,13 +135,10 @@ pub fn write_char_stream<W: Write>(
         cd.w_x, cd.w_y, cd.ll_x, cd.ll_y, cd.ur_x, cd.ur_y
     )?;
 
-    let fpx = font_metrics.fontunits_per_pixel_x;
-    let fpy = font_metrics.fontunits_per_pixel_y;
-
-    let gc_w = box_width as i32 * fpx as i32;
-    let gc_h = box_height as i32 * fpy as i32;
-    let gc_x = ll_x as i32 * fpx as i32;
-    let gc_y = ll_y * fpy as i32;
+    let gc_w = box_width as i32 * fpx;
+    let gc_h = box_height as i32 * fpy;
+    let gc_x = ll_x as i32 * fpx;
+    let gc_y = ll_y * fpy;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;
@@ -153,6 +157,7 @@ pub fn write_char_stream<W: Write>(
     Ok(())
 }
 
+/// Create a type 3 font
 pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
     pfont: &'a PSet,
@@ -250,13 +255,16 @@ pub fn type3_font<'a>(
     })
 }
 
+/// Information on one font
 pub struct FontInfo {
     widths: Vec<u32>,
     first_char: u8,
-    index: usize,
+    /// Index within the PDF document of the font resource
+    index: GlobalResource<Font<'static>>,
 }
 
 impl FontInfo {
+    /// Get the width of the character in this font
     pub fn width(&self, cval: u8) -> u32 {
         assert!(cval < 128);
         let fc = self.first_char;
@@ -265,41 +273,41 @@ impl FontInfo {
     }
 }
 
+/// Information on multiple fonts
 pub struct Fonts {
     info: Vec<Option<FontInfo>>,
-    base: usize,
 }
 
+/// Error when creating fonts
 pub enum MakeFontsErr {}
 
 impl Fonts {
-    pub fn index(&self, info: &FontInfo) -> usize {
-        self.base + info.index
-    }
-
+    /// Get the font info by index in the font cache
     pub fn get(&self, fc_index: usize) -> Option<&FontInfo> {
         self.info[fc_index].as_ref()
     }
 
+    /// Get the info by [FontCacheInfo]
     pub fn info<'a>(&'a self, fci: &FontCacheInfo) -> Option<&'a FontInfo> {
         fci.index().and_then(|fc_index| self.get(fc_index))
     }
 
-    pub fn new(fonts_capacity: usize, base: usize) -> Self {
+    /// Create a new instance
+    pub fn new(fonts_capacity: usize) -> Self {
         Fonts {
             info: Vec::with_capacity(fonts_capacity),
-            base,
         }
     }
 
+    /// For all fonts in a font cache, add them to the resources
     pub fn make_fonts<'a>(
         &mut self,
         fc: &'a ChsetCache,
+        res: &mut Res<'a>,
         use_table_vec: UseTableVec,
         pk: PrinterKind,
-    ) -> Vec<Font<'a>> {
+    ) {
         let chsets = fc.chsets();
-        let mut result = Vec::with_capacity(chsets.len());
         for (index, cs) in chsets.iter().enumerate() {
             let use_table = &use_table_vec.csets[index];
 
@@ -312,22 +320,22 @@ impl Fonts {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,
-                        index: result.len(),
+                        index: res.push_font(Font::Type3(font)),
                     };
                     self.info.push(Some(info));
-                    result.push(Font::Type3(font));
                     continue;
                 }
             }
             self.info.push(None);
         }
-        result
     }
 }
 
+/// The names used for the charsets in a font
 pub const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 
 impl Fonts {
+    /// Prepare the font dictionary
     pub fn font_dict<'a>(
         &'a self,
         print: &DocumentFontCacheInfo,
@@ -340,15 +348,16 @@ impl Fonts {
             .enumerate()
             .filter_map(|(cset, fci)| self.info(fci).map(|info| (cset, info)))
         {
-            dict.insert(FONTS[cset].to_owned(), Resource::global(self.index(info)));
+            dict.insert(FONTS[cset].to_owned(), Resource::from(info.index.clone()));
             infos[cset] = Some(info);
         }
         (dict, infos)
     }
 }
 
+/// Prepare the PDF fonts
 pub fn prepare_pdf_fonts<'f, GC: GenerationContext>(
-    fonts: &mut Vec<Font<'f>>,
+    res: &mut Res<'f>,
     gc: &GC,
     fc: &'f ChsetCache,
     pk: PrinterKind,
@@ -359,10 +368,7 @@ pub fn prepare_pdf_fonts<'f, GC: GenerationContext>(
         v
     };
 
-    let mut font_info = Fonts::new(8, fonts.len());
-    // FIXME: is base correct?
-    for font in font_info.make_fonts(fc, use_table_vec, pk) {
-        fonts.push(font);
-    }
+    let mut font_info = Fonts::new(8);
+    font_info.make_fonts(fc, res, use_table_vec, pk);
     font_info
 }

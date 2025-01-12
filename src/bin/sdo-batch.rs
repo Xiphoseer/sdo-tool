@@ -130,11 +130,9 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let pk = PrinterKind::Laser30;
 
     let fonts_capacity = fc.chsets().len();
-    let mut font_info = Fonts::new(fonts_capacity, hnd.res.fonts.len());
+    let mut font_info = Fonts::new(fonts_capacity);
 
-    for font in font_info.make_fonts(&fc, use_table_vec, pk) {
-        hnd.res.fonts.push(font);
-    }
+    font_info.make_fonts(&fc, &mut hnd.res, use_table_vec, pk);
 
     let overrides = script.meta.to_overrides();
     for (doc, di) in &documents {

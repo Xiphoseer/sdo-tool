@@ -1,3 +1,11 @@
+#![warn(missing_docs)]
+
+//! # Signum! PDF generation
+//!
+//! This crate implements the conversion of *Signum!2* documents into PDF.
+//!
+//! As it turns out the signum graphics model is very close to PDF `/Contents`
+
 pub mod cmap;
 pub mod font;
 mod image;
@@ -15,6 +23,7 @@ use signum::{
     docs::{GenerationContext, Overrides},
 };
 
+/// Error when generating PDFs
 #[derive(Debug)]
 pub enum Error {
     /// Missing font #{}: {:?}
@@ -24,7 +33,7 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::MissingFont(csu, font_name) => {
                 write!(f, "Missing font #{}: {:?}", csu, font_name)
@@ -44,22 +53,27 @@ impl From<PDFDocEncodingError> for Error {
 
 impl std::error::Error for Error {}
 
+/// Result type
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A prepared PDF
 pub struct Pdf<'a> {
     hnd: Handle<'a>,
 }
 
 impl<'a> Pdf<'a> {
+    /// Write a PDF into a stream
     pub fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         self.hnd.write(w)
     }
 
+    /// Create a [Pdf] from a [pdf_create::high::Handle]
     pub fn from_raw(hnd: Handle<'a>) -> Self {
         Self { hnd }
     }
 }
 
+/// Generate a PDF from a [GenerationContext]
 pub fn generate_pdf<'f, GC: GenerationContext>(
     fc: &'f ChsetCache,
     pk: PrinterKind,
@@ -70,7 +84,7 @@ pub fn generate_pdf<'f, GC: GenerationContext>(
     let mut hnd = Handle::new();
     prepare_info(&mut hnd.info, meta)?;
     prepare_pdfa_output_intent(&mut hnd)?;
-    let font_info = prepare_pdf_fonts(&mut hnd.res.fonts, gc, fc, pk);
+    let font_info = prepare_pdf_fonts(&mut hnd.res, gc, fc, pk);
     generate_pdf_pages(gc, &mut hnd, overrides, &font_info)?;
     Ok(Pdf { hnd })
 }

@@ -1,7 +1,9 @@
+//! # Character Maps (CMap)
 use std::fmt;
 
 use signum::chsets::encoding::Mapping;
 
+/// Write a character codepoint map (CMap)
 pub fn write_cmap<W>(out: &mut W, mapping: &Mapping, name: &str) -> fmt::Result
 where
     W: fmt::Write,

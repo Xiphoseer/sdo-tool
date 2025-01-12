@@ -290,13 +290,25 @@ pub struct Res<'a> {
     pub encodings: Vec<Encoding<'a>>,
 }
 
+fn push<T>(vec: &mut Vec<T>, value: T) -> usize {
+    let index = vec.len();
+    vec.push(value);
+    index
+}
+
 impl<'a> Res<'a> {
     /// Push an XObject, returning the index it was pushed at
     pub fn push_xobject<T: Into<XObject>>(&mut self, value: T) -> GlobalResource<XObject> {
-        let index = self.x_objects.len();
-        self.x_objects.push(value.into());
         GlobalResource {
-            index,
+            index: push(&mut self.x_objects, value.into()),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Push a font dictionary, returning the index it was pushed at
+    pub fn push_font(&mut self, value: Font<'a>) -> GlobalResource<Font<'static>> {
+        GlobalResource {
+            index: push(&mut self.fonts, value),
             _phantom: PhantomData,
         }
     }
@@ -306,10 +318,8 @@ impl<'a> Res<'a> {
         &mut self,
         value: DictResource<Font<'a>>,
     ) -> GlobalResource<DictResource<Font<'static>>> {
-        let index = self.font_dicts.len();
-        self.font_dicts.push(value);
         GlobalResource {
-            index,
+            index: push(&mut self.font_dicts, value),
             _phantom: PhantomData,
         }
     }

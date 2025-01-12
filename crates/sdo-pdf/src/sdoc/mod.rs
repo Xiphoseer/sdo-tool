@@ -1,3 +1,5 @@
+//! # Signum! Documents
+
 use pdf_create::{
     common::{MediaBox, ProcSet, Rectangle},
     high::{DictResource, Font, GlobalResource, Handle, Page, Res, Resource, Resources, XObject},
@@ -38,15 +40,33 @@ fn write_pdf_page_text(
 
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
+            let is_small = te.style.small;
 
-            let font_size = if is_tall { 2 } else { 1 };
-            let font_width = match (is_tall, is_wide) {
-                (true, true) => 100,
-                (true, false) => 50,
-                (false, true) => 200,
-                (false, false) => 100,
+            let font_size = if is_tall {
+                4
+            } else if is_small {
+                1
+            } else {
+                2
+            };
+            let font_width = if is_tall {
+                match is_wide {
+                    true => 100,
+                    false => 50,
+                }
+            } else if is_small {
+                match is_wide {
+                    true => 400,
+                    false => 200,
+                }
+            } else {
+                match is_wide {
+                    true => 200,
+                    false => 100,
+                }
             };
 
+            // FIXME: font_size is multiplied by 0.5 to support "small"
             contents.cset(te.cset, font_size);
             contents.fwidth(font_width);
 
@@ -110,6 +130,7 @@ fn write_pdf_page_images<GC: GenerationContext>(
     has_images
 }
 
+/// Generate a single PDF page
 pub fn generate_pdf_page<GC: GenerationContext>(
     gc: &GC,
     overrides: &Overrides,
@@ -148,6 +169,7 @@ pub fn generate_pdf_page<GC: GenerationContext>(
     })
 }
 
+/// Generate a sequence of PDF pages
 pub fn generate_pdf_pages<GC: GenerationContext>(
     gc: &GC,
     hnd: &mut Handle,

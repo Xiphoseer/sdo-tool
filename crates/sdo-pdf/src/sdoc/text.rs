@@ -10,7 +10,7 @@ pub struct TextContents {
     /// The current font size
     fs: u8,
     /// The current horizontal scaling
-    fw: u8,
+    fw: u16,
     open: bool,
     needs_space: bool,
     //is_ascii: bool,
@@ -64,11 +64,11 @@ impl TextContents {
             self.cset = cset;
             self.fs = font_size;
             self.flush();
-            writeln!(self.inner, "/C{} {} Tf", cset, font_size).unwrap();
+            writeln!(self.inner, "/C{} {} Tf", cset, (font_size as f32) * 0.5).unwrap();
         }
     }
 
-    pub fn fwidth(&mut self, font_width: u8) {
+    pub fn fwidth(&mut self, font_width: u16) {
         if self.fw != font_width {
             self.fw = font_width;
             self.flush();
