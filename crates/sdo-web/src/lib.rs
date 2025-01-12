@@ -358,19 +358,20 @@ impl Handle {
     }
 
     #[wasm_bindgen(js_name = addToCollection)]
-    pub async fn add_to_collection(&mut self) -> Result<(), JsValue> {
+    pub async fn add_to_collection(&mut self) -> Result<usize, JsValue> {
         self.fc.reset();
         let root_dir = self.fs.root_dir()?;
         let chset_dir = self.fs.chset_dir().await?;
         let opts = FileSystemGetFileOptions::new();
         opts.set_create(true);
+        let mut count = 0;
         for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let data = js_file_data(&file).await?;
 
             let four_cc =
                 js_four_cc(&data).ok_or_else(|| JsError::new("Failed to parse file format"))?;
-            let name = file.name();
+            let name = file.name().to_uppercase();
             // (name, data, four_cc)
             let dir = match four_cc {
                 FourCC::ESET | FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => &chset_dir,
@@ -387,8 +388,9 @@ impl Handle {
             let o = JsFuture::from(w.close()).await?;
             assert_eq!(o, JsValue::UNDEFINED);
             console::info_3(&"Added".into(), &name.into(), &"to collection!".into());
+            count += 1;
         }
-        Ok(())
+        Ok(count)
     }
 
     #[wasm_bindgen(js_name = exportToPdf)]

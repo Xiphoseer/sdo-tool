@@ -40,7 +40,9 @@ async function run() {
     inputField.addEventListener('change', onInputFieldChange);
 
     async function addToCollection() {
-        await h.addToCollection();
+        await h.addToCollection().then((count) => {
+            alert(`Added ${count} elements to collection!`)
+        });
     }
 
     async function exportToPdf() {
