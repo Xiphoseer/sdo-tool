@@ -242,7 +242,9 @@ impl Handle {
         }
     }
 
-    fn _eset_kb(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
+    /// Render a keyboard layout for the editor charset
+    fn eset_kb(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
+        let container = self.document.create_element("div")?;
         let kb_img = KB_DRAW
             .to_page(eset)
             .or(Err("Failed to draw Keyboard Map"))?;
@@ -254,8 +256,10 @@ impl Handle {
         let kb_img_el = blob_image_el(&kb_blob)?;
         let np_img_el = blob_image_el(&np_blob)?;
 
-        self.output.append_child(&kb_img_el)?;
-        self.output.append_child(&np_img_el)?;
+        container.append_child(&kb_img_el)?;
+        container.append_child(&np_img_el)?;
+
+        self.output.append_child(&container)?;
         Ok(())
     }
 
@@ -269,6 +273,11 @@ impl Handle {
         let (_, pset) =
             parse_pset(data).map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
         Ok(pset)
+    }
+
+    fn show_eset(&mut self, eset: &ESet<'_>) -> Result<(), JsValue> {
+        self.eset_kb(eset)?;
+        Ok(())
     }
 
     fn show_pset(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
@@ -587,7 +596,8 @@ impl Handle {
 
             match font_kind {
                 FontKind::Editor => {
-                    let _eset = self.parse_eset(&_data)?;
+                    let eset = self.parse_eset(&_data)?;
+                    self.show_eset(&eset)?;
                 }
                 FontKind::Printer(_) => {
                     let pset = self.parse_pset(&_data)?;
