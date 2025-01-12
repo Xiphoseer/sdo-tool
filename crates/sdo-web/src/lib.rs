@@ -245,6 +245,7 @@ impl Handle {
     /// Render a keyboard layout for the editor charset
     fn eset_kb(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
         let container = self.document.create_element("div")?;
+        container.class_list().add_1("overflow-x-auto")?;
         let kb_img = KB_DRAW
             .to_page(eset)
             .or(Err("Failed to draw Keyboard Map"))?;
