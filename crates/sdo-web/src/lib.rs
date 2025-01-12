@@ -271,9 +271,15 @@ impl Handle {
         Ok(pset)
     }
 
-    fn _show_ps24(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
+    fn show_pset(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
+        let h3 = self.document.create_element("h3")?;
+        h3.set_text_content(Some("Characters"));
+        self.output.append_child(&h3)?;
+
+        let el_table_responsive = self.document.create_element("div")?;
+        el_table_responsive.class_list().add_1("table-responsive")?;
         let el_table = self.document.create_element("table")?;
-        self.output.append_child(&el_table)?;
+        el_table.class_list().add_1("table")?;
         for crow in pset.chars.chunks(16) {
             let el_tr = self.document.create_element("tr")?;
             el_table.append_child(&el_tr)?;
@@ -288,6 +294,8 @@ impl Handle {
                 }
             }
         }
+        el_table_responsive.append_child(&el_table)?;
+        self.output.append_child(&el_table_responsive)?;
 
         Ok(())
     }
@@ -583,7 +591,7 @@ impl Handle {
                 }
                 FontKind::Printer(_) => {
                     let pset = self.parse_pset(&_data)?;
-                    self._show_ps24(&pset)?;
+                    self.show_pset(&pset)?;
                 }
             }
         }
