@@ -146,11 +146,12 @@ pub struct Handle {
 impl Handle {
     #[wasm_bindgen(constructor)]
     pub fn new(output: HtmlElement, input: HtmlInputElement) -> Result<Handle, JsValue> {
+        let window = window().ok_or(JsError::new("failed to get window global"))?;
+        let document = window
+            .document()
+            .ok_or(JsError::new("failed to get document"))?;
         let h = Self {
-            document: window()
-                .ok_or(JsValue::NULL)?
-                .document()
-                .ok_or(JsValue::NULL)?,
+            document,
             output,
             fs: OriginPrivateFS::new(),
             fc: ChsetCache::new(),

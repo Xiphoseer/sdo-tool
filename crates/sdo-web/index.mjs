@@ -16,7 +16,6 @@ async function run() {
     // Buttons
     const addToCollectionBtn = document.getElementById('add-to-collection');
     const exportToPdfBtn = document.getElementById('export-to-pdf');
-    const fontCollectionLink = document.getElementById('font-collection-link');
 
     const navLinks = document.querySelectorAll('.nav-item, .navbar-brand')
     const menuToggle = document.getElementById('navbarNav')
