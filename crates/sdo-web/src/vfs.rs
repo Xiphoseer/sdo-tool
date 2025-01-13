@@ -14,7 +14,8 @@ use web_sys::{
 };
 
 use crate::glue::{
-    fs_file_handle_get_file, js_directory_get_file_handle, js_file_data, try_iter_async,
+    fs_file_handle_get_file, js_directory_get_file_handle, js_file_data,
+    js_storage_manager_get_directory, try_iter_async,
 };
 
 /// Browser Origin Private File System
@@ -260,9 +261,7 @@ impl OriginPrivateFS {
     }
 
     pub async fn init(&mut self) -> Result<(), JsValue> {
-        let dir_handle = FileSystemDirectoryHandle::unchecked_from_js(
-            JsFuture::from(self.storage.get_directory()).await?,
-        );
+        let dir_handle = js_storage_manager_get_directory(&self.storage).await?;
         self.root = Some(dir_handle);
         Ok(())
     }

@@ -3,7 +3,7 @@ use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     Blob, BlobPropertyBag, FileList, FileSystemDirectoryHandle, FileSystemFileHandle,
-    HtmlInputElement,
+    HtmlInputElement, StorageManager,
 };
 
 pub(crate) async fn fs_file_handle_get_file(
@@ -80,4 +80,11 @@ pub(crate) fn js_error_with_cause<E: std::error::Error>(e: E, message: &str) -> 
     let err = js_sys::Error::new(message);
     err.set_cause(&JsError::from(e).into());
     err
+}
+
+pub(crate) async fn js_storage_manager_get_directory(
+    storage: &StorageManager,
+) -> Result<FileSystemDirectoryHandle, JsValue> {
+    let val = JsFuture::from(storage.get_directory()).await?;
+    Ok(FileSystemDirectoryHandle::unchecked_from_js(val))
 }
