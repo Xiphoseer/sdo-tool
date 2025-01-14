@@ -1,5 +1,7 @@
 //! # Signum! Documents
 
+use std::io;
+
 use pdf_create::{
     common::{MediaBox, ProcSet, Rectangle},
     high::{DictResource, Font, GlobalResource, Handle, Page, Res, Resource, Resources, XObject},
@@ -16,27 +18,29 @@ use signum::{
 mod contents;
 mod text;
 use contents::Contents;
-use text::TextContents;
+use text::{TextContents, TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y};
 
 use crate::{
-    font::{FontInfo, Fonts},
+    font::{FontInfo, Fonts, FONTUNITS_PER_SIGNUM_X},
     image::image_for_site,
+    Error,
 };
 
 /// Write the text for a PDF page
-fn write_pdf_page_text(
-    contents: &mut TextContents,
+fn write_pdf_page_text<O: io::Write>(
+    contents: &mut TextContents<O>,
     print: &DocumentFontCacheInfo,
     infos: &[Option<&FontInfo>; 8],
     page: &PageText,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
+    contents.goto_origin().map_err(Error::Contents)?;
     for (skip, line) in &page.content {
         contents.next_line(0, *skip as u32 + 1);
 
-        const FONTUNITS_PER_SIGNUM_X: i32 = 800;
-        let mut prev_width = 0;
+        let mut prev_width: u32 = 0;
+
         for te in &line.data {
-            let x = te.offset as i32;
+            let offset = te.offset as u32 * FONTUNITS_PER_SIGNUM_X;
 
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
@@ -66,34 +70,39 @@ fn write_pdf_page_text(
                 }
             };
 
-            // FIXME: font_size is multiplied by 0.5 to support "small"
-            contents.cset(te.cset, font_size);
-            contents.fwidth(font_width);
-
-            let mut diff = x * FONTUNITS_PER_SIGNUM_X - prev_width;
-            if diff != 0 {
-                if is_wide {
-                    diff /= 2;
-                }
-                contents.xoff(-diff);
-            }
-            contents.byte(te.cval);
-
             let csu = te.cset as usize;
             let fi = infos[csu].ok_or_else(|| {
                 let font_name = print
                     .font_cache_info_at(csu)
                     .and_then(FontCacheInfo::name)
                     .unwrap_or("");
-                crate::Error::MissingFont(csu, font_name.to_owned())
+                Error::MissingFont(csu, font_name.to_owned())
             })?;
-            prev_width = fi.width(te.cval) as i32;
-            if is_wide {
-                prev_width *= 2;
+            let width = {
+                let w = fi.width(te.cval);
+                if is_wide { w * 2 } else { w }
+            };
+
+            // FIXME: font_size is multiplied by 0.5 to support "small"
+            contents.cset(te.cset, font_size).map_err(Error::Contents)?;
+            contents.fwidth(font_width).map_err(Error::Contents)?;
+            
+            let mut diff = (offset as i32) - (prev_width as i32);
+            if diff != 0 {
+                if is_wide {
+                    diff /= 2;
+                }
+                contents.xoff(-diff).map_err(Error::Contents)?;
             }
+
+            // Note: slant has to be _after_ x-offset adjustment
+            contents.slant(te.style.italic).map_err(Error::Contents)?;
+            contents.byte(te.cval, width).map_err(Error::Contents)?;
+
+            prev_width = width;
         }
 
-        contents.flush();
+        contents.flush().map_err(Error::Contents)?;
     }
     Ok(())
 }
@@ -139,7 +148,7 @@ pub fn generate_pdf_page<GC: GenerationContext>(
     page: &tebu::PageText,
     page_info: &pbuf::Page,
     res: &mut Res<'_>,
-) -> Result<Page<'static>, crate::Error> {
+) -> Result<Page<'static>, Error> {
     let media_box = MediaBox::A4;
     let mut x_objects = DictResource::<XObject>::new();
 
@@ -147,10 +156,10 @@ pub fn generate_pdf_page<GC: GenerationContext>(
     let contents = {
         let mut contents = Contents::for_page(page_info, &media_box, overrides);
         has_images = write_pdf_page_images(&mut contents, gc, page_info, res, &mut x_objects);
-        let mut contents = contents.start_text(1.0, -1.0);
+        let mut contents = contents.start_text(TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y);
         write_pdf_page_text(&mut contents, &gc.document_info().fonts, infos, page)?;
-        contents.into_inner()
-    };
+        contents.finish().map_err(Error::Contents)
+    }?;
     let resources = Resources {
         fonts: fonts.into(),
         x_objects: Resource::Immediate(Box::new(x_objects)),
@@ -175,7 +184,7 @@ pub fn generate_pdf_pages<GC: GenerationContext>(
     hnd: &mut Handle,
     overrides: &Overrides,
     font_info: &Fonts,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     let res = &mut hnd.res;
     let pages = &mut hnd.pages;
 

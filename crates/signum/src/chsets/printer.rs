@@ -1,6 +1,6 @@
 //! # The printer charsets
 
-use super::LoadError;
+use super::{FontResolution, LoadError};
 use crate::{
     docs::four_cc,
     util::{Buf, FourCC},
@@ -87,11 +87,11 @@ impl PrinterKind {
     }
 
     /// Get the resolution of this printer font in dots per inch
-    pub fn resolution(&self) -> (u32, u32) {
+    pub fn resolution(&self) -> &'static FontResolution {
         match self {
-            Self::Needle9 => (240, 216),
-            Self::Needle24 => (360, 360),
-            Self::Laser30 => (300, 300),
+            Self::Needle9 => &FontResolution { x: 240, y: 216 },
+            Self::Needle24 => &FontResolution { x: 360, y: 360 },
+            Self::Laser30 => &FontResolution { x: 300, y: 300 },
         }
     }
 }

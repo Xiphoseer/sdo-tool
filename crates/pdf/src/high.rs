@@ -192,7 +192,7 @@ pub struct Type3Font<'a> {
     pub char_procs: Dict<Ascii85Stream<'a>>,
     /// Dict of encoding value to char names
     pub encoding: Encoding<'a>,
-    /// Width of every char between first and last
+    /// Width of every char between first and last (in fontunits, i.e. 1/72000 in)
     pub widths: Vec<u32>,
     /// ToUnicode CMap stream
     pub to_unicode: Option<Ascii85Stream<'a>>,

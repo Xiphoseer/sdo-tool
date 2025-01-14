@@ -180,9 +180,9 @@ impl FontKind {
     }
 
     /// Return the resolution (in DPI per direction)
-    pub fn resolution(&self) -> (u32, u32) {
+    pub fn resolution(&self) -> &'static FontResolution {
         match self {
-            Self::Editor => (104, 90),
+            Self::Editor => &FontResolution { x: 104, y: 90 },
             Self::Printer(p) => p.resolution(),
         }
     }
@@ -251,4 +251,12 @@ pub enum LoadError {
     /// The parsing failed
     #[error("Parsing failed: {0}")]
     Parse(String),
+}
+
+/// Information on font format resolution
+pub struct FontResolution {
+    /// DPI in the horizontal direction
+    pub x: u32,
+    /// DPI in the vertical direction
+    pub y: u32,
 }

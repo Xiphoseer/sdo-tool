@@ -30,6 +30,8 @@ pub enum Error {
     MissingFont(usize, String),
     /// PDF encoding error
     Encoding(PDFDocEncodingError),
+    /// Content Stream generation
+    Contents(io::Error),
 }
 
 impl fmt::Display for Error {
@@ -40,6 +42,9 @@ impl fmt::Display for Error {
             }
             Error::Encoding(pdfdoc_encoding_error) => {
                 <PDFDocEncodingError as fmt::Display>::fmt(pdfdoc_encoding_error, f)
+            }
+            Error::Contents(io) => {
+                write!(f, "Writing contents failed: {io}")
             }
         }
     }

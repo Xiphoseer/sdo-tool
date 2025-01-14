@@ -70,17 +70,18 @@ pub struct FontMetrics {
     fontunits_per_pixel_y: u32,
 }
 
+const PDFUNITS_PER_INCH: u32 = 72;
+const FONTUNITS_PER_INCH: u32 = PDFUNITS_PER_INCH * 1000;
+
 impl From<PrinterKind> for FontMetrics {
     fn from(pk: PrinterKind) -> Self {
-        let pdfunits_per_inch = 72;
-        let fontunits_per_inch = pdfunits_per_inch * 1000;
-        let (pixels_per_inch_x, pixels_per_inch_y) = pk.resolution();
+        let pixels_per_inch = pk.resolution();
 
         // let pixels_per_pdfunit_x = pixels_per_inch_x / pdfunits_per_inch;
         // let pixels_per_pdfunit_y = pixels_per_inch_y / pdfunits_per_inch;
 
-        let fontunits_per_pixel_x = fontunits_per_inch / pixels_per_inch_x;
-        let fontunits_per_pixel_y = fontunits_per_inch / pixels_per_inch_y;
+        let fontunits_per_pixel_x = FONTUNITS_PER_INCH / pixels_per_inch.x;
+        let fontunits_per_pixel_y = FONTUNITS_PER_INCH / pixels_per_inch.y;
         Self {
             baseline: pk.baseline(),
 
@@ -157,6 +158,9 @@ pub fn write_char_stream<W: Write>(
     Ok(())
 }
 
+/// Number of font-units (1/72000 of an inch) per horizontal signum unit (1/90 of an inch)
+pub(crate) const FONTUNITS_PER_SIGNUM_X: u32 = 800;
+
 /// Create a type 3 font
 pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
@@ -184,7 +188,7 @@ pub fn type3_font<'a>(
             todo!("missing character #{} in editor font", cvu);
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
-            let width = u32::from(ewidth) * 800;
+            let width = u32::from(ewidth) * FONTUNITS_PER_SIGNUM_X;
             widths.push(width);
             max_width = max_width.max(width as i32);
 
@@ -257,6 +261,7 @@ pub fn type3_font<'a>(
 
 /// Information on one font
 pub struct FontInfo {
+    /// The widths of each glyph (int fontunits, i.e. 1/72000 in)
     widths: Vec<u32>,
     first_char: u8,
     /// Index within the PDF document of the font resource

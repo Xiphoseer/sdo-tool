@@ -23,8 +23,9 @@ impl Contents {
         //
         // Signum uses 1/54 1/(18*3) of an inch vertically and 1/90 1/(18*5) horizontally
 
-        let width = page_info.format.width() * 72 / 90;
-        let height = page_info.format.length as i32 * 72 / 54;
+        let page_format = &page_info.format;
+        let width = page_format.width() * 72 / 90;
+        let height = page_format.length as i32 * 72 / 54;
 
         assert!(width as i32 <= media_box.width, "Please file a bug!");
 
@@ -62,16 +63,11 @@ impl Contents {
         Ok(())
     }
 
-    pub fn start_text(self, scale_x: f32, scale_y: f32) -> TextContents {
+    pub fn start_text(self, scale_x: f32, scale_y: f32) -> TextContents<Vec<u8>> {
         let mut inner = self.inner;
         let left = self.left;
         let top = self.top;
-        write!(
-            inner,
-            "q\nBT\n{} 0 0 {} {} {} Tm\n",
-            scale_x, scale_y, left, top
-        )
-        .unwrap();
-        TextContents::new(inner)
+        write!(inner, "q\nBT\n").unwrap();
+        TextContents::new(inner, (left, top), (scale_x, scale_y))
     }
 }
