@@ -6,7 +6,7 @@ use pdf_create::write::write_string;
 const Y_SCALE_INVERSE: f32 = 3.0;
 
 pub(crate) const TEXT_MATRIX_SCALE_X: f32 = 1.0;
-pub(crate) const TEXT_MATRIX_SCALE_Y: f32 = -1.0;
+pub(crate) const TEXT_MATRIX_SCALE_Y: f32 = 1.0;
 
 /// Helper to create a valid `/Contents` stream
 pub struct TextContents<O> {
@@ -95,7 +95,7 @@ impl<O: io::Write> TextContents<O> {
                     self.inner,
                     "{} {} Td",
                     self.line_x,
-                    diff_y / Y_SCALE_INVERSE
+                    -diff_y / Y_SCALE_INVERSE
                 )?;
             }
             self.pos_y = self.line_y;
@@ -190,7 +190,7 @@ impl<O: io::Write> TextContents<O> {
 
     pub(crate) fn slant(&mut self, is_italic: bool) -> io::Result<()> {
         let slant = match is_italic {
-            true => -0.25, // 1:4 slant
+            true => 0.25, // 1:4 slant
             false => 0.0,  // no slant
         };
         if slant != self.slant {

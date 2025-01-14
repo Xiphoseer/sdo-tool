@@ -105,9 +105,9 @@ pub fn write_char_stream<W: Write>(
 ) -> io::Result<()> {
     // This is all in pixels
     let hb = pchar.hbounds();
-    let ur_x = (pchar.width as usize) * 8 - hb.max_tail;
-    let ll_x = hb.max_lead;
-    let box_width = ur_x - ll_x;
+    let right_x = (pchar.width as usize) * 8 - hb.max_tail;
+    let left_x = hb.max_lead;
+    let box_width = right_x - left_x;
     let box_height = pchar.height as usize;
     let mut encoder = Encoder::new(box_width, pchar.bitmap);
     encoder.skip_lead = hb.max_lead;
@@ -116,8 +116,8 @@ pub fn write_char_stream<W: Write>(
 
     // This is all in font units
     let top = font_metrics.baseline;
-    let ur_y = top - (pchar.top as i32);
-    let ll_y = ur_y - pchar.height as i32;
+    let upper_y = top - (pchar.top as i32);
+    let lower_y = upper_y - pchar.height as i32;
 
     let fpx = font_metrics.fontunits_per_pixel_x as i32;
     let fpy = font_metrics.fontunits_per_pixel_y as i32;
@@ -125,10 +125,10 @@ pub fn write_char_stream<W: Write>(
     let cd = CacheDevice {
         w_x: dx as i16,
         w_y: 0,
-        ll_x: ll_x as i32 * fpx,
-        ll_y: ll_y * fpy,
-        ur_x: ur_x as i32 * fpx,
-        ur_y: ur_y * fpy,
+        ll_x: left_x as i32 * fpx,
+        ll_y: lower_y * fpy,
+        ur_x: right_x as i32 * fpx,
+        ur_y: upper_y * fpy,
     };
     writeln!(
         w,
@@ -138,8 +138,8 @@ pub fn write_char_stream<W: Write>(
 
     let gc_w = box_width as i32 * fpx;
     let gc_h = box_height as i32 * fpy;
-    let gc_x = ll_x as i32 * fpx;
-    let gc_y = ll_y * fpy;
+    let gc_x = left_x as i32 * fpx;
+    let gc_y = lower_y * fpy;
     writeln!(w, "{} 0 0 {} {} {} cm", gc_w, gc_h, gc_x, gc_y)?;
     writeln!(w, "BI")?;
     writeln!(w, "  /IM true")?;
@@ -170,7 +170,7 @@ pub fn type3_font<'a>(
     name: Option<&'a str>,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
-    let font_matrix = Matrix::scale(0.001, -0.001);
+    let font_matrix = Matrix::scale(0.001, 0.001);
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
@@ -178,7 +178,8 @@ pub fn type3_font<'a>(
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
     let mut max_width = 0;
-    let mut max_height = 0;
+    let mut max_above_baseline = 0;
+    let mut max_below_baseline = 0;
 
     for cval in first_char..=last_char {
         let cvu = cval as usize;
@@ -197,7 +198,11 @@ pub fn type3_font<'a>(
                 let mut cproc = Vec::new();
                 write_char_stream(&mut cproc, pchar, width, &font_metrics).unwrap();
                 procs.push((DEFAULT_NAMES[cvu], cproc));
-                max_height = max_height.max(pchar.height as i32 * 200);
+                let sig_origin_y = font_metrics.baseline;
+                let sig_upper_y = sig_origin_y - pchar.top as i32;
+                let sig_lower_y = sig_upper_y - pchar.height as i32;
+                max_above_baseline = max_above_baseline.max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32 / 4);
+                max_below_baseline = max_below_baseline.min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32 / 4);
             } else {
                 // FIXME: empty glyph for non-printable characters?
             }
@@ -207,10 +212,13 @@ pub fn type3_font<'a>(
     }
 
     let font_bbox = Rectangle {
-        ll: Point { x: 0, y: 0 },
+        ll: Point {
+            x: 0,
+            y: max_below_baseline,
+        },
         ur: Point {
             x: max_width,
-            y: max_height,
+            y: max_above_baseline,
         },
     };
 
