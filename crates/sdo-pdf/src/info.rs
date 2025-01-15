@@ -39,7 +39,7 @@ pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodi
 }
 
 /// Add a simple output intend for PDF/A
-/// 
+///
 /// This is not yet properly implemented
 pub fn prepare_pdfa_output_intent(hnd: &mut Handle) -> crate::Result<()> {
     // Output intents

@@ -201,8 +201,10 @@ pub fn type3_font<'a>(
                 let sig_origin_y = font_metrics.baseline;
                 let sig_upper_y = sig_origin_y - pchar.top as i32;
                 let sig_lower_y = sig_upper_y - pchar.height as i32;
-                max_above_baseline = max_above_baseline.max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32 / 4);
-                max_below_baseline = max_below_baseline.min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32 / 4);
+                max_above_baseline =
+                    max_above_baseline.max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32);
+                max_below_baseline =
+                    max_below_baseline.min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32);
             } else {
                 // FIXME: empty glyph for non-printable characters?
             }

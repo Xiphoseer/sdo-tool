@@ -80,13 +80,17 @@ fn write_pdf_page_text<O: io::Write>(
             })?;
             let width = {
                 let w = fi.width(te.cval);
-                if is_wide { w * 2 } else { w }
+                if is_wide {
+                    w * 2
+                } else {
+                    w
+                }
             };
 
             // FIXME: font_size is multiplied by 0.5 to support "small"
             contents.cset(te.cset, font_size).map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
-            
+
             let mut diff = (offset as i32) - (prev_width as i32);
             if diff != 0 {
                 if is_wide {

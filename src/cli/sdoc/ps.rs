@@ -19,7 +19,9 @@ fn output_ps_writer(
     pd: FontKind,
     pw: &mut PsWriter<impl Write>,
 ) -> eyre::Result<()> {
-    let (hdpi, vdpi) = pd.resolution();
+    let resolution = pd.resolution();
+    let hdpi = resolution.x;
+    let vdpi = resolution.y;
 
     pw.write_magic()?;
     pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;

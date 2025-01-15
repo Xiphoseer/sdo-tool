@@ -191,7 +191,7 @@ impl<O: io::Write> TextContents<O> {
     pub(crate) fn slant(&mut self, is_italic: bool) -> io::Result<()> {
         let slant = match is_italic {
             true => 0.25, // 1:4 slant
-            false => 0.0,  // no slant
+            false => 0.0, // no slant
         };
         if slant != self.slant {
             self.flush()?;
