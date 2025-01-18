@@ -189,6 +189,7 @@ impl Meta {
                 .to_owned(),
             ),
             subject: self.subject.to_owned(),
+            ..Default::default()
         }
     }
 
@@ -198,6 +199,7 @@ impl Meta {
             author: self.title.to_owned(),
             title: self.title.to_owned(),
             subject: self.subject.to_owned(),
+            ..Default::default()
         }
     }
 
