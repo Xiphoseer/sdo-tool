@@ -96,9 +96,7 @@ fn write_pdf_page_text<O: io::Write>(
                 if is_wide {
                     diff /= 2;
                 }
-                contents
-                    .xoff(-diff / DEFAULT_FONT_SIZE)
-                    .map_err(Error::Contents)?;
+                contents.xoff(-diff).map_err(Error::Contents)?;
             }
 
             // Note: slant has to be _after_ x-offset adjustment

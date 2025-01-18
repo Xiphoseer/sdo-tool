@@ -147,7 +147,8 @@ impl<O: io::Write> TextContents<O> {
         if self.needs_space {
             write!(self.inner, " ")?;
         }
-        write!(self.inner, "{}", xoff)?;
+        let diff = xoff / DEFAULT_FONT_SIZE;
+        write!(self.inner, "{}", diff)?;
         self.line_x -= xoff;
         self.needs_space = true;
         Ok(())

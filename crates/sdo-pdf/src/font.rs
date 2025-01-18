@@ -96,7 +96,7 @@ impl From<PrinterKind> for FontMetrics {
     }
 }
 
-pub(crate) const DEFAULT_FONT_SIZE: i32 = 12;
+pub(crate) const DEFAULT_FONT_SIZE: i32 = 10;
 
 /// Write a printer character to the stream
 pub fn write_char_stream<W: Write>(
