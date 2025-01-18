@@ -2,6 +2,8 @@ use std::io;
 
 use pdf_create::write::write_string;
 
+use crate::font::DEFAULT_FONT_SIZE;
+
 /// Constant to get from 1/216th inches (y space) to 1/72th space (PDF space)
 const Y_SCALE_INVERSE: f32 = 3.0;
 
@@ -111,7 +113,13 @@ impl<O: io::Write> TextContents<O> {
             self.cset = cset;
             self.fs = font_size;
             self.flush()?;
-            writeln!(self.inner, "/C{} {} Tf", cset, (font_size as f32) * 0.5)?;
+            let font_size_scale = (DEFAULT_FONT_SIZE as f32) * 0.5; // default font size * half (for small)
+            writeln!(
+                self.inner,
+                "/C{} {} Tf",
+                cset,
+                (font_size as f32) * font_size_scale
+            )?;
         }
         Ok(())
     }

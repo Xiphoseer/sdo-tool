@@ -96,6 +96,8 @@ impl From<PrinterKind> for FontMetrics {
     }
 }
 
+pub(crate) const DEFAULT_FONT_SIZE: i32 = 12;
+
 /// Write a printer character to the stream
 pub fn write_char_stream<W: Write>(
     w: &mut W,
@@ -119,8 +121,8 @@ pub fn write_char_stream<W: Write>(
     let upper_y = top - (pchar.top as i32);
     let lower_y = upper_y - pchar.height as i32;
 
-    let fpx = font_metrics.fontunits_per_pixel_x as i32;
-    let fpy = font_metrics.fontunits_per_pixel_y as i32;
+    let fpx = font_metrics.fontunits_per_pixel_x as i32 / DEFAULT_FONT_SIZE;
+    let fpy = font_metrics.fontunits_per_pixel_y as i32 / DEFAULT_FONT_SIZE;
 
     let cd = CacheDevice {
         w_x: dx as i16,
@@ -189,7 +191,7 @@ pub fn type3_font<'a>(
             todo!("missing character #{} in editor font", cvu);
         };
         if ewidth > 0 && use_table.chars[cvu] > 0 {
-            let width = u32::from(ewidth) * FONTUNITS_PER_SIGNUM_X;
+            let width = u32::from(ewidth) * FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32;
             widths.push(width);
             max_width = max_width.max(width as i32);
 
@@ -201,10 +203,10 @@ pub fn type3_font<'a>(
                 let sig_origin_y = font_metrics.baseline;
                 let sig_upper_y = sig_origin_y - pchar.top as i32;
                 let sig_lower_y = sig_upper_y - pchar.height as i32;
-                max_above_baseline =
-                    max_above_baseline.max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32);
-                max_below_baseline =
-                    max_below_baseline.min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32);
+                max_above_baseline = max_above_baseline
+                    .max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32 * 10);
+                max_below_baseline = max_below_baseline
+                    .min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32 * 10);
             } else {
                 // FIXME: empty glyph for non-printable characters?
             }

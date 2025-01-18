@@ -21,7 +21,7 @@ use contents::Contents;
 use text::{TextContents, TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y};
 
 use crate::{
-    font::{FontInfo, Fonts, FONTUNITS_PER_SIGNUM_X},
+    font::{FontInfo, Fonts, DEFAULT_FONT_SIZE, FONTUNITS_PER_SIGNUM_X},
     image::image_for_site,
     Error,
 };
@@ -79,7 +79,7 @@ fn write_pdf_page_text<O: io::Write>(
                 Error::MissingFont(csu, font_name.to_owned())
             })?;
             let width = {
-                let w = fi.width(te.cval);
+                let w = fi.width(te.cval) * (DEFAULT_FONT_SIZE as u32);
                 if is_wide {
                     w * 2
                 } else {
@@ -96,7 +96,9 @@ fn write_pdf_page_text<O: io::Write>(
                 if is_wide {
                     diff /= 2;
                 }
-                contents.xoff(-diff).map_err(Error::Contents)?;
+                contents
+                    .xoff(-diff / DEFAULT_FONT_SIZE)
+                    .map_err(Error::Contents)?;
             }
 
             // Note: slant has to be _after_ x-offset adjustment
