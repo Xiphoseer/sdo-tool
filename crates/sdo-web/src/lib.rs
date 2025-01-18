@@ -670,7 +670,7 @@ impl Handle {
 
     fn card(&self, name: &str, four_cc: FourCC, href: &str) -> Result<Element, JsValue> {
         let card = self.document.create_element("a")?;
-        let kind = decode_atari_str(&four_cc);
+        let kind = decode_atari_str(four_cc.as_slice());
         card.class_list()
             .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
         card.set_attribute("href", href)?;

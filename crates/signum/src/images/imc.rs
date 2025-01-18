@@ -6,7 +6,7 @@
 
 use crate::{
     docs::{bytes16, bytes32},
-    util::{bit_iter::BitIter, Bytes16, Bytes32},
+    util::{BitIter, Bytes16, Bytes32},
 };
 use nom::{
     bytes::complete::{tag, take},

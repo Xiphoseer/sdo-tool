@@ -1,4 +1,4 @@
-use crate::{docs::hcim::ImageArea, util::bit_iter::BitIter};
+use crate::{docs::hcim::ImageArea, util::BitIter};
 
 use super::Page;
 

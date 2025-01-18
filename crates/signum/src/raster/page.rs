@@ -7,9 +7,9 @@ use crate::{
     chsets::{editor::EChar, printer::PSetChar},
     docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
-    util::bit_iter::BitIter,
-    util::bit_writer::BitWriter,
     util::data::BIT_PROJECTION,
+    util::BitIter,
+    util::BitWriter,
 };
 
 use super::{scalers::VScaler, trace::Dir, DrawPrintErr};
