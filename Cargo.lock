@@ -1170,6 +1170,7 @@ version = "0.3.0"
 dependencies = [
  "bitflags",
  "bstr",
+ "chrono",
  "color-eyre",
  "displaydoc",
  "image",

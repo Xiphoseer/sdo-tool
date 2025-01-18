@@ -5,11 +5,14 @@ authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
 
 [dependencies]
-signum = { path = "../signum" }
 sdo-ps = { path = "../sdo-ps" }
 pdf-create = { path = "../pdf" }
 ccitt-t4-t6 = { path = "../ccitt" }
 log = "0.4"
+
+[dependencies.signum]
+path = "../signum"
+features = ["chrono"]
 
 [dev-dependencies]
 color-eyre = { version = "0.5", default-features = false }

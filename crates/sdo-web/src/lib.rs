@@ -423,10 +423,11 @@ impl Handle {
             xoffset: 0,
             yoffset: 0,
         };
-        let meta = MetaInfo {
+        let mut meta = MetaInfo {
             title: Some(active_doc.name.clone()),
             ..MetaInfo::default()
         };
+        meta.with_dates(&active_doc.sdoc.header);
         let pk = match active_doc.pd {
             FontKind::Editor => Err(JsError::new("editor font not supported")),
             FontKind::Printer(printer_kind) => Ok(printer_kind),

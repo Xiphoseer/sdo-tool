@@ -1,7 +1,8 @@
-use pdf_create::chrono::Local;
+use pdf_create::chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use pdf_create::common::{OutputIntent, OutputIntentSubtype, PdfString};
 use pdf_create::encoding::{pdf_doc_encode, PDFDocEncodingError};
 use pdf_create::high::{Handle, Info};
+use signum::docs::header::Header;
 
 /// Information to add into the PDF `/Info` dictionary
 #[derive(Debug, Clone, Default)]
@@ -12,6 +13,22 @@ pub struct MetaInfo {
     pub author: Option<String>,
     /// Subject
     pub subject: Option<String>,
+
+    /// Creation date of the document
+    pub creation_date: Option<DateTime<Local>>,
+    /// Date when the document was last updated
+    pub mod_date: Option<DateTime<Local>>,
+}
+
+impl MetaInfo {
+    /// Set the dates from the SDOC header
+    pub fn with_dates(&mut self, header: &Header) {
+        let ctime = NaiveDateTime::from(header.ctime);
+        let mtime = NaiveDateTime::from(header.mtime);
+        // FIXME: timezone?
+        self.creation_date = Local.from_local_datetime(&ctime).single();
+        self.mod_date = Local.from_local_datetime(&mtime).single();
+    }
 }
 
 /// Write PDF info data
@@ -33,8 +50,8 @@ pub fn prepare_info(info: &mut Info, meta: &MetaInfo) -> Result<(), PDFDocEncodi
     let producer = pdf_doc_encode("Signum! Document Toolbox")?;
     info.producer = Some(PdfString::new(producer));
     let now = Local::now();
-    info.creation_date = Some(now);
-    info.mod_date = Some(now);
+    info.creation_date = meta.creation_date.or(Some(now));
+    info.mod_date = meta.mod_date.or(Some(now));
     Ok(())
 }
 
