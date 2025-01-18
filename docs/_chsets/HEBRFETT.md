@@ -1,5 +1,5 @@
 ---
 name: HEBRFETT
-disc: SiFoX-03
+disc: SiFoX-3
 src: FALC-3970
 ---

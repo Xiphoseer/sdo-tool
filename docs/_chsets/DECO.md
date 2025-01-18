@@ -1,6 +1,6 @@
 ---
 name: DECO
 full_name: Deco
-disc: SiFoX-03
+disc: SiFoX-3
 src: XEST.287
 ---

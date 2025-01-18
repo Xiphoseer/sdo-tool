@@ -1,6 +1,6 @@
 {% assign chsets = site.chsets | sort:"name" %}
 {% for font in chsets %}
-{% if font.disc == include.disc or font.disc contains include.disc %}
+{% if font.disc == include.disc %}
 {% if font.missing %}{% else %}
 <figure id="{{font.name}}">
     <img src="{{ font.name | prepend:'img/kb/' | append: '.png' | relative_url }}">

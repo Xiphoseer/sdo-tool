@@ -1,5 +1,7 @@
 ---
+name: Eurofontdiskette
 title: Eurofontdiskette
+sort-key: Euro Font Disk
 short: Euro
 ---
 This disc contained extension fonts for the standard ones

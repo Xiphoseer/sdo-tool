@@ -1,5 +1,5 @@
 ---
-name: Fontdiskette SiFoX-14
-title: SiFoX-14
+title: Fontdiskette SiFoX-14
+sort-key: SiFoX-14
 short: SiFoX-14
 ---

@@ -1,6 +1,7 @@
 ---
 name: Standard Charsets
-title: Standard
+title: Standard Charsets
+sort-key: Standard
 short: Standard
 ---
 

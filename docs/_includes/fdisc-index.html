@@ -9,7 +9,7 @@
         </thead>
     {% assign chsets = site.chsets | sort:"name" %}
     {% for font in chsets %}
-        {% if font.disc == include.disc or font.disc contains include.disc %}
+        {% if font.disc == include.disc %}
         <tr>
             <td>
             {% if font.missing %}{% else %}<a href="#{{font.name}}">{% endif%}

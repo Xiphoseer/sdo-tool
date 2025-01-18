@@ -2,5 +2,5 @@
 name: KELTIC
 page: 68/1
 src: Whiteline Alpha
-disc: SiFoX-07
+disc: SiFoX-7
 ---

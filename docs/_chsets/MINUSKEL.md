@@ -2,5 +2,5 @@
 name: MINUSKEL
 page: 69/1
 src: FAST.754
-disc: SiFoX-07
+disc: SiFoX-7
 ---

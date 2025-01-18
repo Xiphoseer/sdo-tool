@@ -1,5 +1,5 @@
 ---
-name: Fontdiskette SiFoX-04
-short: SiFoX-04
-title: SiFoX-04
+title: Fontdiskette SiFoX-4
+short: SiFoX-4
+sort-key: SiFoX-04
 ---

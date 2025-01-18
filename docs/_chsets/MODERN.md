@@ -1,6 +1,6 @@
 ---
 name: MODERN
 full_name: Modern
-disc: SiFoX-03
+disc: SiFoX-3
 src: CD04.05
 ---

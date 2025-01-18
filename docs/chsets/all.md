@@ -13,10 +13,12 @@ This page lists all character sets that appear somewhere on this site.
 </thead>
 <tbody>
 {% for font in site.chsets %}
+{% assign key = font.disc %}
+{% assign disk = site.fdiscs | where_exp:"disc","disc.short == key" | first %}
 <tr>
     <td><code>{{font.name}}</code></td>
     <td>{{font.full_name}}</td>
-    <td>{{font.disc}}</td>
+    <td><a href="{{disk.url}}#{{font.name}}">{{ disk.short }}</a></td>
     <td>{{font.page}}</td>
 </tr>
 {% endfor %}

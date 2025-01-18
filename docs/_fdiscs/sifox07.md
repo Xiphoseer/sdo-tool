@@ -1,5 +1,5 @@
 ---
-name: Fontdiskette SiFoX-07
-short: SiFoX-07
-title: SiFoX-07
+short: SiFoX-7
+title: Fontdiskette SiFoX-7
+sort-key: SiFoX-07
 ---

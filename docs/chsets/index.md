@@ -86,9 +86,9 @@ pages use those to display a preview of the keyboard mapping using the
 editor font. I'm not (re)distributing the actual font files on purpose.
 
 <ul>
-{% assign fdiscs = site.fdiscs | sort: "title" %}
+{% assign fdiscs = site.fdiscs | sort: "sort-key" %}
 {% for disc in fdiscs %}
-<li><a href="{{ disc.url | relative_url }}">{{disc.title}}</a></li>
+<li><a href="{{ disc.url | relative_url }}">{{ disc.name | default:disc.short }}</a></li>
 {% endfor %}
 </ul>
 
