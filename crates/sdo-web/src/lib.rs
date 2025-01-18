@@ -109,6 +109,7 @@ pub struct ActiveDocument {
     sdoc: SDoc<'static>,
     di: DocumentInfo,
     pd: FontKind,
+    name: String,
 }
 
 impl GenerationContext for ActiveDocument {
@@ -422,7 +423,10 @@ impl Handle {
             xoffset: 0,
             yoffset: 0,
         };
-        let meta = MetaInfo::default();
+        let meta = MetaInfo {
+            title: Some(active_doc.name.clone()),
+            ..MetaInfo::default()
+        };
         let pk = match active_doc.pd {
             FontKind::Editor => Err(JsError::new("editor font not supported")),
             FontKind::Printer(printer_kind) => Ok(printer_kind),
@@ -439,7 +443,7 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn render(&mut self, requested_index: usize) -> Result<Blob, JsValue> {
-        if let Some(ActiveDocument { sdoc, di, pd }) = &self.active {
+        if let Some(ActiveDocument { sdoc, di, pd, .. }) = &self.active {
             if let Some(page_text) = sdoc.tebu.pages.get(requested_index) {
                 let index = page_text.index as usize;
                 log::info!("Rendering page {} ({})", requested_index, index);
@@ -479,12 +483,12 @@ impl Handle {
             .map(|active| active.sdoc.tebu.pages.len())
     }
 
-    async fn show_staged(&mut self, rest: &str) -> Result<(), JsValue> {
+    async fn show_staged(&mut self, name: &str) -> Result<(), JsValue> {
         let heading = self.document.create_element("h2")?;
-        heading.set_text_content(Some(rest));
+        heading.set_text_content(Some(name));
         self.output.append_child(&heading)?;
 
-        let file = self.input_file(rest)?;
+        let file = self.input_file(name)?;
         let data = js_file_data(&file).await?.to_vec();
 
         if let Ok((_, four_cc)) = four_cc(&data) {
@@ -513,6 +517,7 @@ impl Handle {
                         sdoc: sdoc.into_owned(),
                         di: DocumentInfo::new(dfci, images),
                         pd,
+                        name: name.to_owned(),
                     });
                 }
                 _ => warn!("Unknown format: {}", four_cc),
