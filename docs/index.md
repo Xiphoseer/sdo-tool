@@ -137,6 +137,7 @@ me at `xiphoseer@mailbox.org`.
 
 ## Acknowledgements
 
+- [Franz Schmerbeck](http://schmerbeck.de/) for Signum itself.
 - [Lonny Pursell](http://atari.gfabasic.net/) for helping me figure out the image reading
   based on his zView-compatible codec
 - Oliver Buchmann of [Application Systems Heidelberg](https://ashshop.biz) for helping
