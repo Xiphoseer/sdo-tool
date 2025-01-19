@@ -9,7 +9,8 @@ demonstrate how a signum document is layed out and printed.
 This is the document converted to a PDF (Portable Document Format) file. The
 `--xoffset` / `--yoffset` flags were used to center the text on an A4 Page.
 
-[PHYSIK.pdf](img/PHYSIK.pdf)
+[PHYSIK.pdf](img/PHYSIK.pdf)  
+[MUSTER.pdf](img/MUSTER.pdf)
 
 ## Editor
 
