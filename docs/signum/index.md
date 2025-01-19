@@ -9,6 +9,6 @@ This section is about *Signum!* in general. This information is not limited to t
 - [Documents]({{ '/signum/documents' | relative_url }})
 - [Damaged files]({{ '/signum/damaged' | relative_url }})
 - [Character Sets]({{ '/chsets' | relative_url }})
-  - [Standard]({{ '/chsets/mappings' | relative_url }})
+  - [Standard]({{ '/fdiscs/standard' | relative_url }})
   - [Miscellaneous]({{ '/chsets/other' | relative_url }})
   - [Missing characters]({{ '/chsets/missing' | relative_url }})
