@@ -2,25 +2,31 @@
 
 The *Signum!* program was a popular word-processor available for the ATARI ST line of
 home computers and distributed by [Application Systems Heidelberg (ASH)][ASH]. While it
-could be used via the *MagicCMac* or *MagicCPC* emulators, it was never ported to newer
-systems. The file format (*.SDO for Signum! and Signum!2) was proprietary or at least
-unspecified and with the exception of *Papyrus* for the ATARI ST and a small amount of
-other for-profit tools, no other software could read those files. When I started this
-project, I could not find any software that runs on modern systems and can read those
-files.
+can be used via the emulators like *MagicCMac* or *MagicCPC* or *Hatari*, it was never
+ported to newer systems. The file format (`*.SDO` for Signum! and Signum!2) was
+proprietary and only a few other tools could read those files, all of which were limited
+to running on the ATARI ST.
 
-This is especially unfortunate for people (mostly german-speaking) that wrote their
-thesis in Signum! in the 80s and still have the floppy disks with those files but no
-ATARI and/or no application anymore. The current solutions are really not worth the
-effort for some of the less important stuff I've found in the stash of floppies I had access to.
+At the time, this was not much of an issue. Technology had moved on to TeX, PC and Mac,
+it was still possible to print Signum! documents and there were people around that could
+help extract the text. But it is somewhat unfortunate for people (mostly german-speaking)
+that wrote their thesis in Signum! in the 80s or 90s and still have the floppy disks with
+those files but no ATARI and/or no application anymore.
 
-Instead, you can use this (work-in-progress) tool, which can read Signum!2 documents and
+So when starting this project around 2020, there was no way to work with these files without
+an emulator, ideally with a [copy of signum](https://www.ashshop.biz/diverses/atari/textverarbeitung/874/signum-2-download)
+and some way to get the files off a floppy and into the emulator (See [prior art]({% link prior-art.md %})).
+Not necessarily worth the effort for some of the less important stuff I've found in the
+stash of floppies I had access to.
+
+Today, you can use this (work-in-progress) tool, which can read Signum!2 documents and
 make some of these steps much easier. It's written in Rust, so it should work across
-all major platforms (Windows, Linux and OSX).
+all major platforms (Windows, Linux and OSX) and [it's available online](https://sdo.dseiler.eu/studio/)
 
 ## Table of Contents
 
 - [Features](#features)
+- [Getting started](#getting-started)
 - [Installation](#installation)
 - [Usage](#usage)
 - [License](#license)
@@ -52,7 +58,16 @@ all major platforms (Windows, Linux and OSX).
 - Load Signum! images (`*.IMC`, `*.I__`)
     - Produce a PNG for monochrome images exported from a document
 
-## Installation
+## Getting started
+
+There is a web version of the tool hosted at <https://sdo.dseiler.eu/studio>, which
+includes a growing list of the toolbox features without any installation required.
+
+Upload the font files, add them to your in-browser collection and then load
+your document(s). If there's a bug, please send me [a mail](#contact) or
+[file an issue on GitHub](https://github.com/xiphoseer/sdo-tool/issues).
+
+## Installation (CLI)
 
 This project is implemented in the [Rust][Rust] programming language. You can either
 download the compiled executables (recommended) or build the program from source using
