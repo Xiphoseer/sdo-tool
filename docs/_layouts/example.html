@@ -4,6 +4,6 @@ layout: default
 <h1>{{page.title}}</h1>
 {% if page.subtitle %}<h3>{{page.subtitle}}</h3>{% endif %}
 
-<p>Fonts: {{ page.fonts | array_to_sentence_string }}</p>
+<p>Fonts: {% for font in page.fonts %}{% unless forloop.first %},{% if forloop.last %} and {% endif %}{% endunless %}<code>{{font}}</code>{% endfor %}</p>
 
 {{ content }}
