@@ -2,6 +2,7 @@
 
 This page lists all character sets that appear somewhere on this site.
 
+<div class="table-responsive">
 <table style="width: 100%;">
 <thead>
     <tr>
@@ -24,3 +25,4 @@ This page lists all character sets that appear somewhere on this site.
 {% endfor %}
 </tbody>
 </table>
+</div>
