@@ -30,12 +30,14 @@ this way too.
 
 I actually found a working copy of papyrus 7 (demo) after a lot of digging around
 and it turns out that this actually just calls `TEXTCONV.PRG` by Andreas Pirner.
-Version 1.23 is the one that comes with papyrus and I don't agree that it's
-useful. Yes, it can export to RTF and all the letters and numbers survive, but
-subscript, superscript and formulas are not close enough to be readable, the
-line-height was too low, the alignment was off, and more. Also, while papyrus
-(for ATARI) supports signum fonts, modern tools to read those files don't,
-so you still end up needing to find a perfect match for your font for newer systems.
+Version 1.23 is the one that comes with papyrus but it does not seem as useful
+as old usenet threads make it out to be.
+
+Yes, it can export to RTF and the letters and numbers survive, but  subscript,
+superscript and formulas are not close enough to be readable, the line-height is
+too small, the alignment is off, and more. Also, while papyrus *for ATARI*
+supports signum fonts, modern tools to read those files don't, so you still end
+up needing to find a perfect match for your font for newer systems.
 
 There's also the *SignumRead* (`S/MYUTIL/SIGNUMRE.M`) program from the
 [Megamax Modula-2][MM2] development environment, which scrapes some text
