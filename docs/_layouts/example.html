@@ -1,0 +1,9 @@
+---
+layout: default
+---
+<h1>{{page.title}}</h1>
+{% if page.subtitle %}<h3>{{page.subtitle}}</h3>{% endif %}
+
+<p>Fonts: {{ page.fonts | array_to_sentence_string }}</p>
+
+{{ content }}

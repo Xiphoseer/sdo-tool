@@ -31,3 +31,15 @@ so that the entire document is 324 DPI relative to the theoretical paper model.
     <img src="{{ 'img/physik-printer.png' | relative_url }}">
     <figcaption>Physik/Printer</figcaption>
 </figure>
+
+## From the books
+
+The Signum! books "zur Gestaltung" have a set of example pages within
+them. This page collects some of them as a reference, even if the original
+SDO is not available:
+
+<ul>
+{% for example in site.examples %}
+<li><a href="{{example.url | relative_url}}">{{example.title}}</a></li>
+{% endfor %}
+</ul>
