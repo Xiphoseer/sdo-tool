@@ -2,7 +2,7 @@
 
 This page contains general information on the Signum! doucments as they are
 presented to the users. To learn more about the file format, have a look
-a [this page](format-sdoc.html).
+a [this page](/formats/sdoc).
 
 ## Document
 

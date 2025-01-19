@@ -7,7 +7,7 @@ description of that file format that is available online.
 
 All of the code snippets in this document are simplified pseudo-code, even though they
 are inspired by the `nom` parser-combinator library. For general information on Signum!
-documents, have a look at [this page]({{'documents' | relative_url }}).
+documents, have a look at [this page]({{'/signum/documents' | relative_url }}).
 
 ## The container
 
