@@ -1,5 +1,5 @@
 ---
-title: Fontdiskette SiFoX-17
+title: SiFoX-Diskette 17
 sort-key: SiFoX-17
 short: SiFoX-17
 ---

@@ -1,5 +1,5 @@
 ---
-title: Fontdiskette SiFoX-5
+title: SiFoX-Diskette 5
 short: SiFoX-5
 sort-key: SiFoX-05
 ---
