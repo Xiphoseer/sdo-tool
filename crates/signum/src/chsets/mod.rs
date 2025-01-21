@@ -225,7 +225,7 @@ impl FromStr for FontKind {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "P09" => Ok(Self::Printer(PrinterKind::Needle9)),
+            "P9" | "P09" => Ok(Self::Printer(PrinterKind::Needle9)),
             "E24" => Ok(Self::Editor),
             "P24" => Ok(Self::Printer(PrinterKind::Needle24)),
             "L30" => Ok(Self::Printer(PrinterKind::Laser30)),

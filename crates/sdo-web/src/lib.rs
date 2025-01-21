@@ -485,44 +485,51 @@ impl Handle {
     }
 
     async fn show_staged(&mut self, name: &str) -> Result<(), JsValue> {
-        let heading = self.document.create_element("h2")?;
-        heading.set_text_content(Some(name));
-        self.output.append_child(&heading)?;
-
         let file = self.input_file(name)?;
         let data = js_file_data(&file).await?.to_vec();
 
-        if let Ok((_, four_cc)) = four_cc(&data) {
-            match four_cc {
-                FourCC::SDOC => {
-                    let sdoc = self.parse_sdoc(&data)?;
-                    self.fc.reset();
-                    let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
-                    let pd = match dfci.print_driver(None) {
-                        Some(pd) => pd,
-                        None => {
-                            // FIXME: pick the "best" format?
-                            log::warn!(
-                                "Could not auto-select a font format, some fonts are not available"
-                            );
-                            FontKind::Printer(PrinterKind::Needle24)
-                        }
-                    };
-                    let images = sdoc
-                        .hcim
-                        .as_ref()
-                        .map(|hcim| hcim.decode_images())
-                        .unwrap_or_default();
+        let (_, four_cc) =
+            four_cc(&data).map_err(|_| JsError::new("File has less than 4 bytes"))?;
 
-                    self.active = Some(ActiveDocument {
-                        sdoc: sdoc.into_owned(),
-                        di: DocumentInfo::new(dfci, images),
-                        pd,
-                        name: name.to_owned(),
-                    });
+        if four_cc == FourCC::SDOC {
+            let heading = self.document.create_element("h2")?;
+            heading.set_text_content(Some(name));
+            self.output.append_child(&heading)?;
+
+            let sdoc = self.parse_sdoc(&data)?;
+            self.fc.reset();
+            let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
+            let pd = match dfci.print_driver(None) {
+                Some(pd) => pd,
+                None => {
+                    // FIXME: pick the "best" format?
+                    log::warn!("Could not auto-select a font format, some fonts are not available");
+                    FontKind::Printer(PrinterKind::Needle24)
                 }
-                _ => warn!("Unknown format: {}", four_cc),
-            }
+            };
+            let images = sdoc
+                .hcim
+                .as_ref()
+                .map(|hcim| hcim.decode_images())
+                .unwrap_or_default();
+
+            self.active = Some(ActiveDocument {
+                sdoc: sdoc.into_owned(),
+                di: DocumentInfo::new(dfci, images),
+                pd,
+                name: name.to_owned(),
+            });
+        } else if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
+            self.show_font(font_kind, name, &data).await?;
+        } else {
+            warn!("Unknown format: {}", four_cc);
+            let heading = self.document.create_element("h2")?;
+            heading.set_text_content(Some(name));
+            self.output.append_child(&heading)?;
+            let p = self.document.create_element("p")?;
+            p.append_with_str_1("Unknown format: ")?;
+            p.append_with_str_1(&four_cc.as_bstr().to_string())?;
+            self.output.append_child(&p)?;
         }
         Ok(())
     }
@@ -583,6 +590,38 @@ impl Handle {
         Ok(())
     }
 
+    async fn show_font(
+        &mut self,
+        font_kind: FontKind,
+        name: &str,
+        data: &[u8],
+    ) -> Result<(), JsValue> {
+        let h2 = self.document.create_element("h2")?;
+        h2.set_text_content(Some(name));
+        h2.append_with_str_1(" ")?;
+
+        let small = self.document.create_element("small")?;
+        small
+            .class_list()
+            .add_2("text-secondary", "d-inline-block")?;
+        small.set_text_content(Some(font_kind.file_format_name()));
+        h2.append_child(&small)?;
+
+        self.output.append_child(&h2)?;
+
+        match font_kind {
+            FontKind::Editor => {
+                let eset = self.parse_eset(data)?;
+                self.show_eset(&eset)?;
+            }
+            FontKind::Printer(_) => {
+                let pset = self.parse_pset(data)?;
+                self.show_pset(&pset)?;
+            }
+        }
+        Ok(())
+    }
+
     async fn show_chset(&mut self, name: &str) -> Result<(), JsValue> {
         let chsets = self.fs.chset_dir().await?;
         let file_handle = js_directory_get_file_handle(&chsets, name).await?;
@@ -590,30 +629,8 @@ impl Handle {
         let arr = js_file_data(&file).await?;
         let four_cc = js_four_cc(&arr).ok_or(js_sys::Error::new("No four-cc: file too short"))?;
         if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
-            let _data = arr.to_vec();
-            let h2 = self.document.create_element("h2")?;
-            h2.set_text_content(Some(name));
-            h2.append_with_str_1(" ")?;
-
-            let small = self.document.create_element("small")?;
-            small
-                .class_list()
-                .add_2("text-secondary", "d-inline-block")?;
-            small.set_text_content(Some(font_kind.file_format_name()));
-            h2.append_child(&small)?;
-
-            self.output.append_child(&h2)?;
-
-            match font_kind {
-                FontKind::Editor => {
-                    let eset = self.parse_eset(&_data)?;
-                    self.show_eset(&eset)?;
-                }
-                FontKind::Printer(_) => {
-                    let pset = self.parse_pset(&_data)?;
-                    self.show_pset(&pset)?;
-                }
-            }
+            let data = arr.to_vec();
+            self.show_font(font_kind, name, &data).await?;
         }
         Ok(())
     }
