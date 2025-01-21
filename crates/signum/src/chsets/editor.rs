@@ -2,6 +2,7 @@
 
 use super::LoadError;
 use crate::util::{data::BIT_STRING, Buf};
+use log::{debug, warn};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::{be_u32, u8},
@@ -83,6 +84,36 @@ pub struct EChar<'a> {
     pub buf: &'a [u8],
 }
 
+impl EChar<'_> {
+    /// Print the character to the console
+    pub fn print(&self) {
+        let wu = self.width as usize;
+        let hu = self.height as usize;
+        println!("{}, {}x{}", self.top, wu, hu);
+        let border = BORDER[wu];
+        println!("{}", border);
+        for _ in 1..self.top {
+            println!("|                |");
+        }
+        if self.top > 0 {
+            println!("-                -");
+        }
+        for i in 0..hu {
+            let left = self.buf[2 * i] as usize;
+            let right = self.buf[2 * i + 1] as usize;
+            println!("|{}{}|", &BIT_STRING[left], &BIT_STRING[right]);
+        }
+        let rest = 24 - self.top - self.height;
+        if rest > 0 {
+            println!("-                -");
+        }
+        for _ in 1..rest {
+            println!("|                |");
+        }
+        println!("{}", border);
+    }
+}
+
 /// The special NULL char
 pub const ECHAR_NULL: EChar<'static> = EChar {
     width: 0,
@@ -101,32 +132,9 @@ impl ESet<'_> {
         let mut skips = Vec::with_capacity(capacity);
         for (index, ch) in self.chars.iter().enumerate() {
             println!("\nchar[{}]", index);
-            let wu = ch.width as usize;
-            let hu = ch.height as usize;
             widths.push(ch.width);
             skips.push(ch.top);
-            println!("{}, {}x{}", ch.top, wu, hu);
-            let border = BORDER[wu];
-            println!("{}", border);
-            for _ in 1..ch.top {
-                println!("|                |");
-            }
-            if ch.top > 0 {
-                println!("-                -");
-            }
-            for i in 0..hu {
-                let left = ch.buf[2 * i] as usize;
-                let right = ch.buf[2 * i + 1] as usize;
-                println!("|{}{}|", &BIT_STRING[left], &BIT_STRING[right]);
-            }
-            let rest = 24 - ch.top - ch.height;
-            if rest > 0 {
-                println!("-                -");
-            }
-            for _ in 1..rest {
-                println!("|                |");
-            }
-            println!("{}", border);
+            ch.print();
         }
         println!();
         println!("pub const WIDTH: [u8; 128] = [");
@@ -194,10 +202,20 @@ pub fn parse_eset(input: &[u8]) -> IResult<&[u8], ESet> {
     let mut chars = Vec::with_capacity(skip as usize);
     chars.push(ECHAR_NULL);
 
-    for _ in 1..skip {
+    for _i in 1..skip {
         let (rest, offset) = be_u32(offset_buf)?;
-        let (_, echar) = parse_echar(&char_buf[offset as usize..])?;
-        chars.push(echar);
+        debug!("{_i} @ {offset}");
+        if (offset as usize) + 4 > char_buf.len() {
+            warn!(
+                "eset: Offset {offset} out of bounds (len {}, at {_i})",
+                char_buf.len()
+            );
+            chars.push(ECHAR_NULL);
+        } else {
+            let at_offset = &char_buf[offset as usize..];
+            let (_, echar) = parse_echar(at_offset)?;
+            chars.push(echar);
+        }
         offset_buf = rest;
     }
 
