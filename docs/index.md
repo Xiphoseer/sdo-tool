@@ -2,7 +2,7 @@
 
 The *Signum!* program was a popular word-processor available for the ATARI ST line of
 home computers and distributed by [Application Systems Heidelberg (ASH)][ASH]. While it
-can be used via the emulators like *MagicCMac* or *MagicCPC* or *Hatari*, it was never
+can be used via emulators like *MagicCMac* or *MagicCPC* or *Hatari*, it was never
 ported to newer systems. The file format (`*.SDO` for Signum! and Signum!2) was
 proprietary and only a few other tools could read those files, all of which were limited
 to running on the ATARI ST.
