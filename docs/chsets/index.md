@@ -71,31 +71,13 @@ keyboard, like [this one](https://commons.wikimedia.org/wiki/File:Atari_1040_STE
 
 ## ASH font discs
 
-Application Systems sold a collection of font discs. The named ones were
-professional creations, while the *Signum-Font-eXchange* (SiFoX) was set
-up to redistribute user-generated fonts to Signum licensees.
-
-By sending in a complete font of your own design for distribution through
-SiFoX or paying 30,- DM, you would get one SiFoX-Disc of fonts for your
-printer type (24 needle, 9 needle or laser) that you didn't have already.
-There was a list of fonts available in the manual if you wanted a specific
-one.
-
-Some of these fonts ended up in disk images on the web. The following
-pages use those to display a preview of the keyboard mapping using the
-editor font. I'm not (re)distributing the actual font files on purpose.
-
-<ul>
-{% assign fdiscs = site.fdiscs | sort: "sort-key" %}
-{% for disc in fdiscs %}
-<li><a href="{{ disc.url | relative_url }}">{{ disc.name | default:disc.short }}</a></li>
-{% endfor %}
-</ul>
+See: [ASH font disks]({{ '/fdiscs' | relative_url }})
 
 ---
 
-Some non-standard fonts that I came across are listed [here](other). There's
-also a [list of all charsets](all) and a [list of characters not in Unicode](missing).
+Some non-standard fonts that I came across are listed [here]({{ '/chsets/other' | relative_url }}).
+There's also a [list of all charsets]({{ '/chsets/all' | relative_url }}) and a
+[list of characters not in Unicode]({{ '/chsets/missing' | relative_url }}).
 
 ## Links
 
