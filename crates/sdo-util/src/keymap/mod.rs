@@ -989,7 +989,10 @@ impl Draw {
             };
             let x = x + 6 - self.xoff;
             let y = y - 52;
-            page.draw_echar(x, y, echr)?;
+            if let Err(e) = page.draw_echar(x, y, echr) {
+                let (w, h) = (self.width, self.height);
+                log::warn!("Failed to draw {cval} at ({x},{y}) of ({w}x{h}): {e}");
+            }
         }
         Ok(page)
     }

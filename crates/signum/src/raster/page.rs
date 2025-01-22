@@ -212,6 +212,11 @@ impl Page {
         super::util::print(self.bytes_per_line, self.width, &self.buffer);
     }
 
+    /// Clear the page
+    pub fn clear(&mut self) {
+        self.buffer.fill(0);
+    }
+
     /// Get a part of the image as bitmap (1-bit per pixel) image
     pub fn select(&self, area: ImageArea) -> Vec<u8> {
         let h = area.h as usize;
@@ -350,11 +355,11 @@ impl Page {
 
     /// Draw a single editor char on the page
     pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), DrawPrintErr> {
-        if u32::from(x + u16::from(ch.width)) + 2 >= self.width {
+        if u32::from(x + u16::from(ch.width)) > self.width {
             return Err(DrawPrintErr::OutOfBounds);
         }
 
-        if u32::from(y + u16::from(ch.height + ch.top)) + 2 >= self.height {
+        if u32::from(y + u16::from(ch.height + ch.top)) > self.height {
             return Err(DrawPrintErr::OutOfBounds);
         }
 
@@ -362,23 +367,34 @@ impl Page {
         let x_byte = u32::from(x) / 8;
         let x_bit = x % 8;
 
+        // let wide = ch.width > 8;
+        let cols_avail = self.bytes_per_line - x_byte;
+
         let mut byte_index: usize = (y_byte + x_byte) as usize;
 
+        let second_byte = cols_avail > 1;
         if x_bit == 0 {
-            for x in 0..(ch.height as usize) {
-                self.buffer[byte_index] |= ch.buf[x * 2];
-                self.buffer[byte_index + 1] |= ch.buf[x * 2 + 1];
+            for y in 0..(ch.height as usize) {
+                self.buffer[byte_index] |= ch.buf[y * 2];
+                if second_byte {
+                    self.buffer[byte_index + 1] |= ch.buf[y * 2 + 1];
+                }
                 byte_index += self.bytes_per_line as usize;
             }
         } else {
-            for x in 0..(ch.height as usize) {
-                let full = u32::from_be_bytes([0, 0, ch.buf[x * 2], ch.buf[x * 2 + 1]]);
+            let third_byte = cols_avail > 2;
+            for y in 0..(ch.height as usize) {
+                let full = u32::from_be_bytes([0, 0, ch.buf[y * 2], ch.buf[y * 2 + 1]]);
                 let shifted = full << (8 - x_bit);
                 let [_, byte0, byte1, byte2] = shifted.to_be_bytes();
 
                 self.buffer[byte_index] |= byte0;
-                self.buffer[byte_index + 1] |= byte1;
-                self.buffer[byte_index + 2] |= byte2;
+                if second_byte {
+                    self.buffer[byte_index + 1] |= byte1;
+                }
+                if third_byte {
+                    self.buffer[byte_index + 2] |= byte2;
+                }
 
                 byte_index += self.bytes_per_line as usize;
             }
@@ -517,5 +533,158 @@ impl Page {
             }
         }
         GrayAlphaImage::from_vec(self.bytes_per_line * 8, self.height, buffer).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chsets::editor::EChar;
+
+    use super::Page;
+
+    #[test]
+    fn test_draw_echar_aligned() {
+        let chr = EChar {
+            width: 8,
+            top: 10,
+            height: 10,
+            buf: &[0xFF; 20],
+        };
+
+        let mut page = Page::new(24, 24);
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // left, top, aligned
+        page.draw_echar(0, 0, &chr).unwrap();
+        assert_eq!(&[0x00, 0x00, 0], &page.buffer[27..30]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[30..33]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[33..36]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[57..60]);
+        assert_eq!(&[0x00, 0x00, 0], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // mid, top, aligned
+        page.draw_echar(8, 0, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[27..30]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[30..33]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[33..36]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[57..60]);
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // right, top, aligned
+        page.draw_echar(16, 0, &chr).unwrap();
+        assert_eq!(&[0, 0, 0x00], &page.buffer[27..30]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[30..33]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[33..36]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[57..60]);
+        assert_eq!(&[0, 0, 0x00], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // left, bottom, aligned
+        page.draw_echar(0, 4, &chr).unwrap();
+        assert_eq!(&[0x00, 0x00, 0], &page.buffer[39..42]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[42..45]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[63..66]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[66..69]);
+        assert_eq!(&[0xFF, 0xFF, 0], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // mid, bottom, aligned
+        page.draw_echar(8, 4, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[39..42]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[42..45]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[63..66]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[66..69]);
+        assert_eq!(&[0, 0xFF, 0xFF], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // right, bottom, aligned
+        page.draw_echar(16, 4, &chr).unwrap();
+        assert_eq!(&[0, 0, 0x00], &page.buffer[39..42]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[42..45]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[63..66]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[66..69]);
+        assert_eq!(&[0, 0, 0xFF], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+    }
+
+    #[test]
+    fn test_draw_echar_unaligned() {
+        let chr = EChar {
+            width: 12,
+            top: 10,
+            height: 10,
+            buf: &[0xFF; 20],
+        };
+
+        let mut page = Page::new(24, 24);
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // left, top, unaligned
+        page.draw_echar(2, 0, &chr).unwrap();
+        assert_eq!(&[0x00, 0x00, 0x00], &page.buffer[27..30]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[30..33]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[33..36]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[57..60]);
+        assert_eq!(&[0x00, 0x00, 0x00], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // mid, top, unaligned
+        page.draw_echar(10, 0, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[27..30]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[30..33]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[33..36]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[57..60]);
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // right, top, unaligned
+        page.draw_echar(12, 0, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[27..30]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[30..33]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[33..36]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[57..60]);
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[60..63]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // left, bottom, unaligned
+        page.draw_echar(2, 4, &chr).unwrap();
+        assert_eq!(&[0x00, 0x00, 0x00], &page.buffer[39..42]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[42..45]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[63..66]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[66..69]);
+        assert_eq!(&[0x3F, 0xFF, 0xc0], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // mid, bottom, unaligned
+        page.draw_echar(10, 4, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[39..42]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[42..45]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[63..66]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[66..69]);
+        assert_eq!(&[0, 0x3F, 0xFF], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
+
+        // right, bottom, unaligned
+        page.draw_echar(12, 4, &chr).unwrap();
+        assert_eq!(&[0, 0x00, 0x00], &page.buffer[39..42]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[42..45]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[63..66]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[66..69]);
+        assert_eq!(&[0, 0x0F, 0xFF], &page.buffer[69..72]);
+        page.clear();
+        assert_eq!(&[0u8; 72], &page.buffer[..]);
     }
 }

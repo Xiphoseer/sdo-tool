@@ -1118,6 +1118,7 @@ dependencies = [
 name = "sdo-util"
 version = "0.1.0"
 dependencies = [
+ "log",
  "signum",
 ]
 

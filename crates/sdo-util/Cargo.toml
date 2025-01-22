@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 signum = { path = "../signum" }
+log = "0.4"

@@ -2,7 +2,7 @@
 
 use super::LoadError;
 use crate::util::{data::BIT_STRING, Buf};
-use log::{debug, warn};
+use log::warn;
 use nom::{
     bytes::complete::{tag, take},
     number::complete::{be_u32, u8},
@@ -204,7 +204,6 @@ pub fn parse_eset(input: &[u8]) -> IResult<&[u8], ESet> {
 
     for _i in 1..skip {
         let (rest, offset) = be_u32(offset_buf)?;
-        debug!("{_i} @ {offset}");
         if (offset as usize) + 4 > char_buf.len() {
             warn!(
                 "eset: Offset {offset} out of bounds (len {}, at {_i})",
