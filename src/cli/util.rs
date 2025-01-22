@@ -22,7 +22,10 @@ pub(super) fn load<'a, F, T>(fun: F, input: &'a [u8]) -> Result<T, ErrorTree<usi
 where
     F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,
 {
-    let (_, result) = fun(input).finish().map_err(to_err_tree(input))?;
+    let (rest, result) = fun(input).finish().map_err(to_err_tree(input))?;
+    if !rest.is_empty() {
+        log::warn!("Unparsed rest: {:#?}", Buf(rest));
+    }
     Ok(result)
 }
 

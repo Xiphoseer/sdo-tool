@@ -8,7 +8,7 @@ use crate::{
 use core::fmt;
 use nom::{
     bytes::complete::{tag, take},
-    combinator::verify,
+    combinator::{cond, verify},
     error::{ErrorKind, ParseError},
     multi::count,
     number::complete::{be_u32, u8},
@@ -239,13 +239,15 @@ impl OwnedPSet {
             PrinterKind::Needle9 => parse_ps09(input),
         }
         .finish()
-        .map_err(|e| LoadError::Parse(format!("{:?}", e)))?;
+        .map_err(|e: nom::error::Error<&[u8]>| LoadError::Parse(format!("{:?}", e)))?;
         Ok(Self { inner, buffer })
     }
 }
 
 /// Parse a single P24 character
-pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
+pub fn parse_char<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], PSetChar<'a>, E> {
     let (input, top) = u8(input)?;
     let (input, height) = u8(input)?;
     let (input, width) = u8(input)?;
@@ -254,7 +256,7 @@ pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
 
     let len = (width as usize) * (height as usize);
     let (input, bitmap) = take(len)(input)?;
-    let input = if len % 2 == 1 { &input[1..] } else { input };
+    let (input, _a) = cond(len % 2 == 1, u8)(input)?;
 
     Ok((
         input,
@@ -270,7 +272,10 @@ pub fn parse_char(input: &[u8]) -> IResult<&[u8], PSetChar> {
 /// Parse a a font file
 ///
 /// This method only checks the `0001` part of the magic bytes
-pub fn parse_font(input: &[u8], pk: PrinterKind) -> IResult<&[u8], PSet> {
+pub fn parse_font<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+    pk: PrinterKind,
+) -> IResult<&'a [u8], PSet<'a>, E> {
     let (input, _) = tag(b"0001")(input)?;
     let (input, _) = verify(be_u32, |x| *x == 128)(input)?;
 
@@ -291,25 +296,25 @@ pub fn parse_font(input: &[u8], pk: PrinterKind) -> IResult<&[u8], PSet> {
 }
 
 /// Parse a P24 file
-pub fn parse_ps24(input: &[u8]) -> IResult<&[u8], PSet> {
+pub fn parse_ps24<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PSet<'a>, E> {
     let (input, _) = tag(b"ps24")(input)?;
     parse_font(input, PrinterKind::Needle24)
 }
 
 /// Parse a P09 file
-pub fn parse_ps09(input: &[u8]) -> IResult<&[u8], PSet> {
+pub fn parse_ps09<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PSet<'a>, E> {
     let (input, _) = tag(b"ps09")(input)?;
     parse_font(input, PrinterKind::Needle9)
 }
 
 /// Parse a L30 file
-pub fn parse_ls30(input: &[u8]) -> IResult<&[u8], PSet> {
+pub fn parse_ls30<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PSet<'a>, E> {
     let (input, _) = tag(b"ls30")(input)?;
     parse_font(input, PrinterKind::Laser30)
 }
 
 /// Parse any printer font
-pub fn parse_pset(input: &[u8]) -> IResult<&[u8], PSet> {
+pub fn parse_pset<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], PSet<'a>, E> {
     let (input, cc) = four_cc(input)?;
     match cc {
         FourCC::PS24 => parse_font(input, PrinterKind::Needle24),
@@ -317,9 +322,7 @@ pub fn parse_pset(input: &[u8]) -> IResult<&[u8], PSet> {
         FourCC::LS30 => parse_font(input, PrinterKind::Laser30),
         _ => {
             let e: ErrorKind = ErrorKind::Tag;
-            Err(nom::Err::Error(nom::error::Error::from_error_kind(
-                input, e,
-            )))
+            Err(nom::Err::Error(E::from_error_kind(input, e)))
         }
     }
 }

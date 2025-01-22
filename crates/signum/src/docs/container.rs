@@ -3,6 +3,7 @@
 use nom::{
     bytes::complete::tag,
     combinator::eof,
+    error::ParseError,
     multi::{length_data, many_till},
     number::complete::be_u32,
     sequence::preceded,
@@ -39,7 +40,9 @@ pub struct SDocContainer<'a> {
 }
 
 /// Parse a single document chunk (i.e. tag + body)
-pub fn parse_chunk(input: &[u8]) -> IResult<&[u8], Chunk> {
+pub fn parse_chunk<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Chunk<'a>, E> {
     let (rest, tag) = four_cc(input)?;
     let (rest, data) = length_data(be_u32)(rest)?;
     let chunk = Chunk::new(tag, data);
@@ -47,7 +50,9 @@ pub fn parse_chunk(input: &[u8]) -> IResult<&[u8], Chunk> {
 }
 
 /// Parse a Signum! document
-pub fn parse_sdoc0001_container(input: &[u8]) -> IResult<&[u8], SDocContainer> {
+pub fn parse_sdoc0001_container<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], SDocContainer<'a>, E> {
     let (input, (chunks, _)) = preceded(tag(b"sdoc"), many_till(parse_chunk, eof))(input)?;
     Ok((input, SDocContainer { chunks }))
 }

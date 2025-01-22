@@ -232,7 +232,7 @@ impl Handle {
     }
 
     fn parse_sdoc<'a>(&self, data: &'a [u8]) -> Result<SDoc<'a>, JsValue> {
-        match parse_sdoc0001_container(data) {
+        match parse_sdoc0001_container::<signum::nom::error::Error<&'a [u8]>>(data) {
             Ok((_rest, container)) => match SDoc::unpack(container) {
                 Ok(res) => {
                     log("Parsing complete");
@@ -273,8 +273,8 @@ impl Handle {
     }
 
     fn parse_pset<'a>(&mut self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
-        let (_, pset) =
-            parse_pset(data).map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
+        let (_, pset) = parse_pset::<signum::nom::error::Error<&'a [u8]>>(data)
+            .map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
         Ok(pset)
     }
 
@@ -489,7 +489,7 @@ impl Handle {
         let data = js_file_data(&file).await?.to_vec();
 
         let (_, four_cc) =
-            four_cc(&data).map_err(|_| JsError::new("File has less than 4 bytes"))?;
+            four_cc::<()>(&data).map_err(|_| JsError::new("File has less than 4 bytes"))?;
 
         if four_cc == FourCC::SDOC {
             let heading = self.document.create_element("h2")?;
@@ -643,7 +643,8 @@ impl Handle {
         let file = self.fs.open_dir_entry(entry).await?;
         let data = js_file_data(&file).await?.to_vec();
 
-        let (_, four_cc) = four_cc(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
+        let (_, four_cc) =
+            four_cc::<()>(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
         info!("Loading {} ({})", name, four_cc);
         let href = format!("#/CHSETS/{}", name);
         let card = self.card(name, four_cc, &href)?;
@@ -730,7 +731,7 @@ impl Handle {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
 
-        if let Ok((_, four_cc)) = four_cc(&data) {
+        if let Ok((_, four_cc)) = four_cc::<()>(&data) {
             let href = format!("#/staged/{name}");
             let card = self.card(name, four_cc, &href)?;
             if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {

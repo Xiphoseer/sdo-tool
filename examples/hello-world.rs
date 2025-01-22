@@ -23,7 +23,7 @@ pub fn main() -> eyre::Result<()> {
 
     let pfont_path = opt.font;
     let pfont_buffer = std::fs::read(&pfont_path)?;
-    let (_, pfont) = parse_ls30(&pfont_buffer)
+    let (_, pfont) = parse_ls30::<signum::nom::error::Error<_>>(&pfont_buffer)
         .finish() //
         .map_err(|_| {
             eyre!(

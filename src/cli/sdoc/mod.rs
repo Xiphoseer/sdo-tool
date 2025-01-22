@@ -14,7 +14,6 @@ use signum::{
         tebu::{PageText, TeBu},
         DocumentInfo,
     },
-    nom::Finish,
     raster::Page,
     util::{Buf, FourCC},
 };
@@ -159,9 +158,7 @@ impl<'a> Document<'a> {
         fs: &FS,
         fc: &mut ChsetCache,
     ) -> eyre::Result<DocumentInfo> {
-        let (rest, sdoc) = parse_sdoc0001_container(input)
-            .finish()
-            .map_err(|e| eyre!("Parse failed [{:?}]:\n{:?}", e.input, e.code))?;
+        let sdoc = util::load(parse_sdoc0001_container, input)?;
 
         let mut dfci = None;
         let mut images = vec![];
@@ -184,10 +181,6 @@ impl<'a> Document<'a> {
                     Ok(())
                 }
             }?;
-        }
-
-        if !rest.is_empty() {
-            println!("remaining: {:#?}", Buf(rest));
         }
 
         let fonts = dfci.ok_or_else(|| eyre!("Document has no CSET chunk"))?;

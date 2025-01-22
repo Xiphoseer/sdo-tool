@@ -178,7 +178,7 @@ pub fn bytes32<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8]
 }
 
 /// Parse a four character code
-pub fn four_cc(input: &[u8]) -> IResult<&[u8], FourCC> {
+pub fn four_cc<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], FourCC, E> {
     map(map(le_u32, u32::to_le_bytes), FourCC)(input)
 }
 

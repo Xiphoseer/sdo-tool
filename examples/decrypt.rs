@@ -40,7 +40,6 @@ fn main() -> eyre::Result<()> {
         }
         */
 
-
         let (_, rest) = dat.split_at(128 * 4);
         let mut buf = Vec::with_capacity(rest.len());
         for b in rest {

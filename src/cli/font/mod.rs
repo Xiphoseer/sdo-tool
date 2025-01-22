@@ -21,6 +21,8 @@ pub mod ps;
 
 use ps::write_ls30_ps_bitmap;
 
+use super::util;
+
 pub fn process_eset(
     buffer: &[u8],
     input: Option<String>,
@@ -137,16 +139,12 @@ fn save_pset_png(pset: &PSet, pk: PrinterKind, out: &Path) -> eyre::Result<()> {
 }
 
 pub fn process_ps09(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
-    let (rest, pset) = match parse_ps09(buffer) {
+    let pset = match util::load(parse_ps09, buffer) {
         Ok(result) => result,
         Err(e) => {
             return Err(eyre!("Failed to parse 9-needle printer charset: \n{}", e));
         }
     };
-
-    if !rest.is_empty() {
-        println!("Unconsumed input: {:#?}", Buf(rest));
-    }
 
     match opt.format {
         Format::Png => {
@@ -171,16 +169,12 @@ pub fn process_ps09(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
 }
 
 pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
-    let (rest, pset) = match parse_ps24(buffer) {
+    let pset = match util::load(parse_ps24, buffer) {
         Ok(result) => result,
         Err(e) => {
             return Err(eyre!("Failed to parse 24-needle printer charset: \n{}", e));
         }
     };
-
-    if !rest.is_empty() {
-        println!("Unconsumed input: {:#?}", Buf(rest));
-    }
 
     print_pset(&pset);
 
@@ -188,16 +182,12 @@ pub fn process_ps24(buffer: &[u8], _opt: &Options) -> eyre::Result<()> {
 }
 
 pub fn process_ls30(buffer: &[u8], opt: &Options) -> eyre::Result<()> {
-    let (rest, lset) = match parse_ls30(buffer) {
+    let lset = match util::load(parse_ls30, buffer) {
         Ok(result) => result,
         Err(e) => {
             return Err(eyre!("Failed to parse laser printer charset: \n{}", e));
         }
     };
-
-    if !rest.is_empty() {
-        println!("Unconsumed input: {:#?}", Buf(rest));
-    }
 
     match opt.format {
         Format::DviPsBitmapFont => {
