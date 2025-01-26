@@ -15,7 +15,10 @@ use nom::{
     number::complete::{be_u32, u8},
     Finish, IResult,
 };
-use std::path::Path;
+use std::{
+    num::{NonZero, NonZeroU8},
+    path::Path,
+};
 
 #[derive(Debug, Copy, Clone)]
 /// The supported kinds of printers
@@ -123,6 +126,8 @@ pub struct PSetChar<'a> {
     pub height: u8,
     /// The width of the character in bytes
     pub width: u8,
+    /// Some unknown property
+    _d: u8,
     /// The pixel data
     pub bitmap: &'a [u8],
 }
@@ -158,10 +163,17 @@ impl PSetChar<'_> {
                 top: self.top,
                 height: self.height,
                 width: self.width,
+                _d: self._d,
                 bitmap: unsafe { std::mem::transmute::<&[u8], &[u8]>(buffer.as_ref()) },
             },
             buffer,
         }
+    }
+
+    /// Return the value of the 'special' 4th byte in the header
+    /// of the printer char that is almost always 0
+    pub fn special(&self) -> Option<NonZeroU8> {
+        NonZero::new(self._d)
     }
 
     /// Compute the horizontal bounds of the char
@@ -255,10 +267,6 @@ pub fn parse_char<'a, E: ParseError<&'a [u8]>>(
     // FIXME: Are there any valid files where this is non-zero?
     let (input, _d) = u8(input)?; // verify(u8, |x| *x == 0)(input)?;
 
-    if _d != 0 {
-        warn!("_d = {}", _d);
-    }
-
     let len = (width as usize) * (height as usize);
     let (input, bitmap) = take(len)(input)?;
     let (input, _a) = cond(len % 2 == 1, u8)(input)?;
@@ -269,6 +277,7 @@ pub fn parse_char<'a, E: ParseError<&'a [u8]>>(
             top,
             height,
             width,
+            _d,
             bitmap,
         },
     ))

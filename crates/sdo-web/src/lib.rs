@@ -289,13 +289,17 @@ impl Handle {
         el_table_responsive.class_list().add_1("table-responsive")?;
         let el_table = self.document.create_element("table")?;
         el_table.class_list().add_1("table")?;
-        for crow in pset.chars.chunks(16) {
+        for (y, crow) in pset.chars.chunks(16).enumerate() {
             let el_tr = self.document.create_element("tr")?;
             el_table.append_child(&el_tr)?;
-            for c in crow {
+            for (x, c) in crow.iter().enumerate() {
                 let el_td = self.document.create_element("td")?;
+                let i = y * 16 + x;
                 el_tr.append_child(&el_td)?;
-                if c.height > 0 {
+                if let Some(special) = c.special() {
+                    warn!("pset char special {}: {}", i, special);
+                }
+                if c.height > 0 && c.width > 0 {
                     let page = raster::Page::from(c);
                     let blob = page_to_blob(&page)?;
                     let img_el = blob_image_el(&blob)?;
