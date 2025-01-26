@@ -288,13 +288,27 @@ impl Handle {
         let el_table_responsive = self.document.create_element("div")?;
         el_table_responsive.class_list().add_1("table-responsive")?;
         let el_table = self.document.create_element("table")?;
-        el_table.class_list().add_1("table")?;
-        for (y, crow) in pset.chars.chunks(16).enumerate() {
+        el_table.class_list().add_2("table", "pset")?;
+        let dx = 16;
+        let el_tr_head = self.document.create_element("tr")?;
+        el_table.append_child(&el_tr_head)?;
+        let el_th0 = self.document.create_element("th")?;
+        el_tr_head.append_child(&el_th0)?;
+        for i in 0..dx {
+            let el_th = self.document.create_element("th")?;
+            el_th.append_with_str_1(&format!("_{i:X}"))?;
+            el_tr_head.append_child(&el_th)?;
+        }
+        for (y, crow) in pset.chars.chunks(dx).enumerate() {
             let el_tr = self.document.create_element("tr")?;
             el_table.append_child(&el_tr)?;
+
+            let el_th_row = self.document.create_element("th")?;
+            el_th_row.append_with_str_1(&format!("{y:X}_"))?;
+            el_tr.append_child(&el_th_row)?;
             for (x, c) in crow.iter().enumerate() {
                 let el_td = self.document.create_element("td")?;
-                let i = y * 16 + x;
+                let i = y * dx + x;
                 el_tr.append_child(&el_td)?;
                 if let Some(special) = c.special() {
                     warn!("pset char special {}: {}", i, special);
