@@ -6,6 +6,7 @@ use crate::{
     util::{Buf, FourCC},
 };
 use core::fmt;
+use log::warn;
 use nom::{
     bytes::complete::{tag, take},
     combinator::{cond, verify},
@@ -252,7 +253,11 @@ pub fn parse_char<'a, E: ParseError<&'a [u8]>>(
     let (input, height) = u8(input)?;
     let (input, width) = u8(input)?;
     // FIXME: Are there any valid files where this is non-zero?
-    let (input, _d) = verify(u8, |x| *x == 0)(input)?;
+    let (input, _d) = u8(input)?; // verify(u8, |x| *x == 0)(input)?;
+
+    if _d != 0 {
+        warn!("_d = {}", _d);
+    }
 
     let len = (width as usize) * (height as usize);
     let (input, bitmap) = take(len)(input)?;
