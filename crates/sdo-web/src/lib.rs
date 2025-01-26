@@ -5,7 +5,7 @@ use convert::page_to_blob;
 use dom::blob_image_el;
 use glue::{
     fs_file_handle_get_file, js_directory_get_file_handle, js_error_with_cause, js_file_data,
-    js_input_file_list, js_input_files_iter, slice_to_blob,
+    js_input_file_list, js_input_files_iter, js_wrap_err, slice_to_blob,
 };
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
@@ -79,10 +79,7 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_array(name: &str, e: Array);
-}
 
-#[wasm_bindgen]
-extern "C" {
     fn alert(s: &str);
 }
 
@@ -571,6 +568,7 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
+        info!("opening {:?}", fragment);
         self.reset()?;
         if let Some(rest) = fragment.strip_prefix("#/staged/") {
             if rest.is_empty() {
@@ -582,9 +580,13 @@ impl Handle {
             self.show_home().await?;
         } else if let Some(rest) = fragment.strip_prefix("#/CHSETS/") {
             if rest.is_empty() {
-                self.list_chsets().await?;
+                self.list_chsets()
+                    .await
+                    .map_err(|e| js_wrap_err(e, "Failed to list CHSETS"))?;
             } else {
-                self.show_chset(rest).await?;
+                self.show_chset(rest)
+                    .await
+                    .map_err(|e| js_wrap_err(e, "Failed to show CHSET"))?;
             }
         }
         Ok(())

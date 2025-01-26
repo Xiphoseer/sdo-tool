@@ -3,7 +3,7 @@ use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     Blob, BlobPropertyBag, FileList, FileSystemDirectoryHandle, FileSystemFileHandle,
-    HtmlInputElement, StorageManager,
+    FileSystemGetDirectoryOptions, HtmlInputElement, StorageManager,
 };
 
 pub(crate) async fn fs_file_handle_get_file(
@@ -49,6 +49,16 @@ pub(crate) async fn js_directory_get_file_handle(
     Ok(result.unchecked_into::<FileSystemFileHandle>())
 }
 
+/// Return a handle for the named directory
+pub(crate) async fn js_directory_get_directory_handle_with_options(
+    dir: &FileSystemDirectoryHandle,
+    s: &str,
+    opt: &FileSystemGetDirectoryOptions,
+) -> Result<FileSystemDirectoryHandle, JsValue> {
+    let result = JsFuture::from(dir.get_directory_handle_with_options(s, opt)).await?;
+    Ok(result.unchecked_into::<FileSystemDirectoryHandle>())
+}
+
 pub(crate) fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterator>, JsValue> {
     let async_iter_sym = Symbol::async_iterator();
     let iter_fn = Reflect::get(val, async_iter_sym.as_ref())?;
@@ -79,6 +89,12 @@ pub(crate) fn slice_to_blob(bytes: &[u8], mime_type: &str) -> Result<Blob, JsVal
 pub(crate) fn js_error_with_cause<E: std::error::Error>(e: E, message: &str) -> js_sys::Error {
     let err = js_sys::Error::new(message);
     err.set_cause(&JsError::from(e).into());
+    err
+}
+
+pub(crate) fn js_wrap_err(e: impl Into<JsValue>, message: &str) -> js_sys::Error {
+    let err = js_sys::Error::new(message);
+    err.set_cause(&e.into());
     err
 }
 

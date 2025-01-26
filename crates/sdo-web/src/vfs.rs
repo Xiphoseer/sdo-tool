@@ -14,8 +14,8 @@ use web_sys::{
 };
 
 use crate::glue::{
-    fs_file_handle_get_file, js_directory_get_file_handle, js_file_data,
-    js_storage_manager_get_directory, try_iter_async,
+    fs_file_handle_get_file, js_directory_get_directory_handle_with_options,
+    js_directory_get_file_handle, js_file_data, js_storage_manager_get_directory, try_iter_async,
 };
 
 /// Browser Origin Private File System
@@ -147,11 +147,23 @@ async fn resolve_dir(
     }
     for p in path {
         if let Some(s) = p.to_str() {
-            curr = JsFuture::from(curr.get_directory_handle_with_options(s, &opt))
-                .await?
-                .unchecked_into::<FileSystemDirectoryHandle>();
+            curr = js_directory_get_directory_handle_with_options(&curr, s, &opt)
+                .await
+                .map_err(|e| {
+                    let err_message = format!("Directory not found: {}", path.display());
+                    let err = js_sys::Error::new(&err_message);
+                    err.set_name("SDOWebError");
+                    err.set_cause(&e);
+                    err
+                })?;
         } else {
-            return Err(JsError::new("Not Found").into());
+            let err_message = format!(
+                "Failed to resolve directory: Malformed path {}",
+                path.display()
+            );
+            let err = js_sys::Error::new(&err_message);
+            err.set_name("SDOWebError");
+            return Err(err.into());
         }
     }
     Ok(curr)

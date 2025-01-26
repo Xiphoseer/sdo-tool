@@ -216,7 +216,7 @@ async function run() {
     }
 
     async function onHashChange(hash) {
-        handle(hash)
+        await handle(hash)
     }
 
     addEventListener('hashchange', (event) => {
