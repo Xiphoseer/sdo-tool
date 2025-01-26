@@ -6,7 +6,6 @@ use crate::{
     util::{Buf, FourCC},
 };
 use core::fmt;
-use log::warn;
 use nom::{
     bytes::complete::{tag, take},
     combinator::{cond, verify},
