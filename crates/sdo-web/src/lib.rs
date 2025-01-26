@@ -662,7 +662,9 @@ impl Handle {
     }
 
     async fn list_chsets(&mut self) -> Result<(), JsValue> {
-        let mut iter = self.fs.read_dir(OriginPrivateFS::chsets_path()).await?;
+        let path = OriginPrivateFS::chsets_path();
+        let chset = self.fs.directory(path, true).await?;
+        let mut iter = chset.read_dir().await?;
         while let Some(next) = iter.next().await {
             let entry = next?;
             if self.fs.is_file_entry(&entry) {

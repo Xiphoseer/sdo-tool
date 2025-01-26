@@ -224,7 +224,7 @@ impl VFS for OriginPrivateFS {
     }
 
     async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
-        let dir = self.directory(path).await?;
+        let dir = self.directory(path, false).await?;
         dir.read_dir().await
     }
 
@@ -263,9 +263,9 @@ impl OriginPrivateFS {
         }
     }
 
-    async fn directory(&self, path: &Path) -> Result<Directory, Error> {
+    pub(crate) async fn directory(&self, path: &Path, create: bool) -> Result<Directory, Error> {
         let root = self.root.as_ref().expect("Uninitialized OPFS");
-        let inner = resolve_dir(root, path, false).await?;
+        let inner = resolve_dir(root, path, create).await?;
         Ok(Directory {
             inner,
             path: path.to_owned(),
