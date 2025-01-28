@@ -18,7 +18,7 @@ use sdo_pdf::{generate_pdf, MetaInfo};
 use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
     chsets::{
-        cache::{AsyncIterator, ChsetCache, VfsDirEntry, VFS},
+        cache::ChsetCache,
         editor::{parse_eset, ESet},
         encoding::decode_atari_str,
         printer::{parse_pset, PSet, PrinterKind},
@@ -33,7 +33,7 @@ use signum::{
         DocumentInfo, GenerationContext, Overrides, SDoc,
     },
     raster::{self, render_doc_page, render_editor_text, render_printer_char},
-    util::FourCC,
+    util::{AsyncIterator, FourCC, VFS},
 };
 use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter};
 use vfs::{DirEntry, OriginPrivateFS};
@@ -650,11 +650,11 @@ impl Handle {
     }
 
     async fn list_chset_entry(&self, entry: &DirEntry) -> Result<(), JsValue> {
-        let path = entry.path();
+        let path = self.fs.dir_entry_path(entry);
         let name = path.file_name().map(OsStr::to_string_lossy);
         let name = name.as_deref().unwrap_or("");
 
-        let file = self.fs.open_dir_entry(entry).await?;
+        let file = self.fs.dir_entry_to_file(entry).await?;
         let data = js_file_data(&file).await?.to_vec();
 
         let (_, four_cc) =
@@ -679,9 +679,9 @@ impl Handle {
         let mut iter = chset.read_dir().await?;
         while let Some(next) = iter.next().await {
             let entry = next?;
-            if self.fs.is_file_entry(&entry) {
+            if self.fs.dir_entry_is_file(&entry) {
                 if let Err(e) = self.list_chset_entry(&entry).await {
-                    let path = entry.path();
+                    let path = self.fs.dir_entry_path(&entry);
                     let path = path.to_string_lossy();
                     console::log_2(&JsValue::from_str(&path), &e);
                 }

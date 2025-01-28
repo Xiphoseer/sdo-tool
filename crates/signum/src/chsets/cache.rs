@@ -1,11 +1,8 @@
 //! # Implementation of a charset cache
 
 use std::{
-    borrow::Cow,
     collections::HashMap,
-    fs,
     future::Future,
-    io,
     path::{Path, PathBuf},
     pin::Pin,
 };
@@ -15,15 +12,13 @@ use log::{info, warn};
 
 use crate::{
     chsets::{
-        editor::ESet,
-        editor::OwnedESet,
+        editor::{ESet, OwnedESet},
         encoding::{p_mapping_file, Mapping},
-        printer::OwnedPSet,
-        printer::PSet,
-        printer::PrinterKind,
+        printer::{OwnedPSet, PSet, PrinterKind},
         LoadError,
     },
     docs::cset,
+    util::{AsyncIterator, VFS},
 };
 
 use super::{encoding::decode_atari_str, FontKind};
@@ -39,11 +34,11 @@ async fn find_font_file<FS: VFS>(
     extension: &str,
 ) -> Option<PathBuf> {
     info!("Searching font {} in {:?}", name, cset_folder.display());
-    let cset_file = cset_folder.join(name);
-    let editor_cset_file = cset_file.with_extension(extension);
+    let cset_file_base = cset_folder.join(name);
+    let cset_file = cset_file_base.with_extension(extension);
 
-    if fs.is_file(&editor_cset_file).await {
-        return Some(editor_cset_file);
+    if fs.is_file(&cset_file).await {
+        return Some(cset_file);
     }
 
     let mut dir_iter = match fs.read_dir(cset_folder).await {
@@ -56,7 +51,7 @@ async fn find_font_file<FS: VFS>(
 
     while let Some(entry) = dir_iter.next().await {
         if let Ok(de) = entry {
-            let subfolder = de.path();
+            let subfolder = fs.dir_entry_path(&de);
             if fs.is_dir(&subfolder).await {
                 // Note: need to box the future here because this is async recursion.
                 let fut = Box::pin(find_font_file(fs, &subfolder, name, extension));
@@ -71,11 +66,11 @@ async fn find_font_file<FS: VFS>(
 
 async fn load_printer_font<FS: VFS>(
     fs: &FS,
-    printer_cset_file: &Path,
+    cset_file: &Path,
     pk: PrinterKind,
 ) -> Option<OwnedPSet> {
     let extension = pk.extension();
-    let printer_cset_file = printer_cset_file.with_extension(extension);
+    let printer_cset_file = cset_file.with_extension(extension);
     let buffer = fs
         .read(&printer_cset_file)
         .await
@@ -187,137 +182,6 @@ impl<'a> CSet {
             PrinterKind::Needle24 => self.p24.as_ref().map(OwnedPSet::borrowed),
             PrinterKind::Laser30 => self.l30.as_ref().map(OwnedPSet::borrowed),
         }
-    }
-}
-
-/// Async Iterator trait
-pub trait AsyncIterator {
-    /// Single item
-    type Item;
-
-    /// Next method
-    fn next(&mut self) -> impl Future<Output = Option<Self::Item>>;
-}
-
-/// Directory entry for VFS
-pub trait VfsDirEntry {
-    /// Return the path represented by this entry
-    fn path(&self) -> Cow<'_, Path>;
-}
-
-/// Virtual File System used for loading fonts
-pub trait VFS {
-    /// Error type
-    type Error: std::fmt::Display;
-    /// Directory iterator
-    type DirIter: AsyncIterator<Item = Result<Self::DirEntry, Self::Error>>;
-    /// Directory entry
-    type DirEntry: VfsDirEntry;
-    /// Open file
-    type File;
-
-    /// Return the root path of the VFS
-    fn root(&self) -> impl Future<Output = PathBuf> + 'static;
-
-    /// Check whether the path is a file
-    fn is_file(&self, path: &Path) -> impl Future<Output = bool>;
-
-    /// Check whether the directory entry is a file
-    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool;
-
-    /// Check whether the path is a directory
-    fn is_dir(&self, path: &Path) -> impl Future<Output = bool>;
-
-    /// Check whether the directory entry is a directory
-    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool;
-
-    /// Read a directory
-    fn read_dir(&self, path: &Path) -> impl Future<Output = Result<Self::DirIter, Self::Error>>;
-
-    /// Open a file
-    fn open(&self, path: &Path) -> impl Future<Output = Result<Self::File, Self::Error>>;
-
-    /// Open a file
-    fn open_dir_entry(
-        &self,
-        dir_entry: &Self::DirEntry,
-    ) -> impl Future<Output = Result<Self::File, Self::Error>>;
-
-    /// Read a file
-    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>>;
-}
-
-/// VFS for the Local File System ([`std::fs`])
-pub struct LocalFS {
-    chsets_folder: PathBuf,
-}
-
-impl LocalFS {
-    /// Create a new instance rooted at `chsets_folder`
-    pub fn new(chsets_folder: PathBuf) -> Self {
-        Self { chsets_folder }
-    }
-}
-
-impl VfsDirEntry for std::fs::DirEntry {
-    fn path(&self) -> Cow<'_, Path> {
-        Cow::Owned(std::fs::DirEntry::path(self))
-    }
-}
-
-impl VFS for LocalFS {
-    fn root(&self) -> impl Future<Output = PathBuf> + 'static {
-        std::future::ready(self.chsets_folder.to_owned())
-    }
-
-    fn is_file(&self, path: &Path) -> impl Future<Output = bool> {
-        std::future::ready(path.is_file())
-    }
-
-    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool {
-        entry.path().is_file()
-    }
-
-    fn is_dir(&self, path: &Path) -> impl Future<Output = bool> {
-        std::future::ready(path.is_dir())
-    }
-
-    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool {
-        entry.path().is_dir()
-    }
-
-    async fn read_dir(&self, path: &Path) -> Result<Self::DirIter, Self::Error> {
-        std::fs::read_dir(path)
-    }
-
-    type Error = io::Error;
-
-    type DirIter = fs::ReadDir;
-
-    type DirEntry = fs::DirEntry;
-
-    type File = fs::File;
-
-    fn open(&self, path: &Path) -> impl Future<Output = Result<Self::File, Self::Error>> {
-        std::future::ready(std::fs::File::open(path))
-    }
-
-    fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>> {
-        std::future::ready(std::fs::read(path)) // FIXME: async
-    }
-
-    async fn open_dir_entry(&self, dir_entry: &Self::DirEntry) -> Result<Self::File, Self::Error> {
-        let path = dir_entry.path();
-        let file = self.open(&path).await?;
-        Ok(file)
-    }
-}
-
-impl AsyncIterator for fs::ReadDir {
-    type Item = Result<fs::DirEntry, io::Error>;
-
-    async fn next(&mut self) -> Option<Self::Item> {
-        <Self as Iterator>::next(self)
     }
 }
 

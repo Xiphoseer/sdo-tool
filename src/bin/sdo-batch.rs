@@ -14,10 +14,9 @@ use pdf_create::{
 use sdo_pdf::{
     font::Fonts, prepare_info, prepare_pdfa_output_intent, sdoc::generate_pdf_pages, Pdf,
 };
-use signum::chsets::{
-    cache::{ChsetCache, LocalFS},
-    printer::PrinterKind,
-    UseTableVec,
+use signum::{
+    chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec},
+    util::LocalFS,
 };
 use structopt::StructOpt;
 

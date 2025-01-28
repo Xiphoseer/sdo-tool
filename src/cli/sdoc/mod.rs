@@ -3,7 +3,7 @@ use color_eyre::eyre::{self, eyre};
 use image::ImageFormat;
 use log::{debug, error, info};
 use signum::{
-    chsets::cache::{ChsetCache, DocumentFontCacheInfo, LocalFS, VFS},
+    chsets::cache::{ChsetCache, DocumentFontCacheInfo},
     docs::{
         container::{parse_sdoc0001_container, Chunk},
         cset::CSet,
@@ -15,7 +15,7 @@ use signum::{
         DocumentInfo,
     },
     raster::Page,
-    util::{Buf, FourCC},
+    util::{Buf, FourCC, LocalFS, VFS},
 };
 
 use super::util;

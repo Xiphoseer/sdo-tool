@@ -1,6 +1,6 @@
 use core::fmt;
 use js_sys::Object;
-use signum::chsets::cache::{AsyncIterator, VfsDirEntry, VFS};
+use signum::util::{AsyncIterator, VFS};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -118,12 +118,6 @@ impl Directory {
 
 pub struct DirEntry(FileSystemHandle, PathBuf);
 
-impl VfsDirEntry for DirEntry {
-    fn path(&self) -> std::borrow::Cow<'_, Path> {
-        Cow::Borrowed(&self.1)
-    }
-}
-
 impl fmt::Display for DirEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.name().fmt(f)
@@ -214,7 +208,7 @@ impl VFS for OriginPrivateFS {
             .unwrap_or(false)
     }
 
-    fn is_file_entry(&self, entry: &Self::DirEntry) -> bool {
+    fn dir_entry_is_file(&self, entry: &Self::DirEntry) -> bool {
         entry.0.kind() == FileSystemHandleKind::File
     }
 
@@ -226,7 +220,7 @@ impl VFS for OriginPrivateFS {
             .unwrap_or(false)
     }
 
-    fn is_dir_entry(&self, entry: &Self::DirEntry) -> bool {
+    fn dir_entry_is_dir(&self, entry: &Self::DirEntry) -> bool {
         entry.0.kind() == FileSystemHandleKind::Directory
     }
 
@@ -248,13 +242,20 @@ impl VFS for OriginPrivateFS {
         Ok(uint8_buf.to_vec())
     }
 
-    async fn open_dir_entry(&self, dir_entry: &Self::DirEntry) -> Result<Self::File, Self::Error> {
+    async fn dir_entry_to_file(
+        &self,
+        dir_entry: &Self::DirEntry,
+    ) -> Result<Self::File, Self::Error> {
         let file_handle = dir_entry
             .0
             .dyn_ref::<FileSystemFileHandle>()
             .ok_or_else(|| JsError::new("not a file"))?;
         let file = file_handle_get_file(file_handle).await?;
         Ok(file)
+    }
+
+    fn dir_entry_path<'a>(&self, entry: &'a Self::DirEntry) -> Cow<'a, Path> {
+        Cow::Borrowed(&entry.1)
     }
 }
 
