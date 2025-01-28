@@ -87,11 +87,11 @@ impl<O: io::Write> TextContents<O> {
         if !self.line_started {
             self.line_started = true;
             let diff_y = (self.line_y - self.pos_y) as f32;
-            if self.pos_x > 0 {
+            if self.pos_x > 0 || self.slant != 0.0 {
                 // If we messed with the text line matrix, do this the long way around
                 let left = self.origin.0; // FIXME
                 let top = self.origin.1 - self.line_y as f32 / Y_SCALE_INVERSE;
-                self.set_text_matrix(self.scale.0, 0.0, 0.0, self.scale.1, left, top)?;
+                self.set_text_matrix(self.scale.0, 0.0, self.slant, self.scale.1, left, top)?;
             } else {
                 writeln!(
                     self.inner,
