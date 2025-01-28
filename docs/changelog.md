@@ -5,6 +5,8 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 28.01.2025
+
 - `sdo-web`: Added SDO Studio (https://sdo.dseiler.eu/studio/)
 - `sdo-web`: Added full printer font glyph matrix
 - `sdo-web`: Added in-browser font collection
