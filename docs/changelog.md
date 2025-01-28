@@ -3,6 +3,15 @@
 This page lists updates to the SDO-Toolbox.
 The name in brackets indicates the relevant crate.
 
+## Version 0.4.x (dev)
+
+- `sdo-web`: Added SDO Studio (https://sdo.dseiler.eu/studio/)
+- `sdo-web`: Added full printer font glyph matrix
+- `sdo-web`: Added in-browser font collection
+- `sdo-pdf`: Moved more of the PDF generation into the crate
+- `sdo-pdf`: Support italics (using font matrix)
+- `sdo-pdf`: Fixed PDF showing 'A' for some space characters
+
 ## Version 0.3.1
 
 ### 28.02.2021
