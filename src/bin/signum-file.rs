@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
+use clap::Parser;
 use color_eyre::eyre::{self, eyre};
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(clap::Parser)]
 /// Describe the type of the Signum file
 struct Options {
     /// A signum file
@@ -54,7 +54,7 @@ fn info(buffer: &[u8], opt: Options) -> color_eyre::Result<()> {
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    let opt: Options = Options::from_args();
+    let opt: Options = Options::parse();
 
     let buffer = std::fs::read(&opt.file)?;
     info(&buffer, opt)

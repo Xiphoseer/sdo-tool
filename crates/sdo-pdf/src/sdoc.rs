@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use pdf_create::write::write_string;
 use signum::docs::hcim::ImageSite;
 
+use crate::font::FontVariant;
+
 /// The `Contents` stream of a PDF
 #[derive(Default)]
 pub struct Contents {
@@ -31,6 +33,28 @@ impl Contents {
         Ok(())
     }
 
+    pub fn draw_line(&mut self, points: &[(f32, u32)]) -> io::Result<()> {
+        if let Some((&(x0, y0), rest)) = points.split_first() {
+            write!(
+                self.inner,
+                "{} {} m",
+                self.left + x0,
+                self.top - (y0 * 4) as f32 / 3.0
+            )?;
+            for (x, y) in rest {
+                write!(
+                    self.inner,
+                    " {} {} l",
+                    self.left + x,
+                    self.top - (y * 4) as f32 / 3.0
+                )?;
+            }
+            write!(self.inner, " 0.0 G")?;
+            writeln!(self.inner, " S")?;
+        }
+        Ok(())
+    }
+
     pub fn start_text(self, scale_x: f32, scale_y: f32) -> TextContents {
         let mut inner = self.inner;
         let left = self.left;
@@ -52,7 +76,9 @@ impl Contents {
             //is_ascii: true,
             cset: 0xff,
             fs: 0,
+            fv: FontVariant::Regular,
             fw: 100,
+            leading: 0.0,
             inner,
         }
     }
@@ -65,6 +91,8 @@ pub struct TextContents {
     cset: u8,
     /// The current font size
     fs: u8,
+    /// The current font variant
+    fv: FontVariant,
     /// The current horizontal scaling
     fw: u8,
     open: bool,
@@ -77,6 +105,8 @@ pub struct TextContents {
 
     line_y: u32,
     line_x: u32,
+
+    leading: f32,
 }
 
 impl TextContents {
@@ -89,21 +119,45 @@ impl TextContents {
         self.line_started = false;
     }
 
-    fn start_line(&mut self) {
+    pub fn get_y(&self) -> f32 {
+        self.line_y as f32 / 3.0
+    }
+
+    fn start_line(&mut self) -> io::Result<()> {
         if !self.line_started {
             self.line_started = true;
             let diff_y = (self.line_y - self.pos_y) as f32;
-            writeln!(self.inner, "{} {} Td", self.line_x, diff_y / 3.0).unwrap();
+            let new_leading = diff_y / 3.0;
+            if new_leading == self.leading && self.line_x == 0 {
+                write!(self.inner, "T*")?;
+                self.needs_space = true;
+            } else {
+                writeln!(self.inner, "{} {} TD", self.line_x, new_leading)?;
+            }
+            self.leading = new_leading;
             self.pos_y = self.line_y;
         }
+        Ok(())
     }
 
-    pub fn cset(&mut self, cset: u8, font_size: u8) {
-        if self.cset != cset || self.fs != font_size {
+    pub fn cset(&mut self, cset: u8, font_size: u8, font_variant: FontVariant) {
+        if self.cset != cset || self.fs != font_size || self.fv != font_variant {
+            // Overwrite the old state
             self.cset = cset;
             self.fs = font_size;
+            self.fv = font_variant;
+
+            // Get the new font resource identifier
+            let var = match font_variant {
+                FontVariant::Regular => 'C',
+                FontVariant::Italic => 'I',
+                FontVariant::Bold => 'B',
+                FontVariant::BoldItalic => 'X',
+            };
+
+            // Write to output
             self.flush();
-            writeln!(self.inner, "/C{} {} Tf", cset, font_size).unwrap();
+            writeln!(self.inner, "/{}{} {} Tf", var, cset, font_size).unwrap();
         }
     }
 
@@ -116,19 +170,21 @@ impl TextContents {
     }
 
     /// xoff in font-units (1/72000)
-    pub fn xoff(&mut self, xoff: i32) {
-        self.open();
+    pub fn xoff(&mut self, xoff: i32) -> io::Result<()> {
+        self.open()?;
         self.buf_flush();
         if self.needs_space {
-            write!(self.inner, " ").unwrap();
+            write!(self.inner, " ")?;
         }
-        write!(self.inner, "{}", xoff).unwrap();
+        write!(self.inner, "{}", xoff)?;
         self.needs_space = true;
+        Ok(())
     }
 
-    pub fn byte(&mut self, byte: u8) {
-        self.open();
+    pub fn byte(&mut self, byte: u8) -> io::Result<()> {
+        self.open()?;
         self.buf.push(byte);
+        Ok(())
     }
 
     fn buf_flush(&mut self) {
@@ -157,13 +213,14 @@ impl TextContents {
         self.needs_space = false;
     }
 
-    fn open(&mut self) {
+    fn open(&mut self) -> io::Result<()> {
         if !self.open {
-            self.start_line();
-            write!(self.inner, "[").unwrap();
+            self.start_line()?;
+            write!(self.inner, "[")?;
             self.open = true;
             self.needs_space = false;
         }
+        Ok(())
     }
 
     pub fn flush(&mut self) {

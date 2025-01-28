@@ -20,7 +20,7 @@ use nom::{
     IResult,
 };
 
-use signum::chsets::printer::PSetChar;
+use signum::chsets::printer::{PSetChar, PrinterKind};
 
 #[derive(Debug)]
 pub struct Font {
@@ -130,8 +130,8 @@ impl CharHeader {
         CharHeaderIter { ch: self, st: 0 }
     }
 
-    pub fn from_signum(p: &PSetChar) -> CharHeader {
-        let baseline = 32;
+    pub fn from_signum(p: &PSetChar, pk: PrinterKind) -> CharHeader {
+        let baseline = pk.baseline(); // 32 (l30)
         let left = 0;
         CharHeader {
             width: p.width << 3,

@@ -26,7 +26,7 @@ impl UseTable {
     /// Get the first and last char that is used
     ///
     /// ```
-    /// use sdo::font::UseTable;
+    /// use signum::chsets::UseTable;
     /// let mut chars = [0; 128];
     /// let use_table = UseTable { chars };
     /// assert_eq!(use_table.first_last(), None);
@@ -131,6 +131,15 @@ pub enum FontKind {
 }
 
 impl FontKind {
+    /// Return `Some` iff `self` is a printer font
+    pub fn printer(&self) -> Option<PrinterKind> {
+        if let Self::Printer(p) = self {
+            Some(*p)
+        } else {
+            None
+        }
+    }
+
     /// Return the number of device points corresponding to the given vertical units.
     pub fn scale_y(&self, units: u16) -> u32 {
         match self {
@@ -149,7 +158,7 @@ impl FontKind {
 
     /// Returns the amount of pixels from the top of the box to
     /// the baseline of the font.
-    pub fn baseline(&self) -> i32 {
+    pub fn baseline(&self) -> u8 {
         match self {
             Self::Editor => 18,
             Self::Printer(pk) => pk.baseline(),

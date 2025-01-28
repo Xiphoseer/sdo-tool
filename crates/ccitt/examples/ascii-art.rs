@@ -1,23 +1,23 @@
 use std::path::PathBuf;
 
 use ccitt_t4_t6::{bit_iter::BitIter, bit_iter::BitWriter, g42d::decode::Decoder};
+use clap::Parser;
 use color_eyre::eyre;
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Options {
     file: PathBuf,
-    #[structopt(long)]
+    #[clap(long)]
     width: usize,
-    #[structopt(long, short)]
+    #[clap(long, short)]
     invert: bool,
-    #[structopt(long)]
+    #[clap(long)]
     debug: bool,
 }
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    let opt = Options::from_args();
+    let opt = Options::parse();
     let file = std::fs::read(&opt.file)?;
 
     let mut decoder = Decoder::<BitWriter>::new(opt.width);

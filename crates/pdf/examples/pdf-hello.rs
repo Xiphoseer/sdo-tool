@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use color_eyre::eyre;
 use pdf_create::{
     common::Point,
-    common::{PdfString, Rectangle},
+    common::Rectangle,
     high::{Font, Handle, Page, Resource, Resources, Type3Font},
 };
 
@@ -12,23 +12,23 @@ pub fn main() -> eyre::Result<()> {
 
     let mut doc = Handle::new();
 
-    doc.info.author = Some(PdfString::new("Xiphoseer"));
-    doc.info.creator = Some(PdfString::new("SIGNUM (c) 1986-93 F. Schmerbeck"));
-    doc.info.producer = Some(PdfString::new("Signum! Document Toolbox"));
-    doc.info.title = Some(PdfString::new("EMPTY.SDO"));
+    doc.meta.author = vec!["Xiphoseer".to_string()];
+    doc.meta.creator = Some("SIGNUM (c) 1986-93 F. Schmerbeck".to_string());
+    doc.meta.producer = "Signum! Document Toolbox".to_string();
+    doc.meta.title = Some("EMPTY.SDO".to_string());
 
     // FIXME: Add some glyphs/char procs here
-    doc.res.fonts.push(Font::Type3(Type3Font::default()));
-    doc.res.fonts.push(Font::Type3(Type3Font::default()));
+    let font1 = doc.res.push_font(Font::Type3(Type3Font::default()));
+    let font2 = doc.res.push_font(Font::Type3(Type3Font::default()));
 
     let mut fonts = BTreeMap::new();
-    fonts.insert(String::from("CSET0"), Resource::Global { index: 0 });
-    fonts.insert(String::from("CSET1"), Resource::Global { index: 1 });
+    fonts.insert(String::from("CSET0"), Resource::Global(font1));
+    fonts.insert(String::from("CSET1"), Resource::Global(font2));
 
-    doc.res.font_dicts.push(fonts);
+    let fonts = doc.res.push_font_dict(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::Global(fonts),
         ..Default::default()
     };
 

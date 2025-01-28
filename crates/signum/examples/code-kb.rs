@@ -3,9 +3,9 @@ use std::{
     path::PathBuf,
 };
 
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Opts {
     file: PathBuf,
 }
@@ -252,7 +252,7 @@ fn write_font(buf: &mut Vec<u8>) -> io::Result<()> {
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
 
     let mut contents: Vec<u8> = Vec::new();
     write_font(&mut contents)?;

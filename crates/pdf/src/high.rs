@@ -1,18 +1,21 @@
 //! High-Level API
 
-use std::{borrow::Cow, io};
+use std::{borrow::Cow, collections::BTreeMap, fmt, io, marker::PhantomData, str::FromStr};
 
 use chrono::{DateTime, Local};
 use io::Write;
+use uuid::Uuid;
 
 use crate::{
     common::{
-        Dict, Encoding, ImageMetadata, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel,
-        PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped,
+        self, Dict, Encoding, FontDescriptor, ICCColorProfileMetadata, ImageMetadata, Matrix,
+        NumberTree, ObjRef, PageLabel, PdfString, Point, ProcSet, Rectangle, StreamMetadata,
+        Trapped,
     },
     low::{self, ID},
-    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
-    write::{Formatter, PdfName, Serialize},
+    lowering::{lower_outline_items, Lowerable, LoweringContext},
+    write::{Formatter, PdfNameStr, Serialize},
+    xmp::{self, XmpWriter},
 };
 
 /// A single page
@@ -23,6 +26,38 @@ pub struct Page<'a> {
     pub resources: Resources<'a>,
     /// The content stream of the page
     pub contents: Vec<u8>,
+}
+
+/// The Metadata/Info
+#[derive(Debug, Default)]
+pub struct Metadata {
+    /// The title
+    pub title: Option<String>,
+    /// The author
+    pub author: Vec<String>,
+    /// The subject
+    pub subject: Option<String>,
+    /// A list of keywords
+    pub keywords: Vec<String>,
+    /// The program used to create the source
+    pub creator: Option<String>,
+    /// The program used to create the source
+    pub publisher: Vec<String>,
+    /// The program that produced the file (this library)
+    pub producer: String,
+}
+
+impl Metadata {
+    /// Check whether the info contains any meaningful data
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none()
+            && self.author.is_empty()
+            && self.subject.is_none()
+            && self.keywords.is_empty()
+            && self.publisher.is_empty()
+            && self.creator.is_none()
+            && self.producer.is_empty()
+    }
 }
 
 /// The Metadata/Info
@@ -86,21 +121,6 @@ impl Serialize for Info {
     }
 }
 
-impl Info {
-    /// Check whether the info contains any meaningful data
-    pub fn is_empty(&self) -> bool {
-        self.title.is_none()
-            && self.author.is_none()
-            && self.subject.is_none()
-            && self.keywords.is_none()
-            && self.creator.is_none()
-            && self.producer.is_none()
-            && self.creation_date.is_none()
-            && self.mod_date.is_none()
-            && self.trapped.is_none()
-    }
-}
-
 #[derive(Debug, Clone)]
 /// Information for the Outline of the document
 pub struct Outline {
@@ -145,31 +165,73 @@ pub enum Destination {
 #[derive(Debug)]
 pub enum Resource<T> {
     /// Use the resource at {index} from the global list
-    Global {
-        /// The index into the global list
-        index: usize,
-    },
+    Global(ResourceIndex<T>),
     /// Use the value in the box
     Immediate(Box<T>),
+}
+
+/// Encapsulate a global resource by index
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceIndex<T> {
+    index: usize,
+    _p: PhantomData<fn() -> T>,
+}
+
+impl<T> Clone for ResourceIndex<T> {
+    fn clone(&self) -> Self {
+        Self {
+            index: self.index,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<T> Copy for ResourceIndex<T> {}
+
+impl<T> fmt::Debug for ResourceIndex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResourceIndex")
+            .field("index", &self.index)
+            .finish()
+    }
+}
+
+impl<T> ResourceIndex<T> {
+    /// Get the numeric value
+    pub(crate) fn get(&self) -> usize {
+        self.index
+    }
+
+    /// Create a new index
+    pub fn new(index: usize) -> Self {
+        Self {
+            index,
+            _p: PhantomData,
+        }
+    }
 }
 
 #[derive(Debug)]
 /// A type 3 font
 pub struct Type3Font<'a> {
     /// The name of the font
-    pub name: Option<PdfName<'a>>,
+    pub name: Option<Cow<'a, PdfNameStr>>,
+    /// The matrix to map glyph space into text space
+    ///
+    /// this is useful for creating an italic font
+    pub font_matrix: Matrix<f32>,
+    /// Font characteristics
+    pub font_descriptor: Option<FontDescriptor<'a>>,
     /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
-    /// The matrix to map glyph space into text space
-    pub font_matrix: Matrix<f32>,
     /// The first used char key
     pub first_char: u8,
     /// The last used char key
     pub last_char: u8,
     /// Dict of char names to drawing procedures
-    pub char_procs: Dict<Ascii85Stream<'a>>,
+    pub char_procs: Resource<Dict<Ascii85Stream<'a>>>,
     /// Dict of encoding value to char names
-    pub encoding: Encoding<'a>,
+    pub encoding: Resource<Encoding<'a>>,
     /// Width of every char between first and last
     pub widths: Vec<u32>,
     /// ToUnicode CMap stream
@@ -179,19 +241,20 @@ pub struct Type3Font<'a> {
 impl<'a> Default for Type3Font<'a> {
     fn default() -> Self {
         Self {
+            name: None,
+            font_matrix: Matrix::default_glyph(),
+            font_descriptor: None,
             font_bbox: Rectangle {
                 ll: Point::default(),
                 ur: Point::default(),
             },
-            name: None,
-            font_matrix: Matrix::default_glyph(),
             first_char: 0,
             last_char: 255,
-            char_procs: Dict::new(),
-            encoding: Encoding {
+            char_procs: Resource::Immediate(Box::new(Dict::new())),
+            encoding: Resource::Immediate(Box::new(Encoding {
                 base_encoding: None,
                 differences: None,
-            },
+            })),
             widths: vec![],
             to_unicode: None,
         }
@@ -259,15 +322,71 @@ pub struct Res<'a> {
     /// Char Procedure resources
     pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
+    pub char_procs_dicts: Vec<Dict<Ascii85Stream<'a>>>,
+    /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
 }
+
+impl<'a> Res<'a> {
+    /// Push a new encoding
+    pub fn push_encoding(&mut self, enc: Encoding<'a>) -> ResourceIndex<Encoding<'a>> {
+        let index = self.encodings.len();
+        self.encodings.push(enc);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_font(&mut self, font: Font<'a>) -> ResourceIndex<Font<'a>> {
+        let index = self.fonts.len();
+        self.fonts.push(font);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_font_dict(
+        &mut self,
+        font_dict: DictResource<Font<'a>>,
+    ) -> ResourceIndex<DictResource<Font<'a>>> {
+        let index = self.font_dicts.len();
+        self.font_dicts.push(font_dict);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_char_procs(
+        &mut self,
+        char_procs: Dict<Ascii85Stream<'a>>,
+    ) -> ResourceIndex<Dict<Ascii85Stream<'a>>> {
+        let index = self.char_procs_dicts.len();
+        self.char_procs_dicts.push(char_procs);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new XObject
+    pub fn push_x_object(&mut self, x_object: XObject) -> ResourceIndex<XObject> {
+        let index = self.x_objects.len();
+        self.x_objects.push(x_object);
+        ResourceIndex::new(index)
+    }
+}
+
+/// An icc based color profile
+pub struct ICCBasedColorProfile<'a> {
+    /// The data file
+    pub stream: &'a [u8],
+    /// metadata
+    pub meta: ICCColorProfileMetadata,
+}
+
+/// High-Level output intent
+pub type OutputIntent = common::OutputIntent<ICCBasedColorProfile<'static>>;
 
 /// Entrypoint to the high-level API
 ///
 /// Create a new handle to start creating a PDF document
 pub struct Handle<'a> {
     /// The info/metadata
-    pub info: Info,
+    pub meta: Metadata,
     /// The pages
     pub pages: Vec<Page<'a>>,
     /// The settings for page numbering for a PDF viewer
@@ -295,11 +414,25 @@ pub struct Ascii85Stream<'a> {
     pub meta: StreamMetadata,
 }
 
+fn pdf_string_of(o: &Option<String>) -> io::Result<Option<PdfString>> {
+    let s = o.as_deref().map(PdfString::from_str).transpose()?;
+    Ok(s)
+}
+
+fn pdf_list_of(o: &[String]) -> io::Result<Option<PdfString>> {
+    if o.is_empty() {
+        Ok(None)
+    } else {
+        let s = PdfString::from_str(&o.join(", "))?;
+        Ok(Some(s))
+    }
+}
+
 impl<'a> Handle<'a> {
     /// Creates a new handle
     pub fn new() -> Self {
         Self {
-            info: Info::default(),
+            meta: Metadata::default(),
             res: Res::default(),
             page_labels: NumberTree::new(),
             outline: Outline::new(),
@@ -308,28 +441,121 @@ impl<'a> Handle<'a> {
         }
     }
 
+    fn prepare_xmp(&self, create_date: DateTime<Local>) -> io::Result<Vec<u8>> {
+        let now = Local::now();
+
+        let mut writer = XmpWriter::new(Vec::new())?;
+        writer.add_description(&xmp::Pdf {
+            producer: self.meta.producer.clone(),
+        })?;
+        writer.add_description(&xmp::DublinCore {
+            title: self
+                .meta
+                .title
+                .as_ref()
+                .map(|title| BTreeMap::from([(xmp::Lang::Default, title.clone())]))
+                .unwrap_or_default(),
+            format: "application/pdf",
+            creator: self.meta.author.clone(),
+            publisher: self.meta.publisher.clone(),
+        })?;
+        writer.add_description(&xmp::PdfAId {
+            part: 2,
+            conformance: 'B',
+        })?;
+        writer.add_description(&xmp::XmpBasic {
+            creator_tool: self.meta.producer.clone(),
+            modify_date: create_date,
+            create_date,
+            metadata_date: now,
+        })?;
+        writer.add_description(&xmp::XmpMM {
+            document_id: Uuid::new_v4(),
+            instance_id: Uuid::new_v4(),
+        })?;
+
+        writer.finish()
+    }
+
     /// Write the whole PDF to the given writer
     pub fn write<W: Write>(&self, w: &mut W) -> io::Result<()> {
         let mut fmt = Formatter::new(w);
 
         let gen = 0;
         let make_ref = move |id: u64| ObjRef { id, gen };
+        let now = Local::now();
+        let mut lowering = LoweringContext::new(self);
 
+        // Start
         writeln!(fmt.inner, "%PDF-1.5")?;
         fmt.inner.write_all(&[b'%', 180, 200, 220, 240, b'\n'])?;
 
-        let mut lowering = Lowering::new(self);
+        // **OutputIntent**
+        let mut output_intents = Vec::with_capacity(self.output_intents.len());
+        for high_oi in &self.output_intents {
+            let dest_output_profile = match &high_oi.dest_output_profile {
+                None => None,
+                Some(profile) => {
+                    let r = make_ref(lowering.id_gen.next());
+                    let stream = low::FlateAscii85Stream {
+                        data: profile.stream,
+                        meta: StreamMetadata::ColorProfile(profile.meta),
+                    };
+                    fmt.obj(r, &stream)?;
+                    Some(r)
+                }
+            };
 
+            let low_oi = common::OutputIntent::<ObjRef> {
+                subtype: high_oi.subtype,
+                dest_output_profile,
+                output_condition: high_oi.output_condition.clone(),
+                output_condition_identifier: high_oi.output_condition_identifier.clone(),
+                registry_name: high_oi.registry_name.clone(),
+                info: high_oi.info.clone(),
+            };
+
+            let r = make_ref(lowering.id_gen.next());
+            fmt.obj(r, &low_oi)?;
+            output_intents.push(r);
+        }
+
+        // Catalog ID
         let catalog_id = lowering.id_gen.next();
-        let info_id = if self.info.is_empty() {
+
+        // **Info**
+        let info_id = if self.meta.is_empty() {
             None
         } else {
             let info_id = lowering.id_gen.next();
             let r = make_ref(info_id);
-            fmt.obj(r, &self.info)?;
+
+            let info = Info {
+                title: pdf_string_of(&self.meta.title)?,
+                author: pdf_list_of(&self.meta.author)?,
+                subject: pdf_string_of(&self.meta.subject)?,
+                keywords: pdf_list_of(&self.meta.keywords)?,
+                creator: pdf_string_of(&self.meta.creator)?,
+                producer: Some(PdfString::from_str(&self.meta.producer)?),
+                creation_date: Some(now),
+                mod_date: Some(now),
+                trapped: None,
+            };
+
+            fmt.obj(r, &info)?;
             Some(r)
         };
 
+        // **Metadata**
+        let meta_id = lowering.id_gen.next();
+        let meta_ref = make_ref(meta_id);
+        let xmp = low::Stream {
+            data: self.prepare_xmp(now)?,
+            meta: StreamMetadata::MetadataXML,
+        };
+        fmt.obj(meta_ref, &xmp)?;
+
+        // **Pages**
         let mut pages = low::Pages { kids: vec![] };
         let pages_id = lowering.id_gen.next();
         let pages_ref = make_ref(pages_id);
@@ -341,6 +567,7 @@ impl<'a> Handle<'a> {
 
             let contents = low::Stream {
                 data: page.contents.clone(),
+                meta: StreamMetadata::None,
             };
             fmt.obj(contents_ref, &contents)?;
 
@@ -348,18 +575,8 @@ impl<'a> Handle<'a> {
             let page_low = low::Page {
                 parent: pages_ref,
                 resources: low::Resources {
-                    font: lowering.font_dicts.map_dict(
-                        &page.resources.fonts,
-                        &mut lowering.fonts,
-                        &mut lowering.font_ctx,
-                        &mut lowering.id_gen,
-                    ),
-                    x_object: lowering.x_object_dicts.map_dict(
-                        &page.resources.x_objects,
-                        &mut lowering.x_objects,
-                        &mut (),
-                        &mut lowering.id_gen,
-                    ),
+                    font: page.resources.fonts.lower(&mut lowering),
+                    x_object: page.resources.x_objects.lower(&mut lowering),
                     proc_set: &page.resources.proc_sets,
                 },
                 contents: contents_ref,
@@ -369,30 +586,39 @@ impl<'a> Handle<'a> {
             pages.kids.push(page_ref);
         }
 
-        for (font_dict_ref, font_dict) in lowering.font_dicts.store.values() {
-            let dict = lower_dict(
-                font_dict,
-                &mut lowering.fonts,
-                &mut lowering.font_ctx,
-                &mut lowering.id_gen,
-            );
-            fmt.obj(*font_dict_ref, &dict)?;
+        let font_dicts = std::mem::take(&mut lowering.fonts_ctx.font_dicts.store);
+        for (font_dict_ref, font_dict) in font_dicts.values().copied() {
+            let dict = font_dict.lower(&mut lowering);
+            fmt.obj(font_dict_ref, &dict)?;
         }
 
-        for (font_ref, font) in lowering.fonts.store.values() {
-            let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
-            fmt.obj(*font_ref, &font_low)?;
+        let fonts = std::mem::take(&mut lowering.fonts_ctx.fonts.store);
+        for (font_ref, font) in fonts.values().copied() {
+            let font_low = font.lower(&mut lowering);
+            fmt.obj(font_ref, &font_low)?;
         }
 
-        for (x_ref, x) in lowering.x_objects.store.values() {
-            let x_low = x.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*x_ref, &x_low)?;
+        let encodings = std::mem::take(&mut lowering.font_ctx.encodings.store);
+        for (x_ref, x) in encodings.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
+        }
+
+        let char_procs = std::mem::take(&mut lowering.font_ctx.text_stream_dicts.store);
+        for (x_ref, x) in char_procs.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
+        }
+
+        let x_objects = std::mem::take(&mut lowering.x_objects.x_objects.store);
+        for (x_ref, x) in x_objects.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store.values() {
-            let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*cproc_ref, &cp)?;
+        for (cproc_ref, char_proc) in lowering.ascii_85_streams {
+            fmt.obj(cproc_ref, &char_proc)?;
         }
 
         let pages_ref = make_ref(pages_id);
@@ -408,6 +634,7 @@ impl<'a> Handle<'a> {
             None
         };
 
+        // **Outline**
         let ol_ref = if !self.outline.children.is_empty() {
             let mut ol_acc = Vec::new();
             let outline_ref = make_ref(lowering.id_gen.next());
@@ -435,48 +662,21 @@ impl<'a> Handle<'a> {
             None
         };
 
-        let mut output_intents = Vec::with_capacity(self.output_intents.len());
-        for oi in &self.output_intents {
-            let r = make_ref(lowering.id_gen.next());
-            fmt.obj(r, &oi)?;
-            output_intents.push(r);
-        }
-
+        // **Catalog**
         let catalog = low::Catalog {
             version: None,
             pages: pages_ref,
             page_labels: pl_ref,
             outline: ol_ref,
             output_intents,
+            metadata: Some(meta_ref),
         };
         let catalog_ref = make_ref(catalog_id);
         fmt.obj(catalog_ref, &catalog)?;
 
+        // **xref**
         let startxref = fmt.xref()?;
-
-        let mut id_ctx = md5::Context::new();
-
-        // Consume for the ID
-
-        // - The current time
-        let now = chrono::Local::now().to_string();
-        id_ctx.consume(now);
-
-        // - A string representation of the file’s location, usually a pathname
-        // TODO
-
-        // - The size of the file in bytes
-        let len = fmt.inner.bytes_written();
-        id_ctx.consume(len.to_ne_bytes());
-
-        // - The values of all entries in the file’s document information dictionary
-        // TODO
-
-        let digest = id_ctx.compute();
-        let id = ID {
-            original: digest,
-            current: digest,
-        };
+        let id = self.compute_id(&fmt);
 
         writeln!(fmt.inner, "trailer")?;
 
@@ -493,5 +693,52 @@ impl<'a> Handle<'a> {
         writeln!(fmt.inner, "%%EOF")?;
 
         Ok(())
+    }
+
+    // Consume for the ID
+    fn compute_id(&self, fmt: &Formatter) -> ID {
+        let mut id_ctx = md5::Context::new();
+
+        // - The current time
+        let now = chrono::Local::now().to_string();
+        id_ctx.consume(now);
+
+        // - A string representation of the file’s location, usually a pathname
+        // TODO
+
+        // - The size of the file in bytes
+        let len = fmt.inner.bytes_written();
+        id_ctx.consume(len.to_ne_bytes());
+
+        // - The values of all entries in the file’s document information dictionary
+        if let Some(a) = &self.meta.title {
+            id_ctx.consume(a.as_bytes());
+        }
+
+        for a in &self.meta.author {
+            id_ctx.consume(a.as_bytes());
+        }
+
+        if let Some(a) = &self.meta.subject {
+            id_ctx.consume(a.as_bytes());
+        }
+
+        for kw in &self.meta.keywords {
+            id_ctx.consume(kw.as_bytes());
+        }
+
+        for a in &self.meta.creator {
+            id_ctx.consume(a.as_bytes());
+        }
+
+        id_ctx.consume(self.meta.producer.as_bytes());
+
+        // --------------------------------------------------
+
+        let digest = id_ctx.compute();
+        ID {
+            original: digest,
+            current: digest,
+        }
     }
 }

@@ -1,17 +1,17 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use structopt::StructOpt;
+use clap::Parser;
 
 use color_eyre::eyre::{self, eyre};
 use pdf_create::{
-    common::{PdfString, Rectangle},
-    high::{Font, Handle, Page, Resource, Resources},
+    common::Rectangle,
+    high::{Handle, Page, Resource, ResourceIndex, Resources},
 };
-use sdo_pdf::font::type3_font;
+use sdo_pdf::font::type3_font_family;
 use signum::chsets::{editor::parse_eset, printer::parse_ls30, UseTable};
 use signum::nom::Finish;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Options {
     font: PathBuf,
 }
@@ -19,7 +19,7 @@ struct Options {
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let opt = Options::from_args();
+    let opt = Options::parse();
 
     let pfont_path = opt.font;
     let pfont_buffer = std::fs::read(&pfont_path)?;
@@ -40,27 +40,23 @@ pub fn main() -> eyre::Result<()> {
 
     let mut doc = Handle::new();
 
-    let author = String::from("Xiphoseer").into_bytes();
-    doc.info.author = Some(PdfString::new(author));
-    let creator = String::from("SIGNUM (c) 1986-93 F. Schmerbeck").into_bytes();
-    doc.info.creator = Some(PdfString::new(creator));
-    let producer = String::from("Signum! Document Toolbox").into_bytes();
-    doc.info.producer = Some(PdfString::new(producer));
-    let title = String::from("EMPTY.SDO").into_bytes();
-    doc.info.title = Some(PdfString::new(title));
+    doc.meta.author = vec!["Xiphoseer".to_string()];
+    doc.meta.creator = Some("SIGNUM (c) 1986-93 F. Schmerbeck".to_string());
+    doc.meta.producer = "Signum! Document Toolbox".to_string();
+    doc.meta.title = Some("EMPTY.SDO".to_string());
 
     let use_table = UseTable::from("HelloJ@rgen!1");
 
     let mut fonts = BTreeMap::new();
-    if let Some(font) = type3_font(Some(&efont), &pfont, &use_table, None, None) {
-        doc.res.fonts.push(Font::Type3(font));
-        fonts.insert(String::from("C0"), Resource::Global { index: 0 });
+    if let Some(font) = type3_font_family(Some(&efont), &pfont, &use_table, None, None) {
+        sdo_tool::cli::sdoc::pdf::push_fonts(&mut doc, vec![font]);
+        fonts.insert(String::from("C0"), Resource::Global(ResourceIndex::new(0)));
     }
 
-    doc.res.font_dicts.push(fonts);
+    let font_dict = doc.res.push_font_dict(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::Global(font_dict),
         ..Default::default()
     };
 

@@ -1,4 +1,5 @@
 #![allow(unused)]
+use clap::Parser;
 use color_eyre::eyre::{self, eyre, WrapErr};
 use image::ImageFormat;
 use signum::{
@@ -12,7 +13,6 @@ use std::{
     io::{BufReader, Read},
     path::{Path, PathBuf},
 };
-use structopt::StructOpt;
 
 #[derive(Copy, Clone)]
 pub enum KbCset {
@@ -724,7 +724,7 @@ pub const CHARS_LABEL: [u8; 25] = [
     114, 115, 116, 117,
 ];
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 /// Print a keyboard for the given font
 pub struct KbOptions {
     /// An .E24 file
@@ -1060,7 +1060,7 @@ pub fn run(buffer: &[u8], opt: KbOptions) -> eyre::Result<()> {
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    let opt: KbOptions = KbOptions::from_args();
+    let opt: KbOptions = KbOptions::parse();
 
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {
