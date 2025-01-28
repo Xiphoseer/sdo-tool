@@ -31,9 +31,20 @@ async function run() {
     const h = new Handle(outputEl, inputField);
     await h.init().catch(onError);
 
+    const STAGED_PATH = '/staged/';
+
     async function onInputFieldChange(_event) {
-        window.location.hash = '/staged/';
-        await h.onChange().catch(onError);
+        const oldHash = window.location.hash;
+        const oldPath = oldHash ? oldHash.slice(1) : '/'; // remove leading #
+        const isStagedPath = oldPath === STAGED_PATH;
+        console.log('input field changed', oldPath);
+        if (!isStagedPath) {
+            console.debug("Navigating to", STAGED_PATH);
+            window.location.hash = STAGED_PATH;
+        } else {
+            console.debug("Triggering change");
+            await h.onChange().catch(onError);
+        }
     }
 
     inputField.addEventListener('change', onInputFieldChange);

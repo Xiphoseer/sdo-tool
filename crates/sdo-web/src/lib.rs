@@ -4,8 +4,13 @@ use bstr::BStr;
 use convert::page_to_blob;
 use dom::blob_image_el;
 use glue::{
-    fs_file_handle_get_file, js_directory_get_file_handle, js_error_with_cause, js_file_data,
-    js_input_file_list, js_input_files_iter, js_wrap_err, slice_to_blob,
+    fs::{
+        directory_handle_get_file_handle, directory_handle_get_file_handle_with_options,
+        file_handle_create_writable, file_handle_get_file, writable_file_stream_close,
+        writable_file_stream_write_with_js_u8_array,
+    },
+    js_error_with_cause, js_file_data, js_input_file_list, js_input_files_iter, js_wrap_err,
+    slice_to_blob,
 };
 use js_sys::{Array, JsString, Uint8Array};
 use log::{info, warn, Level};
@@ -30,14 +35,13 @@ use signum::{
     raster::{self, render_doc_page, render_editor_text, render_printer_char},
     util::FourCC,
 };
-use std::{ffi::OsStr, fmt::Write, io::BufWriter};
+use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter};
 use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     console, window, Blob, CanvasRenderingContext2d, Document, Element, Event,
-    FileSystemFileHandle, FileSystemGetFileOptions, FileSystemWritableFileStream,
-    HtmlAnchorElement, HtmlCanvasElement, HtmlElement, HtmlInputElement, ImageBitmap,
+    FileSystemGetFileOptions, HtmlAnchorElement, HtmlCanvasElement, HtmlElement, HtmlInputElement,
+    ImageBitmap,
 };
 
 mod convert;
@@ -107,6 +111,7 @@ pub struct ActiveDocument {
     di: DocumentInfo,
     pd: FontKind,
     name: String,
+    fc: ChsetCache,
 }
 
 impl GenerationContext for ActiveDocument {
@@ -135,9 +140,8 @@ pub struct Handle {
     fs: OriginPrivateFS,
     #[allow(dead_code)]
     closures: Vec<Closure<dyn FnMut(JsValue)>>,
-    fc: ChsetCache,
-
-    active: Option<ActiveDocument>,
+    // fc: ChsetCache,
+    active: RefCell<Option<ActiveDocument>>,
 }
 
 #[wasm_bindgen]
@@ -152,17 +156,16 @@ impl Handle {
             document,
             output,
             fs: OriginPrivateFS::new(),
-            fc: ChsetCache::new(),
             closures: Vec::new(),
             input,
-            active: None,
+            active: RefCell::new(None),
         };
         log::info!("New handle created!");
         Ok(h)
     }
 
     #[wasm_bindgen]
-    pub async fn init(&mut self) -> Result<(), JsValue> {
+    pub async fn init(&self) -> Result<(), JsValue> {
         self.fs.init().await?;
         Ok(())
     }
@@ -269,18 +272,18 @@ impl Handle {
         Ok(eset)
     }
 
-    fn parse_pset<'a>(&mut self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
+    fn parse_pset<'a>(&self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
         let (_, pset) = parse_pset::<signum::nom::error::Error<&'a [u8]>>(data)
             .map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
         Ok(pset)
     }
 
-    fn show_eset(&mut self, eset: &ESet<'_>) -> Result<(), JsValue> {
+    fn show_eset(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
         self.eset_kb(eset)?;
         Ok(())
     }
 
-    fn show_pset(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
+    fn show_pset(&self, pset: &PSet<'_>) -> Result<(), JsValue> {
         let h3 = self.document.create_element("h3")?;
         h3.set_text_content(Some("Characters"));
         self.output.append_child(&h3)?;
@@ -379,9 +382,9 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub fn reset(&mut self) -> Result<(), JsValue> {
+    pub fn reset(&self) -> Result<(), JsValue> {
         self.output.set_inner_html("");
-        self.active = None;
+        *self.active.borrow_mut() = None;
         Ok(())
     }
 
@@ -394,8 +397,8 @@ impl Handle {
 
     #[wasm_bindgen(js_name = addToCollection)]
     pub async fn add_to_collection(&mut self) -> Result<usize, JsValue> {
-        self.fc.reset();
-        let root_dir = self.fs.root_dir()?;
+        //self.fc.reset();
+        let root_dir = self.fs.root_dir()?.clone();
         let chset_dir = self.fs.chset_dir().await?;
         let opts = FileSystemGetFileOptions::new();
         opts.set_create(true);
@@ -410,17 +413,13 @@ impl Handle {
             // (name, data, four_cc)
             let dir = match four_cc {
                 FourCC::ESET | FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => &chset_dir,
-                _ => root_dir,
+                _ => &root_dir,
             };
-            let r = JsFuture::from(dir.get_file_handle_with_options(&name, &opts))
-                .await?
-                .unchecked_into::<FileSystemFileHandle>();
-            let w = JsFuture::from(r.create_writable())
-                .await?
-                .unchecked_into::<FileSystemWritableFileStream>();
-            let o = JsFuture::from(w.write_with_buffer_source(&data)?).await?;
+            let r = directory_handle_get_file_handle_with_options(dir, &name, &opts).await?;
+            let w = file_handle_create_writable(&r).await?;
+            let o = writable_file_stream_write_with_js_u8_array(&w, &data)?.await?;
             assert_eq!(o, JsValue::UNDEFINED);
-            let o = JsFuture::from(w.close()).await?;
+            let o = writable_file_stream_close(&w).await?;
             assert_eq!(o, JsValue::UNDEFINED);
             console::info_3(&"Added".into(), &name.into(), &"to collection!".into());
             count += 1;
@@ -430,8 +429,8 @@ impl Handle {
 
     #[wasm_bindgen(js_name = exportToPdf)]
     pub async fn export_to_pdf(&mut self) -> Result<Blob, JsError> {
-        let active_doc = self
-            .active
+        let active_doc_ref = self.active.borrow();
+        let active_doc = active_doc_ref
             .as_ref()
             .ok_or_else(|| JsError::new("no active document"))?;
         let overrides = Overrides {
@@ -447,7 +446,7 @@ impl Handle {
             FontKind::Editor => Err(JsError::new("editor font not supported")),
             FontKind::Printer(printer_kind) => Ok(printer_kind),
         }?;
-        let pdf = generate_pdf(&self.fc, pk, &meta, &overrides, active_doc)?;
+        let pdf = generate_pdf(&active_doc.fc, pk, &meta, &overrides, active_doc)?;
         let vec = Vec::new();
         let mut writer = BufWriter::new(vec);
         pdf.write(&mut writer)?;
@@ -459,19 +458,17 @@ impl Handle {
 
     #[wasm_bindgen]
     pub async fn render(&mut self, requested_index: usize) -> Result<Blob, JsValue> {
-        if let Some(ActiveDocument { sdoc, di, pd, .. }) = &self.active {
+        let active_doc_ref = self.active.borrow();
+        if let Some(ActiveDocument {
+            sdoc, di, pd, fc, ..
+        }) = &*active_doc_ref
+        {
             if let Some(page_text) = sdoc.tebu.pages.get(requested_index) {
                 let index = page_text.index as usize;
                 log::info!("Rendering page {} ({})", requested_index, index);
                 if let Some((pbuf_entry, _)) = sdoc.pbuf.pages[index].as_ref() {
-                    let page = render_doc_page(
-                        page_text,
-                        pbuf_entry,
-                        sdoc.image_sites(),
-                        di,
-                        *pd,
-                        &self.fc,
-                    );
+                    let page =
+                        render_doc_page(page_text, pbuf_entry, sdoc.image_sites(), di, *pd, fc);
 
                     let blob = page_to_blob(&page)?;
                     Ok(blob)
@@ -489,17 +486,18 @@ impl Handle {
 
     #[wasm_bindgen(js_name = hasActive)]
     pub fn has_active(&self) -> bool {
-        self.active.is_some()
+        self.active.borrow().is_some()
     }
 
     #[wasm_bindgen(js_name = activePageCount)]
     pub fn active_page_count(&self) -> Option<usize> {
         self.active
+            .borrow()
             .as_ref()
             .map(|active| active.sdoc.tebu.pages.len())
     }
 
-    async fn show_staged(&mut self, name: &str) -> Result<(), JsValue> {
+    async fn show_staged(&self, name: &str) -> Result<(), JsValue> {
         let file = self.input_file(name)?;
         let data = js_file_data(&file).await?.to_vec();
 
@@ -512,8 +510,8 @@ impl Handle {
             self.output.append_child(&heading)?;
 
             let sdoc = self.parse_sdoc(&data)?;
-            self.fc.reset();
-            let dfci = self.fc.load(&self.fs, &sdoc.cset).await;
+            let mut fc = ChsetCache::new();
+            let dfci = fc.load(&self.fs, &sdoc.cset).await;
             let pd = match dfci.print_driver(None) {
                 Some(pd) => pd,
                 None => {
@@ -528,10 +526,11 @@ impl Handle {
                 .map(|hcim| hcim.decode_images())
                 .unwrap_or_default();
 
-            self.active = Some(ActiveDocument {
+            *self.active.borrow_mut() = Some(ActiveDocument {
                 sdoc: sdoc.into_owned(),
                 di: DocumentInfo::new(dfci, images),
                 pd,
+                fc,
                 name: name.to_owned(),
             });
         } else if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
@@ -549,7 +548,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn show_home(&mut self) -> Result<(), JsValue> {
+    async fn show_home(&self) -> Result<(), JsValue> {
         let node = self.document.create_element("div")?;
         node.class_list()
             .add_4("p-5", "mb-4", "bg-body-tertiary", "rounded-3")?;
@@ -585,7 +584,7 @@ impl Handle {
     }
 
     #[wasm_bindgen]
-    pub async fn open(&mut self, fragment: &str) -> Result<(), JsValue> {
+    pub async fn open(&self, fragment: &str) -> Result<(), JsValue> {
         info!("opening {:?}", fragment);
         self.reset()?;
         if let Some(rest) = fragment.strip_prefix("#/staged/") {
@@ -610,12 +609,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn show_font(
-        &mut self,
-        font_kind: FontKind,
-        name: &str,
-        data: &[u8],
-    ) -> Result<(), JsValue> {
+    async fn show_font(&self, font_kind: FontKind, name: &str, data: &[u8]) -> Result<(), JsValue> {
         let h2 = self.document.create_element("h2")?;
         h2.set_text_content(Some(name));
         h2.append_with_str_1(" ")?;
@@ -642,10 +636,10 @@ impl Handle {
         Ok(())
     }
 
-    async fn show_chset(&mut self, name: &str) -> Result<(), JsValue> {
+    async fn show_chset(&self, name: &str) -> Result<(), JsValue> {
         let chsets = self.fs.chset_dir().await?;
-        let file_handle = js_directory_get_file_handle(&chsets, name).await?;
-        let file = fs_file_handle_get_file(&file_handle).await?;
+        let file_handle = directory_handle_get_file_handle(&chsets, name).await?;
+        let file = file_handle_get_file(&file_handle).await?;
         let arr = js_file_data(&file).await?;
         let four_cc = js_four_cc(&arr).ok_or(js_sys::Error::new("No four-cc: file too short"))?;
         if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
@@ -655,7 +649,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn list_chset_entry(&mut self, entry: &DirEntry) -> Result<(), JsValue> {
+    async fn list_chset_entry(&self, entry: &DirEntry) -> Result<(), JsValue> {
         let path = entry.path();
         let name = path.file_name().map(OsStr::to_string_lossy);
         let name = name.as_deref().unwrap_or("");
@@ -679,7 +673,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn list_chsets(&mut self) -> Result<(), JsValue> {
+    async fn list_chsets(&self) -> Result<(), JsValue> {
         let path = OriginPrivateFS::chsets_path();
         let chset = self.fs.directory(path, true).await?;
         let mut iter = chset.read_dir().await?;
@@ -698,8 +692,9 @@ impl Handle {
     }
 
     #[wasm_bindgen(js_name = onChange)]
-    pub async fn on_change(&mut self) -> Result<(), JsValue> {
+    pub async fn on_change(&self) -> Result<(), JsValue> {
         self.reset()?;
+        info!("Showing all input files");
         for file in js_input_files_iter(&self.input)? {
             let file = file?;
             let arr = js_file_data(&file).await?;
@@ -719,7 +714,7 @@ impl Handle {
     }
 
     async fn card_preview(
-        &mut self,
+        &self,
         card: &Element,
         name: &str,
         four_cc: FourCC,
@@ -749,7 +744,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn stage(&mut self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
+    async fn stage(&self, name: &str, arr: Uint8Array) -> Result<(), JsValue> {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
 
@@ -785,12 +780,7 @@ impl Handle {
         Ok(())
     }
 
-    fn eset_card(
-        &mut self,
-        list_item: &Element,
-        eset: &ESet<'_>,
-        name: &str,
-    ) -> Result<(), JsValue> {
+    fn eset_card(&self, list_item: &Element, eset: &ESet<'_>, name: &str) -> Result<(), JsValue> {
         let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
         let text = BStr::new(chset.as_bytes());
         let page = render_editor_text(text, eset).map_err(|v| {
@@ -803,12 +793,7 @@ impl Handle {
         Ok(())
     }
 
-    fn pset_card(
-        &mut self,
-        list_item: &Element,
-        pset: &PSet<'_>,
-        name: &str,
-    ) -> Result<(), JsValue> {
+    fn pset_card(&self, list_item: &Element, pset: &PSet<'_>, name: &str) -> Result<(), JsValue> {
         let ch = name
             .chars()
             .next()
@@ -826,7 +811,7 @@ impl Handle {
         Ok(())
     }
 
-    async fn sdoc_card(&mut self, list_item: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
+    async fn sdoc_card(&self, list_item: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
         let header_info = self.document.create_element("div")?;
         header_info.class_list().add_1("mb-2")?;
         let mut text = format!(
@@ -845,12 +830,13 @@ impl Handle {
             .class_list()
             .add_2("list-group", "list-group-horizontal-md")?;
         info!("Loading charsets");
+        let mut fc = ChsetCache::new();
         for chset in doc.cset.names.iter().filter(|c| !c.is_empty()) {
             info!("Loading {}", chset);
             let (cls, tooltip) = {
-                let cset_index = self.fc.load_cset(&self.fs, chset).await;
+                let cset_index = fc.load_cset(&self.fs, chset).await;
                 console::log_2(&"Font Index".into(), &cset_index.into());
-                let cset = self.fc.cset(cset_index).unwrap();
+                let cset = fc.cset(cset_index).unwrap();
                 if cset.e24().is_none() {
                     (
                         "list-group-item-danger",

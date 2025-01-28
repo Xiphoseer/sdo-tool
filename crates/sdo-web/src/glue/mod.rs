@@ -1,16 +1,45 @@
+use std::{future::Future, marker::PhantomData, pin::Pin, task::Poll};
+
 use js_sys::{Array, ArrayBuffer, Function, Reflect, Symbol, Uint8Array};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    Blob, BlobPropertyBag, FileList, FileSystemDirectoryHandle, FileSystemFileHandle,
-    FileSystemGetDirectoryOptions, HtmlInputElement, StorageManager,
+    Blob, BlobPropertyBag, FileList, FileSystemDirectoryHandle, HtmlInputElement, StorageManager,
 };
 
-pub(crate) async fn fs_file_handle_get_file(
-    file_handle: &FileSystemFileHandle,
-) -> Result<web_sys::File, JsValue> {
-    let file = JsFuture::from(file_handle.get_file()).await?;
-    Ok(file.unchecked_into::<web_sys::File>())
+// type JsResult<T> = std::result::Result<T, JsValue>;
+
+pub(crate) mod fs;
+
+pub struct JsTypedFuture<T> {
+    inner: JsFuture,
+    _type: PhantomData<fn() -> T>,
+}
+
+impl<T> JsTypedFuture<T> {
+    fn project(self: Pin<&mut Self>) -> Pin<&mut JsFuture> {
+        // SAFETY: inner does never change after construction
+        unsafe { self.map_unchecked_mut(|s| &mut s.inner) }
+    }
+
+    fn new(promise: js_sys::Promise) -> Self {
+        Self {
+            inner: JsFuture::from(promise),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<T: JsCast> Future for JsTypedFuture<T> {
+    type Output = Result<T, JsValue>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        match JsTypedFuture::project(self).poll(cx) {
+            Poll::Ready(Ok(v)) => Poll::Ready(Ok(v.unchecked_into::<T>())),
+            Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+            Poll::Pending => Poll::Pending,
+        }
+    }
 }
 
 pub(crate) async fn js_file_data(file: &web_sys::File) -> Result<Uint8Array, JsValue> {
@@ -38,25 +67,6 @@ pub(crate) fn js_input_files_iter(
     let files = js_input_file_list(input)?;
     let file_iter = js_sys::try_iter(&files)?.ok_or_else(|| JsError::new("Not a file iterator"))?;
     Ok(file_iter.map(|res| res.map(|file| file.unchecked_into::<web_sys::File>())))
-}
-
-/// Return a handle for the named file
-pub(crate) async fn js_directory_get_file_handle(
-    dir: &FileSystemDirectoryHandle,
-    s: &str,
-) -> Result<FileSystemFileHandle, JsValue> {
-    let result = JsFuture::from(dir.get_file_handle(s)).await?;
-    Ok(result.unchecked_into::<FileSystemFileHandle>())
-}
-
-/// Return a handle for the named directory
-pub(crate) async fn js_directory_get_directory_handle_with_options(
-    dir: &FileSystemDirectoryHandle,
-    s: &str,
-    opt: &FileSystemGetDirectoryOptions,
-) -> Result<FileSystemDirectoryHandle, JsValue> {
-    let result = JsFuture::from(dir.get_directory_handle_with_options(s, opt)).await?;
-    Ok(result.unchecked_into::<FileSystemDirectoryHandle>())
 }
 
 pub(crate) fn try_iter_async(val: &JsValue) -> Result<Option<js_sys::AsyncIterator>, JsValue> {

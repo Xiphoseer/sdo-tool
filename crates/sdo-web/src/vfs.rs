@@ -3,6 +3,7 @@ use js_sys::Object;
 use signum::chsets::cache::{AsyncIterator, VfsDirEntry, VFS};
 use std::{
     borrow::Cow,
+    cell::RefCell,
     future::Future,
     path::{Path, PathBuf},
 };
@@ -14,23 +15,29 @@ use web_sys::{
 };
 
 use crate::glue::{
-    fs_file_handle_get_file, js_directory_get_directory_handle_with_options,
-    js_directory_get_file_handle, js_file_data, js_storage_manager_get_directory, try_iter_async,
+    fs::{
+        directory_handle_get_directory_handle_with_options, directory_handle_get_file_handle,
+        file_handle_get_file,
+    },
+    js_error_with_cause, js_file_data, js_storage_manager_get_directory, try_iter_async,
 };
 
 /// Browser Origin Private File System
 pub struct OriginPrivateFS {
     storage: StorageManager,
-    root: Option<FileSystemDirectoryHandle>,
+    root: RefCell<Option<FileSystemDirectoryHandle>>,
 }
 
 impl OriginPrivateFS {
-    pub fn root_dir(&self) -> Result<&FileSystemDirectoryHandle, JsValue> {
-        let root = self
+    pub fn root_dir(&self) -> Result<FileSystemDirectoryHandle, JsValue> {
+        let root_ref = self
             .root
+            .try_borrow()
+            .map_err(|e| js_error_with_cause(e, "OPFS: concurrent modification"))?;
+        let root = root_ref
             .as_ref()
             .ok_or_else(|| JsError::new("OPFS not initialized"))?;
-        Ok(root)
+        Ok(root.clone())
     }
 
     pub fn chsets_path() -> &'static Path {
@@ -39,7 +46,7 @@ impl OriginPrivateFS {
 
     pub async fn chset_dir(&self) -> Result<FileSystemDirectoryHandle, JsValue> {
         let root = self.root_dir()?;
-        let dir = resolve_dir(root, Self::chsets_path(), true).await?;
+        let dir = resolve_dir(&root, Self::chsets_path(), true).await?;
         Ok(dir)
     }
 }
@@ -147,7 +154,7 @@ async fn resolve_dir(
     }
     for p in path {
         if let Some(s) = p.to_str() {
-            curr = js_directory_get_directory_handle_with_options(&curr, s, &opt)
+            curr = directory_handle_get_directory_handle_with_options(&curr, s, &opt)
                 .await
                 .map_err(|e| {
                     let err_message = format!("Directory not found: {}", path.display());
@@ -180,7 +187,7 @@ async fn resolve_file(
     };
     if let Some(name) = path.file_name() {
         if let Some(s) = name.to_str() {
-            return js_directory_get_file_handle(&dir, s).await;
+            return directory_handle_get_file_handle(&dir, s).await;
         }
     }
     Err(JsError::new("Not Found").into())
@@ -196,12 +203,12 @@ impl VFS for OriginPrivateFS {
     type File = web_sys::File;
 
     fn root(&self) -> impl Future<Output = PathBuf> + 'static {
-        std::future::ready(PathBuf::from(self.root.as_deref().unwrap().name()))
+        std::future::ready(PathBuf::from(self.root_dir().as_deref().unwrap().name()))
     }
 
     async fn is_file(&self, path: &Path) -> bool {
-        let root = self.root.as_ref().expect("Uninitialized OPFS");
-        resolve_file(root, path)
+        let root = self.root_dir().unwrap();
+        resolve_file(&root, path)
             .await
             .map(|f| f.kind() == FileSystemHandleKind::File)
             .unwrap_or(false)
@@ -212,8 +219,8 @@ impl VFS for OriginPrivateFS {
     }
 
     async fn is_dir(&self, path: &Path) -> bool {
-        let root = self.root.as_ref().expect("Uninitialized OPFS");
-        resolve_dir(root, path, false)
+        let root = self.root_dir().unwrap();
+        resolve_dir(&root, path, false)
             .await
             .map(|f| f.kind() == FileSystemHandleKind::Directory)
             .unwrap_or(false)
@@ -230,8 +237,8 @@ impl VFS for OriginPrivateFS {
 
     async fn open(&self, path: &Path) -> Result<Self::File, Self::Error> {
         let root = self.root_dir()?;
-        let file_handle = resolve_file(root, path).await?;
-        let file = fs_file_handle_get_file(&file_handle).await?;
+        let file_handle = resolve_file(&root, path).await?;
+        let file = file_handle_get_file(&file_handle).await?;
         Ok(file)
     }
 
@@ -246,7 +253,7 @@ impl VFS for OriginPrivateFS {
             .0
             .dyn_ref::<FileSystemFileHandle>()
             .ok_or_else(|| JsError::new("not a file"))?;
-        let file = fs_file_handle_get_file(file_handle).await?;
+        let file = file_handle_get_file(file_handle).await?;
         Ok(file)
     }
 }
@@ -259,22 +266,22 @@ impl OriginPrivateFS {
 
         Self {
             storage,
-            root: None,
+            root: RefCell::new(None),
         }
     }
 
     pub(crate) async fn directory(&self, path: &Path, create: bool) -> Result<Directory, Error> {
-        let root = self.root.as_ref().expect("Uninitialized OPFS");
-        let inner = resolve_dir(root, path, create).await?;
+        let root = self.root_dir().unwrap();
+        let inner = resolve_dir(&root, path, create).await?;
         Ok(Directory {
             inner,
             path: path.to_owned(),
         })
     }
 
-    pub async fn init(&mut self) -> Result<(), JsValue> {
+    pub async fn init(&self) -> Result<(), JsValue> {
         let dir_handle = js_storage_manager_get_directory(&self.storage).await?;
-        self.root = Some(dir_handle);
+        *self.root.borrow_mut() = Some(dir_handle);
         Ok(())
     }
 }
