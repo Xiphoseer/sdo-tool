@@ -36,7 +36,7 @@ pub mod bdf {
     }
 
     /// Convert a printer CHSET into a BDF font
-    pub fn pset_to_bdf<'a, I: std::fmt::Write>(o: &mut I, pset: &'a PSet) -> fmt::Result {
+    pub fn pset_to_bdf<I: std::fmt::Write>(o: &mut I, pset: &PSet) -> fmt::Result {
         let font_descriptor = bdf::xfont::XFontDescriptor {
             foundry: "gnu".to_string(),
             family_name: "unifont".to_string(),

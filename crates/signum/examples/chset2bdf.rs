@@ -31,7 +31,7 @@ fn main() -> io::Result<()> {
         bytes = std::fs::read(&args.input)?;
     };
 
-    let (_rest, pset) = chsets::printer::parse_ps24(&bytes).unwrap();
+    let (_rest, pset) = chsets::printer::parse_ps24::<nom::error::Error<_>>(&bytes).unwrap();
     chsets::output::bdf::pset_to_bdf(&mut StdoutWriter, &pset).unwrap();
     Ok(())
 }
