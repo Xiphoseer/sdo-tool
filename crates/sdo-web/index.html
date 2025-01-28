@@ -86,12 +86,18 @@
           Export PDF
         </button>
       </div>
-    </div>
+    </div>    
 
     <div class="row g-3 justify-content-center">
       <div class="col-12">
         <div id="progress" class="progress mb-2" role="progressbar" aria-label="Render progress" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" style="height: 8px">
           <div class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+          SDO Studio is built on <a href="https://developer.mozilla.org/en-US/docs/WebAssembly" target="_blank">WASM</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system" target="_blank">OPFS</a>
+          which may not work in some browsers. It's currently known not to work in Safari (<a href="https://github.com/Xiphoseer/sdo-tool/issues/9" target="_blank">#9</a>) or
+          private windows (<a href="https://github.com/Xiphoseer/sdo-tool/issues/10" target="_blank">#10</a>).
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         <section id="output" class="list-group"></section>
         <nav aria-label="page navigation">
