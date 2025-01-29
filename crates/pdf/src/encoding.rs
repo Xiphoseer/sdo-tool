@@ -141,7 +141,7 @@ pub fn pdf_doc_encode(input: &str) -> Result<Vec<u8>, PDFDocEncodingError> {
 }
 
 /// Transliterate some non-representable characters
-/// 
+///
 /// FIXME: Instead fall back to default mapping
 fn pdf_char_encode_lossy(chr: char) -> Option<u8> {
     pdf_char_encode(chr).ok().or(match chr {

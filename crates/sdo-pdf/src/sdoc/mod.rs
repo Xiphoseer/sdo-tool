@@ -111,6 +111,82 @@ fn write_pdf_page_text<O: io::Write>(
     Ok(())
 }
 
+fn write_pdf_page_underlines(
+    print: &DocumentFontCacheInfo,
+    font_infos: &[Option<&FontInfo>; 8],
+    content: &[(u16, tebu::Line)],
+    contents: &mut Contents,
+) -> Result<(), Error> {
+    let mut y = 0;
+
+    const UNITS_PER_SIGNUM_X: f32 = 0.8;
+
+    // Draw underlines
+    for (skip, line) in content {
+        y += *skip as u32 + 1;
+
+        let mut underline_start = None;
+
+        let mut prev_width = 0.0;
+        let mut x = 0.0;
+
+        for te in &line.data {
+            let x_step = te.offset as i32;
+            let x_step_pdf = x_step as f32 * UNITS_PER_SIGNUM_X;
+            let x_new = x + x_step_pdf;
+
+            let is_wide = te.style.wide;
+            let is_underlined = te.style.underlined;
+
+            // check underlined
+            match (is_underlined, underline_start) {
+                (true, None) => {
+                    underline_start = Some(x_new);
+                }
+                (true, Some(_)) => { /* keep the start */ }
+                (false, None) => { /* no underline */ }
+                (false, Some(x_start)) => {
+                    // underline ended after the previous char
+                    let y_pos = y + 2;
+                    let x_end = x + prev_width;
+                    contents
+                        .draw_line(&[(x_start, y_pos), (x_end, y_pos)])
+                        .map_err(Error::Contents)?;
+                    underline_start = None;
+                }
+            }
+
+            // Find character
+            let csu = te.cset as usize;
+            let fi = font_infos[csu].ok_or_else(|| {
+                let font_name = print
+                    .font_cache_info_at(csu)
+                    .and_then(FontCacheInfo::name)
+                    .unwrap_or("");
+                Error::MissingFont(csu, font_name.to_owned())
+            })?;
+
+            // Update variables
+            x = x_new;
+            // div by 1000 (font matrix) mul by 10 (font size)
+            prev_width = fi.width(te.cval) as f32 / 100.0;
+            if is_wide {
+                prev_width *= 2.0;
+            }
+        }
+
+        // Finish underlining the last char
+        if let Some(x_start) = underline_start {
+            let x_end = x + prev_width;
+            let y_pos = y + 2;
+            contents
+                .draw_line(&[(x_start, y_pos), (x_end, y_pos)])
+                .map_err(Error::Contents)?;
+        }
+    }
+    Ok(())
+}
+
 /// Write the images of a PDF page
 fn write_pdf_page_images<GC: GenerationContext>(
     contents: &mut Contents,
@@ -160,8 +236,10 @@ pub fn generate_pdf_page<GC: GenerationContext>(
     let contents = {
         let mut contents = Contents::for_page(page_info, &media_box, overrides);
         has_images = write_pdf_page_images(&mut contents, gc, page_info, res, &mut x_objects);
+        let print = &gc.document_info().fonts;
+        write_pdf_page_underlines(print, infos, &page.content, &mut contents)?;
         let mut contents = contents.start_text(TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y);
-        write_pdf_page_text(&mut contents, &gc.document_info().fonts, infos, page)?;
+        write_pdf_page_text(&mut contents, print, infos, page)?;
         contents.finish().map_err(Error::Contents)
     }?;
     let resources = Resources {

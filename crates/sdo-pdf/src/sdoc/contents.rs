@@ -63,6 +63,28 @@ impl Contents {
         Ok(())
     }
 
+    pub fn draw_line(&mut self, points: &[(f32, u32)]) -> io::Result<()> {
+        if let Some((&(x0, y0), rest)) = points.split_first() {
+            write!(
+                self.inner,
+                "{} {} m",
+                self.left + x0,
+                self.top - (y0 * 4) as f32 / 3.0
+            )?;
+            for (x, y) in rest {
+                write!(
+                    self.inner,
+                    " {} {} l",
+                    self.left + x,
+                    self.top - (y * 4) as f32 / 3.0
+                )?;
+            }
+            write!(self.inner, " 0.0 G")?;
+            writeln!(self.inner, " S")?;
+        }
+        Ok(())
+    }
+
     pub fn start_text(self, scale_x: f32, scale_y: f32) -> TextContents<Vec<u8>> {
         let mut inner = self.inner;
         let left = self.left;

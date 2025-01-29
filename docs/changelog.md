@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 29.01.2025
+
+- `sdo-pdf`: Support underlined text
+
 ### 28.01.2025
 
 - `sdo-web`: Added SDO Studio (https://sdo.dseiler.eu/studio/)
