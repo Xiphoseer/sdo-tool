@@ -2,7 +2,7 @@
 
 use std::io::{self, Write};
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, TimeZone};
 
 use crate::{
     common::{Dict, ObjRef, PdfString},
@@ -393,9 +393,10 @@ impl Serialize for PdfName<'_> {
     }
 }
 
-impl Serialize for DateTime<Local> {
+impl<T: TimeZone> Serialize for DateTime<T> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        let off = self.offset();
+        let fixed = self.fixed_offset();
+        let off = fixed.offset();
         let off_sec = off.local_minus_utc();
         let (off_sec, mark) = if off_sec < 0 {
             (-off_sec, '-')
@@ -406,7 +407,7 @@ impl Serialize for DateTime<Local> {
         let (off_min, off_hor) = (off_min % 60, off_min / 60);
         let date_time = format!(
             "D:{}{}{:02}'{:02}",
-            self.format("%Y%m%d%H%M%S"),
+            fixed.format("%Y%m%d%H%M%S"),
             mark,
             off_hor,
             off_min

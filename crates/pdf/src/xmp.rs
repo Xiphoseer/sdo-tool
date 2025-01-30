@@ -119,11 +119,11 @@ pub struct XmpBasic {
     /// Tool used to create the document
     pub creator_tool: String,
     /// Time at last modification
-    pub modify_date: chrono::DateTime<chrono::Local>,
+    pub modify_date: chrono::DateTime<chrono::FixedOffset>,
     /// Time at creation
-    pub create_date: chrono::DateTime<chrono::Local>,
+    pub create_date: chrono::DateTime<chrono::FixedOffset>,
     /// Time at metadata creation
-    pub metadata_date: chrono::DateTime<chrono::Local>,
+    pub metadata_date: chrono::DateTime<chrono::FixedOffset>,
 }
 
 impl XmpDescription for XmpBasic {

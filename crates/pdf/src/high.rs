@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset, Local};
 use uuid::Uuid;
 
 use crate::{
@@ -51,15 +51,15 @@ pub struct Metadata {
     pub producer: String,
 
     /// Date-Time at which the document was created
-    pub creation_date: DateTime<Local>,
+    pub creation_date: DateTime<FixedOffset>,
     /// Date-Time at which the document was modified
-    pub modify_date: DateTime<Local>,
+    pub modify_date: DateTime<FixedOffset>,
 }
 
 impl Metadata {
     /// Create a new instance with the current date-time for created & modified
     pub fn new() -> Self {
-        let now = Local::now();
+        let now = Local::now().fixed_offset();
         Self {
             creation_date: now,
             modify_date: now,
@@ -96,9 +96,9 @@ pub struct Info {
     pub producer: Option<PdfString>,
 
     /// The date of creation
-    pub creation_date: Option<DateTime<Local>>,
+    pub creation_date: Option<DateTime<FixedOffset>>,
     /// The date of the last modification
-    pub mod_date: Option<DateTime<Local>>,
+    pub mod_date: Option<DateTime<FixedOffset>>,
 
     /// Whether the PDF is *trapped*
     pub trapped: Option<Trapped>,
@@ -436,7 +436,7 @@ impl Handle<'_> {
     }
 
     fn prepare_xmp(&self) -> io::Result<Vec<u8>> {
-        let now = Local::now();
+        let now = Local::now().fixed_offset();
 
         let mut writer = XmpWriter::new(Vec::new())?;
         writer.add_description(&xmp::Pdf {

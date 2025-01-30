@@ -1,4 +1,4 @@
-use pdf_create::chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use pdf_create::chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone};
 use pdf_create::common::{
     ColorSpace, ICCColorProfileMetadata, OutputIntent, OutputIntentSubtype, PdfString,
 };
@@ -17,9 +17,9 @@ pub struct MetaInfo {
     pub subject: Option<String>,
 
     /// Creation date of the document
-    pub creation_date: Option<DateTime<Local>>,
+    pub creation_date: Option<DateTime<FixedOffset>>,
     /// Date when the document was last updated
-    pub mod_date: Option<DateTime<Local>>,
+    pub mod_date: Option<DateTime<FixedOffset>>,
 }
 
 impl MetaInfo {
@@ -27,9 +27,15 @@ impl MetaInfo {
     pub fn with_dates(&mut self, header: &Header) {
         let ctime = NaiveDateTime::from(header.ctime);
         let mtime = NaiveDateTime::from(header.mtime);
-        // FIXME: timezone?
-        self.creation_date = Local.from_local_datetime(&ctime).single();
-        self.mod_date = Local.from_local_datetime(&mtime).single();
+        let tz = Local; // FIXME: timezone?
+        self.creation_date = tz
+            .from_local_datetime(&ctime)
+            .single()
+            .map(|d| d.fixed_offset());
+        self.mod_date = tz
+            .from_local_datetime(&mtime)
+            .single()
+            .map(|d| d.fixed_offset());
     }
 }
 
