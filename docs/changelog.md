@@ -5,6 +5,11 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 30.01.2025
+
+- `sdo-pdf`: Add XMP, `OutputIntent`s
+- `sdo-pdf`: Produce PDF/A-2b conformant PDFs
+
 ### 29.01.2025
 
 - `sdo-pdf`: Support underlined text
