@@ -190,6 +190,8 @@ pub fn type3_font<'a>(
 
     let font_size = DEFAULT_FONT_SIZE as u32;
 
+    let fpy = font_metrics.fontunits_per_pixel_y as i32 / font_size as i32;
+
     for cval in first_char..=last_char {
         let cvu = cval as usize;
         let ewidth = if let Some(efont) = efont {
@@ -211,10 +213,8 @@ pub fn type3_font<'a>(
                 let sig_origin_y = font_metrics.baseline;
                 let sig_upper_y = sig_origin_y - pchar.top as i32;
                 let sig_lower_y = sig_upper_y - pchar.height as i32;
-                max_above_baseline = max_above_baseline
-                    .max(sig_upper_y * font_metrics.fontunits_per_pixel_y as i32 * 10);
-                max_below_baseline = max_below_baseline
-                    .min(sig_lower_y * font_metrics.fontunits_per_pixel_y as i32 * 10);
+                max_above_baseline = max_above_baseline.max(sig_upper_y * fpy);
+                max_below_baseline = max_below_baseline.min(sig_lower_y * fpy);
             } else {
                 // FIXME: empty glyph for non-printable characters?
                 log::warn!(
