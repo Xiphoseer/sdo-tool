@@ -6,11 +6,13 @@ use signum::{
     docs::tebu::{Char, Flags, Line, Style},
 };
 
+use crate::cli::opt::Options;
+
 use super::Document;
 
 struct HtmlGen<'a> {
     out: String,
-    doc: &'a Document<'a>,
+    doc: &'a Document,
     fc: &'a ChsetCache,
 
     par: bool,
@@ -19,8 +21,8 @@ struct HtmlGen<'a> {
 }
 
 impl<'a> HtmlGen<'a> {
-    fn new(doc: &'a Document, fc: &'a ChsetCache) -> Result<Self, fmt::Error> {
-        let file_name = doc.opt.file.file_name().unwrap().to_string_lossy();
+    fn new(doc: &'a Document, opt: &Options, fc: &'a ChsetCache) -> Result<Self, fmt::Error> {
+        let file_name = opt.file.file_name().unwrap().to_string_lossy();
         let mut out = String::new();
         writeln!(out, "<!DOCTYPE html>")?;
         writeln!(out, "<html>")?;
@@ -259,14 +261,14 @@ impl<'a> HtmlGen<'a> {
     }
 }
 
-pub fn output_html(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    let mut gen = HtmlGen::new(doc, fc)?;
+pub fn output_html(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
+    let mut gen = HtmlGen::new(doc, opt, fc)?;
     gen.body()?;
 
-    let path = if let Some(out) = &doc.opt.out {
+    let path = if let Some(out) = &opt.out {
         out.clone()
     } else {
-        doc.opt.file.with_extension("html")
+        opt.file.with_extension("html")
     };
 
     let contents = gen.finish()?;

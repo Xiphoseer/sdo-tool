@@ -16,7 +16,7 @@ use sdo_pdf::font::Fonts;
 use signum::chsets::{cache::ChsetCache, UseTableVec};
 
 use sdo_tool::cli::{
-    opt::{DocScript, Format, Meta, Options, OutlineItem},
+    opt::{DocScript, OutlineItem},
     sdoc::{pdf, Document},
 };
 
@@ -48,21 +48,6 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let script_str = WrapErr::wrap_err(script_str_res, "Failed to parse as string")?;
     let script_res = ron::from_str(script_str);
     let script: DocScript = WrapErr::wrap_err(script_res, "Failed to parse DocScript")?;
-
-    //println!("script: {:#?}", script);
-    //println!("opt: {:?}", opt);
-
-    let doc_opt = Options {
-        file: PathBuf::from("SDO-TOOL-BUG"),
-        out: Some(opt.out.clone()),
-        with_images: None,
-        print_driver: None,
-        page: None,
-        format: Format::Pdf,
-        cl_meta: Meta::default(),
-        meta: None,
-        chsets_path: script.chsets.clone(),
-    };
 
     // Set-Up font cache
     let folder = opt.file.parent().unwrap();
@@ -98,7 +83,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
 
     let mut documents = Vec::with_capacity(capacity);
     for (doc_file, input) in &doc_files {
-        let mut document = Document::new(&doc_opt);
+        let mut document = Document::new();
 
         info!("Loading document file '{}'", doc_file.display());
         document.process_sdoc(input, &mut fc)?;

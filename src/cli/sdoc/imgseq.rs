@@ -8,6 +8,8 @@ use signum::{
     raster::{DrawPrintErr, Page},
 };
 
+use crate::cli::opt::Options;
+
 use super::{Document, Pos};
 
 fn draw_chars(
@@ -76,14 +78,16 @@ fn draw_line(
     draw_chars(doc, fc, &line.data, page, print_driver, &mut pos.x, pos.y);
 }
 
-pub fn output_print(doc: &Document, fc: &ChsetCache, print_driver: FontKind) -> eyre::Result<()> {
-    let out_path: PathBuf = if let Some(path) = &doc.opt.out {
+pub fn output_print(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
+    let out_path: PathBuf = if let Some(path) = &opt.out {
         path.clone()
     } else {
-        let dir = doc.opt.file.with_extension("sdo.out");
+        let dir = opt.file.with_extension("sdo.out");
         std::fs::create_dir(&dir)?;
         dir
     };
+
+    let print_driver = fc.print_driver(opt.print_driver)?;
 
     for page_text in &doc.tebu {
         let index = page_text.index as usize;
@@ -91,7 +95,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache, print_driver: FontKind) -> 
 
         println!("{}", page_text.skip);
 
-        if let Some(pages) = &doc.opt.page {
+        if let Some(pages) = &opt.page {
             if !pages.contains(&(pbuf_entry.log_pnr as usize)) {
                 continue;
             }
@@ -138,7 +142,7 @@ pub fn output_print(doc: &Document, fc: &ChsetCache, print_driver: FontKind) -> 
             let w = print_driver.scale_x(site.site.w);
             let py = print_driver.scale_y(10 + site.site.y - site._5 / 2);
             let h = print_driver.scale_y(site.site.h / 2);
-            let image = &doc.images[site.img as usize];
+            let image = &doc.images[site.img as usize].image;
             page.draw_image(px, py, w, h, image, site.sel);
         }
 

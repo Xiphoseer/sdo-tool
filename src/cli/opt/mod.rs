@@ -178,8 +178,8 @@ pub struct Meta {
     pub yoffset: Option<i32>,
     /// Author
     #[clap(long)]
-    #[serde(default, deserialize_with = "deserialize_string_or_list")]
-    pub author: Vec<String>,
+    #[serde(default, deserialize_with = "deserialize_opt_string")]
+    pub author: Option<String>,
     /// Title
     #[clap(long)]
     #[serde(default, deserialize_with = "deserialize_opt_string")]

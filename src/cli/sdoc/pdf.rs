@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path, usize};
+use std::{borrow::Cow, collections::BTreeMap, fs::File, io::BufWriter, path::Path};
 
 use color_eyre::eyre::{self, eyre};
 use log::{debug, info};
@@ -14,7 +14,7 @@ use pdf_create::{
 use sdo_pdf::{font::Fonts, sdoc::Contents};
 use signum::chsets::{cache::ChsetCache, FontKind, UseTableVec};
 
-use crate::cli::opt::Meta;
+use crate::cli::opt::{Meta, Options};
 
 use super::Document;
 
@@ -63,6 +63,7 @@ pub fn prepare_document(
 ) -> eyre::Result<()> {
     let mut fonts = BTreeMap::new();
     let mut infos = [None; 8];
+
     for (cset, fc_index) in doc.chsets.iter().copied().enumerate() {
         if let Some(fc_index) = fc_index {
             let key = FONTS[cset].to_owned();
@@ -95,7 +96,7 @@ pub fn prepare_document(
                 //let area = width * height;
 
                 let img_num = site.img as usize;
-                let im = &doc.images[img_num];
+                let im = &doc.images[img_num].image;
                 let data = im.select(site.sel);
 
                 let img_index = hnd.res.x_objects.len();
@@ -153,7 +154,7 @@ pub fn prepare_document(
         }
 
         let mut contents = contents.start_text(1.0, -1.0);
-        
+
         const FONT_SIZE: i32 = 10;
         const FONTUNITS_PER_SIGNUM_X: i32 = 800 / FONT_SIZE;
 
@@ -183,9 +184,10 @@ pub fn prepare_document(
                     if is_wide {
                         diff /= 2;
                     }
-                    contents.xoff(-diff);
+                    contents.xoff(-diff)?;
                 }
-                contents.byte(te.cval);
+
+                contents.byte(te.cval)?;
 
                 let csu = te.cset as usize;
                 let fi = infos[csu].ok_or_else(|| {
@@ -214,11 +216,11 @@ pub fn prepare_document(
     Ok(())
 }
 
-fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
-    let meta = doc.opt.meta()?;
+fn doc_meta(opt: &Options) -> eyre::Result<Cow<Meta>> {
+    let meta = opt.meta()?;
     if meta.title.is_none() {
         let mut meta = meta.into_owned();
-        let file_name = doc.opt.file.file_name().unwrap();
+        let file_name = opt.file.file_name().unwrap();
         let title = file_name
             .to_str()
             .ok_or_else(|| eyre!("File name contains invalid characters"))?;
@@ -229,17 +231,21 @@ fn doc_meta<'a>(doc: &'a Document) -> eyre::Result<Cow<'a, Meta>> {
     }
 }
 
-pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Handle<'a>> {
+pub fn process_doc<'a>(
+    doc: &'a Document,
+    opt: &'a Options,
+    fc: &'a ChsetCache,
+) -> eyre::Result<Handle<'a>> {
     let mut hnd = Handle::new();
 
-    let meta = doc_meta(doc)?;
+    let meta = doc_meta(opt)?;
     prepare_meta(&mut hnd, &meta)?;
 
     let use_matrix = doc.use_matrix();
     let mut use_table_vec = UseTableVec::new();
     use_table_vec.append(&doc.chsets, use_matrix);
 
-    let pd = fc.print_driver(doc.opt.print_driver)?;
+    let pd = fc.print_driver(opt.print_driver)?;
 
     let pk = if let FontKind::Printer(pk) = pd {
         pk
@@ -257,9 +263,9 @@ pub fn process_doc<'a>(doc: &'a Document, fc: &'a ChsetCache) -> eyre::Result<Ha
     Ok(hnd)
 }
 
-pub fn output_pdf(doc: &Document, fc: &ChsetCache) -> eyre::Result<()> {
-    let hnd = process_doc(doc, fc)?;
-    handle_out(doc.opt.out.as_deref(), &doc.opt.file, hnd)?;
+pub fn output_pdf(doc: &Document, opt: &Options, fc: &ChsetCache) -> eyre::Result<()> {
+    let hnd = process_doc(doc, opt, fc)?;
+    handle_out(opt.out.as_deref(), &opt.file, hnd)?;
     Ok(())
 }
 
