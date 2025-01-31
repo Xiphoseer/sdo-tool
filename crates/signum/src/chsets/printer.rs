@@ -55,9 +55,9 @@ impl PrinterKind {
     }
 
     /// Get the position of the character baseline from the top of the glyph bounding box
-    pub fn baseline(self) -> i32 {
+    pub fn baseline(self) -> u8 {
         match self {
-            Self::Needle9 => 36,
+            Self::Needle9 => 35,
             Self::Needle24 => 58,
             Self::Laser30 => 48,
         }
@@ -67,8 +67,35 @@ impl PrinterKind {
     pub fn line_height(self) -> u32 {
         match self {
             Self::Needle9 => 48,
-            Self::Needle24 => 64,
-            Self::Laser30 => 52,
+            Self::Needle24 => 80,
+            Self::Laser30 => 68,
+        }
+    }
+
+    /// Get maximum width of a character
+    pub fn max_width(self) -> u8 {
+        match self {
+            Self::Needle24 => 60,
+            Self::Laser30 => 50,
+            Self::Needle9 => 40,
+        }
+    }
+
+    /// The space between the baseline and the bottom of the bounding box (in pixels)
+    pub fn descent(self) -> u32 {
+        match self {
+            Self::Needle9 => 13,
+            Self::Needle24 => 22,
+            Self::Laser30 => 20,
+        }
+    }
+
+    /// The default height of the character box (in pixels)
+    pub fn ascent(self) -> u32 {
+        match self {
+            Self::Needle9 => 22,
+            Self::Needle24 => 36,
+            Self::Laser30 => 30,
         }
     }
 
@@ -106,6 +133,85 @@ pub struct PSetChar<'a> {
     pub bitmap: &'a [u8],
 }
 
+#[derive(Debug)]
+/// A single printer character
+pub struct PSetCharBuf {
+    /// The distance to the top of the line box
+    pub top: u8,
+    /// The height of the character in pixels
+    pub height: u8,
+    /// The width of the character in bytes
+    pub width: u8,
+    /// The pixel data
+    pub bitmap: Vec<u8>,
+}
+
+impl PSetCharBuf {
+    /// Return a non-owned character
+    pub fn as_borrowed(&self) -> PSetChar {
+        PSetChar {
+            top: self.top,
+            height: self.height,
+            width: self.width,
+            bitmap: &self.bitmap,
+        }
+    }
+
+    /// Trim the top and bottom
+    ///
+    /// ```
+    /// use signum::chsets::printer::PSetCharBuf;
+    ///
+    /// let mut p = PSetCharBuf {
+    ///     top: 0,
+    ///     width: 1,
+    ///     height: 8,
+    ///     bitmap: vec![
+    ///         0b00000000,
+    ///         0b00000000,
+    ///         0b00000000,
+    ///         0b00011000,
+    ///         0b00011000,
+    ///         0b00000000,
+    ///         0b00000000,
+    ///         0b00000000,
+    ///     ],
+    /// };
+    /// p.trim_v();
+    /// assert_eq!(&p.bitmap, &[
+    ///     0b00011000,
+    ///     0b00011000,
+    /// ]);
+    /// assert_eq!(p.top, 3);
+    /// ```
+    pub fn trim_v(&mut self) {
+        let wu = self.width as usize;
+        if let Some(len) = self
+            .bitmap
+            .rchunks(wu)
+            .position(|x| x.iter().any(|x| *x > 0))
+        {
+            let max = self.bitmap.len();
+            if len > self.height as usize {
+                panic!(
+                    "height is {} but len to skip is {}. width={}, max={}",
+                    self.height, len, self.width, max
+                );
+            }
+            self.height -= len as u8;
+            self.bitmap.drain(max - len * wu..max);
+        }
+        if let Some(len) = self
+            .bitmap
+            .chunks(wu)
+            .position(|x| x.iter().any(|x| *x > 0))
+        {
+            self.bitmap.drain(0..len * wu);
+            self.top += len as u8;
+        }
+    }
+}
+
 /// A struct to hold information on computed character dimensions
 pub struct HBounds {
     /// The number of bits that are zero in every line from the left
@@ -113,6 +219,8 @@ pub struct HBounds {
     /// The number of bits that are zero in every line from the right
     pub max_tail: usize,
 }
+
+const MASK: [u8; 8] = [128, 64, 32, 16, 8, 4, 2, 1];
 
 impl PSetChar<'_> {
     /// Compute the horizontal bounds of the char
@@ -146,6 +254,152 @@ impl PSetChar<'_> {
             max_tail = max_tail.min(tail);
         }
         HBounds { max_lead, max_tail }
+    }
+
+    /// Get whether a specific pixel is set
+    ///
+    /// ```
+    /// use signum::chsets::printer::PSetChar;
+    ///
+    /// let p = PSetChar {
+    ///     width: 1,
+    ///     height: 8,
+    ///     top: 0,
+    ///     bitmap: &[
+    ///         0b10000000,
+    ///         0b01000000,
+    ///         0b00100000,
+    ///         0b00010000,
+    ///         0b00001000,
+    ///         0b00000100,
+    ///         0b00000010,
+    ///         0b00000001,
+    ///     ]
+    /// };
+    /// for i in 0..8 {
+    ///     for j in 0..8 {
+    ///         assert_eq!(p.get_ink_at(i, j), i == j);
+    ///     }
+    /// }
+    /// ```
+    pub fn get_ink_at(&self, x: usize, y: usize) -> bool {
+        let offset = x / 8;
+        let wu = self.width as usize;
+        if offset >= wu {
+            return false;
+        }
+        let tu = self.top as usize;
+        if y < tu {
+            return false;
+        }
+        let hu = self.height as usize;
+        let yoff = y - tu;
+        if yoff >= hu {
+            return false;
+        }
+        let byte = self.bitmap[yoff * wu + offset];
+        let mask = MASK[x % 8];
+        (mask & byte) > 0
+    }
+
+    /// Get the number of pixels in a 3x3 grid around the specified coordiante
+    pub fn kernel3x3(&self, x: usize, y: usize) -> u8 {
+        let mut count = 0;
+        if y > 0 {
+            if x > 0 && self.get_ink_at(x - 1, y - 1) {
+                count += 1;
+            }
+            if self.get_ink_at(x, y - 1) {
+                count += 1;
+            }
+            if self.get_ink_at(x + 1, y - 1) {
+                count += 1;
+            }
+        }
+        if x > 0 {
+            if self.get_ink_at(x - 1, y) {
+                count += 1;
+            }
+            if self.get_ink_at(x - 1, y + 1) {
+                count += 1;
+            }
+        }
+        if self.get_ink_at(x, y) {
+            count += 1;
+        }
+        if self.get_ink_at(x + 1, y) {
+            count += 1;
+        }
+        if self.get_ink_at(x, y + 1) {
+            count += 1;
+        }
+        if self.get_ink_at(x + 1, y + 1) {
+            count += 1;
+        }
+        count
+    }
+
+    /// Make a fake-bold variant of the glyph
+    ///
+    /// ```
+    /// use signum::chsets::printer::PSetChar;
+    ///
+    /// let b0 = &[
+    ///     0b00000000,
+    ///     0b00000000,
+    ///     0b00000000,
+    ///     0b00011000,
+    ///     0b00011000,
+    ///     0b00000000,
+    ///     0b00000000,
+    ///     0b00000000,
+    /// ];
+    /// let b1 = &[
+    ///     0b00000000,
+    ///     0b00000000,
+    ///     0b00111100,
+    ///     0b00111100,
+    ///     0b00111100,
+    ///     0b00111100,
+    ///     0b00000000,
+    ///     0b00000000,
+    /// ];
+    ///
+    /// let p = PSetChar {
+    ///     width: 1,
+    ///     height: 8,
+    ///     top: 0,
+    ///     bitmap: b0,
+    /// };
+    /// let p2 = p.fakebold(1, 8);
+    /// assert_eq!(&p2.bitmap, b1);
+    /// ```
+    pub fn fakebold(&self, width: u8, height: u8) -> PSetCharBuf {
+        let wu = width as usize;
+        let hu = height as usize;
+        let mut bitmap = Vec::with_capacity(wu * hu);
+
+        for y in 0..hu {
+            for x in 0..wu {
+                let mut byte = 0;
+                for (off, m) in IntoIterator::into_iter(MASK).enumerate() {
+                    let count = self.kernel3x3(x * 8 + off, y);
+                    if count > 0 {
+                        byte |= m;
+                    }
+                }
+                bitmap.push(byte);
+            }
+        }
+
+        let mut out = PSetCharBuf {
+            top: 0,
+            height,
+            width,
+            bitmap,
+        };
+        out.trim_v();
+        out
     }
 }
 

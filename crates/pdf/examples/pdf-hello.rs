@@ -18,17 +18,17 @@ pub fn main() -> eyre::Result<()> {
     doc.info.title = Some(PdfString::new("EMPTY.SDO"));
 
     // FIXME: Add some glyphs/char procs here
-    doc.res.fonts.push(Font::Type3(Type3Font::default()));
-    doc.res.fonts.push(Font::Type3(Type3Font::default()));
+    let font1 = doc.res.push_font(Font::Type3(Type3Font::default()));
+    let font2 = doc.res.push_font(Font::Type3(Type3Font::default()));
 
     let mut fonts = BTreeMap::new();
-    fonts.insert(String::from("CSET0"), Resource::Global { index: 0 });
-    fonts.insert(String::from("CSET1"), Resource::Global { index: 1 });
+    fonts.insert(String::from("CSET0"), Resource::Global(font1));
+    fonts.insert(String::from("CSET1"), Resource::Global(font2));
 
-    doc.res.font_dicts.push(fonts);
+    let fonts = doc.res.push_font_dict(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::Global(fonts),
         ..Default::default()
     };
 

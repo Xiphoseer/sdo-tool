@@ -6,17 +6,11 @@
 use std::{borrow::Cow, io};
 
 use crate::{
-    common::Dict,
-    common::Encoding,
-    common::Matrix,
-    common::ObjRef,
-    common::PdfString,
-    common::ProcSet,
-    common::{Rectangle, StreamMetadata},
+    common::{
+        Dict, Encoding, Matrix, ObjRef, PdfString, ProcSet, Rectangle, StreamMetadata, FontDescriptor,
+    },
     encoding::ascii_85_encode,
-    write::Formatter,
-    write::PdfName,
-    write::Serialize,
+    write::{Formatter, PdfNameStr, Serialize},
 };
 
 /// Destination of a GoTo action
@@ -39,7 +33,7 @@ impl Serialize for Destination {
             Self::PageFitH(r, top) => f
                 .pdf_arr()
                 .entry(r)?
-                .entry(&PdfName("FitH"))?
+                .entry(PdfNameStr::new("FitH"))?
                 .entry(top)?
                 .finish(),
         }
@@ -60,7 +54,7 @@ pub struct Outline {
 impl Serialize for Outline {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Outline"))?
+            .field("Type", &PdfNameStr::new("Outline"))?
             .field("First", &self.first)?
             .field("Last", &self.last)?
             .field("Count", &self.count)?
@@ -122,7 +116,7 @@ pub struct Page<'a> {
 impl Serialize for Page<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Page"))?
+            .field("Type", &PdfNameStr::new("Page"))?
             .field("Parent", &self.parent)?
             .opt_field("MediaBox", &self.media_box)?
             .field("Resources", &self.resources)?
@@ -151,7 +145,7 @@ impl<T: Serialize> Serialize for Resource<T> {
 /// A type 3 font resource
 pub struct Type3Font<'a> {
     /// The name of the object
-    pub name: Option<PdfName<'a>>,
+    pub name: Option<&'a PdfNameStr>,
     /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
     /// The matrix to map glyph space into text space
@@ -163,9 +157,11 @@ pub struct Type3Font<'a> {
     /// Dict of encoding value to char names
     pub encoding: Resource<Encoding<'a>>,
     /// Dict of char names to drawing procedures
-    pub char_procs: Dict<ObjRef>,
+    pub char_procs: Resource<Dict<ObjRef>>,
     /// Width of every char between first and last
     pub widths: &'a [u32],
+    /// Font characteristics
+    pub font_descriptor: Option<FontDescriptor<'a>>,
     /// Optional reference to a CMap stream
     pub to_unicode: Option<ObjRef>,
 }
@@ -179,10 +175,10 @@ pub enum Font<'a> {
 impl Serialize for Font<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut dict = f.pdf_dict();
-        dict.field("Type", &PdfName("Font"))?;
+        dict.field("Type", &PdfNameStr::new("Font"))?;
         match self {
             Self::Type3(font) => {
-                dict.field("Subtype", &PdfName("Type3"))?
+                dict.field("Subtype", &PdfNameStr::new("Type3"))?
                     .opt_field("BaseFont", &font.name)?
                     .field("FontBBox", &font.font_bbox)?
                     .field("FontMatrix", &font.font_matrix)?
@@ -191,6 +187,7 @@ impl Serialize for Font<'_> {
                     .field("Encoding", &font.encoding)?
                     .field("CharProcs", &font.char_procs)?
                     .arr_field("Widths", font.widths)?
+                    .opt_field("FontDescriptor", &font.font_descriptor)?
                     .opt_field("ToUnicode", &font.to_unicode)?;
             }
         }
@@ -215,7 +212,7 @@ impl<'a> Serialize for Ascii85Stream<'a> {
         f.pdf_dict()
             .embed(&self.meta)?
             .field("Length", &len)?
-            .field("Filter", &PdfName("ASCII85Decode"))?
+            .field("Filter", &PdfNameStr::new("ASCII85Decode"))?
             .finish()?;
         f.pdf_stream(&buf)?;
         Ok(())
@@ -270,7 +267,7 @@ pub struct Pages {
 impl Serialize for Pages {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Pages"))?
+            .field("Type", &PdfNameStr::new("Pages"))?
             .field("Count", &self.kids.len())?
             .field("Kids", &self.kids)?
             .finish()
@@ -317,16 +314,17 @@ pub enum PdfVersion {
 
 impl Serialize for PdfVersion {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::V1_0 => PdfName("1.0").write(f),
-            Self::V1_1 => PdfName("1.1").write(f),
-            Self::V1_2 => PdfName("1.2").write(f),
-            Self::V1_3 => PdfName("1.3").write(f),
-            Self::V1_4 => PdfName("1.4").write(f),
-            Self::V1_5 => PdfName("1.5").write(f),
-            Self::V1_6 => PdfName("1.6").write(f),
-            Self::V1_7 => PdfName("1.7").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::V1_0 => "1.0",
+            Self::V1_1 => "1.1",
+            Self::V1_2 => "1.2",
+            Self::V1_3 => "1.3",
+            Self::V1_4 => "1.4",
+            Self::V1_5 => "1.5",
+            Self::V1_6 => "1.6",
+            Self::V1_7 => "1.7",
+        })
+        .write(f)
     }
 }
 
@@ -348,7 +346,7 @@ pub struct Catalog {
 impl Serialize for Catalog {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Catalog"))?
+            .field("Type", &PdfNameStr::new("Catalog"))?
             .opt_field("Version", &self.version)?
             .field("Pages", &self.pages)?
             .opt_field("PageLabels", &self.page_labels)?

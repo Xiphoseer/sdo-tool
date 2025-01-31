@@ -1,17 +1,17 @@
 use std::path::PathBuf;
 
+use clap::Parser;
 use prettytable::{cell, format, row, Cell, Row, Table};
 use signum::chsets::encoding::p_mapping_file;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Opts {
     file: PathBuf,
 }
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
     let input = std::fs::read_to_string(&opts.file)?;
     let mapping = p_mapping_file(&input)?;
 

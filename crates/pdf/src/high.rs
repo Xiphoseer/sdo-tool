@@ -1,18 +1,18 @@
 //! High-Level API
 
-use std::{borrow::Cow, io};
+use std::{borrow::Cow, fmt, io, marker::PhantomData};
 
 use chrono::{DateTime, Local};
 use io::Write;
 
 use crate::{
     common::{
-        Dict, Encoding, ImageMetadata, Matrix, NumberTree, ObjRef, OutputIntent, PageLabel,
-        PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped,
+        Dict, Encoding, FontDescriptor, ImageMetadata, Matrix, NumberTree, ObjRef, OutputIntent,
+        PageLabel, PdfString, Point, ProcSet, Rectangle, StreamMetadata, Trapped,
     },
     low::{self, ID},
-    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
-    write::{Formatter, PdfName, Serialize},
+    lowering::{lower_outline_items, Lowerable, LoweringContext},
+    write::{Formatter, PdfNameStr, Serialize},
 };
 
 /// A single page
@@ -145,31 +145,73 @@ pub enum Destination {
 #[derive(Debug)]
 pub enum Resource<T> {
     /// Use the resource at {index} from the global list
-    Global {
-        /// The index into the global list
-        index: usize,
-    },
+    Global(ResourceIndex<T>),
     /// Use the value in the box
     Immediate(Box<T>),
+}
+
+/// Encapsulate a global resource by index
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceIndex<T> {
+    index: usize,
+    _p: PhantomData<fn() -> T>,
+}
+
+impl<T> Clone for ResourceIndex<T> {
+    fn clone(&self) -> Self {
+        Self {
+            index: self.index,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<T> Copy for ResourceIndex<T> {}
+
+impl<T> fmt::Debug for ResourceIndex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResourceIndex")
+            .field("index", &self.index)
+            .finish()
+    }
+}
+
+impl<T> ResourceIndex<T> {
+    /// Get the numeric value
+    pub(crate) fn get(&self) -> usize {
+        self.index
+    }
+
+    /// Create a new index
+    pub fn new(index: usize) -> Self {
+        Self {
+            index,
+            _p: PhantomData,
+        }
+    }
 }
 
 #[derive(Debug)]
 /// A type 3 font
 pub struct Type3Font<'a> {
     /// The name of the font
-    pub name: Option<PdfName<'a>>,
+    pub name: Option<Cow<'a, PdfNameStr>>,
+    /// The matrix to map glyph space into text space
+    ///
+    /// this is useful for creating an italic font
+    pub font_matrix: Matrix<f32>,
+    /// Font characteristics
+    pub font_descriptor: Option<FontDescriptor<'a>>,
     /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
-    /// The matrix to map glyph space into text space
-    pub font_matrix: Matrix<f32>,
     /// The first used char key
     pub first_char: u8,
     /// The last used char key
     pub last_char: u8,
     /// Dict of char names to drawing procedures
-    pub char_procs: Dict<Ascii85Stream<'a>>,
+    pub char_procs: Resource<Dict<Ascii85Stream<'a>>>,
     /// Dict of encoding value to char names
-    pub encoding: Encoding<'a>,
+    pub encoding: Resource<Encoding<'a>>,
     /// Width of every char between first and last
     pub widths: Vec<u32>,
     /// ToUnicode CMap stream
@@ -179,19 +221,20 @@ pub struct Type3Font<'a> {
 impl<'a> Default for Type3Font<'a> {
     fn default() -> Self {
         Self {
+            name: None,
+            font_matrix: Matrix::default_glyph(),
+            font_descriptor: None,
             font_bbox: Rectangle {
                 ll: Point::default(),
                 ur: Point::default(),
             },
-            name: None,
-            font_matrix: Matrix::default_glyph(),
             first_char: 0,
             last_char: 255,
-            char_procs: Dict::new(),
-            encoding: Encoding {
+            char_procs: Resource::Immediate(Box::new(Dict::new())),
+            encoding: Resource::Immediate(Box::new(Encoding {
                 base_encoding: None,
                 differences: None,
-            },
+            })),
             widths: vec![],
             to_unicode: None,
         }
@@ -259,7 +302,52 @@ pub struct Res<'a> {
     /// Char Procedure resources
     pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
+    pub char_procs_dicts: Vec<Dict<Ascii85Stream<'a>>>,
+    /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
+}
+
+impl<'a> Res<'a> {
+    /// Push a new encoding
+    pub fn push_encoding(&mut self, enc: Encoding<'a>) -> ResourceIndex<Encoding<'a>> {
+        let index = self.encodings.len();
+        self.encodings.push(enc);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_font(&mut self, font: Font<'a>) -> ResourceIndex<Font<'a>> {
+        let index = self.fonts.len();
+        self.fonts.push(font);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_font_dict(
+        &mut self,
+        font_dict: DictResource<Font<'a>>,
+    ) -> ResourceIndex<DictResource<Font<'a>>> {
+        let index = self.font_dicts.len();
+        self.font_dicts.push(font_dict);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new font
+    pub fn push_char_procs(
+        &mut self,
+        char_procs: Dict<Ascii85Stream<'a>>,
+    ) -> ResourceIndex<Dict<Ascii85Stream<'a>>> {
+        let index = self.char_procs_dicts.len();
+        self.char_procs_dicts.push(char_procs);
+        ResourceIndex::new(index)
+    }
+
+    /// Push a new XObject
+    pub fn push_x_object(&mut self, x_object: XObject) -> ResourceIndex<XObject> {
+        let index = self.x_objects.len();
+        self.x_objects.push(x_object);
+        ResourceIndex::new(index)
+    }
 }
 
 /// Entrypoint to the high-level API
@@ -314,11 +402,10 @@ impl<'a> Handle<'a> {
 
         let gen = 0;
         let make_ref = move |id: u64| ObjRef { id, gen };
+        let mut lowering = LoweringContext::new(self);
 
         writeln!(fmt.inner, "%PDF-1.5")?;
         fmt.inner.write_all(&[b'%', 180, 200, 220, 240, b'\n'])?;
-
-        let mut lowering = Lowering::new(self);
 
         let catalog_id = lowering.id_gen.next();
         let info_id = if self.info.is_empty() {
@@ -348,18 +435,8 @@ impl<'a> Handle<'a> {
             let page_low = low::Page {
                 parent: pages_ref,
                 resources: low::Resources {
-                    font: lowering.font_dicts.map_dict(
-                        &page.resources.fonts,
-                        &mut lowering.fonts,
-                        &mut lowering.font_ctx,
-                        &mut lowering.id_gen,
-                    ),
-                    x_object: lowering.x_object_dicts.map_dict(
-                        &page.resources.x_objects,
-                        &mut lowering.x_objects,
-                        &mut (),
-                        &mut lowering.id_gen,
-                    ),
+                    font: page.resources.fonts.lower(&mut lowering),
+                    x_object: page.resources.x_objects.lower(&mut lowering),
                     proc_set: &page.resources.proc_sets,
                 },
                 contents: contents_ref,
@@ -369,30 +446,39 @@ impl<'a> Handle<'a> {
             pages.kids.push(page_ref);
         }
 
-        for (font_dict_ref, font_dict) in lowering.font_dicts.store.values() {
-            let dict = lower_dict(
-                font_dict,
-                &mut lowering.fonts,
-                &mut lowering.font_ctx,
-                &mut lowering.id_gen,
-            );
-            fmt.obj(*font_dict_ref, &dict)?;
+        let font_dicts = std::mem::take(&mut lowering.fonts_ctx.font_dicts.store);
+        for (font_dict_ref, font_dict) in font_dicts.values().copied() {
+            let dict = font_dict.lower(&mut lowering);
+            fmt.obj(font_dict_ref, &dict)?;
         }
 
-        for (font_ref, font) in lowering.fonts.store.values() {
-            let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
-            fmt.obj(*font_ref, &font_low)?;
+        let fonts = std::mem::take(&mut lowering.fonts_ctx.fonts.store);
+        for (font_ref, font) in fonts.values().copied() {
+            let font_low = font.lower(&mut lowering);
+            fmt.obj(font_ref, &font_low)?;
         }
 
-        for (x_ref, x) in lowering.x_objects.store.values() {
-            let x_low = x.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*x_ref, &x_low)?;
+        let encodings = std::mem::take(&mut lowering.font_ctx.encodings.store);
+        for (x_ref, x) in encodings.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
+        }
+
+        let char_procs = std::mem::take(&mut lowering.font_ctx.text_stream_dicts.store);
+        for (x_ref, x) in char_procs.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
+        }
+
+        let x_objects = std::mem::take(&mut lowering.x_objects.x_objects.store);
+        for (x_ref, x) in x_objects.values().copied() {
+            let x_low = x.lower(&mut lowering);
+            fmt.obj(x_ref, &x_low)?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store.values() {
-            let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*cproc_ref, &cp)?;
+        for (cproc_ref, char_proc) in lowering.ascii_85_streams {
+            fmt.obj(cproc_ref, &char_proc)?;
         }
 
         let pages_ref = make_ref(pages_id);

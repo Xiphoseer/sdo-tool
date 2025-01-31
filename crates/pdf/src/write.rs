@@ -1,6 +1,12 @@
 //! Methods to produce a binary file
 
-use std::io::{self, Write};
+use std::{
+    borrow::Borrow,
+    fmt,
+    io::{self, Write},
+    num::{NonZeroI32, NonZeroU32},
+    ops::Deref,
+};
 
 use chrono::{DateTime, Local};
 
@@ -31,7 +37,7 @@ impl<'a, 'b> PdfDict<'a, 'b> {
     }
 
     /// Write a field
-    pub fn field(&mut self, name: &str, value: &dyn Serialize) -> io::Result<&mut Self> {
+    pub fn field<T: Serialize + ?Sized>(&mut self, name: &str, value: &T) -> io::Result<&mut Self> {
         self.check_first()?;
         self.f.indent += 2;
         self.f.indent()?;
@@ -166,7 +172,7 @@ impl<'a, 'b> PdfArr<'a, 'b> {
     }
 
     /// Write the next entry
-    pub fn entry(&mut self, value: &dyn Serialize) -> io::Result<&mut Self> {
+    pub fn entry<X: Serialize + ?Sized>(&mut self, value: &X) -> io::Result<&mut Self> {
         self.check_first()?;
         value.write(self.f)?;
         Ok(self)
@@ -294,7 +300,7 @@ pub trait Serialize {
     fn write(&self, f: &mut Formatter) -> io::Result<()>;
 }
 
-impl<X: Serialize> Serialize for &'_ X {
+impl<X: Serialize + ?Sized> Serialize for &'_ X {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         (*self).write(f)
     }
@@ -331,8 +337,11 @@ macro_rules! serialize_display_impl {
 
 serialize_display_impl!(u8);
 serialize_display_impl!(usize);
+serialize_display_impl!(u16);
 serialize_display_impl!(u32);
 serialize_display_impl!(i32);
+serialize_display_impl!(NonZeroI32);
+serialize_display_impl!(NonZeroU32);
 serialize_display_impl!(f32);
 serialize_display_impl!(bool);
 
@@ -370,9 +379,99 @@ impl Serialize for ObjRef {
     }
 }
 
+/// A PDF name string
+#[repr(transparent)]
+#[derive(PartialEq, Eq)]
+pub struct PdfNameStr(str);
+
+impl fmt::Debug for PdfNameStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "/{}", &self.0)
+    }
+}
+
+impl ToOwned for PdfNameStr {
+    type Owned = PdfNameBuf;
+
+    fn to_owned(&self) -> Self::Owned {
+        PdfNameBuf(self.0.to_owned())
+    }
+}
+
+impl PdfNameStr {
+    /// Create a new name string
+    ///
+    /// ```
+    /// use pdf_create::write::PdfNameStr;
+    /// use std::ops::Deref;
+    ///
+    /// let s = PdfNameStr::new("Hello");
+    /// assert_eq!(s.deref(), "Hello");
+    /// ```
+    pub fn new(s: &str) -> &Self {
+        unsafe { &*(s as *const _ as *const Self) }
+    }
+}
+
+impl Deref for PdfNameStr {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Serialize for PdfNameStr {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        f.needs_space = write_name(&self.0, &mut f.inner)?;
+        Ok(())
+    }
+}
+
+/// An owned PDF name
+#[derive(Clone, PartialEq, Eq)]
+pub struct PdfNameBuf(String);
+
+impl PdfNameBuf {
+    /// Create a new string
+    pub fn new(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl fmt::Debug for PdfNameBuf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.deref().fmt(f)
+    }
+}
+
+impl Deref for PdfNameBuf {
+    type Target = PdfNameStr;
+
+    fn deref(&self) -> &Self::Target {
+        self.borrow()
+    }
+}
+
+impl Borrow<PdfNameStr> for PdfNameBuf {
+    fn borrow(&self) -> &PdfNameStr {
+        PdfNameStr::new(&self.0)
+    }
+}
+
 /// A borrowed PDF name (e.g. `/Info`)
-#[derive(Debug, Copy, Clone)]
-pub struct PdfName<'a>(pub &'a str);
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PdfName<'a>(pub &'a PdfNameStr);
+
+impl<'a> PdfName<'a> {
+    /// Create a new PDF Name
+    pub fn new(s: &'a str) -> Self {
+        Self(PdfNameStr::new(s))
+    }
+}
+
+/// A copy-on-write PDF name
+pub type PdfNameCow<'a> = std::borrow::Cow<'a, PdfNameStr>;
 
 impl Serialize for PdfName<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {

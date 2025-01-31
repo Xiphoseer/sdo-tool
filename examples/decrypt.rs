@@ -1,9 +1,9 @@
 use std::{fs::File, io::BufWriter, io::Write, path::PathBuf};
 
+use clap::Parser;
 use color_eyre::eyre::{self, eyre};
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Opt {
     from: PathBuf,
     to: PathBuf,
@@ -12,7 +12,7 @@ struct Opt {
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     let buffer = std::fs::read(&opt.from)?;
     if buffer.starts_with(b"crypted2") {
         let buffer = &buffer[8..];

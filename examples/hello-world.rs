@@ -1,17 +1,17 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use structopt::StructOpt;
+use clap::Parser;
 
 use color_eyre::eyre::{self, eyre};
 use pdf_create::{
     common::{PdfString, Rectangle},
-    high::{Font, Handle, Page, Resource, Resources},
+    high::{Font, Handle, Page, Resource, ResourceIndex, Resources},
 };
-use sdo_pdf::font::type3_font;
+use sdo_pdf::font::type3_font_family;
 use signum::chsets::{editor::parse_eset, printer::parse_ls30, UseTable};
 use signum::nom::Finish;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Options {
     font: PathBuf,
 }
@@ -19,7 +19,7 @@ struct Options {
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let opt = Options::from_args();
+    let opt = Options::parse();
 
     let pfont_path = opt.font;
     let pfont_buffer = std::fs::read(&pfont_path)?;
@@ -52,15 +52,15 @@ pub fn main() -> eyre::Result<()> {
     let use_table = UseTable::from("HelloJ@rgen!1");
 
     let mut fonts = BTreeMap::new();
-    if let Some(font) = type3_font(Some(&efont), &pfont, &use_table, None, None) {
-        doc.res.fonts.push(Font::Type3(font));
-        fonts.insert(String::from("C0"), Resource::Global { index: 0 });
+    if let Some(font) = type3_font_family(Some(&efont), &pfont, &use_table, None, None) {
+        sdo_tool::cli::sdoc::pdf::push_fonts(&mut doc, vec![font]);
+        fonts.insert(String::from("C0"), Resource::Global(ResourceIndex::new(0)));
     }
 
-    doc.res.font_dicts.push(fonts);
+    let font_dict = doc.res.push_font_dict(fonts);
 
     let resources = Resources {
-        fonts: Resource::Global { index: 0 },
+        fonts: Resource::Global(font_dict),
         ..Default::default()
     };
 

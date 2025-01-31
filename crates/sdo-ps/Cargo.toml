@@ -5,5 +5,5 @@ authors = ["xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
 
 [dependencies]
-nom = "6.1.0"
+nom = "7"
 signum = { path = "../signum" }

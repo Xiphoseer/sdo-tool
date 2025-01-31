@@ -1,14 +1,19 @@
 //! Common structs and enums
 
 use std::{
+    borrow::Cow,
     collections::BTreeMap,
     fmt, io,
+    num::{NonZeroI32, NonZeroU32},
     ops::{Add, Deref, DerefMut, Mul},
+    str::FromStr,
 };
 
 //use pdf::primitive::PdfString;
-
-use crate::write::{Formatter, PdfName, Serialize, ToDict};
+use crate::{
+    encoding::{pdf_doc_encode, PDFDocEncodingError},
+    write::{Formatter, PdfName, PdfNameStr, Serialize, ToDict},
+};
 
 /// A PDF Byte string
 #[derive(Clone, Eq, PartialEq)]
@@ -18,6 +23,14 @@ impl PdfString {
     /// Create a new string
     pub fn new<S: AsRef<[u8]>>(string: S) -> Self {
         Self(string.as_ref().to_vec())
+    }
+}
+
+impl FromStr for PdfString {
+    type Err = PDFDocEncodingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        pdf_doc_encode(s).map(Self)
     }
 }
 
@@ -61,11 +74,209 @@ pub enum BaseEncoding {
 
 impl Serialize for BaseEncoding {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::MacRomanEncoding => PdfName("MacRomanEncoding").write(f),
-            Self::WinAnsiEncoding => PdfName("WinAnsiEncoding").write(f),
-            Self::MacExpertEncoding => PdfName("MacExpertEncoding").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::MacRomanEncoding => "MacRomanEncoding",
+            Self::WinAnsiEncoding => "WinAnsiEncoding",
+            Self::MacExpertEncoding => "MacExpertEncoding",
+        })
+        .write(f)
+    }
+}
+
+/// The font stretch value.
+///
+/// The specific interpretation of these values varies from font to font.
+///
+/// Example: [`FontStretch::Condensed`] in one font may appear most similar to [`FontStretch::Normal`] in another.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FontStretch {
+    /// Ultra Condensed
+    UltraCondensed,
+    /// Extra Condensed
+    ExtraCondensed,
+    /// Condensed
+    Condensed,
+    /// Semi Condensed
+    SemiCondensed,
+    /// Normal
+    Normal,
+    /// Semi Expanded
+    SemiExpanded,
+    /// Expanded
+    Expanded,
+    /// Extra Expanded
+    ExtraExpanded,
+    /// Ultra Expanded
+    UltraExpanded,
+}
+
+impl Serialize for FontStretch {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        PdfNameStr::new(match self {
+            Self::UltraCondensed => "UltraCondensed",
+            Self::ExtraCondensed => "ExtraCondensed",
+            Self::Condensed => "Condensed",
+            Self::SemiCondensed => "SemiCondensed",
+            Self::Normal => "Normal",
+            Self::SemiExpanded => "SemiExpanded",
+            Self::Expanded => "Expanded",
+            Self::ExtraExpanded => "ExtraExpanded",
+            Self::UltraExpanded => "UltraExpanded",
+        })
+        .write(f)
+    }
+}
+
+bitflags::bitflags! {
+    /// Font flags specifying various characteristics of the font.
+    pub struct FontFlags: u32 {
+        /// All glyphs have the same width (as opposed to proportional or
+        /// variable-pitch fonts, which have different widths)
+        const FIXED_PITCH = 1 << 0;
+        /// Glyphs have serifs, which are short strokes drawn at an angle on the
+        /// top and bottom of glyph stems. (Sans serif fonts do not have serifs.)
+        const SERIF = 1 << 1;
+        /// Font contains glyphs outside the Adobe standard Latin character set.
+        /// This flag and the Nonsymbolic flag shall not both be set or both be
+        /// clear
+        const SYMBOLIC = 1 << 2;
+        /// Glyphs resemble cursive handwriting.
+        const SCRIPT = 1 << 3;
+        /// Font uses the Adobe standard Latin character set or a subset of it.
+        const NONSYMBOLIC = 1 << 5;
+        /// Glyphs have dominant vertical strokes that are slanted.
+        const ITALIC = 1 << 6;
+        /// Font contains no lowercase letters; typically used for display purposes,
+        /// such as for titles or headlines.
+        const ALL_CAPS = 1 << 16;
+        /// Font contains both uppercase and lowercase letters. The uppercase
+        /// letters are similar to those in the regular version of the same typeface
+        /// family. The glyphs for the lowercase letters have the same shapes as
+        /// the corresponding uppercase letters, but they are sized and their
+        /// proportions adjusted so that they have the same size and stroke
+        /// weight as lowercase glyphs in the same typeface family.
+        const SMALL_CAP = 1 << 17;
+        /// The ForceBold flag (bit 19) shall determine whether bold glyphs shall be painted with extra pixels even at very
+        /// small text sizes by a conforming reader. If the ForceBold flag is set, features of bold glyphs may be thickened at
+        /// small text sizes.
+        const FORCE_BOLD = 1 << 18;
+    }
+}
+
+impl Default for FontFlags {
+    fn default() -> Self {
+        Self::SYMBOLIC
+    }
+}
+
+impl<'a> Serialize for FontFlags {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        self.bits.write(f)
+    }
+}
+
+/// A font descriptor
+#[derive(Debug, Clone, PartialEq)]
+pub struct FontDescriptor<'a> {
+    /// **FontName**
+    pub font_name: Cow<'a, PdfNameStr>,
+    /// **FontFamily**
+    pub font_family: PdfString,
+    /// **FontStretch**
+    pub font_stretch: Option<FontStretch>,
+
+    /// **FontWeight**
+    ///
+    /// The weight (thickness) component of the fully-qualified
+    /// font name or font specifier. The possible values shall be 100, 200, 300,
+    /// 400, 500, 600, 700, 800, or 900, where each number indicates a
+    /// weight that is at least as dark as its predecessor. A value of 400 shall
+    /// indicate a normal weight; 700 shall indicate bold.
+    /// The specific interpretation of these values varies from font to font.
+    ///
+    /// (PDF 1.5; should be used for Type 3 fonts in Tagged PDF documents)
+    pub font_weight: Option<u16>,
+
+    /// **Flags**: A collection of flags defining various characteristics of the font.
+    pub flags: FontFlags,
+
+    /// A rectangle, expressed in the glyph coordinate system, that shall specify the font bounding box.
+    ///
+    /// This should be the smallest rectangle enclosing the shape that would result if all
+    /// of the glyphs of the font were placed with their origins coincident and then filled.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub font_bbox: Option<Rectangle<i32>>,
+
+    /// **ItalicAngle**: The angle, expressed in degrees counterclockwise from
+    /// the vertical, of the dominant vertical strokes of the font.
+    ///
+    /// The value shall be negative for fonts that slope to the right, as almost all italic fonts do.
+    pub italic_angle: f32,
+
+    /// **Ascent**: The maximum height above the
+    /// baseline reached by glyphs in this font. The height of glyphs for
+    /// accented characters shall be excluded.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub ascent: Option<i32>,
+
+    /// **Descent**: The maximum depth below the
+    /// baseline reached by glyphs in this font. The value shall be a negative
+    /// number.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub descent: Option<i32>,
+
+    /// **Leading**: The spacing between baselines of consecutive lines of text.
+    ///
+    /// Default value: 0.
+    pub leading: Option<NonZeroI32>,
+
+    /// **CapHeight**: The vertical coordinate of the top of flat capital letters, measured from the baseline.
+    ///
+    /// (Required for fonts that have Latin characters, except for Type 3 fonts)
+    pub cap_height: Option<NonZeroU32>,
+
+    /// **XHeight**: The font’s x height: the vertical coordinate of the top of flat
+    /// nonascending lowercase letters (like the letter x), measured from the
+    /// baseline, in fonts that have Latin characters.
+    ///
+    /// Default value: 0.
+    pub x_height: Option<NonZeroU32>,
+
+    /// **StemV**  The thickness, measured horizontally, of the dominant vertical stems of glyphs in the font.
+    ///
+    /// (Required, except for Type 3 fonts)
+    pub stem_v: Option<NonZeroU32>,
+
+    /// **StemH** The thickness, measured vertically, of the dominant horizontal stems of glyphs
+    /// in the font.
+    ///
+    /// Default value: 0.
+    pub stem_h: Option<NonZeroU32>,
+}
+
+impl<'a> Serialize for FontDescriptor<'a> {
+    fn write(&self, f: &mut Formatter) -> io::Result<()> {
+        let mut dict = f.pdf_dict();
+        dict.field("Type", &PdfNameStr::new("FontDescriptor"))?
+            .field("FontName", &self.font_name.as_ref())?
+            .field("FontFamily", &self.font_family)?
+            .opt_field("FontStretch", &self.font_stretch)?
+            .opt_field("FontWeight", &self.font_weight)?
+            .field("Flags", &self.flags)?
+            .opt_field("FontBBox", &self.font_bbox)?
+            .field("ItalicAngle", &self.italic_angle)?
+            .opt_field("Ascent", &self.ascent)?
+            .opt_field("Descent", &self.descent)?
+            .opt_field("Leading", &self.leading)?
+            .opt_field("CapHeight", &self.cap_height)?
+            .opt_field("XHeight", &self.x_height)?
+            .opt_field("StemV", &self.stem_v)?
+            .opt_field("StemH", &self.stem_h)?
+            .finish()?;
+        Ok(())
     }
 }
 
@@ -86,13 +297,14 @@ pub enum PageLabelKind {
 
 impl Serialize for PageLabelKind {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::Decimal => PdfName("D").write(f),
-            Self::RomanLower => PdfName("r").write(f),
-            Self::RomanUpper => PdfName("R").write(f),
-            Self::AlphaLower => PdfName("a").write(f),
-            Self::AlphaUpper => PdfName("A").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::Decimal => "D",
+            Self::RomanLower => "r",
+            Self::RomanUpper => "R",
+            Self::AlphaLower => "a",
+            Self::AlphaUpper => "A",
+        })
+        .write(f)
     }
 }
 
@@ -110,7 +322,7 @@ pub struct PageLabel {
 impl Serialize for PageLabel {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut dict = f.pdf_dict();
-        dict.field("Type", &PdfName("PageLabel"))?;
+        dict.field("Type", &PdfNameStr::new("PageLabel"))?;
         dict.opt_field("S", &self.kind)?;
         dict.field("St", &self.start)?;
         if !self.prefix.as_bytes().is_empty() {
@@ -252,7 +464,7 @@ pub struct Encoding<'a> {
 impl Serialize for Encoding<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("Encoding"))?
+            .field("Type", &PdfNameStr::new("Encoding"))?
             .opt_field("BaseEncoding", &self.base_encoding)?
             .opt_field("Differences", &self.differences)?
             .finish()
@@ -260,7 +472,7 @@ impl Serialize for Encoding<'_> {
 }
 
 /// A simple two-dimensional coordinate
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Point<P> {
     /// Horizontal offset
     pub x: P,
@@ -278,7 +490,7 @@ impl<P: Default> Default for Point<P> {
 }
 
 /// A primitive rectangle
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Rectangle<P> {
     /// lower left
     pub ll: Point<P>,
@@ -416,6 +628,18 @@ impl Matrix<f32> {
         }
     }
 
+    /// Generate a matrix that shears in the x direction
+    pub fn shear_x(m: f32) -> Self {
+        Self {
+            a: 1.0,
+            b: 0.0,
+            c: m,
+            d: 1.0,
+            e: 0.0,
+            f: 0.0,
+        }
+    }
+
     /// Create a scaling matrix
     pub fn scale(x: f32, y: f32) -> Self {
         Self {
@@ -430,7 +654,7 @@ impl Matrix<f32> {
 
     /// Create a default 1:1000 glyph matrix
     pub fn default_glyph() -> Self {
-        Self::scale(0.0001, 0.0001)
+        Self::scale(0.001, 0.001)
     }
 }
 
@@ -478,13 +702,14 @@ pub enum ProcSet {
 
 impl Serialize for ProcSet {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::PDF => PdfName("PDF").write(f),
-            Self::Text => PdfName("Text").write(f),
-            Self::ImageB => PdfName("ImageB").write(f),
-            Self::ImageC => PdfName("ImageC").write(f),
-            Self::ImageI => PdfName("ImageI").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::PDF => "PDF",
+            Self::Text => "Text",
+            Self::ImageB => "ImageB",
+            Self::ImageC => "ImageC",
+            Self::ImageI => "ImageI",
+        })
+        .write(f)
     }
 }
 
@@ -504,9 +729,9 @@ pub enum ColorSpace {
 impl Serialize for ColorSpace {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         match self {
-            Self::DeviceGray => PdfName("DeviceGray").write(f),
-            Self::DeviceRGB => PdfName("DeviceRGB").write(f),
-            Self::DeviceCMYK => PdfName("DeviceCMYK").write(f),
+            Self::DeviceGray => PdfNameStr::new("DeviceGray").write(f),
+            Self::DeviceRGB => PdfNameStr::new("DeviceRGB").write(f),
+            Self::DeviceCMYK => PdfNameStr::new("DeviceCMYK").write(f),
         }
     }
 }
@@ -557,8 +782,8 @@ pub struct ImageMetadata {
 
 impl ToDict for ImageMetadata {
     fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
-        dict.field("Type", &PdfName("XObject"))?;
-        dict.field("Subtype", &PdfName("Image"))?;
+        dict.field("Type", &PdfNameStr::new("XObject"))?;
+        dict.field("Subtype", &PdfNameStr::new("Image"))?;
         dict.field("Width", &self.width)?;
         dict.field("Height", &self.height)?;
         dict.field("ColorSpace", &self.color_space)?;
@@ -620,11 +845,12 @@ pub enum OutputIntentSubtype {
 
 impl Serialize for OutputIntentSubtype {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        match self {
-            Self::GTS_PDFX => PdfName("GTS_PDFX").write(f),
-            Self::GTS_PDFA1 => PdfName("GTS_PDFA1").write(f),
-            Self::ISO_PDFE1 => PdfName("ISO_PDFE1").write(f),
-        }
+        PdfNameStr::new(match self {
+            Self::GTS_PDFX => "GTS_PDFX",
+            Self::GTS_PDFA1 => "GTS_PDFA1",
+            Self::ISO_PDFE1 => "ISO_PDFE1",
+        })
+        .write(f)
     }
 }
 
@@ -647,7 +873,7 @@ pub struct OutputIntent {
 impl Serialize for OutputIntent {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         f.pdf_dict()
-            .field("Type", &PdfName("OutputIntent"))?
+            .field("Type", &PdfNameStr::new("OutputIntent"))?
             .field("S", &self.subtype)?
             .opt_field("OutputCondition", &self.output_condition)?
             .field(

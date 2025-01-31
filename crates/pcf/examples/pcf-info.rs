@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use clap::Parser;
 use nom::{Finish, IResult};
 use nom_supreme::{
     error::ErrorTree,
@@ -12,9 +13,8 @@ use pcf::{
     },
     PCFProperties, PCFTableKind, XChar,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 /// Prints information about a X11 PCF file
 struct Opts {
     file: PathBuf,
@@ -41,7 +41,7 @@ where
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    let opts: Opts = Opts::from_args();
+    let opts: Opts = Opts::parse();
     let buffer = std::fs::read(&opts.file)?;
     let (_, header) = p_pcf_header(&buffer)
         .finish()

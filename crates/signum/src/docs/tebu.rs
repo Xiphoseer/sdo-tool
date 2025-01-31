@@ -11,7 +11,7 @@ use nom::{
 
 use super::bytes16;
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
 /// The style of a character
 pub struct Style {
     /// Whether the char is underlined
