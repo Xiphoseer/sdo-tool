@@ -41,6 +41,8 @@ pub struct TextContents<O> {
     /// Position within the line, in fontunits (1/72000 inches)
     line_x: i32,
 
+    leading: f32,
+
     // origin (top-left)
     origin: (f32, f32),
 
@@ -64,6 +66,7 @@ impl<O: io::Write> TextContents<O> {
             fs: 0,
             fw: 100.0,
             inner,
+            leading: 0.0,
             origin,
             scale,
         }
@@ -91,12 +94,14 @@ impl<O: io::Write> TextContents<O> {
                 let top = self.origin.1 - self.line_y as f32 / Y_SCALE_INVERSE;
                 self.set_text_matrix(self.scale.0, 0.0, self.slant, self.scale.1, left, top)?;
             } else {
-                writeln!(
-                    self.inner,
-                    "{} {} Td",
-                    self.line_x,
-                    -diff_y / Y_SCALE_INVERSE
-                )?;
+                let leading = -diff_y / 3.0;
+                if leading == self.leading && self.line_x == 0 {
+                    write!(self.inner, "T*")?;
+                    self.needs_space = true;
+                } else {
+                    writeln!(self.inner, "{} {} TD", self.line_x, leading)?;
+                    self.leading = leading;
+                }
             }
             self.pos_y = self.line_y;
         }
