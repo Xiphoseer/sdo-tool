@@ -21,7 +21,7 @@ use contents::Contents;
 use text::{TextContents, TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y};
 
 use crate::{
-    font::{FontInfo, Fonts, DEFAULT_FONT_SIZE, FONTUNITS_PER_SIGNUM_X},
+    font::{encode_byte, FontInfo, Fonts, DEFAULT_FONT_SIZE, FONTUNITS_PER_SIGNUM_X},
     image::image_for_site,
     Error,
 };
@@ -101,7 +101,11 @@ fn write_pdf_page_text<O: io::Write>(
 
             // Note: slant has to be _after_ x-offset adjustment
             contents.slant(te.style.italic).map_err(Error::Contents)?;
-            contents.byte(te.cval, width).map_err(Error::Contents)?;
+
+            let win_ansi_byte = encode_byte(te.cval);
+            contents
+                .byte(win_ansi_byte, width)
+                .map_err(Error::Contents)?;
 
             prev_width = width;
         }
