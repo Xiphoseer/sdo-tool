@@ -20,7 +20,7 @@ use signum::{
     chsets::{
         cache::ChsetCache,
         editor::{parse_eset, ESet},
-        encoding::decode_atari_str,
+        encoding::{decode_atari_str, Mapping},
         printer::{parse_pset, PSet, PrinterKind},
         FontKind,
     },
@@ -280,6 +280,67 @@ impl Handle {
 
     fn show_eset(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
         self.eset_kb(eset)?;
+        Ok(())
+    }
+
+    fn show_mapping(&self, mapping: &Mapping, name: &str, built_in: bool) -> Result<(), JsValue> {
+        let h3 = self.document.create_element("h3")?;
+        h3.set_text_content(Some("Mapping"));
+        self.output.append_child(&h3)?;
+        if built_in {
+            let alert = self.document.create_element("div")?;
+            alert.class_list().add_2("alert", "alert-light")?;
+            //alert.append_with_str_1("The font ")?;
+            let code = self.document.create_element("kbd")?;
+            code.set_inner_html(name);
+            alert.append_child(&code)?;
+            alert.append_with_str_1(
+                " is a well-known font associated with the following (built-in) unicode mapping:",
+            )?;
+            self.output.append_child(&alert)?;
+        }
+
+        let el_table_responsive = self.document.create_element("div")?;
+        el_table_responsive.class_list().add_1("table-responsive")?;
+        let el_table = self.document.create_element("table")?;
+        el_table.class_list().add_2("table", "mapping")?;
+        let dx = 16;
+        let el_tr_head = self.document.create_element("tr")?;
+        el_table.append_child(&el_tr_head)?;
+        let el_th0 = self.document.create_element("th")?;
+        el_tr_head.append_child(&el_th0)?;
+        for i in 0..dx {
+            let el_th = self.document.create_element("th")?;
+            el_th.append_with_str_1(&format!("_{i:X}"))?;
+            el_tr_head.append_child(&el_th)?;
+        }
+        for (y, crow) in mapping.chars.chunks(dx).enumerate() {
+            let el_tr = self.document.create_element("tr")?;
+            el_table.append_child(&el_tr)?;
+
+            let el_th_row = self.document.create_element("th")?;
+            el_th_row.append_with_str_1(&format!("{y:X}_"))?;
+            el_tr.append_child(&el_th_row)?;
+            for (x, c) in crow.iter().enumerate() {
+                let el_td = self.document.create_element("td")?;
+                let _i = y * dx + x;
+                if !matches!(*c, char::REPLACEMENT_CHARACTER | '\0') {
+                    let text = format!("&#x{:04X};", u32::from(*c));
+                    el_td.set_inner_html(&text);
+
+                    let br = self.document.create_element("br")?;
+                    el_td.append_child(&br)?;
+
+                    let sub = self.document.create_element("small")?;
+                    sub.set_inner_html(&format!("U+{:04X}", u32::from(*c)));
+                    el_td.append_child(&sub)?;
+                }
+                el_tr.append_child(&el_td)?;
+            }
+        }
+        el_table_responsive.append_child(&el_table)?;
+        self.output.append_child(&el_table_responsive)?;
+
         Ok(())
     }
 
@@ -628,8 +689,12 @@ impl Handle {
             .add_2("text-secondary", "d-inline-block")?;
         small.set_text_content(Some(font_kind.file_format_name()));
         h2.append_child(&small)?;
-
         self.output.append_child(&h2)?;
+
+        let (font_name, _ext) = match name.rsplit_once('.') {
+            Some((name, ext)) => (name, ext),
+            None => (name, font_kind.extension()),
+        };
 
         match font_kind {
             FontKind::Editor => {
@@ -640,6 +705,10 @@ impl Handle {
                 let pset = self.parse_pset(data)?;
                 self.show_pset(&pset)?;
             }
+        }
+
+        if let Some(mapping) = sdo_fonts::mappings::lookup(font_name) {
+            self.show_mapping(mapping, font_name, true)?;
         }
         Ok(())
     }

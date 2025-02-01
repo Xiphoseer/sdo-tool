@@ -15,12 +15,17 @@
       border: 1px dotted blue;
     }
 
-    .table.pset th, td {
+    .table.pset th, .table.pset td, .table.mapping th, .table.mapping td {
       border-width: 1px;
     }
 
-    .table.pset th {
+    .table.pset th, .table.mapping th, .table.mapping td {
       text-align: center;
+    }
+
+    .table.mapping td > small {
+      padding: 0;
+      color: gray;
     }
   </style>
 </head>
