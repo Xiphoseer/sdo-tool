@@ -272,7 +272,7 @@ pub fn type3_font<'a>(
 
     let to_unicode = mappings.map(|mapping| {
         let mut out = String::new();
-        write_cmap(&mut out, mapping, name).unwrap();
+        write_cmap(&mut out, mapping, name, true).unwrap();
         Ascii85Stream {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,

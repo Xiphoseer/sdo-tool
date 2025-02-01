@@ -7,6 +7,8 @@ use signum::chsets::encoding::p_mapping_file;
 #[derive(Debug, Parser)]
 pub struct Opts {
     file: PathBuf,
+    #[clap(default_value = "true")]
+    comments: bool,
 }
 
 fn main() -> color_eyre::Result<()> {
@@ -18,7 +20,7 @@ fn main() -> color_eyre::Result<()> {
 
     let name = stem.to_string_lossy();
     let mut out = String::new();
-    write_cmap(&mut out, &mapping, name.as_ref())?;
+    write_cmap(&mut out, &mapping, name.as_ref(), opts.comments)?;
     print!("{}", out);
 
     Ok(())
