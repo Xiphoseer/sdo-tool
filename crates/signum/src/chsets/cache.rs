@@ -183,6 +183,11 @@ impl<'a> CSet {
             PrinterKind::Laser30 => self.l30.as_ref().map(OwnedPSet::borrowed),
         }
     }
+
+    /// Override the stored character mapping
+    pub fn set_mapping(&mut self, mapping: Option<Mapping>) {
+        self.map = mapping;
+    }
 }
 
 /// A simple cache for charsets
@@ -203,6 +208,11 @@ impl ChsetCache {
     /// Get the slice of all charsets
     pub fn chsets(&self) -> &[CSet] {
         &self.chsets
+    }
+
+    /// Get the slice of all charsets
+    pub fn chsets_mut(&mut self) -> &mut [CSet] {
+        &mut self.chsets
     }
 
     /// Get a specific printer charset

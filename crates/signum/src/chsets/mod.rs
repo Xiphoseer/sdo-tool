@@ -16,6 +16,7 @@ use crate::util::FourCC;
 use self::cache::FontCacheInfo;
 
 pub mod cache;
+pub mod code;
 pub mod editor;
 pub mod encoding;
 pub mod printer;

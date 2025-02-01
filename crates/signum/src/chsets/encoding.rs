@@ -13,7 +13,7 @@ use thiserror::Error;
 use std::{borrow::Cow, char::REPLACEMENT_CHARACTER};
 
 /// A mapping table for a charset
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Mapping {
     /// The corresponding unicode characters
     pub chars: [char; 128],
