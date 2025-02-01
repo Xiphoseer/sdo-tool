@@ -512,6 +512,14 @@ impl Handle {
             let sdoc = self.parse_sdoc(&data)?;
             let mut fc = ChsetCache::new();
             let dfci = fc.load(&self.fs, &sdoc.cset).await;
+            for cset in fc.chsets_mut() {
+                if cset.map().is_none() {
+                    if let Some(mapping) = sdo_fonts::mappings::lookup(cset.name()) {
+                        log::info!("Using built-in unicode mapping for {}", cset.name());
+                        cset.set_mapping(Some(mapping.clone()));
+                    }
+                }
+            }
             let pd = match dfci.print_driver(None) {
                 Some(pd) => pd,
                 None => {

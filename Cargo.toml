@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 color-eyre = { version = "0.6", default-features = false }
-prettytable-rs = { version = "0.8", default-features = false }
+prettytable-rs = { version = "0.10", default-features = false }
 clap = { version = "3.1", features = ["derive"] }
 log = "0.4"
 env_logger = { version = "0.8.4", default-features = false }

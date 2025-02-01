@@ -1,6 +1,6 @@
 //! # Character Maps (CMap)
 //!
-//! See [Adobe Tech Note #5411] **
+//! See [Adobe Tech Note #5411] *ToUnicode Mapping File Tutorial*
 //!
 //! ## More Information
 //!
@@ -78,7 +78,7 @@ impl CMap {
             .iter()
             .copied()
             .enumerate()
-            .filter(|(_, c)| *c != char::REPLACEMENT_CHARACTER)
+            //.filter(|(_, c)| *c != char::REPLACEMENT_CHARACTER)
             .map(|(index, chr)| (index as u8, chr))
             .peekable();
         while let Some((index, chr)) = iter.next() {

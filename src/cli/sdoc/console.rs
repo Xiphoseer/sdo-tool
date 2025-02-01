@@ -1,5 +1,5 @@
 use color_eyre::eyre;
-use prettytable::{cell, format, row, Cell, Row, Table};
+use prettytable::{format, row, Cell, Row, Table};
 use signum::{
     chsets::{
         cache::{ChsetCache, DocumentFontCacheInfo},
