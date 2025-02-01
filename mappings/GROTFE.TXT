@@ -1,10 +1,10 @@
 # File encoding:    UTF-8
-# Name:             Signum! ANTIKRO to Unicode
+# Name:             Signum! GROTFE to Unicode
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A
-# Date:             2020 September 06
-# Authors:          Xiphoseer <ng5on06lc AT relay.firefox.com>
+# Date:             2025 February 01
+# Authors:          Xiphoseer <xiphoseer AT mailbox.org>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646
 0x01	0x007B	# LEFT CURLY BRACKET                        	# {

@@ -4,7 +4,7 @@
 # Table version:    1.0
 # Table format:     Format A
 # Date:             2020 September 06
-# Authors:          Xiphoseer <ng5on06lc AT relay.firefox.com>
+# Authors:          Xiphoseer <xiphoseer AT mailbox.org>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646
 0x01	0x27E8	# MATHEMATICAL LEFT ANGLE BRACKET           	# ⟨
