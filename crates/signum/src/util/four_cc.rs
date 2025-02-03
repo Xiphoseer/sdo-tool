@@ -21,6 +21,8 @@ impl FourCC {
     pub const PS09: FourCC = FourCC(*b"ps09");
     /// `ls30` - 24-Needle Printer Font
     pub const LS30: FourCC = FourCC(*b"ls30");
+    /// `sclb` - Signum Clipboard
+    pub const SCLB: FourCC = FourCC(*b"sclb");
 
     /// `0001`
     pub const _0001: FourCC = FourCC(*b"0001");
@@ -70,6 +72,7 @@ impl FourCC {
             Self::PS09 => Some("Signum! 9-Needle Printer Font"),
             Self::LS30 => Some("Signum! Laser Printer Font"),
             Self::BIMC => Some("Signum! Hardcopy Image"),
+            Self::SCLB => Some("Signum! Clipboard"),
             _ => None,
         }
     }
