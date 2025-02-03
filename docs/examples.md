@@ -33,6 +33,21 @@ so that the entire document is 324 DPI relative to the theoretical paper model.
     <figcaption>Physik/Printer</figcaption>
 </figure>
 
+## ESC/P
+
+This is the same document but "printed" as ESC/P commands using Signums very
+own `PR24_KAD.PRG` [printer-driver](/signum/printer-drivers) and rendered to
+an image using the `vescp` virtual printer in SDO-Toolbox.
+
+This uses the 360dpi mode to get the full resolution, `.2` inches top edge
+and `1.1` inches left edge, to center the text on an A4 media box
+(2988 &times; 4212 px at 360 dpi).
+
+<figure>
+    <img src="{{ 'img/physik-pr24_kad.png' | relative_url }}">
+    <figcaption>Physik/PRN24_KAD</figcaption>
+</figure>
+
 ## From the books
 
 The Signum! books "zur Gestaltung" have a set of example pages within

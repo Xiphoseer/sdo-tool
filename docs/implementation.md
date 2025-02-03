@@ -66,3 +66,19 @@ Docs: <https://docs.rs/ccitt-t4-t6>
 
 T.4: <https://www.itu.int/rec/T-REC-T.4>  
 T.6: <https://www.itu.int/rec/T-REC-T.6>
+
+## ESC/P
+
+The Signum! [printer drivers](/signum/printer-drivers) themselves print by generating
+ESC/P printer commands to print bit images. This crate implements a small subset
+of ESC/P parsing, sufficient to reconstruct a full signum page.
+
+### Links
+
+Source: [Xiphoseer/sdo-tool:crates/esc-p](https://github.com/Xiphoseer/sdo-tool/tree/main/crates/esc-p)  
+Crate: <https://crates.io/crates/esc-p>  
+Docs: <https://docs.rs/esc-p>
+
+### References
+
+Spec: [EPSON ESC/P Reference Manual](https://files.support.epson.com/pdf/general/escp2ref.pdf)

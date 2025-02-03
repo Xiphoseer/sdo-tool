@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 04.02.2025
+
+- `esc-p`: Add `vescp`, virtual ESC/P to PNG printer
+
 ### 30.01.2025
 
 - `sdo-pdf`: Add XMP, `OutputIntent`s
