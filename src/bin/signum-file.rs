@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre};
-use signum::{docs::four_cc, nom::error::Error, util::FourCC};
+use signum::{docs::four_cc, nom::error::Error};
 
 #[derive(clap::Parser)]
 /// Describe the type of the Signum file
