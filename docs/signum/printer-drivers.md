@@ -11,19 +11,22 @@ different printer types:
 Users were instructed to rename the printer driver that matched their
 setup to `SPRINT.PRG`, so that it could be invoked directly from the editor.
 
-## ESC/P
-
 Printing at the time involved sending ASCII text to a character device. Additional
-commands could be sent using `ESC` (ASCII 27) sequences, as specified by
-[ESC/P](https://en.wikipedia.org/wiki/ESC/P). Signum used the `ESC *` command
-in particular to print in graphics mode.
+graphics or layout commands could be sent using `ESC` (ASCII 27) sequences, as
+specified by [ESC/P] (Epson) or [PCL] (HP).
+
+[PCL]: https://en.wikipedia.org/wiki/Printer_Command_Language
+[ESC/P]: https://en.wikipedia.org/wiki/ESC/P
 
 ## 24-Needle
 
-The default 24-needle printer driver was `PR24N.PRG`. This driver intentionally
-skipped the second-to-last pixel of every row of pixels in a glyph, because in
-360 dpi horizontal graphics mode, it was not possible to print adjacent dots
-and Signum wanted to ensure the right edge of each glyph got printed accurately.
+The default 24-needle printer driver was `PR24N.PRG`. which used *ESC/P*
+escape sequences.  `ESC *` in particular was used to print in graphics mode.
+
+This driver intentionally skipped the second-to-last pixel of every row of
+pixels in a glyph, because in 360 dpi horizontal graphics mode, it was not
+possible to print adjacent dots and Signum wanted to ensure the right edge
+of each glyph got printed accurately.
 
 There was a `PR24_KAD.PRG` variant that did not skip this pixel, for use with
 inkjet printers that did not have this limitation.
