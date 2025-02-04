@@ -14,6 +14,7 @@
 0x11	0x27E8	# MATHEMATICAL LEFT ANGLE BRACKET           	# ⟨
 0x12	0x27E9	# MATHEMATICAL RIGHT ANGLE BRACKET          	# ⟩
 
+0x13	0x2591	# LIGHT SHADE                               	# ░
 0x14	0x1F582	# BACK OF ENVELOPE                             	# 🖂
 0x15	0x1F920	# FACE WITH COWBOY HAT                      	# 🤠
 0x1F	0x260E	# BLACK TELEPHONE                           	# ☎
