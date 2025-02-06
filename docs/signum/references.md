@@ -4,13 +4,14 @@ This section lists documents that describe Signum!
 
 ## Magazine Articles
 
-- [Ja, der Franz, der kann’s: Signum!2 setzt neue Zeichen (ST-Computer 12/1987)](https://stcarchiv.de/stc1987/12/signum2)
-- [Aus 24 mach 9: Umwandlung von SIGNUM!-Druckerzeichensätzen (ST-Computer 06/1989)](https://stcarchiv.de/stc1989/06/umwandlung-von-signum-druckerzeichensaetzen)
+- [Ja, der Franz, der kann’s: Signum!2 setzt neue Zeichen (ST-Computer 12/1987)](https://www.stcarchiv.de/stc1987/12/signum2)
+- [Aus 24 mach 9: Umwandlung von SIGNUM!-Druckerzeichensätzen (ST-Computer 06/1989)](https://www.stcarchiv.de/stc1989/06/umwandlung-von-signum-druckerzeichensaetzen)
 - [Desktop Publishing mit SIGNUM!Zwei (ST-Computer 04/1989)](https://www.stcarchiv.de/stc1989/04/desktop-publishing-mit-signum-zwei)
 - [Erste Erfahrungen mit SIGNUM! Zwei – Praxisbericht eines doktorierenden Philologen (ST-Computer 12/1989)](https://www.stcarchiv.de/stc1989/12/erfahrungen-mit-signum-zwei)
 - [Die SDO-Kollektion: For SDO only! (ST-Computer 01/1992)](https://www.stcarchiv.de/stc1992/01/sdo-kollektion)
 - [Wer den Atari ST kennt, kennt Signum (TOS 02/1992)](https://www.stcarchiv.de/tos1992/02/signum-interview)
 - [Pirx kommt: Signum!3 im Test (TOS 02/1992)](https://www.stcarchiv.de/tos1992/02/signum3-im-test)
+- [Signum!, Script und Scarabus im Dienste der Sprachwissenschaft (ST-Computer 02/1992)](https://www.stcarchiv.de/stc1992/02/sprachwissenschaft)
 - [Textverarbeitung Signum! 3: Klick - Move - Kick (ST-Magazin 03/1992)](https://www.stcarchiv.de/stm1992/03/textverarbeitung-signum3)
 - [Signum! Drei: Jetzt mit Tabellensatz! (ST-Computer 06/1993)](https://www.stcarchiv.de/stc1993/06/signum-drei-tabellensatz)
 - [Signum!4: Jetzt mit Vektor- und TrueType-Fonts (ST-Computer 10/1995)](https://www.stcarchiv.de/stc1995/10/signum4)
