@@ -24,6 +24,11 @@ This section lists documents that describe Signum!
 
 ## ASH-Books
 
+Application Systems seems to have been assigned the `9801834` publisher code out of the `9700000-9849999` prefix range
+([source](https://www.isbn-international.org/range_file_generation)) of the (`978-`)`3` (german language) ISBN prefix
+for their Atari ST books. This allows for a 10 distinct ISBNs in the format `3-9801834-X-Y`, `X` being a sequence number,
+`Y` a check digit.
+
 0. [**Das Signum! Buch** / Volker Ritzhaupt (1988)](https://www.zvab.com/products/isbn/9783980183406) ISBN-10: 3-9801834-0-8
 1. [**351 Neue Signum!-Zeichensätze. Ein Buch zur Gestaltung** (1988 ?)](http://d-nb.info/891141715); [(ZVAB)](https://www.zvab.com/products/isbn/9783980183413) ISBN-10: 3-9801834-1-6
 2. [**547 Neue Signum!-Zeichensätze. Noch ein Buch zur Gestaltung** (1989)](https://www.zvab.com/products/isbn/9783980183420) ISBN-10: 3-9801834-2-4
