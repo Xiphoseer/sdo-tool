@@ -32,6 +32,7 @@ use signum::{
         tebu::PageText,
         DocumentInfo, GenerationContext, Overrides, SDoc,
     },
+    images::imc::parse_imc,
     raster::{self, render_doc_page, render_editor_text, render_printer_char},
     util::{AsyncIterator, FourCC, VFS},
 };
@@ -609,6 +610,8 @@ impl Handle {
             self.show_sdoc(name, &data).await?;
         } else if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
             self.show_font(font_kind, name, &data).await?;
+        } else if four_cc == FourCC::BIMC {
+            self.show_image(name, &data).await?;
         } else {
             warn!("Unknown format: {}", four_cc);
             let heading = self.document.create_element("h2")?;
@@ -636,7 +639,7 @@ impl Handle {
         let p = self.document.create_element("p")?;
         p.class_list().add_2("col-md-8", "fs-4")?;
         p.set_text_content(Some(
-            "Please select a file (*.SDO, *.E24, *.P24, *.P09, *.L30)",
+            "Please select a file (*.SDO, *.E24, *.P24, *.P09, *.L30, *.IMC)",
         ));
         container.append_child(&p)?;
 
@@ -685,6 +688,17 @@ impl Handle {
         } else if let Some(name) = fragment.strip_prefix("#/") {
             self.show_file(name).await?;
         }
+        Ok(())
+    }
+
+    async fn show_image(&self, _name: &str, data: &[u8]) -> Result<(), JsValue> {
+        let decoded =
+            parse_imc(data).map_err(|err| js_error_with_cause(err, "Failed to parse IMC image"))?;
+        let page = raster::Page::from(decoded);
+        let blob = page_to_blob(&page)?;
+        let img = blob_image_el(&blob)?;
+        img.class_list().add_1("bimc")?;
+        self.output.append_child(&img)?;
         Ok(())
     }
 
