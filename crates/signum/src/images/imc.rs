@@ -269,3 +269,13 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
     Ok((byte_iter.as_slice(), MonochromeScreen(buffer)))
 }
+
+#[cfg(test)]
+mod tests {
+    const DATA: &[u8] = include_bytes!("../../res/TEST.IMC");
+
+    #[test]
+    fn test_decode() {
+        super::parse_imc(DATA).unwrap();
+    }
+}
