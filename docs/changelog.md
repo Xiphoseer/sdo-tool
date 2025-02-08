@@ -5,6 +5,14 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 08.02.2025
+
+- `sdo-web`: Fixed a bug where a invalid GEMDOS date would cause a panic
+- `sdo-web`: Open documents stored in the *collection*
+- `sdo-web`: List documents in the *collection* on the home screen.
+- `sdo-web`: Open Signum *.IMC images
+- `sdo-pdf`: Use the correct vertical scaling for tall (1.5) and small (0.75)
+
 ### 04.02.2025
 
 - `esc-p`: Add `vescp`, virtual ESC/P to PNG printer
