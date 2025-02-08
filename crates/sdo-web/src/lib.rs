@@ -891,6 +891,9 @@ impl Handle {
                 log::info!("{name}: Parsed printer font");
                 self.pset_card(card, &pset, name)?;
             }
+            FourCC::BIMC => {
+                // TODO: preview
+            }
             k => {
                 log::warn!("Unknown File Format '{}'", k);
             }

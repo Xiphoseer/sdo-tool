@@ -69,24 +69,17 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
     Ok((input, header))
 }
 
-struct ImcState<'src> {
-    a5: &'src [u8],
-}
+fn load_chunk<'a>(src: &mut std::slice::Iter<'a, u8>, dest: &mut [u8]) -> IResult<&'a [u8], ()> {
+    let mut mask = *src.next().ok_or(eof_at(src))?;
 
-impl ImcState<'_> {
-    fn proc_h(&mut self, a0: &mut [u8]) {
-        let mut d1 = self.a5[0];
-        self.a5 = &self.a5[1..];
-
-        for i in 0..8 {
-            let (new_d1, carry) = d1.overflowing_mul(2);
-            if carry {
-                a0[2 * i] = self.a5[0];
-                self.a5 = &self.a5[1..];
-            }
-            d1 = new_d1;
+    for i in 0..8 {
+        let (next_mask, bit_set) = mask.overflowing_mul(2);
+        if bit_set {
+            dest[2 * i] = *src.next().ok_or(eof_at(src))?;
         }
+        mask = next_mask;
     }
+    Ok((src.as_slice(), ()))
 }
 
 #[derive(Debug)]
@@ -125,12 +118,16 @@ pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<nom::error::Error
     Ok(image)
 }
 
+fn eof_at<'a>(iter: &std::slice::Iter<'a, u8>) -> nom::Err<nom::error::Error<&'a [u8]>> {
+    nom::Err::Error(nom::error::Error {
+        input: iter.as_slice(),
+        code: ErrorKind::Eof,
+    })
+}
+
 macro_rules! next {
     ($bit_iter:ident, $state:ident) => {
-        $bit_iter.next().ok_or(nom::Err::Error(nom::error::Error {
-            input: $state.a5,
-            code: ErrorKind::Eof,
-        }))
+        $bit_iter.next().ok_or(eof_at(&$state))
     };
 }
 
@@ -156,75 +153,72 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
 
     let mut bit_iter = BitIter::new(bits);
 
-    let mut state = ImcState { a5: data };
+    let mut byte_iter = data.iter();
 
     let mut temp: [u8; 32];
 
     for _ in 0..header.vchunks {
-        if next!(bit_iter, state)? {
+        if next!(bit_iter, byte_iter)? {
             // subroutine C
             for j in 0..header.hchunks {
-                if next!(bit_iter, state)? {
+                if next!(bit_iter, byte_iter)? {
                     // subroutine D
                     let mut d3 = 0;
-                    if next!(bit_iter, state)? {
+                    if next!(bit_iter, byte_iter)? {
                         d3 += 2;
                     }
-                    if next!(bit_iter, state)? {
+                    if next!(bit_iter, byte_iter)? {
                         d3 += 1;
                     }
                     //print!("{}", d3);
 
                     if d3 == 3 {
                         // subroutine E
-                        let (rest, a) = take(32usize)(state.a5)?;
+                        let (rest, a) = take(32usize)(byte_iter.as_slice())?;
                         temp = a.try_into().unwrap();
-                        state.a5 = rest;
+                        byte_iter = rest.iter();
                     } else {
                         temp = [0u8; 32]; // subroutine G
                         let (first, second) = temp.split_at_mut(16);
 
                         // first half of temp
-                        if next!(bit_iter, state)? {
-                            state.proc_h(first);
+                        if next!(bit_iter, byte_iter)? {
+                            load_chunk(&mut byte_iter, first)?;
                         }
-                        if next!(bit_iter, state)? {
-                            state.proc_h(&mut first[1..]);
+                        if next!(bit_iter, byte_iter)? {
+                            load_chunk(&mut byte_iter, &mut first[1..])?;
                         }
 
                         // second half of temp
-                        if next!(bit_iter, state)? {
-                            state.proc_h(second);
+                        if next!(bit_iter, byte_iter)? {
+                            load_chunk(&mut byte_iter, second)?;
                         }
-                        if next!(bit_iter, state)? {
-                            state.proc_h(&mut second[1..]);
+                        if next!(bit_iter, byte_iter)? {
+                            load_chunk(&mut byte_iter, &mut second[1..])?;
                         }
 
                         if d3 == 1 {
                             // subroutine I
-                            let a0 = &mut temp[..];
-                            let (mut d00, mut d01) = (a0[0], a0[1]);
-                            for i in 1..16 {
-                                d00 ^= a0[i * 2];
-                                d01 ^= a0[i * 2 + 1];
-
-                                a0[i * 2] = d00;
-                                a0[i * 2 + 1] = d01;
+                            let (mut d00, mut d01) = (0, 0);
+                            for row in temp.chunks_exact_mut(2) {
+                                d00 ^= row[0];
+                                d01 ^= row[1];
+                                row[0] = d00;
+                                row[1] = d01;
                             }
                         } else if d3 == 2 {
                             // subroutine J
-                            let a0 = &mut temp[..];
-                            let (mut d00, mut d01, mut d02, mut d03) = (a0[0], a0[1], a0[2], a0[3]);
-                            for i in 1..8 {
-                                d00 ^= a0[i * 4];
-                                d01 ^= a0[i * 4 + 1];
-                                d02 ^= a0[i * 4 + 2];
-                                d03 ^= a0[i * 4 + 3];
+                            let (mut d00, mut d01, mut d02, mut d03) = (0, 0, 0, 0);
+                            for row in temp.chunks_exact_mut(4) {
+                                d00 ^= row[0];
+                                d01 ^= row[1];
+                                d02 ^= row[2];
+                                d03 ^= row[3];
 
-                                a0[i * 4] = d00;
-                                a0[i * 4 + 1] = d01;
-                                a0[i * 4 + 2] = d02;
-                                a0[i * 4 + 3] = d03;
+                                row[0] = d00;
+                                row[1] = d01;
+                                row[2] = d02;
+                                row[3] = d03;
                             }
                         }
                     }
@@ -273,5 +267,5 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
         }
     }
 
-    Ok((state.a5, MonochromeScreen(buffer)))
+    Ok((byte_iter.as_slice(), MonochromeScreen(buffer)))
 }
