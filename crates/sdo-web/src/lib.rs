@@ -558,6 +558,46 @@ impl Handle {
             .map(|active| active.sdoc.tebu.pages.len())
     }
 
+    async fn show_sdoc(&self, name: &str, data: &[u8]) -> Result<(), JsValue> {
+        let heading = self.document.create_element("h2")?;
+        heading.set_text_content(Some(name));
+        self.output.append_child(&heading)?;
+
+        let sdoc = self.parse_sdoc(data)?;
+        let mut fc = ChsetCache::new();
+        let dfci = fc.load(&self.fs, &sdoc.cset).await;
+        for cset in fc.chsets_mut() {
+            if cset.map().is_none() {
+                if let Some(mapping) = sdo_fonts::mappings::lookup(cset.name()) {
+                    log::info!("Using built-in unicode mapping for {}", cset.name());
+                    cset.set_mapping(Some(mapping.clone()));
+                }
+            }
+        }
+        let pd = match dfci.print_driver(None) {
+            Some(pd) => pd,
+            None => {
+                // FIXME: pick the "best" format?
+                log::warn!("Could not auto-select a font format, some fonts are not available");
+                FontKind::Printer(PrinterKind::Needle24)
+            }
+        };
+        let images = sdoc
+            .hcim
+            .as_ref()
+            .map(|hcim| hcim.decode_images())
+            .unwrap_or_default();
+
+        *self.active.borrow_mut() = Some(ActiveDocument {
+            sdoc: sdoc.into_owned(),
+            di: DocumentInfo::new(dfci, images),
+            pd,
+            fc,
+            name: name.to_owned(),
+        });
+        Ok(())
+    }
+
     async fn show_staged(&self, name: &str) -> Result<(), JsValue> {
         let file = self.input_file(name)?;
         let data = js_file_data(&file).await?.to_vec();
@@ -566,42 +606,7 @@ impl Handle {
             four_cc::<()>(&data).map_err(|_| JsError::new("File has less than 4 bytes"))?;
 
         if four_cc == FourCC::SDOC {
-            let heading = self.document.create_element("h2")?;
-            heading.set_text_content(Some(name));
-            self.output.append_child(&heading)?;
-
-            let sdoc = self.parse_sdoc(&data)?;
-            let mut fc = ChsetCache::new();
-            let dfci = fc.load(&self.fs, &sdoc.cset).await;
-            for cset in fc.chsets_mut() {
-                if cset.map().is_none() {
-                    if let Some(mapping) = sdo_fonts::mappings::lookup(cset.name()) {
-                        log::info!("Using built-in unicode mapping for {}", cset.name());
-                        cset.set_mapping(Some(mapping.clone()));
-                    }
-                }
-            }
-            let pd = match dfci.print_driver(None) {
-                Some(pd) => pd,
-                None => {
-                    // FIXME: pick the "best" format?
-                    log::warn!("Could not auto-select a font format, some fonts are not available");
-                    FontKind::Printer(PrinterKind::Needle24)
-                }
-            };
-            let images = sdoc
-                .hcim
-                .as_ref()
-                .map(|hcim| hcim.decode_images())
-                .unwrap_or_default();
-
-            *self.active.borrow_mut() = Some(ActiveDocument {
-                sdoc: sdoc.into_owned(),
-                di: DocumentInfo::new(dfci, images),
-                pd,
-                fc,
-                name: name.to_owned(),
-            });
+            self.show_sdoc(name, &data).await?;
         } else if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
             self.show_font(font_kind, name, &data).await?;
         } else {
@@ -674,6 +679,8 @@ impl Handle {
                     .await
                     .map_err(|e| js_wrap_err(e, "Failed to show CHSET"))?;
             }
+        } else if let Some(name) = fragment.strip_prefix("#/") {
+            self.show_file(name).await?;
         }
         Ok(())
     }
@@ -722,6 +729,19 @@ impl Handle {
         if let Some(font_kind) = Option::<FontKind>::from(four_cc) {
             let data = arr.to_vec();
             self.show_font(font_kind, name, &data).await?;
+        }
+        Ok(())
+    }
+
+    async fn show_file(&self, name: &str) -> Result<(), JsValue> {
+        let root = self.fs.root_dir()?;
+        let file_handle = directory_handle_get_file_handle(&root, name).await?;
+        let file = file_handle_get_file(&file_handle).await?;
+        let arr = js_file_data(&file).await?;
+        let four_cc = js_four_cc(&arr).ok_or(js_sys::Error::new("No four-cc: file too short"))?;
+        if four_cc == FourCC::SDOC {
+            let data = arr.to_vec();
+            self.show_sdoc(name, &data).await?;
         }
         Ok(())
     }

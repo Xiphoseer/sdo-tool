@@ -2,8 +2,6 @@ use std::io;
 
 use pdf_create::write::write_string;
 
-use crate::font::DEFAULT_FONT_SIZE;
-
 /// Constant to get from 1/216th inches (y space) to 1/72th space (PDF space)
 const Y_SCALE_INVERSE: f32 = 3.0;
 
@@ -19,7 +17,7 @@ pub struct TextContents<O> {
     /// The current font size
     fs: u8,
     /// The current horizontal scaling
-    fw: u16,
+    fw: f32,
 
     /// slant
     slant: f32,
@@ -64,7 +62,7 @@ impl<O: io::Write> TextContents<O> {
             needs_space: false,
             cset: 0xff,
             fs: 0,
-            fw: 100,
+            fw: 100.0,
             inner,
             origin,
             scale,
@@ -113,13 +111,7 @@ impl<O: io::Write> TextContents<O> {
             self.cset = cset;
             self.fs = font_size;
             self.flush()?;
-            let font_size_scale = (DEFAULT_FONT_SIZE as f32) * 0.5; // default font size * half (for small)
-            writeln!(
-                self.inner,
-                "/C{} {} Tf",
-                cset,
-                (font_size as f32) * font_size_scale
-            )?;
+            writeln!(self.inner, "/C{} {} Tf", cset, font_size as f32)?;
         }
         Ok(())
     }
@@ -129,11 +121,11 @@ impl<O: io::Write> TextContents<O> {
     /// `scale` is a number specifying the percentage of the normal width.
     ///
     /// Initial value: 100 (normal width).
-    pub fn fwidth(&mut self, scale: u16) -> io::Result<()> {
+    pub fn fwidth(&mut self, scale: f32) -> io::Result<()> {
         if self.fw != scale {
             self.fw = scale;
             self.flush()?;
-            writeln!(self.inner, " {} Tz", scale)?;
+            writeln!(self.inner, "{} Tz", scale)?;
         }
         Ok(())
     }
@@ -147,7 +139,9 @@ impl<O: io::Write> TextContents<O> {
         if self.needs_space {
             write!(self.inner, " ")?;
         }
-        let diff = xoff / DEFAULT_FONT_SIZE;
+        let font_scale = self.fs as f32;
+        let width_scale = self.fw / 100.0;
+        let diff = xoff as f32 / font_scale / width_scale;
         write!(self.inner, "{}", diff)?;
         self.line_x -= xoff;
         self.needs_space = true;

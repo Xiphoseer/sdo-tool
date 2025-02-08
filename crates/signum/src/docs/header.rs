@@ -1,6 +1,6 @@
 //! # (`0001`) The header of a document.
 
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, convert::TryInto, fmt};
 
 use nom::{
     bytes::streaming::take,
@@ -18,6 +18,8 @@ use super::Chunk;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 /// A GEMDOS date
+///
+/// See: <https://freemint.github.io/tos.hyp/en/gemdos_datetime.html#Tgetdate>
 #[serde(transparent)]
 pub struct Date(pub u16);
 
@@ -39,15 +41,18 @@ impl fmt::Display for Date {
 }
 
 #[cfg(feature = "chrono")]
-impl From<Date> for chrono::NaiveDate {
-    fn from(value: Date) -> Self {
+impl std::convert::TryFrom<Date> for chrono::NaiveDate {
+    type Error = DateTimeError;
+    fn try_from(value: Date) -> Result<Self, Self::Error> {
         let (year, month, day) = value.to_ymd();
-        chrono::NaiveDate::from_ymd_opt(year.into(), month.into(), day.into()).unwrap()
+        chrono::NaiveDate::from_ymd_opt(year.into(), month.into(), day.into()).ok_or(DateTimeError)
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 /// A GEMDOS time
+///
+/// See: <https://freemint.github.io/tos.hyp/en/gemdos_datetime.html#Tgettime>
 #[serde(transparent)]
 pub struct Time(pub u16);
 
@@ -69,10 +74,13 @@ impl fmt::Display for Time {
 }
 
 #[cfg(feature = "chrono")]
-impl From<Time> for chrono::NaiveTime {
-    fn from(value: Time) -> Self {
+impl std::convert::TryFrom<Time> for chrono::NaiveTime {
+    type Error = DateTimeError;
+
+    fn try_from(value: Time) -> Result<Self, Self::Error> {
         let (hours, minutes, seconds) = value.to_hms();
-        chrono::NaiveTime::from_hms_opt(hours.into(), minutes.into(), seconds.into()).unwrap()
+        chrono::NaiveTime::from_hms_opt(hours.into(), minutes.into(), seconds.into())
+            .ok_or(DateTimeError)
     }
 }
 
@@ -91,10 +99,16 @@ impl fmt::Display for DateTime {
     }
 }
 
+/// Invalid date / time
+pub struct DateTimeError;
+
 #[cfg(feature = "chrono")]
-impl From<DateTime> for chrono::NaiveDateTime {
-    fn from(value: DateTime) -> Self {
-        chrono::NaiveDateTime::new(value.date.into(), value.time.into())
+impl std::convert::TryFrom<DateTime> for chrono::NaiveDateTime {
+    type Error = DateTimeError;
+    fn try_from(value: DateTime) -> Result<Self, Self::Error> {
+        let date = value.date.try_into()?;
+        let time = value.time.try_into()?;
+        Ok(chrono::NaiveDateTime::new(date, time))
     }
 }
 

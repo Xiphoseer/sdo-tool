@@ -37,37 +37,31 @@ fn write_pdf_page_text<O: io::Write>(
     for (skip, line) in &page.content {
         contents.next_line(0, *skip as u32 + 1);
 
-        let mut prev_width: u32 = 0;
+        // How far we've drawn
+        let mut cursor_a: u32 = 0;
+        // How far signum thinks we are
+        let mut cursor_b: u32 = 0;
 
         for te in &line.data {
-            let offset = te.offset as u32 * FONTUNITS_PER_SIGNUM_X;
+            let offset = te.offset as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
 
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
             let is_small = te.style.small;
 
-            let font_size = if is_tall {
-                4
+            let default_font_size = DEFAULT_FONT_SIZE as u8;
+            let default_font_width = 100.0f32;
+            let (font_size, font_width) = if is_tall {
+                (default_font_size * 3 / 2, default_font_width / 1.5) // * 1,5
             } else if is_small {
-                1
+                (default_font_size * 3 / 4, default_font_width / 0.75) // * 0,75
             } else {
-                2
+                (default_font_size, default_font_width)
             };
-            let font_width = if is_tall {
-                match is_wide {
-                    true => 100,
-                    false => 50,
-                }
-            } else if is_small {
-                match is_wide {
-                    true => 400,
-                    false => 200,
-                }
-            } else {
-                match is_wide {
-                    true => 200,
-                    false => 100,
-                }
+
+            let font_width = match is_wide {
+                true => font_width * 2.0,
+                false => font_width,
             };
 
             let csu = te.cset as usize;
@@ -78,32 +72,32 @@ fn write_pdf_page_text<O: io::Write>(
                     .unwrap_or("");
                 Error::MissingFont(csu, font_name.to_owned())
             })?;
-            let width = {
-                let w = fi.width(te.cval) * (DEFAULT_FONT_SIZE as u32);
-                if is_wide {
-                    w * 2
-                } else {
-                    w
-                }
+            let raw_width = fi.width(te.cval);
+            let width = match is_wide {
+                true => raw_width * 2,
+                false => raw_width,
             };
 
-            // FIXME: font_size is multiplied by 0.5 to support "small"
             contents.cset(te.cset, font_size).map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
 
-            let mut diff = (offset as i32) - (prev_width as i32);
+            let next_x_sig = cursor_b + offset;
+            let diff = next_x_sig - cursor_a;
             if diff != 0 {
-                if is_wide {
-                    diff /= 2;
-                }
-                contents.xoff(-diff).map_err(Error::Contents)?;
+                let xoff = -(diff as i32 * DEFAULT_FONT_SIZE);
+                contents.xoff(xoff).map_err(Error::Contents)?;
             }
+            cursor_a += diff;
 
             // Note: slant has to be _after_ x-offset adjustment
             contents.slant(te.style.italic).map_err(Error::Contents)?;
-            contents.byte(te.cval, width).map_err(Error::Contents)?;
+            let byte_width = width * DEFAULT_FONT_SIZE as u32;
+            contents
+                .byte(te.cval, byte_width)
+                .map_err(Error::Contents)?;
+            cursor_a += width;
 
-            prev_width = width;
+            cursor_b = next_x_sig;
         }
 
         contents.flush().map_err(Error::Contents)?;

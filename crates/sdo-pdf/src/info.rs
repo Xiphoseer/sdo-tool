@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use pdf_create::chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone};
 use pdf_create::common::{
     ColorSpace, ICCColorProfileMetadata, OutputIntent, OutputIntentSubtype, PdfString,
@@ -25,17 +27,23 @@ pub struct MetaInfo {
 impl MetaInfo {
     /// Set the dates from the SDOC header
     pub fn with_dates(&mut self, header: &Header) {
-        let ctime = NaiveDateTime::from(header.ctime);
-        let mtime = NaiveDateTime::from(header.mtime);
         let tz = Local; // FIXME: timezone?
-        self.creation_date = tz
-            .from_local_datetime(&ctime)
-            .single()
-            .map(|d| d.fixed_offset());
-        self.mod_date = tz
-            .from_local_datetime(&mtime)
-            .single()
-            .map(|d| d.fixed_offset());
+        if let Ok(ctime) = NaiveDateTime::try_from(header.ctime) {
+            self.creation_date = tz
+                .from_local_datetime(&ctime)
+                .single()
+                .map(|d| d.fixed_offset());
+        } else {
+            log::warn!("Invalid ctime: {:?}", header.ctime);
+        }
+        if let Ok(mtime) = NaiveDateTime::try_from(header.mtime) {
+            self.mod_date = tz
+                .from_local_datetime(&mtime)
+                .single()
+                .map(|d| d.fixed_offset());
+        } else {
+            log::warn!("Invalid mtime: {:?}", header.mtime);
+        }
     }
 }
 
