@@ -57,8 +57,8 @@ The bold text in normal mode looks like the following:
 
 ## Gross (tall)
 
-*Klein* increases the height of a glyph.
+*Gross* increases the height of a glyph by *1.5* (150%).
 
 ## Klein (small)
 
-*Klein* reduces the height of a glyph.
+*Klein* reduces the height of a glyph by *0.75* (75%).
