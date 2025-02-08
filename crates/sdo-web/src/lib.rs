@@ -35,7 +35,7 @@ use signum::{
     raster::{self, render_doc_page, render_editor_text, render_printer_char},
     util::{AsyncIterator, FourCC, VFS},
 };
-use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter};
+use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter, path::Path};
 use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
 use web_sys::{
@@ -654,6 +654,9 @@ impl Handle {
 
         node.append_child(&container)?;
         self.output.append_child(&node)?;
+
+        self.list_docs().await?;
+
         Ok(())
     }
 
@@ -743,6 +746,46 @@ impl Handle {
             let data = arr.to_vec();
             self.show_sdoc(name, &data).await?;
         }
+        Ok(())
+    }
+
+    async fn list_doc_entry(&self, entry: &DirEntry) -> Result<(), JsValue> {
+        let path = self.fs.dir_entry_path(entry);
+        let name = path.file_name().map(OsStr::to_string_lossy);
+        let name = name.as_deref().unwrap_or("");
+
+        let file = self.fs.dir_entry_to_file(entry).await?;
+        let data = js_file_data(&file).await?.to_vec();
+
+        let (_, four_cc) =
+            four_cc::<()>(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
+        info!("Loading {} ({})", name, four_cc);
+        let href = format!("#/{}", path.display());
+        let card = self.card(name, four_cc, &href)?;
+        if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
+            console::error_3(
+                &JsValue::from_str("Failed to generate preview"),
+                &JsValue::from_str(name),
+                &e,
+            );
+        }
+        self.output.append_child(&card)?;
+        Ok(())
+    }
+
+    async fn list_docs(&self) -> Result<(), JsValue> {
+        let mut iter = self.fs.read_dir(Path::new("")).await?;
+        while let Some(next) = iter.next().await {
+            let entry = next?;
+            if self.fs.dir_entry_is_file(&entry) {
+                if let Err(e) = self.list_doc_entry(&entry).await {
+                    let path = self.fs.dir_entry_path(&entry);
+                    let path = path.to_string_lossy();
+                    console::log_2(&JsValue::from_str(&path), &e);
+                }
+            }
+        }
+        info!("Done listing documents");
         Ok(())
     }
 
