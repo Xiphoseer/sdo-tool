@@ -10,7 +10,7 @@ This is the document converted to a PDF (Portable Document Format) file. The
 `--xoffset` / `--yoffset` flags were used to center the text on an A4 Page.
 
 [PHYSIK.pdf](img/PHYSIK.pdf)  
-[MUSTER.pdf](img/MUSTER.pdf)
+[MUSTER.pdf](img/MUSTER.pdf)  
 [CHEMMUST.pdf](img/CHEMMUST.pdf)
 
 ## Editor
