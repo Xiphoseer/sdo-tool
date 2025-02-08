@@ -11,6 +11,7 @@ This is the document converted to a PDF (Portable Document Format) file. The
 
 [PHYSIK.pdf](img/PHYSIK.pdf)  
 [MUSTER.pdf](img/MUSTER.pdf)
+[CHEMMUST.pdf](img/CHEMMUST.pdf)
 
 ## Editor
 
