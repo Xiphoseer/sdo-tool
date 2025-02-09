@@ -14,6 +14,7 @@ This section lists documents that describe Signum!
 - [Signum!, Script und Scarabus im Dienste der Sprachwissenschaft (ST-Computer 02/1992)](https://www.stcarchiv.de/stc1992/02/sprachwissenschaft)
 - [Textverarbeitung Signum! 3: Klick - Move - Kick (ST-Magazin 03/1992)](https://www.stcarchiv.de/stm1992/03/textverarbeitung-signum3)
 - [Signum! Drei: Jetzt mit Tabellensatz! (ST-Computer 06/1993)](https://www.stcarchiv.de/stc1993/06/signum-drei-tabellensatz)
+- [Die schreibende Zunft - Textverarbeitungen für den ATARI (ST-Computer 05/1994)](https://www.stcarchiv.de/stc1994/05/textverarbeitungen-fuer-den-atari)
 - [Signum!4: Jetzt mit Vektor- und TrueType-Fonts (ST-Computer 10/1995)](https://www.stcarchiv.de/stc1995/10/signum4)
 - [Datenaustausch (2) (ST-Computer 06/2002)](https://www.stcarchiv.de/stc2002/06/datenaustausch)
 
