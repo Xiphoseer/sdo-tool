@@ -14,6 +14,11 @@ Each page also has a physical page number (a one-based ordinal for its
 position in the current file) and a logical page number (one-based ordinal
 for its position in a multi-file document).
 
+## Chapter
+
+Some pages could be marked as the start of a new chapter, which would
+affect how the automatic formatting treated these.
+
 ## Page
 
 The page content is placed on a relatively granular grid, with different
@@ -39,3 +44,8 @@ compensated for.
     <img src="../img/layout-settings.png">
     <figcaption>Layout Settings</figcaption>
 </figure>
+
+## Paragraph
+
+Some *main lines* were designated as the start of a paragraph, which enabled
+all the lines of that paragraph to be selected and moved as a unit.
