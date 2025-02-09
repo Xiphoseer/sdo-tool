@@ -58,3 +58,25 @@ of *Das Signum! Buch* (see [ASH-Books](/signum/references#ash-books)).
 | <kbd>ESC</kbd><kbd>z</kbd><kbd>CTRL</kbd><kbd>3</kbd> | Change the active <kbd>CTRL</kbd> font (e.g. to the 3rd one) |
 
 [font-modifier]: /signum/font-modifiers
+
+## Function Keys
+
+<figure>
+<img src="{% link /img/function-keys.png %}">
+<figcaption>"Funktionstasten" (<code>SIGNUM2.PRG</code>)</figcaption>
+</figure>
+
+| Sequence | Effect |
+|---|---|
+| <kbd>F1</kbd><kbd>a</kbd> | Call keyboard program / macro (e.g. `a`) |
+| <kbd>F2</kbd> | Insert blank line at cursor (above current content) |
+| <kbd>F3</kbd> | Delete line at cursor |
+| <kbd>F4</kbd> | Insert blank line, move cursor |
+| <kbd>F5</kbd> | Delete line above cursor |
+| <kbd>F6</kbd> | Reserved (e.g. for accessories) |
+| <kbd>F7</kbd> | Pull up a word from the next line |
+| <kbd>CTRL</kbd><kbd>F7</kbd> | Pull up the next line |
+| <kbd>F8</kbd> | Add current line to accumulator, move cursor to next line |
+| <kbd>F9</kbd> | Insert the content of the accumulator at (above) the cursor |
+| <kbd>SHIFT</kbd><kbd>F9</kbd> | Clear the accumulator |
+| <kbd>F10</kbd> | Redraw the whole screen |
