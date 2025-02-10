@@ -15,6 +15,10 @@ Printing at the time involved sending ASCII text to a character device. Addition
 graphics or layout commands could be sent using `ESC` (ASCII 27) sequences, as
 specified by [ESC/P] (Epson) or [PCL] (HP).
 
+As far as I can tell, Signum printer drivers bypassed the VDI / GDOS
+for printing and would directly use [`Cprnout`].
+
+[`Cprnout`]: https://freemint.github.io/tos.hyp/en/gemdos_chrinout.html#Cprnout
 [PCL]: https://en.wikipedia.org/wiki/Printer_Command_Language
 [ESC/P]: https://en.wikipedia.org/wiki/ESC/P
 
@@ -51,14 +55,17 @@ required for the 360dpi vertical resolution mode.
 <figcaption>Paper Settings / Papierart (<code>PR24N.PRG</code>)</figcaption>
 </figure>
 
-## Laserprinter
-
-The printer driver for ATARI laster printers was `PRATL.PRG`. The printer
-driver for HP-LaserJet and compatible printers was `PR30L.PRG`.
-
 ## 9-Needle
 
 The printer driver for 9-needle printers was `PR9N.PRG`.
+
+## Laserprinter
+
+The printer driver for ATARI laster printers was `PRATL.PRG`. The ATARI laser
+printer was connected directly to the ACSI DMA port, so worked somewhat
+differently than a normal printer.
+
+The printer driver for HP-LaserJet and compatible printers was `PR30L.PRG`.
 
 ## Spooler, Premul
 
