@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 11.02.2025
+- `sdo-pdf`: Use `T*` operator for multiple new-lines with the same leading
+- `sdo-pdf`: Produce `FontDescriptor`
+
 ### 08.02.2025
 
 - `sdo-web`: Fixed a bug where a invalid GEMDOS date would cause a panic
