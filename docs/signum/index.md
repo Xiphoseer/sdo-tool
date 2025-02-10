@@ -8,6 +8,7 @@ This section is about *Signum!* in general. This information is not limited to t
 - [Created with Signum!]({{ '/signum/created-with' | relative_url }})
 - [Documents]({{ '/signum/documents' | relative_url }})
 - [Font Modifiers]({{ '/signum/font-modifiers' | relative_url }})
+- [Font Editors]({{ '/signum/font-editors' | relative_url }})
 - [Key Bindings]({{ '/signum/keybindings' | relative_url }})
 - [Printer Drivers]({{ '/signum/printer-drivers' | relative_url }})
 - [Damaged files]({{ '/signum/damaged' | relative_url }})
