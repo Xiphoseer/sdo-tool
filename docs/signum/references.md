@@ -25,7 +25,7 @@ This section lists documents that describe Signum!
 
 ## ASH-Books
 
-Application Systems seems to have been assigned the `9801834` publisher code out of the `9700000-9849999` prefix range
+Application Systems seems to have been assigned the `9801834` publisher code out of the `9700000` to `9849999` prefix range
 ([source](https://www.isbn-international.org/range_file_generation)) of the (`978-`)`3` (german language) ISBN prefix
 for their Atari ST books. This allows for 10 distinct ISBNs in the format `3-9801834-X-Y`, `X` being a sequence number,
 `Y` a check digit.
