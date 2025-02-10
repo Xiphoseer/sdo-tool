@@ -8,7 +8,7 @@ pub mod data;
 mod four_cc;
 mod vfs;
 
-pub use bit_iter::BitIter;
+pub use bit_iter::{BitIter, ByteBits};
 pub(crate) use bit_writer::BitWriter;
 pub use buf::Buf;
 pub use bytes::{Bytes16, Bytes32};
