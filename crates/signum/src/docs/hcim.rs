@@ -108,7 +108,7 @@ impl Hcim<'_> {
     }
 
     /// Decode all images
-    pub fn decode_images(&self) -> Vec<(String, Page)> {
+    pub fn decode_images(&self) -> Vec<ImageEntry> {
         let mut images = Vec::with_capacity(self.header.img_count as usize);
 
         for img in &self.images {
@@ -116,11 +116,17 @@ impl Hcim<'_> {
                 Ok((_imgrest, im)) => {
                     debug!("Found image {:?}", im.key);
                     let page = Page::from(im.image);
-                    images.push((im.key.into_owned(), page));
+                    images.push(ImageEntry {
+                        key: im.key.into_owned(),
+                        image: page,
+                    });
                 }
                 Err(e) => {
                     error!("Error: {}", e);
-                    images.push((String::new(), Page::new(0, 0)));
+                    images.push(ImageEntry {
+                        key: String::new(),
+                        image: Page::new(0, 0),
+                    });
                 }
             }
         }
@@ -136,6 +142,15 @@ pub fn parse_image_buf<'a, E: ParseError<&'a [u8]>>(
     let (input, length2) = be_u32(input)?;
     let (input, buf2) = take((length2 - 4) as usize)(input)?;
     Ok((input, buf2))
+}
+
+/// A simple key-value pair of [String] and [Page]
+#[derive(Clone)]
+pub struct ImageEntry {
+    /// Name of the image
+    pub key: String,
+    /// Image data
+    pub image: Page,
 }
 
 #[derive(Debug)]

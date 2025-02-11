@@ -1,5 +1,7 @@
 use std::{fs::File, io::BufWriter, path::Path};
 
+use crate::cli::opt::Options;
+
 use super::{Document, DocumentInfo};
 use color_eyre::eyre::{self, eyre, OptionExt};
 use log::info;
@@ -17,10 +19,10 @@ pub struct GenCtx<'a> {
 }
 
 impl<'a> GenCtx<'a> {
-    pub fn new(doc: &'a Document<'_>, di: &'a DocumentInfo) -> Self {
+    pub fn new(doc: &'a Document, di: &'a DocumentInfo) -> Self {
         Self {
             di,
-            image_sites: &doc.sites[..],
+            image_sites: doc.image_sites(),
             text_pages: doc.text_pages(),
             pages: &doc.pages[..],
         }
@@ -45,10 +47,9 @@ impl GenerationContext for GenCtx<'_> {
     }
 }
 
-fn doc_meta(doc: &Document) -> eyre::Result<(MetaInfo, Overrides)> {
-    let meta = doc.opt.meta()?;
-    let file_name = doc
-        .opt
+fn doc_meta(opt: &Options) -> eyre::Result<(MetaInfo, Overrides)> {
+    let meta = opt.meta()?;
+    let file_name = opt
         .file
         .file_name()
         .ok_or_eyre("expect file to have name")?;
@@ -62,6 +63,7 @@ fn doc_meta(doc: &Document) -> eyre::Result<(MetaInfo, Overrides)> {
 
 pub fn output_pdf(
     doc: &Document,
+    opt: &Options,
     fc: &ChsetCache,
     di: &DocumentInfo,
     pd: Option<FontKind>,
@@ -70,11 +72,11 @@ pub fn output_pdf(
         FontKind::Printer(pk) => Ok(pk),
         FontKind::Editor => Err(eyre!("Editor fonts are not currently supported")),
     }?;
-    let (meta, overrides) = doc_meta(doc)?;
-    let out_path = doc.opt.out.as_deref();
+    let (meta, overrides) = doc_meta(opt)?;
+    let out_path = opt.out.as_deref();
 
     let pdf = generate_pdf(fc, pk, &meta, &overrides, &GenCtx::new(doc, di))?;
-    handle_out(out_path, &doc.opt.file, pdf)?;
+    handle_out(out_path, &opt.file, pdf)?;
     Ok(())
 }
 

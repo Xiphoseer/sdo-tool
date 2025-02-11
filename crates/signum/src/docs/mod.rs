@@ -2,7 +2,7 @@
 //!
 //! This module contains the datastructures and parsers for reading SDO files.
 
-use hcim::ImageSite;
+use hcim::{ImageEntry, ImageSite};
 use log::info;
 use nom::{
     combinator::map,
@@ -212,19 +212,23 @@ pub struct DocumentInfo {
     /// Information on how to locate the font information in a [crate::chsets::cache::ChsetCache]
     pub fonts: DocumentFontCacheInfo,
     /// Decoded images embedded in the document
-    images: Vec<(String, Page)>,
+    images: Vec<ImageEntry>,
 }
 
 impl DocumentInfo {
     /// Create a new instance
-    pub fn new(fonts: DocumentFontCacheInfo, images: Vec<(String, Page)>) -> Self {
+    pub fn new(fonts: DocumentFontCacheInfo, images: Vec<ImageEntry>) -> Self {
         Self { fonts, images }
     }
 
     /// Get the image associated with the given index
     pub fn image_at(&self, img: u16) -> &Page {
-        let (_, page) = &self.images[img as usize];
-        page
+        &self.images[img as usize].image
+    }
+
+    /// Iterator over all images
+    pub fn images(&self) -> impl Iterator<Item = &ImageEntry> {
+        self.images.iter()
     }
 }
 

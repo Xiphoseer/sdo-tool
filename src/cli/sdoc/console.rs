@@ -12,7 +12,7 @@ use signum::{
     },
 };
 
-use crate::cli::opt::Format;
+use crate::cli::opt::{Format, Options};
 
 use super::Document;
 
@@ -118,31 +118,32 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
 }
 
 pub fn print_line(
-    format: Format,
+    is_html: bool,
+    is_plain: bool,
     print: &DocumentFontCacheInfo,
     fc: &ChsetCache,
     line: &Line,
     skip: u16,
 ) {
-    if line.flags.contains(Flags::FLAG) && format == Format::Html {
+    if line.flags.contains(Flags::FLAG) && is_html {
         println!("<F: {}>", line.extra);
     }
 
-    if line.flags.contains(Flags::PARA) && format == Format::Html {
+    if line.flags.contains(Flags::PARA) && is_html {
         print!("<p>");
     }
 
     print_tebu_data(print, fc, &line.data);
 
-    if line.flags.contains(Flags::ALIG) && format == Format::Html {
+    if line.flags.contains(Flags::ALIG) && is_html {
         print!("<A>");
     }
 
-    if line.flags.contains(Flags::LINE) && format == Format::Html {
+    if line.flags.contains(Flags::LINE) && is_html {
         print!("<br>");
     }
 
-    if format == Format::Plain {
+    if is_plain {
         println!();
     } else {
         println!("{{{}}}", skip);
@@ -225,10 +226,14 @@ fn print_img_sites(sites: &[ImageSite]) {
 
 pub fn output_console(
     doc: &Document,
+    opt: &Options,
     fc: &ChsetCache,
     print: &DocumentFontCacheInfo,
 ) -> eyre::Result<()> {
     print_pages(&doc.pages[..]);
+
+    let is_html = opt.format == Format::Html;
+    let is_plain = opt.format == Format::Plain;
 
     for page_text in &doc.tebu.pages {
         let index = page_text.index as usize;
@@ -238,7 +243,7 @@ pub fn output_console(
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
         for (skip, line) in &page_text.content {
-            print_line(doc.opt.format, print, fc, line, *skip);
+            print_line(is_html, is_plain, print, fc, line, *skip);
         }
         println!(
             "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
@@ -246,8 +251,10 @@ pub fn output_console(
         );
     }
 
-    if !doc.sites.is_empty() {
-        print_img_sites(&doc.sites[..]);
+    if let Some(hcim) = &doc.hcim {
+        if !hcim.sites.is_empty() {
+            print_img_sites(&hcim.sites[..]);
+        }
     }
 
     Ok(())

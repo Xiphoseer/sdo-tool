@@ -31,7 +31,7 @@ impl Contents {
 
         let xmargin = (media_box.width - width as i32) / 2;
         let mut ymargin = (media_box.height - height) / 2;
-        
+
         if ymargin > xmargin {
             ymargin = xmargin; // align to top
         }

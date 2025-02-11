@@ -19,6 +19,7 @@ use super::{scalers::VScaler, trace::Dir, DrawPrintErr};
 /// The width and height are in pixels. The width works best if it is a
 /// multiple of 8. Every u8 in the buffer is represents 8 sequential
 /// pixels in a row where 0 is white (no ink) and 1 is black (ink).
+#[derive(Clone)]
 pub struct Page {
     bytes_per_line: u32,
     width: u32,

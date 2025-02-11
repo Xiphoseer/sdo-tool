@@ -7,18 +7,21 @@ use signum::{
     raster::render_doc_page,
 };
 
+use crate::cli::opt::Options;
+
 use super::{Document, DocumentInfo};
 
 pub fn output_print(
     doc: &Document,
+    opt: &Options,
     fc: &ChsetCache,
     info: &DocumentInfo,
     pd: Option<FontKind>,
 ) -> eyre::Result<()> {
-    let out_path: PathBuf = if let Some(path) = &doc.opt.out {
+    let out_path: PathBuf = if let Some(path) = &opt.out {
         path.clone()
     } else {
-        let dir = doc.opt.file.with_extension("sdo.out");
+        let dir = opt.file.with_extension("sdo.out");
         std::fs::create_dir(&dir)?;
         dir
     };
@@ -29,12 +32,12 @@ pub fn output_print(
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
         println!("{}", page_text.skip);
-        if let Some(pages) = &doc.opt.page {
+        if let Some(pages) = &opt.page {
             if !pages.contains(&(pbuf_entry.log_pnr as usize)) {
                 continue;
             }
         }
-        let page = render_doc_page(page_text, pbuf_entry, &doc.sites, info, pd, fc);
+        let page = render_doc_page(page_text, pbuf_entry, doc.image_sites(), info, pd, fc);
         let image = page.to_image();
         let file_name = format!("page-{}.png", pbuf_entry.log_pnr);
         println!("Saving {}", file_name);
