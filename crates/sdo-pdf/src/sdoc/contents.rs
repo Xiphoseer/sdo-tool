@@ -30,7 +30,11 @@ impl Contents {
         assert!(width as i32 <= media_box.width, "Please file a bug!");
 
         let xmargin = (media_box.width - width as i32) / 2;
-        let ymargin = (media_box.height - height) / 2;
+        let mut ymargin = (media_box.height - height) / 2;
+        
+        if ymargin > xmargin {
+            ymargin = xmargin; // align to top
+        }
 
         let left = {
             let left = xmargin as f32 + overrides.xoffset as f32;
