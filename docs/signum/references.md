@@ -9,6 +9,7 @@ This section lists documents that describe Signum!
 - [Desktop Publishing mit SIGNUM!Zwei (ST-Computer 04/1989)](https://www.stcarchiv.de/stc1989/04/desktop-publishing-mit-signum-zwei)
 - [Erste Erfahrungen mit SIGNUM! Zwei – Praxisbericht eines doktorierenden Philologen (ST-Computer 12/1989)](https://www.stcarchiv.de/stc1989/12/erfahrungen-mit-signum-zwei)
 - [7 auf einen Streich: Zusatzprogramme zu Signum (TOS 09/1990)](https://www.stcarchiv.de/tos1990/09/signum-tools)
+- [Signum! -- SAP-perlott! (ST-Magazin 11/1990)](https://www.stcarchiv.de/stm1990/11/st-aktuell)
 - [Die SDO-Kollektion: For SDO only! (ST-Computer 01/1992)](https://www.stcarchiv.de/stc1992/01/sdo-kollektion)
 - [Wer den Atari ST kennt, kennt Signum (TOS 02/1992)](https://www.stcarchiv.de/tos1992/02/signum-interview)
 - [Pirx kommt: Signum!3 im Test (TOS 02/1992)](https://www.stcarchiv.de/tos1992/02/signum3-im-test)
