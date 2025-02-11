@@ -151,33 +151,23 @@ fn te<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Char, E
         let (input, extra) = be_u16(input)?;
         let offset = extra & 0x07ff;
 
-        let underlined = val & 0x20 > 0;
-        let footnote = val & 0x02 > 0;
         let cset = cset | (((val & 0x01) as u8) << 2);
-
-        let sth1 = extra & 0x8000 > 0;
-        let bold = extra & 0x4000 > 0;
-        let italic = extra & 0x2000 > 0;
-        let sth2 = extra & 0x1000 > 0;
-        let small = extra & 0x0800 > 0;
-
-        Ok((
-            input,
-            Char {
-                cval,
-                cset,
-                offset,
-                style: Style {
-                    underlined,
-                    footnote,
-                    wide: sth1,
-                    bold,
-                    italic,
-                    tall: sth2,
-                    small,
-                },
-            },
-        ))
+        let style = Style {
+            underlined: val & 0x20 > 0,
+            footnote: val & 0x02 > 0,
+            wide: extra & 0x8000 > 0,
+            bold: extra & 0x4000 > 0,
+            italic: extra & 0x2000 > 0,
+            tall: extra & 0x1000 > 0,
+            small: extra & 0x0800 > 0,
+        };
+        let char = Char {
+            cval,
+            cset,
+            offset,
+            style,
+        };
+        Ok((input, char))
     }
 }
 
