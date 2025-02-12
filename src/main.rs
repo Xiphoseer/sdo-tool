@@ -3,6 +3,7 @@
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre, WrapErr};
+use env_logger::Env;
 use log::{error, info, LevelFilter};
 use sdo_tool::cli::{
     bimc::process_bimc,
@@ -18,9 +19,10 @@ use std::{
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    env_logger::builder()
-        .format_timestamp(None)
+    env_logger::Builder::new()
         .filter_level(LevelFilter::Info)
+        .format_timestamp(None)
+        .parse_env(Env::new().filter("SDO_TOOL_LOG"))
         .init();
     let opt = Options::parse();
     let file_res = File::open(&opt.file);
