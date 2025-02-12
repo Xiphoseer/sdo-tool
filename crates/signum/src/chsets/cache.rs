@@ -53,6 +53,9 @@ async fn find_font_file<FS: VFS>(
         if let Ok(de) = entry {
             let subfolder = fs.dir_entry_path(&de);
             if fs.is_dir(&subfolder).await {
+                if subfolder.file_name().is_some_and(|p| p == ".git") {
+                    continue;
+                }
                 // Note: need to box the future here because this is async recursion.
                 let fut = Box::pin(find_font_file(fs, &subfolder, name, extension));
                 if let Some(path) = fut.await {
