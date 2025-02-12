@@ -10,7 +10,7 @@ prettytable-rs = { version = "0.10", default-features = false }
 clap = { version = "3.1", features = ["derive"] }
 log = "0.4"
 env_logger = { version = "0.8.4", default-features = false }
-bitflags = "1.3"
+bitflags = "2.8"
 thiserror = "1.0"
 nom-supreme = "0.8"
 ccitt-t4-t6 = { path = "crates/ccitt" }

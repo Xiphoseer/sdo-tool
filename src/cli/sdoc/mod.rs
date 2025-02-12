@@ -68,7 +68,7 @@ impl Document {
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
         info!("Loading 'sysp' chunk");
         let sysp = util::load_chunk::<SysP>(part.0)?;
-        debug!("{:?}", sysp);
+        debug!("{:#?}", sysp);
         self.sysp = Some(sysp);
         Ok(())
     }

@@ -182,7 +182,7 @@ pub struct LineBuf<'a> {
 
 bitflags! {
     /// The flags that of a line
-    #[derive(Serialize)]
+    #[derive(Serialize, Debug)]
     #[serde(transparent)]
     pub struct Flags: u16 {
         /// ???

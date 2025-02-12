@@ -29,13 +29,68 @@ pub struct SysP {
     /// Page length in editor units
     pub page_length: u16,
     /// Page numbering options
-    pub page_numbering: Bytes16,
+    pub page_numbering: PageNumbering,
     /// More layout options
     pub format_options: Bytes16,
 
     _opts_2: Bytes16,
     _opts_3: Bytes16,
     _opts_4: Bytes32,
+}
+
+/// Position of the page number
+#[repr(u8)]
+#[derive(Debug, Serialize, Copy, Clone, PartialEq, Eq)]
+pub enum PageNumberPosition {
+    #[doc(hidden)]
+    _Invalid0 = 0,
+    /// 0xC800 => 0b11001 => links
+    Left = 1,
+    /// 0xD000 => 0b11010 => mitte
+    Middle = 2,
+    /// 0xD800 => 0b11011 => rechts
+    Right = 3,
+    /// 0xE000 => 0b11100 => gerade
+    Even = 4,
+    /// 0xE800 => 0b11101 => ungerade
+    Odd = 5,
+    #[doc(hidden)]
+    _Invalid6 = 6,
+    #[doc(hidden)]
+    _Invalid7 = 7,
+}
+
+impl PageNumberPosition {
+    fn from_bits(input: u16) -> Self {
+        unsafe { std::mem::transmute((input >> 11 & 0b111) as u8) }
+    }
+}
+
+/// Whether the number is at the top or bottom of a page
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub enum PageNumberVertical {
+    /// Numbering at the top
+    Top,
+    /// Numbering at the bottom
+    Bottom,
+}
+
+impl PageNumberVertical {
+    fn from_bits(value: u16) -> Self {
+        match value & 0x4000 {
+            0x4000 => Self::Top,
+            _ => Self::Bottom,
+        }
+    }
+}
+
+/// Information on page numbering
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct PageNumbering {
+    enabled: bool,
+    pos_y: PageNumberVertical,
+    pos_x: PageNumberPosition,
+    chset: u8,
 }
 
 /// Parse the `sysp` chunk
@@ -70,7 +125,12 @@ pub fn parse_sysp<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
             header,
             footer,
             page_length,
-            page_numbering,
+            page_numbering: PageNumbering {
+                enabled: page_numbering.0 & 0x8000 > 0,
+                pos_y: PageNumberVertical::from_bits(page_numbering.0),
+                pos_x: PageNumberPosition::from_bits(page_numbering.0),
+                chset: (page_numbering.0 & 0b1111) as u8,
+            },
             format_options,
             _opts_2: opts_2,
             _opts_3: opts_3,

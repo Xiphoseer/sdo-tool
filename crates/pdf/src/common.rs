@@ -127,6 +127,7 @@ impl Serialize for FontStretch {
 
 bitflags::bitflags! {
     /// Font flags specifying various characteristics of the font.
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct FontFlags: u32 {
         /// All glyphs have the same width (as opposed to proportional or
         /// variable-pitch fonts, which have different widths)
@@ -169,7 +170,7 @@ impl Default for FontFlags {
 
 impl Serialize for FontFlags {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
-        self.bits.write(f)
+        self.bits().write(f)
     }
 }
 

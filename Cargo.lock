@@ -180,6 +180,9 @@ name = "bitflags"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "block-buffer"
@@ -991,7 +994,7 @@ checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
 name = "pcf"
 version = "0.1.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.8.0",
  "clap 3.2.25",
  "color-eyre 0.5.11",
  "nom",
@@ -1031,7 +1034,7 @@ dependencies = [
 name = "pdf-create"
 version = "0.3.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.8.0",
  "ccitt-t4-t6",
  "chrono",
  "color-eyre 0.5.11",
@@ -1198,7 +1201,7 @@ dependencies = [
 name = "sdo-tool"
 version = "0.3.2"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.8.0",
  "ccitt-t4-t6",
  "clap 3.2.25",
  "color-eyre 0.6.3",
@@ -1300,7 +1303,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 name = "signum"
 version = "0.3.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.8.0",
  "bstr",
  "chrono",
  "clap 3.2.25",
@@ -1410,7 +1413,7 @@ dependencies = [
 name = "texfonts"
 version = "0.1.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.8.0",
  "clap 3.2.25",
  "color-eyre 0.5.11",
  "nom",
