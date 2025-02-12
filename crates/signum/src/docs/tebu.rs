@@ -351,7 +351,7 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
             //panic!("This is an unknown case, please send in this document for investigation.")
         }
 
-        assert_eq!(line.extra, index);
+        assert_eq!(line.extra, index); // FIXME: panic
         return iter.finish().map(|(rest, ())| {
             let text = PageText {
                 index,
@@ -371,7 +371,7 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
 
 /// Parse a `tebu` chunk
 pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], TeBu, E> {
-    let (input, header) = parse_tebu_header(input)?;
+    let (mut input, header) = parse_tebu_header(input)?;
     let mut pages = Vec::new();
     let mut it = iterator(input, parse_page_text::<VerboseError<&[u8]>>);
     for i in &mut it {
@@ -379,12 +379,11 @@ pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
     }
     match it.finish() {
         Ok((rest, ())) => {
-            if !rest.is_empty() {
-                info!("{} bytes remaining in tebu", rest.len());
-            }
+            input = rest;
         }
         Err(e) => {
             error!("Failed to parse: {}", e);
+            // FIXME: bubble up?
         }
     }
     info!("Parsed {} pages", pages.len());
