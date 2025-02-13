@@ -213,6 +213,20 @@ fn write_pdf_page_images<GC: GenerationContext>(
     has_images
 }
 
+/// Select a suitable media box
+fn select_media_box(page_info: &pbuf::Page) -> MediaBox {
+    let page_format = &page_info.format;
+    let width = page_format.width() as i32 * 72 / 90;
+    let height = page_format.length as i32 * 72 / 54;
+    if width <= MediaBox::A4.width && height <= MediaBox::A4.height {
+        MediaBox::A4
+    } else if width <= MediaBox::A4_LANDSCAPE.width && height <= MediaBox::A4_LANDSCAPE.height {
+        MediaBox::A4_LANDSCAPE
+    } else {
+        MediaBox { width, height }
+    }
+}
+
 /// Generate a single PDF page
 pub fn generate_pdf_page<GC: GenerationContext>(
     gc: &GC,
@@ -223,7 +237,7 @@ pub fn generate_pdf_page<GC: GenerationContext>(
     page_info: &pbuf::Page,
     res: &mut Res<'_>,
 ) -> Result<Page<'static>, Error> {
-    let media_box = MediaBox::A4;
+    let media_box = select_media_box(page_info);
     let mut x_objects = DictResource::<XObject>::new();
 
     let has_images: bool;

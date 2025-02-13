@@ -497,11 +497,22 @@ pub struct MediaBox {
 }
 
 impl MediaBox {
-    /// An A4 Media Box
+    /// An A4 (portrait) Media Box
     pub const A4: Self = Self {
         width: 592,
         height: 842,
     };
+
+    /// An A4 (landscape) Media Box
+    pub const A4_LANDSCAPE: Self = Self::A4.rotate_90();
+
+    /// Rotate the media box 90 degrees
+    pub const fn rotate_90(self) -> Self {
+        Self {
+            width: self.height,
+            height: self.width,
+        }
+    }
 }
 
 impl From<MediaBox> for Rectangle<i32> {
