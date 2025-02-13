@@ -134,7 +134,7 @@ pub struct PSet<'a> {
     pub chars: Vec<PSetChar<'a>>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 /// A single printer character
 pub struct PSetChar<'a> {
     /// The distance to the top of the line box

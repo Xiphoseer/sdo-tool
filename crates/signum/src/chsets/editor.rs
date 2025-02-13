@@ -71,7 +71,7 @@ impl OwnedESet {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// A single editor charset character
 pub struct EChar<'a> {
     /// The width of the glyph (in document coordinates)

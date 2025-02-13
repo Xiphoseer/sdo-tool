@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 13.02.2025
+
+- `signum`: Add `sigfontdiff` example binary
+
 ### 11.02.2025
 - `sdo-pdf`: Use `T*` operator for multiple new-lines with the same leading
 - `sdo-pdf`: Produce `FontDescriptor`
