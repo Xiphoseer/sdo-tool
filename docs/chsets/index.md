@@ -10,6 +10,11 @@ These character sets were identified by a filename without the
 extension (e.g. `ANTIKRO`), which was used to find the correspoding
 editor (`E24`) and printer (`P24`, `P09`, `L30`) font files.
 
+<figure>
+<img src="{% link /img/chset-config.png %}">
+<figcaption>Character Sets / Zeichensätze <code>SIGNUM2.PRG</code></figcaption>
+</figure>
+
 See also: [E24 Font Format]({{ 'formats/eset' | relative_url}})
 
 ## Key codes
