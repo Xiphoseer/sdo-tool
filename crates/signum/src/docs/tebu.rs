@@ -293,6 +293,7 @@ fn parse_page_start_line<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
 ) -> IResult<&'a [u8], (u16, u16), E> {
     map_res::<_, _, _, nom::error::Error<&'a [u8]>, _, _, _>(parse_buffered_line, |(a, l)| {
+        log::debug!("START [skip={}] {:?} [extra={}]", a, l.flags, l.extra);
         if l.flags.contains(Flags::PAGE & Flags::PNEW) {
             Ok((a, l.extra))
         } else {
@@ -342,6 +343,7 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
 
     let mut content = vec![];
     for (skip, line) in &mut iter {
+        log::debug!("[skip={}] {:?} [extra={}]", skip, line.flags, line.extra);
         if !line.flags.contains(Flags::PAGE) {
             content.push((skip, line));
             continue;
@@ -351,7 +353,10 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
             //panic!("This is an unknown case, please send in this document for investigation.")
         }
 
-        assert_eq!(line.extra, index); // FIXME: panic
+        if line.extra != index {
+            let (rest, ()) = iter.finish()?;
+            panic!("Broken text buffer: {} != {} [bytes remaining={}]", line.extra, index, rest.len());
+        }
         return iter.finish().map(|(rest, ())| {
             let text = PageText {
                 index,
