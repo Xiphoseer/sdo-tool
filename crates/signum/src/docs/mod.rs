@@ -6,7 +6,7 @@ use hcim::{ImageEntry, ImageSite};
 use log::info;
 use nom::{
     combinator::map,
-    error::ParseError,
+    error::{ContextError, ParseError},
     number::complete::{be_u16, be_u32, le_u32},
     Finish, IResult,
 };
@@ -190,7 +190,7 @@ pub trait Chunk<'a>: Sized {
     /// The [`nom`] parser for this chunk
     fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
     where
-        E: ParseError<&'a [u8]>;
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>;
 
     /// Unpack a chunk into its typed version
     fn unpack(chunk: container::Chunk<'a>) -> Result<Self, Error> {

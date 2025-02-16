@@ -1,9 +1,10 @@
 //! # (`tebu`) The text buffer
 use bitflags::bitflags;
-use log::{error, info};
+use bstr::ByteSlice;
+use log::info;
 use nom::{
-    combinator::{iterator, map_parser, map_res},
-    error::{ErrorKind, ParseError, VerboseError},
+    combinator::{iterator, map_parser, map_res, verify},
+    error::{context, ContextError, ErrorKind, ParseError},
     multi::{length_data, many0},
     number::complete::{be_u16, be_u32},
     sequence::tuple,
@@ -223,6 +224,7 @@ bitflags! {
 #[derive(Debug, Serialize)]
 /// Structure that holds a parsed line
 pub struct Line {
+    len: usize,
     /// The flags for the line
     pub flags: Flags,
     /// The extra value (usually page number)
@@ -233,6 +235,7 @@ pub struct Line {
 
 /// Parse a line from its buffer
 pub fn parse_line<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Line, E> {
+    let len = input.len();
     let (input, bits) = bytes16(input)?;
     let flags = Flags::from_bits(bits.0).expect("Unknown flags");
 
@@ -245,6 +248,7 @@ pub fn parse_line<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
         Ok((
             input,
             Line {
+                len,
                 flags,
                 extra: pnum,
                 data: vec![],
@@ -260,6 +264,7 @@ pub fn parse_line<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
         Ok((
             input,
             Line {
+                len,
                 flags,
                 extra,
                 data: text,
@@ -286,14 +291,17 @@ fn parse_line_buf<'a, E: ParseError<&'a [u8]>>(
 fn parse_buffered_line<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
 ) -> IResult<&'a [u8], (u16, Line), E> {
-    tuple((be_u16, map_parser(length_data(be_u16), parse_line)))(input)
+    tuple((
+        be_u16,
+        map_parser(length_data(verify(be_u16, |l| *l < 0x8000)), parse_line),
+    ))(input)
 }
 
 fn parse_page_start_line<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
 ) -> IResult<&'a [u8], (u16, u16), E> {
     map_res::<_, _, _, nom::error::Error<&'a [u8]>, _, _, _>(parse_buffered_line, |(a, l)| {
-        log::debug!("START [skip={}] {:?} [extra={}]", a, l.flags, l.extra);
+        log::trace!("START [skip={}] {:?} [extra={}]", a, l.flags, l.extra);
         if l.flags.contains(Flags::PAGE & Flags::PNEW) {
             Ok((a, l.extra))
         } else {
@@ -338,24 +346,47 @@ impl From<&[PageText]> for UseMatrix {
 pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
     input: &'a [u8],
 ) -> IResult<&'a [u8], PageText, E> {
+    log::trace!("{:?} of {}", &input[..4], input.len());
+    if input.len() == 4 {
+        // no more pages
+        return Err(nom::Err::Error(E::from_error_kind(
+            input,
+            ErrorKind::Verify,
+        )));
+    }
     let (input, (lskip, index)) = parse_page_start_line(input)?;
     let mut iter = iterator(input, parse_buffered_line);
 
     let mut content = vec![];
-    for (skip, line) in &mut iter {
-        log::debug!("[skip={}] {:?} [extra={}]", skip, line.flags, line.extra);
+    while let Some((skip, line)) = (&mut iter).next() {
+        log::trace!(
+            "[skip=0x{:04x}] {:?} [extra={}, len={}]",
+            skip,
+            line.flags,
+            line.extra,
+            line.len,
+        );
         if !line.flags.contains(Flags::PAGE) {
             content.push((skip, line));
             continue;
         }
 
         if !line.flags.contains(Flags::PEND) {
-            //panic!("This is an unknown case, please send in this document for investigation.")
+            log::warn!(
+                "Broken text buffer, please send in this document for investigation. (len = {})",
+                line.data.len()
+            );
+            break;
         }
 
         if line.extra != index {
             let (rest, ()) = iter.finish()?;
-            panic!("Broken text buffer: {} != {} [bytes remaining={}]", line.extra, index, rest.len());
+            panic!(
+                "Broken text buffer: {} != {} [bytes remaining={}]",
+                line.extra,
+                index,
+                rest.len()
+            );
         }
         return iter.finish().map(|(rest, ())| {
             let text = PageText {
@@ -369,16 +400,58 @@ pub fn parse_page_text<'a, E: ParseError<&'a [u8]>>(
     }
 
     match iter.finish() {
-        Ok((rest, ())) => Err(nom::Err::Failure(E::from_error_kind(rest, ErrorKind::Eof))),
+        Ok((rest, ())) => {
+            let diff = input.len() - rest.len();
+            log::warn!(
+                "Trying to recover: input={}, rest={}, diff={}",
+                input.len(),
+                rest.len(),
+                diff
+            );
+            recover_page(lskip, index, content, input)
+        }
         Err(e) => Err(e),
     }
 }
 
+fn recover_page<'a, E: ParseError<&'a [u8]>>(
+    lskip: u16,
+    index: u16,
+    content: Vec<(u16, Line)>,
+    rest: &'a [u8],
+) -> IResult<&'a [u8], PageText, E> {
+    // We left the loop without finding a PAGE END flag, try to recover
+    let pnum = index.to_be_bytes();
+    let ahead = rest.get(..6096).unwrap_or(rest);
+    let offset = ahead.find([0xA0, 0x80, pnum[0], pnum[1]]);
+    if let Some(offset) = offset {
+        log::warn!("Invalid page, but found end marker at +{}", offset);
+        let rest = &rest[(offset - 4)..];
+        let (rest, (rskip, end_line)) = parse_buffered_line::<nom::error::Error<_>>(rest)
+            .expect("expected page end line at marker");
+        log::debug!("{:?}", end_line);
+        Ok((
+            rest,
+            PageText {
+                index,
+                skip: lskip,
+                rskip,
+                content,
+            },
+        ))
+    } else {
+        Err(nom::Err::Failure(E::from_error_kind(rest, ErrorKind::Tag)))
+    }
+}
+
 /// Parse a `tebu` chunk
-pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], TeBu, E> {
-    let (mut input, header) = parse_tebu_header(input)?;
+pub fn parse_tebu<'a, E>(input: &'a [u8]) -> IResult<&'a [u8], TeBu, E>
+where
+    E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+{
+    let (mut input, header) = context("tebu_header", parse_tebu_header)(input)?;
     let mut pages = Vec::new();
-    let mut it = iterator(input, parse_page_text::<VerboseError<&[u8]>>);
+    let mut it = iterator(input, context("page_text", parse_page_text));
     for i in &mut it {
         pages.push(i);
     }
@@ -386,10 +459,11 @@ pub fn parse_tebu<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [
         Ok((rest, ())) => {
             input = rest;
         }
-        Err(e) => {
-            error!("Failed to parse: {}", e);
-            // FIXME: bubble up?
-        }
+        Err(e) => match e {
+            nom::Err::Incomplete(needed) => panic!("Incomplete: {:?}", needed),
+            nom::Err::Error(e) => return Err(nom::Err::Error(e)),
+            nom::Err::Failure(e) => return Err(nom::Err::Failure(e)),
+        },
     }
     info!("Parsed {} pages", pages.len());
 
@@ -401,8 +475,8 @@ impl<'a> super::Chunk<'a> for TeBu {
 
     fn parse<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
     where
-        E: nom::error::ParseError<&'a [u8]>,
+        E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>,
     {
-        parse_tebu(input)
+        context("tebu", parse_tebu)(input)
     }
 }
