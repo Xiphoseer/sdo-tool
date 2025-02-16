@@ -25,6 +25,7 @@ struct HtmlGen<'a> {
     par: bool,
     protected: bool,
     skip: u16,
+    space_width: u16,
 }
 
 impl<'a> HtmlGen<'a> {
@@ -35,6 +36,7 @@ impl<'a> HtmlGen<'a> {
         print: &'a DocumentFontCacheInfo,
     ) -> Result<Self, fmt::Error> {
         let file_name = path.file_name().unwrap().to_string_lossy();
+        let space_width = doc.sysp.as_ref().map(|sysp| sysp.space_width).unwrap_or(7);
         let mut out = String::new();
         writeln!(out, "<!DOCTYPE html>")?;
         writeln!(out, "<html>")?;
@@ -71,6 +73,7 @@ impl<'a> HtmlGen<'a> {
             par: false,
             skip: 0,
             protected: false,
+            space_width
         })
     }
 
@@ -125,8 +128,8 @@ impl<'a> HtmlGen<'a> {
 
                 while space > 2 {
                     write!(self.out, " ")?;
-                    if space >= 7 {
-                        space -= 7;
+                    if space >= self.space_width {
+                        space -= self.space_width;
                     } else {
                         space = 0;
                     }

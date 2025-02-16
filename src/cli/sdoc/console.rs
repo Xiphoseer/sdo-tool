@@ -16,7 +16,12 @@ use crate::cli::opt::{Format, Options};
 
 use super::Document;
 
-fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]) {
+fn print_tebu_data(
+    print: &DocumentFontCacheInfo,
+    fc: &ChsetCache,
+    data: &[Char],
+    space_width: u16,
+) {
     let mut last_char_width: u8 = 0;
     let mut style = Style::default();
 
@@ -37,11 +42,11 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
         }
         if !k.style.tall && style.tall {
             style.tall = false;
-            print!("</sth2>");
+            print!("</tall>");
         }
         if !k.style.wide && style.wide {
             style.wide = false;
-            print!("</sth1>");
+            print!("</wide>");
         }
         if !k.style.small && style.small {
             style.small = false;
@@ -52,9 +57,13 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
         if k.offset >= lcw {
             let mut space = k.offset - lcw;
 
-            while space >= 7 {
+            while space > 2 {
                 print!(" ");
-                space -= 7;
+                if space >= space_width {
+                    space -= space_width;
+                } else {
+                    space = 0;
+                }
             }
         }
 
@@ -67,11 +76,11 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
         }
         if k.style.wide && !style.wide {
             style.wide = true;
-            print!("<sth1>");
+            print!("<wide>");
         }
         if k.style.tall && !style.tall {
             style.tall = true;
-            print!("<sth2>");
+            print!("<tall>");
         }
         if k.style.italic && !style.italic {
             style.italic = true;
@@ -89,6 +98,9 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
             antikro::WIDTH[k.cval as usize]
         };
         last_char_width = if chr == '\n' { 0 } else { width };
+        if k.style.wide {
+            last_char_width *= 2;
+        }
         if (0xE000..=0xE080).contains(&(chr as u32)) {
             print!("<C{}>", (chr as u32) - 0xE000);
         } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
@@ -107,10 +119,10 @@ fn print_tebu_data(print: &DocumentFontCacheInfo, fc: &ChsetCache, data: &[Char]
         print!("</i>");
     }
     if style.tall {
-        print!("</sth2>");
+        print!("</tall>");
     }
     if style.wide {
-        print!("</sth1>");
+        print!("</wide>");
     }
     if style.small {
         print!("</small>");
@@ -124,6 +136,7 @@ pub fn print_line(
     fc: &ChsetCache,
     line: &Line,
     skip: u16,
+    space_width: u16,
 ) {
     if line.flags.contains(Flags::FLAG) && is_html {
         println!("<F: {}>", line.extra);
@@ -133,7 +146,7 @@ pub fn print_line(
         print!("<p>");
     }
 
-    print_tebu_data(print, fc, &line.data);
+    print_tebu_data(print, fc, &line.data, space_width);
 
     if line.flags.contains(Flags::ALIG) && is_html {
         print!("<A>");
@@ -235,6 +248,8 @@ pub fn output_console(
     let is_html = opt.format == Format::Html;
     let is_plain = opt.format == Format::Plain;
 
+    let space_width = doc.sysp.as_ref().map(|sysp| sysp.space_width).unwrap_or(7);
+
     for page_text in &doc.tebu.pages {
         let index = page_text.index as usize;
         let pbuf_entry = doc.pages[index].as_ref().unwrap();
@@ -243,7 +258,7 @@ pub fn output_console(
             page_text.skip, pbuf_entry.log_pnr, pbuf_entry.phys_pnr
         );
         for (skip, line) in &page_text.content {
-            print_line(is_html, is_plain, print, fc, line, *skip);
+            print_line(is_html, is_plain, print, fc, line, *skip, space_width);
         }
         println!(
             "{:04X} -------------- [END OF PAGE {} ({})] ---------------",
