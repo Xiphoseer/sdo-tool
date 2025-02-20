@@ -38,11 +38,9 @@ fn write_pdf_page_text<O: io::Write>(
         contents.next_line(0, *skip as u32 + 1);
 
         // How far we've drawn
-        let mut cursor_a: u32 = 0;
+        let mut pdf_page_cursor: u32 = 0;
 
         for (cx, te) in line.characters() {
-            //let offset = te.offset as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
-
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
             let is_small = te.style.small;
@@ -79,13 +77,13 @@ fn write_pdf_page_text<O: io::Write>(
             contents.cset(te.cset, font_size).map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
 
-            let next_x_sig = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
-            let diff = next_x_sig - cursor_a;
+            let cx_pdf = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
+            let diff = cx_pdf - pdf_page_cursor;
             if diff != 0 {
                 let xoff = -(diff as i32 * DEFAULT_FONT_SIZE);
                 contents.xoff(xoff).map_err(Error::Contents)?;
             }
-            cursor_a += diff;
+            pdf_page_cursor += diff;
 
             // Note: slant has to be _after_ x-offset adjustment
             contents.slant(te.style.italic).map_err(Error::Contents)?;
@@ -93,7 +91,7 @@ fn write_pdf_page_text<O: io::Write>(
             contents
                 .byte(te.cval, byte_width)
                 .map_err(Error::Contents)?;
-            cursor_a += width;
+            pdf_page_cursor += width;
         }
 
         contents.flush().map_err(Error::Contents)?;
