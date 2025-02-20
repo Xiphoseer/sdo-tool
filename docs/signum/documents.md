@@ -24,9 +24,9 @@ area and the footer. If the footnote feature of Signum!2 was used, the
 footer area would expand with the footnotes.
 
 The page content is placed on a relatively granular grid, with different
-vertical and horizontal resolution. Every unit of vertical resolution (line)
-represents 1/54 of an inch, every unit of horizontal resolution (microstep)
-represents 1/90 of an inch.
+vertical and horizontal resolution. Every unit of vertical resolution
+(raster-line) represents 1/54 of an inch, every unit of horizontal
+resolution (microstep) represents 1/90 of an inch.
 
 A line could have a maximum of 250 characters in *Signum!2* or 182 characters
 in *Signum!1*[^1]. Characters are stored with their [font-modifiers](./font-modifiers.md),
@@ -58,8 +58,13 @@ vertical and horizontal units is easily compensated for.
 Some *lines* were designated as the start of a **paragraph**, which enabled
 all the lines of that paragraph to be selected and moved as a unit.
 
-Some lines were marked as *main lines* (as opposed to *index lines*), which
-were introduced by pressing <kbd>&#x23CE;</kbd>.
+Some lines were marked as *main lines*, indicating that they were on the
+baseline of regular text. The *main line distance* thus effectively defined
+the *leading* of the text, i.e. the distance between consecutive baselines.
+
+Each *main line* had an *area of influence* around it based on the
+*index line distance* d<sub>index</sub>. Any raster-line within that distance
+of a main line was affected by insert and delete operations on that line.[^2]
 
 Some lines were marked as **formulas**, as a means to not affect them when
 running text-reflows around them.
@@ -78,3 +83,5 @@ document, starting at the cursor, was to be affected by formatting operations.
     <img src="../img/working-area.png">
     <figcaption>Working Area (<code>SIGNUM2.PRG</code>)</figcaption>
 </figure>
+
+[^2]: Sigum!2 Handbuch - III 5.1.1 Wirkungsbereich

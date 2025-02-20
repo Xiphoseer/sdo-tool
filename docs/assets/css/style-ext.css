@@ -32,6 +32,11 @@ sup {
     font-size: 0.8em;
 }
 
+sub {
+    vertical-align: bottom;
+    font-size: 0.8em;
+}
+
 code {
     font-family: "AES Menu";
 }
