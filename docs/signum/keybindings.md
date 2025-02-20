@@ -132,6 +132,7 @@ of *Das Signum! Buch* (see [ASH-Books](/signum/references#ash-books)).
 | <kbd>ESC</kbd><kbd>K</kbd> | Unsets the *small* ("Klein") [font-modifier] |
 | <kbd>ESC</kbd><kbd>n</kbd> | Mark a *footnote* (with cursor on a number) |
 | <kbd>ESC</kbd><kbd>4</kbd><kbd>A</kbd> | Insert a single character (e.g. `A`) from another font (e.g. the 4th one) |
+| <kbd>ESC</kbd><kbd>s</kbd><kbd>0</kbd><kbd>1</kbd><kbd>5</kbd> | Go to page *nnn* (any 3 digit number, e.g. `015`) |
 | <kbd>ESC</kbd><kbd>t</kbd> | Set the *text attribute* |
 | <kbd>ESC</kbd><kbd>T</kbd> | Unset the *text attribute* |
 | <kbd>ESC</kbd><kbd>u</kbd> | Sets the *underlined* ("-----") [font-modifier] |
