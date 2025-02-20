@@ -45,6 +45,31 @@ additionally mark the new line with the **paragraph** attribute.
 When *indent to cursor* was activated, SIGNUM would remember the horizontal
 offset of the current cursor position and use that for all subsequent line feeds.
 
+## Insert & Delete
+
+<kbd>INS</kbd>, <kbd>DEL</kbd>, <kbd>SPACE</kbd>, and <kbd>&#9003;</kbd> were used to
+insert whitespace and delete characters. The first two are *simple* in that they don't
+trigger any *writing mode* logic.
+
+| Sequence | Effect |
+|---|---|
+| <kbd>INS</kbd> | insert one *space width* after the cursor, moving the rest of the line right |
+| <kbd>CTRL</kbd><kbd>INS</kbd> | insert 3/90 inch space after the cursor, moving the rest of the line right |
+| <kbd>SHIFT</kbd><kbd>INS</kbd> | insert 1/90 inch space after the cursor, moving the rest of the line right |
+| <kbd>DEL</kbd> | delete one *space width* after the cursor, moving the rest of the line left |
+| <kbd>CTRL</kbd><kbd>DEL</kbd> | delete 3/90 inch space after the cursor, moving the rest of the line left |
+| <kbd>SHIFT</kbd><kbd>DEL</kbd> | delete 1/90 inch space after the cursor, moving the rest of the line left |
+| <kbd>SPACE</kbd> | insert one *space width* at the cursor, moving it and the rest of the line right |
+| <kbd>CTRL</kbd><kbd>SPACE</kbd> | insert 3/90 inch space at the cursor, moving it and the rest of the line right |
+| <kbd>SHIFT</kbd><kbd>SPACE</kbd> | insert 1/90 inch space at the cursor, moving it and the rest of the line right |
+| <kbd>&#9003;</kbd> | delete one *space width* before the cursor, moving it and the rest of the line left |
+| <kbd>CTRL</kbd><kbd>&#9003;</kbd> | delete 3/90 inch space before the cursor, moving it and the rest of the line left |
+| <kbd>SHIFT</kbd><kbd>&#9003;</kbd> | delete 1/90 inch space before the cursor, moving it and the rest of the line left |
+
+In case of the **wide** [font-modifier], <kbd>SPACE</kbd> creates a space with double the width.
+If, upon processing a <kbd>&#9003;</kbd>, Signum encounters a character, the cursor stops at its position
+and deletes it.
+
 ## Cursor Position
 
 The arrow keys (<kbd>&rarr;</kbd>, <kbd>&larr;</kbd>, <kbd>&uarr;</kbd>, <kbd>&darr;</kbd>)
