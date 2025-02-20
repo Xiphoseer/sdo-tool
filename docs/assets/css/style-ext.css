@@ -23,6 +23,10 @@ p, li {
     src: url("../font/ANTIKRO.ttf");
 }
 
+kbd {
+    font-family: sans-serif;
+}
+
 sup {
     vertical-align: top;
     font-size: 0.8em;

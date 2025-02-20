@@ -4,6 +4,91 @@ Almost all features of signum were available using key bindings or keyboard
 shortcuts. This allowed complex interactions to be recorded, saved and re-used
 as keyboard macros.
 
+## Writing Mode
+
+The behavior of writing "normal" text depends on the *writing mode* settings in the
+*functions* menu:
+
+<figure>
+<img src="{% link /img/writing-mode.png %}">
+<figcaption>"Funktionen" / "Schreibmodi:" (<code>SIGNUM2.PRG</code>)</figcaption>
+</figure>
+
+### Automatic Insertion
+
+When *automatic insertion* (Autom. Einfügen) was active, typing a character would
+move the rest of the line before inserting the character. If it was off, the
+characters would be written on top of the existing line. Signum! allows for 0
+offset between character positions, so characters can be stacked *on top* of each other.
+
+### Automatic Line Feed
+
+If the *automatic line feed* (Autom. Zeilenvorschub) was active and the space
+bar was pressed at a position past the configured right margin of the page, Signum
+would insert a new main line one *main line distance* below the current one, adjust
+the horizontal position to the start (carriage return) of the line or the *tabulator*
+/ *indent* and move the overhanging word to that line, if necessary.
+
+### RETURN creates line
+
+<kbd>RETURN</kbd> moves the cursor down by one *main line distance* in the same
+way that the automatic line feed does. If the *RETURN creates line* mode is active,
+this will insert that amount of new lines, otherwise, it would just move the cursor.
+
+### RETURN creates paragraph
+
+When *RETURN creates line* was active, the *RETURN creates paragraph* mode would
+additionally mark the new line with the **paragraph** attribute.
+
+### Indent to Cursor
+
+When *indent to cursor* was activated, SIGNUM would remember the horizontal
+offset of the current cursor position and use that for all subsequent line feeds.
+
+## Cursor Position
+
+The arrow keys (<kbd>&rarr;</kbd>, <kbd>&larr;</kbd>, <kbd>&uarr;</kbd>, <kbd>&darr;</kbd>)
+along with the modifiers <kbd>CTRL</kbd>, <kbd>SHIFT</kbd>, <kbd>TAB</kbd> and <kbd>HOME</kbd>
+were used to move the cursor around on the current page.
+
+### Horizontal Movement
+
+| Sequence | Effect |
+|---|---|
+| <kbd>&rarr;</kbd> | Move right by one *space width* |
+| <kbd>CTRL</kbd><kbd>&rarr;</kbd> | Move right by 3/90 inches (3 microsteps) |
+| <kbd>SHIFT</kbd><kbd>&rarr;</kbd> | Move right by 1/90 inches (1 microsteps) |
+| <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>&rarr;</kbd> | Move right to next char (if any), ignore index lines |
+| <kbd>&larr;</kbd> | Move left by one *space width*, stop at left page margin |
+| <kbd>CTRL</kbd><kbd>&larr;</kbd> | Move left by 3/90 inches (3 microsteps) |
+| <kbd>SHIFT</kbd><kbd>&larr;</kbd> | Move left by 1/90 inches (1 microsteps) |
+| <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>&larr;</kbd> | Move left to next char (if any), ignore index lines |
+| <kbd>SHIFT</kbd><kbd>HOME</kbd> | Move to the start of the current line or indent |
+| <kbd>HOME</kbd> | Move after the last character in the current line, incl. index lines |
+| <kbd>CTRL</kbd><kbd>HOME</kbd> | Move after the last character of the current word |
+| <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>HOME</kbd> | Move after to the end of the current character |
+| <kbd>TAB</kbd> | Move the cursor to the next tabulator position, without moving text |
+| <kbd>CTRL</kbd><kbd>TAB</kbd> | Move the cursor and text after it to the next tabulator position |
+| <kbd>SHIFT</kbd><kbd>TAB</kbd> | Move the cursor to the previous tabulator position, without moving text |
+
+### Vertical Movement
+
+Vertical movement is always restricted to the current *text area* i.e. header, main content, or footer
+of a page. If trying to navigate further, the curser will stop at the start/end of the area.
+
+| Sequence | Effect |
+|---|---|
+| <kbd>&uarr;</kbd> | Move up by one *main line distance* but no further than the nearest main line |
+| <kbd>CTRL</kbd><kbd>&uarr;</kbd> | Move up by one *index line distance* |
+| <kbd>SHIFT</kbd><kbd>&uarr;</kbd> | Move up by 1/54 inches (1 line) |
+| <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>&uarr;</kbd> | Move up to the nearest non-empty line |
+| <kbd>&darr;</kbd> | Move down by one *main line distance* but no further than the nearest main line |
+| <kbd>CTRL</kbd><kbd>&darr;</kbd> | Move down by one *index line distance*  |
+| <kbd>SHIFT</kbd><kbd>&darr;</kbd> | Move down by 1/54 inches (1 line) |
+| <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>&darr;</kbd> | Move down to the nearest non-empty line |
+
+[working area]: ./documents.md#working-area
+
 ## Escape Sequences
 
 There was a quick reference of the available escape sequences in the *Infos*
