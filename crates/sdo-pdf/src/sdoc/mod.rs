@@ -39,11 +39,9 @@ fn write_pdf_page_text<O: io::Write>(
 
         // How far we've drawn
         let mut cursor_a: u32 = 0;
-        // How far signum thinks we are
-        let mut cursor_b: u32 = 0;
 
-        for te in &line.data {
-            let offset = te.offset as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
+        for (cx, te) in line.characters() {
+            //let offset = te.offset as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
 
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
@@ -81,7 +79,7 @@ fn write_pdf_page_text<O: io::Write>(
             contents.cset(te.cset, font_size).map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
 
-            let next_x_sig = cursor_b + offset;
+            let next_x_sig = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
             let diff = next_x_sig - cursor_a;
             if diff != 0 {
                 let xoff = -(diff as i32 * DEFAULT_FONT_SIZE);
@@ -96,8 +94,6 @@ fn write_pdf_page_text<O: io::Write>(
                 .byte(te.cval, byte_width)
                 .map_err(Error::Contents)?;
             cursor_a += width;
-
-            cursor_b = next_x_sig;
         }
 
         contents.flush().map_err(Error::Contents)?;
@@ -124,10 +120,8 @@ fn write_pdf_page_underlines(
         let mut prev_width = 0.0;
         let mut x = 0.0;
 
-        for te in &line.data {
-            let x_step = te.offset as i32;
-            let x_step_pdf = x_step as f32 * UNITS_PER_SIGNUM_X;
-            let x_new = x + x_step_pdf;
+        for (cx, te) in line.characters() {
+            let x_new = cx as f32 * UNITS_PER_SIGNUM_X;
 
             let is_wide = te.style.wide;
             let is_underlined = te.style.underlined;

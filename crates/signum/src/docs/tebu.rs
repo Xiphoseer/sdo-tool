@@ -233,6 +233,32 @@ pub struct Line {
     pub data: Vec<Char>,
 }
 
+impl Line {
+    /// Iterator over all charactes (and positions) in a line
+    pub fn characters(&self) -> LineCharIter<'_> {
+        LineCharIter {
+            x: 0,
+            inner: self.data.iter(),
+        }
+    }
+}
+
+/// Iterator over the characters in a line, keeping track of horizontal position
+pub struct LineCharIter<'a> {
+    x: u16,
+    inner: std::slice::Iter<'a, Char>,
+}
+
+impl<'a> Iterator for LineCharIter<'a> {
+    type Item = (u16, &'a Char);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.inner.next()?;
+        self.x += next.offset;
+        Some((self.x, next))
+    }
+}
+
 /// Parse a line from its buffer
 pub fn parse_line<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Line, E> {
     let len = input.len();

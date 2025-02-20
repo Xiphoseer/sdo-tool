@@ -73,7 +73,7 @@ impl<'a> HtmlGen<'a> {
             par: false,
             skip: 0,
             protected: false,
-            space_width
+            space_width,
         })
     }
 
