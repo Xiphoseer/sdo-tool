@@ -378,7 +378,7 @@ impl PageSegmenter<'_> {
         self.inner
             .clone()
             .take_while(move |(dy, line)| {
-                ysum += dy;
+                ysum += dy + 1;
                 ysum <= self.dindex && !line.flags.contains(Flags::ALIG)
             })
             .position(|(_, line)| line.flags.contains(Flags::LINE))
@@ -391,29 +391,31 @@ impl<'a> Iterator for PageSegmenter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let (dy, next) = self.inner.next()?;
         if let Some(main_line_dist) = self.find_main_line() {
-            let dy_main = *dy
+            log::info!("Found a main line in {} lines", main_line_dist);
+            let dy_main = (*dy + 1)
                 + self
                     .inner
                     .clone()
-                    .map(|(o, _)| *o)
+                    .map(|(o, _)| *o + 1)
                     .take(main_line_dist + 1)
                     .sum::<u16>();
             let mut y = -(dy_main as i16);
             let mut lines = Vec::with_capacity(main_line_dist * 2);
-            y += *dy as i16;
+            y += *dy as i16 + 1;
             lines.push((y, next.characters().peekable()));
             for _i in 0..=main_line_dist {
                 let (dy, line) = self.inner.next().unwrap(); // scan above
-                y += *dy as i16;
+                y += *dy as i16 + 1;
                 lines.push((y, line.characters().peekable()));
             }
+            log::warn!("y = {}", y);
             assert_eq!(y, 0);
             while let Some((dy, next)) = self.inner.clone().next() {
                 // peek via clone
                 if next.flags.contains(Flags::ALIG) {
                     break;
                 }
-                y += *dy as i16;
+                y += *dy as i16 + 1;
                 if y <= self.dindex as i16 {
                     self.inner.next().unwrap(); // pop
                     lines.push((y, next.characters().peekable()));
@@ -421,7 +423,7 @@ impl<'a> Iterator for PageSegmenter<'a> {
                     break;
                 }
             }
-            let dy = self.drem + y as u16;
+            let dy = self.drem + dy_main;
             self.drem = y as u16;
             Some((dy, MultiLineIterator { lines }))
         } else {
@@ -479,10 +481,10 @@ impl<'a> Iterator for MultiLineIterator<'a> {
                 };
                 let lx = left.1.peek().map(|(lx, _)| *lx);
                 let rx = right.1.peek().map(|(rx, _)| *rx);
-                if lx.is_none() || (lx.is_some() && rx.is_some() && lx < rx) {
-                    Some(right)
-                } else if lx.is_some() {
+                if rx.is_none() || (lx.is_some() && rx.is_some() && lx < rx) {
                     Some(left)
+                } else if rx.is_some() {
+                    Some(right)
                 } else {
                     None
                 }

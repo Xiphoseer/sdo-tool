@@ -8,7 +8,7 @@ use log::info;
 use sdo_pdf::{generate_pdf, MetaInfo, Pdf};
 use signum::{
     chsets::{cache::ChsetCache, FontKind},
-    docs::{hcim::ImageSite, pbuf, tebu::PageText, GenerationContext, Overrides},
+    docs::{hcim::ImageSite, pbuf, sysp::SysP, tebu::PageText, GenerationContext, Overrides},
 };
 
 pub struct GenCtx<'a> {
@@ -16,6 +16,7 @@ pub struct GenCtx<'a> {
     image_sites: &'a [ImageSite],
     text_pages: &'a [PageText],
     pages: &'a [Option<pbuf::Page>],
+    sysp: &'a SysP,
 }
 
 impl<'a> GenCtx<'a> {
@@ -25,6 +26,7 @@ impl<'a> GenCtx<'a> {
             image_sites: doc.image_sites(),
             text_pages: doc.text_pages(),
             pages: &doc.pages[..],
+            sysp: doc.sysp.as_ref().expect("missing sysp chunk"),
         }
     }
 }
@@ -44,6 +46,10 @@ impl GenerationContext for GenCtx<'_> {
 
     fn page_at(&self, index: usize) -> Option<&pbuf::Page> {
         self.pages[index].as_ref()
+    }
+
+    fn sysp(&self) -> &signum::docs::sysp::SysP {
+        self.sysp
     }
 }
 

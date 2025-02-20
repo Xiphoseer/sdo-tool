@@ -29,6 +29,7 @@ use signum::{
         four_cc,
         hcim::{parse_image, Hcim, ImageSite},
         header, pbuf,
+        sysp::SysP,
         tebu::PageText,
         DocumentInfo, GenerationContext, Overrides, SDoc,
     },
@@ -130,6 +131,10 @@ impl GenerationContext for ActiveDocument {
 
     fn page_at(&self, index: usize) -> Option<&pbuf::Page> {
         self.sdoc.pbuf.page_at(index)
+    }
+
+    fn sysp(&self) -> &SysP {
+        &self.sdoc.sysp
     }
 }
 

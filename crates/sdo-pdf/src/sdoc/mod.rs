@@ -21,7 +21,7 @@ use contents::Contents;
 use text::{TextContents, TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y};
 
 use crate::{
-    font::{FontInfo, Fonts, DEFAULT_FONT_SIZE, FONTUNITS_PER_SIGNUM_X},
+    font::{signum_to_textunit_y, FontInfo, Fonts, DEFAULT_FONT_SIZE, FONTUNITS_PER_SIGNUM_X},
     image::image_for_site,
     Error,
 };
@@ -32,15 +32,16 @@ fn write_pdf_page_text<O: io::Write>(
     print: &DocumentFontCacheInfo,
     infos: &[Option<&FontInfo>; 8],
     page: &PageText,
+    dindex: u16,
 ) -> Result<(), Error> {
     contents.goto_origin().map_err(Error::Contents)?;
-    for (skip, line) in &page.content {
-        contents.next_line(0, *skip as u32 + 1);
+    for (skip, line) in page.multi_lines(dindex) {
+        contents.next_line(0, skip as u32);
 
         // How far we've drawn
         let mut pdf_page_cursor: u32 = 0;
 
-        for (cx, te) in line.characters() {
+        for (cx, dy, te) in line {
             let is_wide = te.style.wide;
             let is_tall = te.style.tall;
             let is_small = te.style.small;
@@ -76,6 +77,9 @@ fn write_pdf_page_text<O: io::Write>(
 
             contents.cset(te.cset, font_size).map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
+
+            let raise = signum_to_textunit_y(-dy as i32);
+            contents.raise(raise).map_err(Error::Contents)?;
 
             let cx_pdf = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
             let diff = cx_pdf - pdf_page_cursor;
@@ -239,7 +243,7 @@ pub fn generate_pdf_page<GC: GenerationContext>(
         let print = &gc.document_info().fonts;
         write_pdf_page_underlines(print, infos, &page.content, &mut contents)?;
         let mut contents = contents.start_text(TEXT_MATRIX_SCALE_X, TEXT_MATRIX_SCALE_Y);
-        write_pdf_page_text(&mut contents, print, infos, page)?;
+        write_pdf_page_text(&mut contents, print, infos, page, gc.sysp().index_distance)?;
         contents.finish().map_err(Error::Contents)
     }?;
     let resources = Resources {

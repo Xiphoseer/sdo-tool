@@ -18,6 +18,7 @@ pub struct TextContents<O> {
     fs: u8,
     /// The current horizontal scaling
     fw: f32,
+    raise: f32,
 
     /// slant
     slant: f32,
@@ -59,6 +60,7 @@ impl<O: io::Write> TextContents<O> {
             line_y: 0,
             line_x: 0,
             slant: 0.0,
+            raise: 0.0,
             buf: vec![],
             open: false,
             needs_space: false,
@@ -131,6 +133,15 @@ impl<O: io::Write> TextContents<O> {
             self.fw = scale;
             self.flush()?;
             writeln!(self.inner, "{} Tz", scale)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn raise(&mut self, raise: f32) -> io::Result<()> {
+        if self.raise != raise {
+            self.raise = raise;
+            self.flush()?;
+            writeln!(self.inner, "{} Ts", raise)?;
         }
         Ok(())
     }
