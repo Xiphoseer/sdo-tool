@@ -45,6 +45,15 @@ additionally mark the new line with the **paragraph** attribute.
 When *indent to cursor* was activated, SIGNUM would remember the horizontal
 offset of the current cursor position and use that for all subsequent line feeds.
 
+### Other RETURN behavior
+
+| Sequence | Effect |
+|---|---|
+| <kbd>CTRL</kbd><kbd>RETURN</kbd> | Move the remainder of the current line to the start of the next line as long as it belongs to the same paragraph (otherwise behaves like <kbd>SHIFT</kbd><kbd>RETURN</kbd>) |
+| <kbd>SHIFT</kbd><kbd>RETURN</kbd> | Move the remainder of the current line to a new line |
+
+For the reverse, see <kbd>F7</kbd> under [function keys](#function-keys)
+
 ## Insert & Delete
 
 <kbd>INS</kbd>, <kbd>DEL</kbd>, <kbd>SPACE</kbd>, and <kbd>&#9003;</kbd> were used to
