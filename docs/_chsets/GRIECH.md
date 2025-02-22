@@ -1,5 +1,6 @@
 ---
 name: GRIECH
+full_name: Griechische Zeichen
 disc: Standard
 map: https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/GRIECH.TXT
 ---
