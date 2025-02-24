@@ -40,12 +40,16 @@ The 24-needle printer driver has three modes for computing bold glyphs:
 <figcaption>Bold Font Printer Mode (<code>PRN24.PRG</code>)</figcaption>
 </figure>
 
-The bold text in normal mode looks like the following:
+The following image illustrates the effect of the different bold modes
+on a glyph:
 
 <figure>
-<img src="{% link /img/bold-normal.png %}">
-<figcaption>Bold Font ("Normal")</figcaption>
+<img src="{% link /img/bold-mode.png %}">
+<figcaption>Bold Font ("Leicht" / "Normal", "Stark")</figcaption>
 </figure>
+
+The black character is the original glyph, the gray characters define
+pixels that are on (ink'ed) additionally in each of the three modes.
 
 ## `-----` (underlined)
 
