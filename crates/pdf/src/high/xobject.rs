@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, convert::Infallible};
 
 use crate::{
     common::{ImageMetadata, StreamMetadata},
@@ -38,13 +38,14 @@ impl DebugName for XObject {
 
 impl<'a> ToStream<'a> for XObject {
     type Stream = low::Ascii85Stream<'a>;
+    type Error = Infallible;
 
-    fn to_stream(&'a self) -> Self::Stream {
+    fn to_stream(&'a self) -> Result<Self::Stream, Self::Error> {
         match self {
-            Self::Image(i) => low::Ascii85Stream {
+            Self::Image(i) => Ok(low::Ascii85Stream {
                 data: Cow::Borrowed(&i.data),
                 meta: StreamMetadata::Image(i.meta),
-            },
+            }),
         }
     }
 }

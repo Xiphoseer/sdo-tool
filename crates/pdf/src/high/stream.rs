@@ -1,11 +1,12 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, convert::Infallible, fmt};
 
 use crate::{common::StreamMetadata, low, lowering::DebugName, write::Serialize};
 
 pub(crate) trait ToStream<'a> {
     type Stream: Serialize;
+    type Error: fmt::Debug;
 
-    fn to_stream(&'a self) -> Self::Stream;
+    fn to_stream(&'a self) -> Result<Self::Stream, Self::Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -25,11 +26,12 @@ impl DebugName for Ascii85Stream<'_> {
 
 impl<'a> ToStream<'a> for Ascii85Stream<'a> {
     type Stream = low::Ascii85Stream<'a>;
+    type Error = Infallible;
 
-    fn to_stream(&'a self) -> Self::Stream {
-        low::Ascii85Stream {
+    fn to_stream(&'a self) -> Result<Self::Stream, Infallible> {
+        Ok(low::Ascii85Stream {
             data: Cow::Borrowed(self.data.as_ref()),
             meta: self.meta,
-        }
+        })
     }
 }

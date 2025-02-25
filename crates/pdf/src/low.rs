@@ -344,14 +344,14 @@ impl Serialize for Pages {
 }
 
 /// A data stream
-pub struct Stream {
+pub struct Stream<'a> {
     /// The (unencoded) data
-    pub data: Vec<u8>,
+    pub data: Cow<'a, [u8]>,
     /// Additional metadata
     pub meta: StreamMetadata,
 }
 
-impl Serialize for Stream {
+impl Serialize for Stream<'_> {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut len = self.data.len();
         if self.data.ends_with(&[0x0a]) {

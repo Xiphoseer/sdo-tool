@@ -1,6 +1,7 @@
 //! High-Level API
 
 use std::{
+    borrow::Cow,
     collections::BTreeMap,
     io::{self, Write},
     marker::PhantomData,
@@ -9,7 +10,6 @@ use std::{
 
 use chrono::Local;
 use page::lower_page;
-use uuid::Uuid;
 
 use crate::{
     common::{
@@ -187,6 +187,39 @@ fn pdf_list_of(o: &[String]) -> io::Result<Option<PdfString>> {
     }
 }
 
+struct Xmp {
+    pdf: xmp::Pdf,
+    dc: xmp::DublinCore,
+    pdfa_id: xmp::PdfAId,
+    basic: xmp::XmpBasic,
+    mm: xmp::XmpMM,
+}
+
+impl Xmp {
+    fn write(&self) -> io::Result<Vec<u8>> {
+        let mut writer = XmpWriter::new(Vec::new())?;
+        writer.add_description(&self.pdf)?;
+        writer.add_description(&self.dc)?;
+        writer.add_description(&self.pdfa_id)?;
+        writer.add_description(&self.basic)?;
+        writer.add_description(&self.mm)?;
+        writer.finish()
+    }
+}
+
+impl<'a> ToStream<'a> for Xmp {
+    type Stream = low::Stream<'a>;
+    type Error = io::Error;
+
+    fn to_stream(&'a self) -> Result<Self::Stream, Self::Error> {
+        let data = self.write()?;
+        Ok(low::Stream {
+            data: Cow::Owned(data),
+            meta: StreamMetadata::MetadataXML,
+        })
+    }
+}
+
 impl Handle<'_> {
     /// Creates a new handle
     pub fn new() -> Self {
@@ -200,40 +233,39 @@ impl Handle<'_> {
         }
     }
 
-    fn prepare_xmp(&self) -> io::Result<Vec<u8>> {
+    /// Generate new XMP data for the document
+    fn xmp(&self) -> Xmp {
         let now = Local::now().fixed_offset();
-
-        let mut writer = XmpWriter::new(Vec::new())?;
-        writer.add_description(&xmp::Pdf {
-            producer: self.meta.producer.clone(),
-        })?;
-        writer.add_description(&xmp::DublinCore {
-            title: self
-                .meta
-                .title
-                .as_ref()
-                .map(|title| BTreeMap::from([(xmp::Lang::Default, title.clone())]))
-                .unwrap_or_default(),
-            format: "application/pdf",
-            creator: self.meta.author.clone(),
-            publisher: self.meta.publisher.clone(),
-        })?;
-        writer.add_description(&xmp::PdfAId {
-            part: 2,
-            conformance: 'B',
-        })?;
-        writer.add_description(&xmp::XmpBasic {
-            creator_tool: self.meta.producer.clone(),
-            create_date: self.meta.creation_date,
-            modify_date: self.meta.modify_date,
-            metadata_date: now,
-        })?;
-        writer.add_description(&xmp::XmpMM {
-            document_id: Uuid::new_v4(),
-            instance_id: Uuid::new_v4(),
-        })?;
-
-        writer.finish()
+        Xmp {
+            pdf: xmp::Pdf {
+                producer: self.meta.producer.clone(),
+            },
+            dc: xmp::DublinCore {
+                title: self
+                    .meta
+                    .title
+                    .as_ref()
+                    .map(|title| BTreeMap::from([(xmp::Lang::Default, title.clone())]))
+                    .unwrap_or_default(),
+                format: "application/pdf",
+                creator: self.meta.author.clone(),
+                publisher: self.meta.publisher.clone(),
+            },
+            pdfa_id: xmp::PdfAId {
+                part: 2,
+                conformance: 'B',
+            },
+            basic: xmp::XmpBasic {
+                creator_tool: self.meta.producer.clone(),
+                create_date: self.meta.creation_date,
+                modify_date: self.meta.modify_date,
+                metadata_date: now,
+            },
+            mm: xmp::XmpMM {
+                document_id: self.meta.document_id,
+                instance_id: self.meta.instance_id,
+            },
+        }
     }
 
     /// Write the whole PDF to the given writer
@@ -307,11 +339,8 @@ impl Handle<'_> {
         // **Metadata**
         let meta_id = lowering.id_gen.next();
         let meta_ref = make_ref(meta_id);
-        let xmp = low::Stream {
-            data: self.prepare_xmp()?,
-            meta: StreamMetadata::MetadataXML,
-        };
-        fmt.obj(meta_ref, &xmp)?;
+        let xmp = self.xmp();
+        fmt.obj(meta_ref, &xmp.to_stream()?)?;
 
         // **Pages**
         let mut pages = low::Pages { kids: vec![] };
@@ -326,7 +355,7 @@ impl Handle<'_> {
             let contents_ref = make_ref(contents_id);
 
             let contents = low::Stream {
-                data: page.contents.clone(),
+                data: Cow::Borrowed(&page.contents),
                 meta: StreamMetadata::None,
             };
             fmt.obj(contents_ref, &contents)?;
@@ -353,16 +382,17 @@ impl Handle<'_> {
         }
 
         for (x_ref, x) in pages_ctx.x_objects.store_values() {
-            fmt.obj(x_ref, &x.to_stream())?;
+            fmt.obj(x_ref, &x.to_stream().unwrap())?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
         for (cproc_ref, char_proc) in pages_ctx.font_ctx.text_stream_values() {
-            fmt.obj(cproc_ref, &char_proc.to_stream())?;
+            fmt.obj(cproc_ref, &char_proc.to_stream().unwrap())?;
         }
 
         for (cmap_ref, cmap) in pages_ctx.font_ctx.to_unicode_values() {
-            fmt.obj(cmap_ref, &cmap.to_stream())?;
+            let stream = cmap.to_stream().map_err(io::Error::other)?;
+            fmt.obj(cmap_ref, &stream)?;
         }
 
         for (encoding_ref, encoding) in pages_ctx.font_ctx.encoding_values() {

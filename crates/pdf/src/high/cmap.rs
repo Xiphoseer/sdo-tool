@@ -195,13 +195,14 @@ impl DebugName for ToUnicodeCMap {
 
 impl<'a> ToStream<'a> for ToUnicodeCMap {
     type Stream = low::Ascii85Stream<'static>;
+    type Error = fmt::Error;
 
-    fn to_stream(&'a self) -> Self::Stream {
+    fn to_stream(&'a self) -> Result<Self::Stream, fmt::Error> {
         let mut out = String::new();
-        self.write(&mut out, false).unwrap();
-        low::Ascii85Stream {
+        self.write(&mut out, false)?;
+        Ok(low::Ascii85Stream {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,
-        }
+        })
     }
 }

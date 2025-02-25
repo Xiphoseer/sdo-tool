@@ -1,6 +1,7 @@
 use std::io;
 
 use chrono::{DateTime, FixedOffset, Local};
+use uuid::Uuid;
 
 use crate::{
     common::{PdfString, Trapped},
@@ -29,6 +30,11 @@ pub struct Metadata {
     pub creation_date: DateTime<FixedOffset>,
     /// Date-Time at which the document was modified
     pub modify_date: DateTime<FixedOffset>,
+
+    /// XMP Media Management: Document ID
+    pub document_id: Uuid,
+    /// XMP Media Management: Instance ID
+    pub instance_id: Uuid,
 }
 
 impl Metadata {
@@ -38,6 +44,8 @@ impl Metadata {
         Self {
             creation_date: now,
             modify_date: now,
+            document_id: Uuid::new_v4(),
+            instance_id: Uuid::new_v4(),
             ..Default::default()
         }
     }
