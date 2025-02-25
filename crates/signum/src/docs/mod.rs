@@ -244,6 +244,10 @@ pub struct Overrides {
 pub trait GenerationContext {
     /// Get a slice of all image sites (from hcim)
     fn image_sites(&self) -> &[ImageSite];
+
+    /// Get system parameters
+    fn sysp(&self) -> &SysP;
+
     /// Get the document information
     fn document_info(&self) -> &DocumentInfo;
 

@@ -174,6 +174,11 @@ pub fn write_char_stream<W: Write>(
 /// Number of font-units (1/72000 of an inch) per horizontal signum unit (1/90 of an inch)
 pub(crate) const FONTUNITS_PER_SIGNUM_X: u32 = 800;
 
+/// Number of font-units (1/72 of an inch) per vertical signum unit (1/54 of an inch)
+pub(crate) fn signum_to_textunit_y(y: i32) -> f32 {
+    y as f32 * 72.0 / 54.0
+}
+
 const EMPTY_GLYPH_PROC: &[u8] = b"0 0 0 0 0 0 d1";
 
 /// Create a type 3 font

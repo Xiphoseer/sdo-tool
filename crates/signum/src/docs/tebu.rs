@@ -1,4 +1,6 @@
 //! # (`tebu`) The text buffer
+use std::iter::Peekable;
+
 use bitflags::bitflags;
 use bstr::ByteSlice;
 use log::info;
@@ -350,6 +352,88 @@ pub struct PageText {
     pub content: Vec<(u16, Line)>,
 }
 
+impl PageText {
+    /// Create an iterator of [MultiLineIterator]
+    pub fn multi_lines(&self, dindex: u16) -> impl Iterator<Item = (u16, MultiLineIterator<'_>)> {
+        PageSegmenter {
+            dindex,
+            drem: 0,
+            inner: self.content.iter(),
+        }
+    }
+}
+
+struct PageSegmenter<'a> {
+    /// Index line distance for calculation
+    dindex: u16,
+    /// Remaining dy from consumed lines
+    drem: u16,
+    /// Iterator of content
+    inner: std::slice::Iter<'a, (u16, Line)>,
+}
+
+impl PageSegmenter<'_> {
+    fn find_main_line(&self) -> Option<usize> {
+        let mut ysum = 0;
+        self.inner
+            .clone()
+            .take_while(move |(dy, line)| {
+                ysum += dy + 1;
+                ysum <= self.dindex && !line.flags.contains(Flags::ALIG)
+            })
+            .position(|(_, line)| line.flags.contains(Flags::LINE))
+    }
+}
+
+impl<'a> Iterator for PageSegmenter<'a> {
+    type Item = (u16, MultiLineIterator<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (dy, next) = self.inner.next()?;
+        if let Some(main_line_dist) = self.find_main_line() {
+            log::info!("Found a main line in {} lines", main_line_dist);
+            let dy_main = (*dy + 1)
+                + self
+                    .inner
+                    .clone()
+                    .map(|(o, _)| *o + 1)
+                    .take(main_line_dist + 1)
+                    .sum::<u16>();
+            let mut y = -(dy_main as i16);
+            let mut lines = Vec::with_capacity(main_line_dist * 2);
+            y += *dy as i16 + 1;
+            lines.push((y, next.characters().peekable()));
+            for _i in 0..=main_line_dist {
+                let (dy, line) = self.inner.next().unwrap(); // scan above
+                y += *dy as i16 + 1;
+                lines.push((y, line.characters().peekable()));
+            }
+            log::warn!("y = {}", y);
+            assert_eq!(y, 0);
+            while let Some((dy, next)) = self.inner.clone().next() {
+                // peek via clone
+                if next.flags.contains(Flags::ALIG) {
+                    break;
+                }
+                y += *dy as i16 + 1;
+                if y <= self.dindex as i16 {
+                    self.inner.next().unwrap(); // pop
+                    lines.push((y, next.characters().peekable()));
+                } else {
+                    break;
+                }
+            }
+            let dy = self.drem + dy_main;
+            self.drem = y as u16;
+            Some((dy, MultiLineIterator { lines }))
+        } else {
+            let dy = *dy + self.drem;
+            self.drem = 0;
+            Some((dy, MultiLineIterator::new(next)))
+        }
+    }
+}
+
 impl From<&[PageText]> for UseMatrix {
     fn from(value: &[PageText]) -> Self {
         let mut use_matrix = UseMatrix::new();
@@ -365,6 +449,47 @@ impl From<&[PageText]> for UseMatrix {
         }
 
         use_matrix
+    }
+}
+
+/// Iterator over multiple lines at the same time
+pub struct MultiLineIterator<'a> {
+    /// relative y-offset, peekable character iterator for each line
+    lines: Vec<(i16, Peekable<LineCharIter<'a>>)>,
+}
+
+impl<'a> MultiLineIterator<'a> {
+    fn new(line: &'a Line) -> Self {
+        Self {
+            lines: vec![(0, line.characters().peekable())],
+        }
+    }
+}
+
+impl<'a> Iterator for MultiLineIterator<'a> {
+    /// (x, y, char)
+    type Item = (u16, i16, &'a Char);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.lines
+            .iter_mut()
+            .fold(None, |acc, right| {
+                let left: Option<&mut (i16, Peekable<LineCharIter<'a>>)> = acc;
+                let left = match left {
+                    Some(left) => left,
+                    None => return Some(right), // first elem
+                };
+                let lx = left.1.peek().map(|(lx, _)| *lx);
+                let rx = right.1.peek().map(|(rx, _)| *rx);
+                if rx.is_none() || (lx.is_some() && rx.is_some() && lx < rx) {
+                    Some(left)
+                } else if rx.is_some() {
+                    Some(right)
+                } else {
+                    None
+                }
+            })
+            .and_then(|(dy, iter)| iter.next().map(|(x, te)| (x, *dy, te)))
     }
 }
 
