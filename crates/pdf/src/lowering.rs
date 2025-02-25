@@ -122,7 +122,7 @@ fn lower_font<'a>(
             let to_unicode = font
                 .to_unicode
                 .as_ref()
-                .map(|stream| ctx.text_streams.put(stream, id_gen));
+                .map(|res| ctx.text_streams.map_ref(res, id_gen));
             low::Font::Type3(low::Type3Font {
                 name: font.name,
                 font_bbox: font.font_bbox,
@@ -256,13 +256,29 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
 }
 
 impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
+    /// Put a new object in the lower box
     fn put(&mut self, val: &'a T, id_gen: &mut NextId) -> ObjRef {
-        let id = id_gen.next();
-        let r = make_ref(id);
         let index = self.next;
+        let r = self.val_ref(val, id_gen, index);
         self.next += 1;
+        r
+    }
+
+    /// INTERNAL: assign a new ID, put to store
+    fn val_ref(&mut self, val: &'a T, id_gen: &mut NextId, index: usize) -> ObjRef {
+        let r = make_ref(id_gen.next());
         self.store.insert(index, (r, val));
         r
+    }
+
+    /// Lower the resource into an object ref
+    ///
+    /// Use this for objects that have to be indirect, e.g. streams
+    fn map_ref(&mut self, res: &'a Resource<T>, id_gen: &mut NextId) -> ObjRef {
+        match res {
+            Resource::Global(global) => self.map_global_ref(id_gen, global),
+            Resource::Immediate(content) => self.put(content, id_gen),
+        }
     }
 
     fn map(
@@ -272,22 +288,18 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
         id_gen: &mut NextId,
     ) -> low::Resource<T::Lower> {
         match res {
-            Resource::Global(GlobalResource { index, .. }) => {
-                if let Some((r, _)) = self.store.get(index) {
-                    low::Resource::Ref(*r)
-                } else if let Some(val) = self.res.get(*index) {
-                    let id = id_gen.next();
-                    let r = make_ref(id);
-                    self.store.insert(*index, (r, val));
-                    low::Resource::Ref(r)
-                } else {
-                    panic!("Couldn't find {} #{}", T::name(), index);
-                }
-            }
-            Resource::Immediate(content) => {
-                let content_low = content.lower(ctx, id_gen);
-                low::Resource::Immediate(content_low)
-            }
+            Resource::Global(global) => low::Resource::Ref(self.map_global_ref(id_gen, global)),
+            Resource::Immediate(content) => low::Resource::Immediate(content.lower(ctx, id_gen)),
+        }
+    }
+
+    fn map_global_ref(&mut self, id_gen: &mut NextId, global: &GlobalResource<T>) -> ObjRef {
+        if let Some((r, _)) = self.store.get(&global.index) {
+            *r
+        } else if let Some(val) = self.res.get(global.index) {
+            self.val_ref(val, id_gen, global.index)
+        } else {
+            panic!("Couldn't find {} #{}", T::name(), global.index);
         }
     }
 }

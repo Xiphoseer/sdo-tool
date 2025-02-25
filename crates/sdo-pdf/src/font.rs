@@ -181,7 +181,7 @@ pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
     pfont: &'a PSet,
     use_table: &UseTable,
-    mappings: Option<&Mapping>,
+    to_unicode: Option<Resource<Ascii85Stream<'static>>>,
     name: &'a str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
@@ -302,15 +302,6 @@ pub fn type3_font<'a>(
         stem_h: None,
     });
 
-    let to_unicode = mappings.map(|mapping| {
-        let mut out = String::new();
-        write_cmap(&mut out, mapping, name, true).unwrap();
-        Ascii85Stream {
-            data: Cow::Owned(out.into_bytes()),
-            meta: StreamMetadata::None,
-        }
-    });
-
     Some(Type3Font {
         name: Some(PdfName(name)),
         font_bbox,
@@ -326,6 +317,15 @@ pub fn type3_font<'a>(
         widths,
         to_unicode,
     })
+}
+
+fn to_unicode(name: &str, mapping: &Mapping) -> Ascii85Stream<'static> {
+    let mut out = String::new();
+    write_cmap(&mut out, mapping, name, true).unwrap();
+    Ascii85Stream {
+        data: Cow::Owned(out.into_bytes()),
+        meta: StreamMetadata::None,
+    }
 }
 
 /// Information on one font
@@ -390,7 +390,13 @@ impl Fonts {
 
                 let efont = cs.e24();
                 let mappings = cs.map();
-                if let Some(font) = type3_font(efont, pfont, use_table, mappings, cs.name()) {
+
+                let to_unicode = mappings
+                    .map(|mapping| to_unicode(cs.name(), mapping))
+                    .map(Box::new)
+                    .map(Resource::Immediate);
+
+                if let Some(font) = type3_font(efont, pfont, use_table, to_unicode, cs.name()) {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,

@@ -237,7 +237,7 @@ pub struct Type3Font<'a> {
     /// Width of every char between first and last (in fontunits, i.e. 1/72000 in)
     pub widths: Vec<u32>,
     /// ToUnicode CMap stream
-    pub to_unicode: Option<Ascii85Stream<'a>>,
+    pub to_unicode: Option<Resource<Ascii85Stream<'a>>>,
 }
 
 impl Default for Type3Font<'_> {
