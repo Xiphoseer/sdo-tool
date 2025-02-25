@@ -3,11 +3,11 @@
 Signum supports 6 algorithmic font modifiers for every glphy:
 
 - [<kbd>Breit</kbd> (wide)](#breit-wide)
-- [*Fett* (bold)](#fett-bold)
-- [`-----` (underlined)](#------underlined)
-- [*Kursiv* (italic)](#kursiv-italic)
-- [*Gross* (tall)](#gross-tall)
-- [*Klein* (small)](#klein-small)
+- [<kbd>Fett</kbd> (bold)](#fett-bold)
+- [<kbd>-----</kbd> (underlined)](#------underlined)
+- [<kbd>Kursiv</kbd> (italic)](#kursiv-italic)
+- [<kbd>Gross</kbd> (tall)](#gross-tall)
+- [<kbd>Klein</kbd> (small)](#klein-small)
 
 <figure>
 <img src="{% link /img/fontmodf.png %}" width="300px">
