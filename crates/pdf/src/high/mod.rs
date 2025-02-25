@@ -92,6 +92,8 @@ pub struct Res<'a> {
     pub char_procs: Vec<Ascii85Stream<'a>>,
     /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
+    /// Character Maps
+    pub to_unicode: Vec<ToUnicodeCMap>,
 }
 
 fn push<T>(vec: &mut Vec<T>, value: T) -> usize {
@@ -354,30 +356,34 @@ impl Handle<'_> {
             pages.kids.push(page_ref);
         }
 
-        for (font_dict_ref, font_dict) in lowering.font_dicts.store.values() {
+        for (font_dict_ref, font_dict) in lowering.font_dicts.store_values() {
             let dict = lower_dict(
                 font_dict,
                 &mut lowering.fonts,
                 &mut lowering.font_ctx,
                 &mut lowering.id_gen,
             );
-            fmt.obj(*font_dict_ref, &dict)?;
+            fmt.obj(font_dict_ref, &dict)?;
         }
 
-        for (font_ref, font) in lowering.fonts.store.values() {
+        for (font_ref, font) in lowering.fonts.store_values() {
             let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
-            fmt.obj(*font_ref, &font_low)?;
+            fmt.obj(font_ref, &font_low)?;
         }
 
-        for (x_ref, x) in lowering.x_objects.store.values() {
+        for (x_ref, x) in lowering.x_objects.store_values() {
             let x_low = x.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*x_ref, &x_low)?;
+            fmt.obj(x_ref, &x_low)?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store.values() {
+        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store_values() {
             let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(*cproc_ref, &cp)?;
+            fmt.obj(cproc_ref, &cp)?;
+        }
+
+        for (cmap_ref, cmap) in lowering.font_ctx.to_unicode.store_values() {
+            fmt.obj(cmap_ref, &cmap.lower(&mut (), &mut lowering.id_gen))?;
         }
 
         let pages_ref = make_ref(pages_id);

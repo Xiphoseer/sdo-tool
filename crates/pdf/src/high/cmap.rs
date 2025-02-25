@@ -16,9 +16,14 @@
 
 use std::{borrow::Cow, fmt, ops::RangeInclusive};
 
-use crate::{common::StreamMetadata, low, lowering::Lowerable};
+use crate::{
+    common::StreamMetadata,
+    low,
+    lowering::{DebugName, Lowerable},
+};
 
 /// Range of character that map to sequential unicode characters
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BFRange {
     /// Character ID Range
     cids: RangeInclusive<u8>,
@@ -47,6 +52,7 @@ impl BFRange {
 }
 
 /// A simple code to unicode character mapping
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BFChar {
     /// Character ID (CID)
     cid: u8,
@@ -76,6 +82,7 @@ impl BFChar {
 ///
 /// This is a special case of the general CMap that always uses a single-byte
 /// input encoding and a 16-bit (UTF-16) codespace.
+#[derive(Debug, Clone)]
 pub struct ToUnicodeCMap {
     registry: String,
     ordering: String,
@@ -177,6 +184,12 @@ impl ToUnicodeCMap {
     }
 }
 
+impl DebugName for ToUnicodeCMap {
+    fn debug_name() -> &'static str {
+        "ToUnicode"
+    }
+}
+
 impl<'a> Lowerable<'a> for ToUnicodeCMap {
     type Lower = low::Ascii85Stream<'static>;
 
@@ -189,9 +202,5 @@ impl<'a> Lowerable<'a> for ToUnicodeCMap {
             data: Cow::Owned(out.into_bytes()),
             meta: StreamMetadata::None,
         }
-    }
-
-    fn debug_name() -> &'static str {
-        "ToUnicode"
     }
 }

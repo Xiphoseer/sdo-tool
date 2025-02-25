@@ -6,7 +6,7 @@ use crate::{
     common::{Encoding, ObjRef, StreamMetadata},
     high::{
         Ascii85Stream, Destination, DictResource, Font, GlobalResource, Handle, OutlineItem,
-        ResDictRes, Resource, XObject,
+        ResDictRes, Resource, ToUnicodeCMap, XObject,
     },
     low,
     util::NextId,
@@ -90,19 +90,23 @@ pub(super) fn lower_outline_items(
     }
 }
 
-pub(crate) trait Lowerable<'a> {
+pub(crate) trait DebugName {
+    /// Name used for debugging
+    fn debug_name() -> &'static str;
+}
+
+pub(crate) trait Lowerable<'a>: DebugName {
     type Lower;
     type Ctx;
 
     fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextId) -> Self::Lower;
-    /// Name used for debugging
-    fn debug_name() -> &'static str;
 }
 
 #[allow(dead_code)]
 pub(crate) struct LowerFontCtx<'a> {
     pub text_streams: LowerBox<'a, Ascii85Stream<'a>>,
     pub encodings: LowerBox<'a, Encoding<'a>>,
+    pub to_unicode: LowerBox<'a, ToUnicodeCMap>,
 }
 
 fn lower_font<'a>(
@@ -140,6 +144,12 @@ fn lower_font<'a>(
     }
 }
 
+impl DebugName for Font<'_> {
+    fn debug_name() -> &'static str {
+        "Font"
+    }
+}
+
 impl<'a> Lowerable<'a> for Font<'a> {
     type Lower = low::Font<'a>;
     type Ctx = LowerFontCtx<'a>;
@@ -147,9 +157,11 @@ impl<'a> Lowerable<'a> for Font<'a> {
     fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextId) -> Self::Lower {
         lower_font(self, ctx, id_gen)
     }
+}
 
+impl DebugName for XObject {
     fn debug_name() -> &'static str {
-        "Font"
+        "XObject"
     }
 }
 
@@ -165,9 +177,11 @@ impl<'a> Lowerable<'a> for XObject {
             }),
         }
     }
+}
 
+impl DebugName for Ascii85Stream<'_> {
     fn debug_name() -> &'static str {
-        "XObject"
+        "Ascii85Stream"
     }
 }
 
@@ -181,9 +195,11 @@ impl<'a> Lowerable<'a> for Ascii85Stream<'a> {
             meta: self.meta,
         }
     }
+}
 
+impl DebugName for Encoding<'_> {
     fn debug_name() -> &'static str {
-        "CharProc"
+        "Encoding"
     }
 }
 
@@ -194,14 +210,10 @@ impl<'a> Lowerable<'a> for Encoding<'a> {
     fn lower(&self, _ctx: &mut Self::Ctx, _id_gen: &mut NextId) -> Self::Lower {
         self.clone()
     }
-
-    fn debug_name() -> &'static str {
-        "CharProc"
-    }
 }
 
 pub(crate) struct LowerBox<'a, T> {
-    pub store: HashMap<usize, (ObjRef, &'a T)>,
+    store: HashMap<usize, (ObjRef, &'a T)>,
     res: &'a [T],
     next: usize,
 }
@@ -214,6 +226,10 @@ impl<'a, T> LowerBox<'a, T> {
             next: res.len(),
         }
     }
+
+    pub(crate) fn store_values(&self) -> impl Iterator<Item = (ObjRef, &'a T)> + '_ {
+        self.store.values().copied()
+    }
 }
 
 pub(crate) fn lower_dict<'a, T: Lowerable<'a>>(
@@ -225,6 +241,43 @@ pub(crate) fn lower_dict<'a, T: Lowerable<'a>>(
     dict.iter()
         .map(|(key, res)| (key.clone(), inner.map(res, ctx, id_gen)))
         .collect()
+}
+
+impl<'a, T: DebugName> LowerBox<'a, T> {
+    /// Put a new object in the lower box
+    fn put(&mut self, val: &'a T, id_gen: &mut NextId) -> ObjRef {
+        let index = self.next;
+        let r = self.val_ref(val, id_gen, index);
+        self.next += 1;
+        r
+    }
+
+    /// INTERNAL: assign a new ID, put to store
+    fn val_ref(&mut self, val: &'a T, id_gen: &mut NextId, index: usize) -> ObjRef {
+        let r = make_ref(id_gen.next());
+        self.store.insert(index, (r, val));
+        r
+    }
+
+    /// Lower the resource into an object ref
+    ///
+    /// Use this for objects that have to be indirect, e.g. streams
+    fn map_ref(&mut self, res: &'a Resource<T>, id_gen: &mut NextId) -> ObjRef {
+        match res {
+            Resource::Global(global) => self.map_global_ref(id_gen, global),
+            Resource::Immediate(content) => self.put(content, id_gen),
+        }
+    }
+
+    fn map_global_ref(&mut self, id_gen: &mut NextId, global: &GlobalResource<T>) -> ObjRef {
+        if let Some((r, _)) = self.store.get(&global.index) {
+            *r
+        } else if let Some(val) = self.res.get(global.index) {
+            self.val_ref(val, id_gen, global.index)
+        } else {
+            panic!("Couldn't find {} #{}", T::debug_name(), global.index);
+        }
+    }
 }
 
 impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
@@ -257,31 +310,6 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
 }
 
 impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
-    /// Put a new object in the lower box
-    fn put(&mut self, val: &'a T, id_gen: &mut NextId) -> ObjRef {
-        let index = self.next;
-        let r = self.val_ref(val, id_gen, index);
-        self.next += 1;
-        r
-    }
-
-    /// INTERNAL: assign a new ID, put to store
-    fn val_ref(&mut self, val: &'a T, id_gen: &mut NextId, index: usize) -> ObjRef {
-        let r = make_ref(id_gen.next());
-        self.store.insert(index, (r, val));
-        r
-    }
-
-    /// Lower the resource into an object ref
-    ///
-    /// Use this for objects that have to be indirect, e.g. streams
-    fn map_ref(&mut self, res: &'a Resource<T>, id_gen: &mut NextId) -> ObjRef {
-        match res {
-            Resource::Global(global) => self.map_global_ref(id_gen, global),
-            Resource::Immediate(content) => self.put(content, id_gen),
-        }
-    }
-
     fn map(
         &mut self,
         res: &'a Resource<T>,
@@ -291,16 +319,6 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
         match res {
             Resource::Global(global) => low::Resource::Ref(self.map_global_ref(id_gen, global)),
             Resource::Immediate(content) => low::Resource::Immediate(content.lower(ctx, id_gen)),
-        }
-    }
-
-    fn map_global_ref(&mut self, id_gen: &mut NextId, global: &GlobalResource<T>) -> ObjRef {
-        if let Some((r, _)) = self.store.get(&global.index) {
-            *r
-        } else if let Some(val) = self.res.get(global.index) {
-            self.val_ref(val, id_gen, global.index)
-        } else {
-            panic!("Couldn't find {} #{}", T::debug_name(), global.index);
         }
     }
 }
@@ -325,6 +343,7 @@ impl<'a> Lowering<'a> {
             font_ctx: LowerFontCtx {
                 text_streams: LowerBox::new(&doc.res.char_procs),
                 encodings: LowerBox::new(&doc.res.encodings),
+                to_unicode: LowerBox::new(&doc.res.to_unicode),
             },
         }
     }
