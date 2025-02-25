@@ -1,6 +1,6 @@
 # Font Modifiers
 
-Signum supports 6 algorithmic font modifiers for every glphy:
+Signum supports 6 algorithmic font modifiers for every glyph:
 
 - [<kbd>Breit</kbd> (wide)](#breit-wide)
 - [<kbd>Fett</kbd> (bold)](#fett-bold)
