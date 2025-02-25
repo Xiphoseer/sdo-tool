@@ -13,57 +13,26 @@ use uuid::Uuid;
 
 use crate::{
     common::{
-        self, Dict, Encoding, FontDescriptor, ICCColorProfileMetadata, ImageMetadata, Matrix,
-        NumberTree, ObjRef, PageLabel, PdfString, Point, Rectangle, StreamMetadata,
+        self, Dict, Encoding, ICCColorProfileMetadata, NumberTree, ObjRef, PageLabel, PdfString,
+        StreamMetadata,
     },
     low::{self, ID},
     lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
-    write::{Formatter, PdfName, Serialize},
+    write::{Formatter, Serialize},
     xmp::{self, XmpWriter},
 };
 
+mod font;
 mod metadata;
+mod outline;
 mod page;
+mod xobject;
+
+pub use font::{Font, Type3Font};
 pub use metadata::{Info, Metadata};
+pub use outline::{Destination, Outline, OutlineItem};
 pub use page::{Page, Resources};
-
-#[derive(Debug, Clone)]
-/// Information for the Outline of the document
-pub struct Outline {
-    /// Immediate children of this item
-    pub children: Vec<OutlineItem>,
-}
-
-impl Default for Outline {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Outline {
-    /// Creates a new outline struct
-    pub fn new() -> Self {
-        Self { children: vec![] }
-    }
-}
-
-/// One item in the outline
-#[derive(Debug, Clone)]
-pub struct OutlineItem {
-    /// The title of the outline item
-    pub title: PdfString,
-    /// The destination to navigate to
-    pub dest: Destination,
-    /// Immediate children of this item
-    pub children: Vec<OutlineItem>,
-}
-
-/// A destination of a GoTo Action
-#[derive(Debug, Copy, Clone)]
-pub enum Destination {
-    /// Scroll to page {0} at height {1} while fitting the page to the viewer
-    PageFitH(usize, usize),
-}
+pub use xobject::{Image, XObject};
 
 /// This struct represents a global resource
 #[derive(Debug, Copy, Clone)]
@@ -98,83 +67,6 @@ impl<T> Resource<T> {
             index,
             _phantom: PhantomData,
         })
-    }
-}
-
-#[derive(Debug, Clone)]
-/// A type 3 font
-pub struct Type3Font<'a> {
-    /// The name of the font
-    pub name: Option<PdfName<'a>>,
-    /// The largest boundig box that fits all glyphs
-    pub font_bbox: Rectangle<i32>,
-    /// Font characteristics
-    pub font_descriptor: Option<FontDescriptor<'a>>,
-    /// The matrix to map glyph space into text space
-    pub font_matrix: Matrix<f32>,
-    /// The first used char key
-    pub first_char: u8,
-    /// The last used char key
-    pub last_char: u8,
-    /// Dict of char names to drawing procedures
-    pub char_procs: Dict<Ascii85Stream<'a>>,
-    /// Dict of encoding value to char names
-    pub encoding: Encoding<'a>,
-    /// Width of every char between first and last (in fontunits, i.e. 1/72000 in)
-    pub widths: Vec<u32>,
-    /// ToUnicode CMap stream
-    pub to_unicode: Option<Resource<Ascii85Stream<'a>>>,
-}
-
-impl Default for Type3Font<'_> {
-    fn default() -> Self {
-        Self {
-            font_bbox: Rectangle {
-                ll: Point::default(),
-                ur: Point::default(),
-            },
-            name: None,
-            font_matrix: Matrix::default_glyph(),
-            font_descriptor: None,
-            first_char: 0,
-            last_char: 255,
-            char_procs: Dict::new(),
-            encoding: Encoding {
-                base_encoding: None,
-                differences: None,
-            },
-            widths: vec![],
-            to_unicode: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-/// A Font resource
-pub enum Font<'a> {
-    /// A type 3 font i.e. arbitrary glyph drawings
-    Type3(Type3Font<'a>),
-}
-
-/// An embedded object resource
-#[derive(Debug)]
-pub enum XObject {
-    /// An image
-    Image(Image),
-}
-
-#[derive(Debug)]
-/// An Image resource
-pub struct Image {
-    /// The metadata for this image
-    pub meta: ImageMetadata,
-    /// The data for the image
-    pub data: Vec<u8>,
-}
-
-impl From<Image> for XObject {
-    fn from(value: Image) -> Self {
-        XObject::Image(value)
     }
 }
 
