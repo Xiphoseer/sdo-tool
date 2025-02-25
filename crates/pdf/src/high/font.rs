@@ -6,7 +6,7 @@ use crate::{
     write::PdfName,
 };
 
-use super::{Ascii85Stream, Resource, ToUnicodeCMap};
+use super::{Ascii85Stream, Resource, ToUnicode};
 
 #[derive(Debug, Clone)]
 /// A type 3 font
@@ -82,14 +82,14 @@ impl<'a> Lowerable<'a> for Font<'a> {
 pub(crate) struct LowerFontCtx<'a> {
     text_streams: LowerBox<'a, Ascii85Stream<'a>>,
     encodings: LowerBox<'a, Encoding<'a>>,
-    to_unicode: LowerBox<'a, ToUnicodeCMap>,
+    to_unicode: LowerBox<'a, ToUnicode>,
 }
 
 impl<'a> LowerFontCtx<'a> {
     pub(crate) fn new(
         char_procs: &'a [Ascii85Stream<'a>],
         encodings: &'a [Encoding<'a>],
-        to_unicode: &'a [ToUnicodeCMap],
+        to_unicode: &'a [ToUnicode],
     ) -> Self {
         Self {
             text_streams: LowerBox::new(char_procs),
@@ -104,9 +104,7 @@ impl<'a> LowerFontCtx<'a> {
         self.text_streams.store_values()
     }
 
-    pub(crate) fn to_unicode_values(
-        &self,
-    ) -> impl Iterator<Item = (ObjRef, &'a ToUnicodeCMap)> + '_ {
+    pub(crate) fn to_unicode_values(&self) -> impl Iterator<Item = (ObjRef, &'a ToUnicode)> + '_ {
         self.to_unicode.store_values()
     }
 

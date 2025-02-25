@@ -21,7 +21,7 @@ use crate::{
     xmp::{self, XmpWriter},
 };
 
-mod cmap;
+pub mod cmap;
 mod font;
 mod metadata;
 mod outline;
@@ -29,7 +29,7 @@ mod page;
 mod stream;
 mod xobject;
 
-pub use cmap::{BFChar, BFRange, ToUnicodeCMap};
+pub use cmap::ToUnicodeCMap as ToUnicode;
 pub use font::{Font, Type3Font};
 pub use metadata::{Info, Metadata};
 pub use outline::{Destination, Outline, OutlineItem};
@@ -99,7 +99,7 @@ pub struct Res<'a> {
     /// Encoding resources
     pub encodings: Vec<Encoding<'a>>,
     /// Character Maps
-    pub to_unicode: Vec<ToUnicodeCMap>,
+    pub to_unicode: Vec<ToUnicode>,
 }
 
 fn push<T>(vec: &mut Vec<T>, value: T) -> usize {

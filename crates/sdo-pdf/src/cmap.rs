@@ -15,7 +15,7 @@
 //! [Adobe Tech Note #5411]: https://pdfa.org/norm-refs/5411.ToUnicode.pdf
 use std::fmt;
 
-use pdf_create::high::{BFChar, BFRange, ToUnicodeCMap};
+use pdf_create::high::cmap::{BFChar, BFRange, ToUnicodeCMap};
 use signum::chsets::encoding::Mapping;
 
 const REGISTRY: &str = "Signum";

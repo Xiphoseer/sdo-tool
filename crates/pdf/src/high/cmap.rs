@@ -107,13 +107,18 @@ impl ToUnicodeCMap {
         }
     }
 
-    /// Write the CMap to a formatter
-    pub fn write<W: fmt::Write>(&self, out: &mut W, comments: bool) -> fmt::Result {
-        // Header
+    /// Return the name of the CMap as "Registry-Ordering-Supplement"
+    pub fn name(&self) -> String {
         let registry = self.registry.as_str();
         let ordering = self.ordering.as_str();
         let supplement = self.supplement;
-        let name = format!("{}-{}-{:03}", registry, ordering, supplement);
+        format!("{}-{}-{:03}", registry, ordering, supplement)
+    }
+
+    /// Write the CMap to a formatter
+    pub fn write<W: fmt::Write>(&self, out: &mut W, comments: bool) -> fmt::Result {
+        // Header
+        let name = self.name();
 
         if comments {
             writeln!(out, "%!PS-Adobe-3.0 Resource-CMap")?;
@@ -124,7 +129,7 @@ impl ToUnicodeCMap {
             writeln!(
                 out,
                 "%%Title: ({name} {} {} {})",
-                registry, ordering, supplement
+                &self.registry, &self.ordering, &self.supplement
             )?;
             writeln!(out, "%%Version: 1.000")?;
             writeln!(out, "%%EndComments")?;
@@ -135,9 +140,9 @@ impl ToUnicodeCMap {
         writeln!(out)?;
         writeln!(out, "begincmap")?;
         writeln!(out, "/CIDSystemInfo <<")?;
-        writeln!(out, "  /Registry ({})", registry)?;
-        writeln!(out, "  /Ordering ({})", ordering)?;
-        writeln!(out, "  /Supplement {}", supplement)?;
+        writeln!(out, "  /Registry ({})", self.registry)?;
+        writeln!(out, "  /Ordering ({})", self.ordering)?;
+        writeln!(out, "  /Supplement {}", self.supplement)?;
         writeln!(out, ">> def")?;
         writeln!(out)?;
         writeln!(out, "/CMapName /{} def", name)?;
