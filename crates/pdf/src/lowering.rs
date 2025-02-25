@@ -95,7 +95,8 @@ pub(crate) trait Lowerable<'a> {
     type Ctx;
 
     fn lower(&'a self, ctx: &mut Self::Ctx, id_gen: &mut NextId) -> Self::Lower;
-    fn name() -> &'static str;
+    /// Name used for debugging
+    fn debug_name() -> &'static str;
 }
 
 #[allow(dead_code)]
@@ -147,7 +148,7 @@ impl<'a> Lowerable<'a> for Font<'a> {
         lower_font(self, ctx, id_gen)
     }
 
-    fn name() -> &'static str {
+    fn debug_name() -> &'static str {
         "Font"
     }
 }
@@ -165,7 +166,7 @@ impl<'a> Lowerable<'a> for XObject {
         }
     }
 
-    fn name() -> &'static str {
+    fn debug_name() -> &'static str {
         "XObject"
     }
 }
@@ -181,7 +182,7 @@ impl<'a> Lowerable<'a> for Ascii85Stream<'a> {
         }
     }
 
-    fn name() -> &'static str {
+    fn debug_name() -> &'static str {
         "CharProc"
     }
 }
@@ -194,7 +195,7 @@ impl<'a> Lowerable<'a> for Encoding<'a> {
         self.clone()
     }
 
-    fn name() -> &'static str {
+    fn debug_name() -> &'static str {
         "CharProc"
     }
 }
@@ -244,7 +245,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, DictResource<T>> {
                     self.store.insert(*index, (r, font_dict));
                     low::Resource::Ref(r)
                 } else {
-                    panic!("Couldn't find {} Dict #{}", T::name(), index);
+                    panic!("Couldn't find {} Dict #{}", T::debug_name(), index);
                 }
             }
             Resource::Immediate(fonts) => {
@@ -299,7 +300,7 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
         } else if let Some(val) = self.res.get(global.index) {
             self.val_ref(val, id_gen, global.index)
         } else {
-            panic!("Couldn't find {} #{}", T::name(), global.index);
+            panic!("Couldn't find {} #{}", T::debug_name(), global.index);
         }
     }
 }

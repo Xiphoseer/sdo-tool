@@ -22,12 +22,14 @@ use crate::{
     xmp::{self, XmpWriter},
 };
 
+mod cmap;
 mod font;
 mod metadata;
 mod outline;
 mod page;
 mod xobject;
 
+pub use cmap::{BFChar, BFRange, ToUnicodeCMap};
 pub use font::{Font, Type3Font};
 pub use metadata::{Info, Metadata};
 pub use outline::{Destination, Outline, OutlineItem};
