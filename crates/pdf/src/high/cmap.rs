@@ -16,11 +16,9 @@
 
 use std::{borrow::Cow, fmt, ops::RangeInclusive};
 
-use crate::{
-    common::StreamMetadata,
-    low,
-    lowering::{DebugName, Lowerable},
-};
+use crate::{common::StreamMetadata, low, lowering::DebugName};
+
+use super::stream::ToStream;
 
 /// Range of character that map to sequential unicode characters
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,12 +188,10 @@ impl DebugName for ToUnicodeCMap {
     }
 }
 
-impl<'a> Lowerable<'a> for ToUnicodeCMap {
-    type Lower = low::Ascii85Stream<'static>;
+impl<'a> ToStream<'a> for ToUnicodeCMap {
+    type Stream = low::Ascii85Stream<'static>;
 
-    type Ctx = ();
-
-    fn lower(&'a self, _ctx: &mut Self::Ctx, _id_gen: &mut crate::util::NextId) -> Self::Lower {
+    fn to_stream(&'a self) -> Self::Stream {
         let mut out = String::new();
         self.write(&mut out, false).unwrap();
         low::Ascii85Stream {

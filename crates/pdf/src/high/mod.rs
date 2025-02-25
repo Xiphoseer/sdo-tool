@@ -1,7 +1,6 @@
 //! High-Level API
 
 use std::{
-    borrow::Cow,
     collections::BTreeMap,
     io::{self, Write},
     marker::PhantomData,
@@ -27,6 +26,7 @@ mod font;
 mod metadata;
 mod outline;
 mod page;
+mod stream;
 mod xobject;
 
 pub use cmap::{BFChar, BFRange, ToUnicodeCMap};
@@ -34,7 +34,11 @@ pub use font::{Font, Type3Font};
 pub use metadata::{Info, Metadata};
 pub use outline::{Destination, Outline, OutlineItem};
 pub use page::{Page, Resources};
+pub use stream::Ascii85Stream;
 pub use xobject::{Image, XObject};
+
+pub(crate) use font::LowerFontCtx;
+pub(crate) use stream::ToStream;
 
 /// This struct represents a global resource
 #[derive(Debug, Copy, Clone)]
@@ -74,8 +78,10 @@ impl<T> Resource<T> {
 
 /// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
+/// A resource of a dictionary
+pub type ResDict<T> = Resource<Dict<T>>;
 /// A referenced or immediate dict of resources
-pub type ResDictRes<T> = Resource<Dict<Resource<T>>>;
+pub type ResDictRes<T> = ResDict<Resource<T>>;
 
 /// The global context for lowering
 #[derive(Debug, Default)]
@@ -164,15 +170,6 @@ impl Default for Handle<'_> {
     fn default() -> Self {
         Handle::new()
     }
-}
-
-#[derive(Debug, Clone)]
-/// A text stream in the PDF
-pub struct Ascii85Stream<'a> {
-    /// The data of this stream
-    pub data: Cow<'a, [u8]>,
-    /// The metadata for this stream
-    pub meta: StreamMetadata,
 }
 
 fn pdf_string_of(o: &Option<String>) -> io::Result<Option<PdfString>> {
@@ -341,10 +338,9 @@ impl Handle<'_> {
                         &mut lowering.font_ctx,
                         &mut lowering.id_gen,
                     ),
-                    x_object: lowering.x_object_dicts.map_dict(
+                    x_object: lowering.x_object_dicts.map_stream_dict(
                         &page.resources.x_objects,
                         &mut lowering.x_objects,
-                        &mut (),
                         &mut lowering.id_gen,
                     ),
                     proc_set: &page.resources.proc_sets,
@@ -372,18 +368,20 @@ impl Handle<'_> {
         }
 
         for (x_ref, x) in lowering.x_objects.store_values() {
-            let x_low = x.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(x_ref, &x_low)?;
+            fmt.obj(x_ref, &x.to_stream())?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in lowering.font_ctx.text_streams.store_values() {
-            let cp = char_proc.lower(&mut (), &mut lowering.id_gen);
-            fmt.obj(cproc_ref, &cp)?;
+        for (cproc_ref, char_proc) in lowering.font_ctx.text_stream_values() {
+            fmt.obj(cproc_ref, &char_proc.to_stream())?;
         }
 
-        for (cmap_ref, cmap) in lowering.font_ctx.to_unicode.store_values() {
-            fmt.obj(cmap_ref, &cmap.lower(&mut (), &mut lowering.id_gen))?;
+        for (cmap_ref, cmap) in lowering.font_ctx.to_unicode_values() {
+            fmt.obj(cmap_ref, &cmap.to_stream())?;
+        }
+
+        for (encoding_ref, encoding) in lowering.font_ctx.encoding_values() {
+            fmt.obj(encoding_ref, &encoding.lower(&mut (), &mut lowering.id_gen))?;
         }
 
         let pages_ref = make_ref(pages_id);

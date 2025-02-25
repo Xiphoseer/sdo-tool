@@ -295,15 +295,17 @@ impl Serialize for XObject<'_> {
 
 /// A dict of resources
 pub type DictResource<T> = Dict<Resource<T>>;
+/// A resource of a dictionary
+pub type ResDict<T> = Resource<Dict<T>>;
 /// A referenced or immediate dict of resources
-pub type ResDictRes<T> = Resource<Dict<Resource<T>>>;
+pub type ResDictRes<T> = ResDict<Resource<T>>;
 
 /// The resources of a page
 pub struct Resources<'a> {
     /// A dict of font resources
     pub font: ResDictRes<Font<'a>>,
     /// A dict of embedded object resources
-    pub x_object: ResDictRes<XObject<'a>>,
+    pub x_object: ResDict<ObjRef>,
     /// A set of valid procedures
     pub proc_set: &'a [ProcSet],
 }
