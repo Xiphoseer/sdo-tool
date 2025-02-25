@@ -16,7 +16,7 @@ use crate::{
         StreamMetadata,
     },
     encoding::ascii_85_encode,
-    write::{Formatter, PdfName, Serialize},
+    write::{Formatter, PdfName, Serialize, ToDict},
 };
 
 /// Destination of a GoTo action
@@ -172,6 +172,22 @@ pub struct Type3Font<'a> {
     pub to_unicode: Option<ObjRef>,
 }
 
+impl ToDict for Type3Font<'_> {
+    fn write(&self, dict: &mut crate::write::PdfDict<'_, '_>) -> io::Result<()> {
+        dict.opt_field("BaseFont", &self.name)?
+            .field("FontBBox", &self.font_bbox)?
+            .field("FontMatrix", &self.font_matrix)?
+            .field("FirstChar", &self.first_char)?
+            .field("LastChar", &self.last_char)?
+            .field("Encoding", &self.encoding)?
+            .field("CharProcs", &self.char_procs)?
+            .arr_field("Widths", self.widths)?
+            .opt_field("FontDescriptor", &self.font_descriptor)?
+            .opt_field("ToUnicode", &self.to_unicode)?;
+        Ok(())
+    }
+}
+
 /// A font resource
 pub enum Font<'a> {
     /// A type 3 font resource
@@ -184,19 +200,10 @@ impl Serialize for Font<'_> {
         dict.field("Type", &PdfName("Font"))?;
         match self {
             Self::Type3(font) => {
-                dict.field("Subtype", &PdfName("Type3"))?
-                    .opt_field("BaseFont", &font.name)?
-                    .field("FontBBox", &font.font_bbox)?
-                    .field("FontMatrix", &font.font_matrix)?
-                    .field("FirstChar", &font.first_char)?
-                    .field("LastChar", &font.last_char)?
-                    .field("Encoding", &font.encoding)?
-                    .field("CharProcs", &font.char_procs)?
-                    .arr_field("Widths", font.widths)?
-                    .opt_field("FontDescriptor", &font.font_descriptor)?
-                    .opt_field("ToUnicode", &font.to_unicode)?;
+                dict.field("Subtype", &PdfName("Type3"))?;
+                dict.embed(font)?;
             }
-        }
+        };
         dict.finish()?;
         Ok(())
     }
