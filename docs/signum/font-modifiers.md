@@ -2,7 +2,7 @@
 
 Signum supports 6 algorithmic font modifiers for every glphy:
 
-- [*Breit* (wide)](#breit-wide)
+- [<kbd>Breit</kbd> (wide)](#breit-wide)
 - [*Fett* (bold)](#fett-bold)
 - [`-----` (underlined)](#------underlined)
 - [*Kursiv* (italic)](#kursiv-italic)
