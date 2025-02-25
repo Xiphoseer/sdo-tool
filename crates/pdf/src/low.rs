@@ -225,7 +225,7 @@ impl Serialize for Ascii85Stream<'_> {
         f.pdf_dict()
             .embed(&self.meta)?
             .field("Length", &len)?
-            .field("Filter", &PdfName("ASCII85Decode"))?
+            .field("Filter", &Filter::ASCII85Decode)?
             .finish()?;
         f.pdf_stream(&buf)?;
         Ok(())
@@ -250,7 +250,7 @@ impl Serialize for FlateStream<'_> {
         f.pdf_dict()
             .embed(&self.meta)?
             .field("Length", &len)?
-            .field("Filter", &PdfName("FlateDecode"))?
+            .field("Filter", &Filter::FlateDecode)?
             .finish()?;
         f.pdf_stream(&buf)?;
         Ok(())
@@ -276,27 +276,25 @@ impl Serialize for FlateAscii85Stream<'_> {
         f.pdf_dict()
             .embed(&self.meta)?
             .field("Length", &len)?
-            .field(
-                "Filter",
-                &(PdfName("ASCII85Decode"), PdfName("FlateDecode")),
-            )?
+            .field("Filter", &[Filter::ASCII85Decode, Filter::FlateDecode])?
             .finish()?;
         f.pdf_stream(&out)?;
         Ok(())
     }
 }
 
-/// An emedded object resource
-pub enum XObject<'a> {
-    /// An image object
-    Image(Ascii85Stream<'a>),
+enum Filter {
+    ASCII85Decode,
+    FlateDecode,
 }
 
-impl Serialize for XObject<'_> {
+impl Serialize for Filter {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         match self {
-            Self::Image(i) => i.write(f),
+            Filter::ASCII85Decode => PdfName("ASCII85Decode"),
+            Filter::FlateDecode => PdfName("FlateDecode"),
         }
+        .write(f)
     }
 }
 
