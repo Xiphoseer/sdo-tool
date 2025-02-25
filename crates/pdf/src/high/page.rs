@@ -1,4 +1,9 @@
-use crate::common::{ProcSet, Rectangle};
+use crate::{
+    common::{ObjRef, ProcSet, Rectangle},
+    low,
+    lowering::{DebugName, LowerPagesCtx},
+    util::NextId,
+};
 
 use super::{Font, ResDictRes, Resource, XObject};
 
@@ -29,5 +34,38 @@ impl Default for Resources<'_> {
             x_objects: Resource::Immediate(Box::default()),
             proc_sets: vec![ProcSet::PDF, ProcSet::Text],
         }
+    }
+}
+
+impl DebugName for Page<'_> {
+    fn debug_name() -> &'static str {
+        "Page"
+    }
+}
+
+pub(crate) fn lower_page<'a>(
+    page: &'a Page<'a>,
+    ctx: &mut LowerPagesCtx<'a>,
+    id_gen: &mut NextId,
+    contents_ref: ObjRef,
+) -> low::Page<'a> {
+    low::Page {
+        parent: ctx.pages_ref,
+        resources: low::Resources {
+            font: ctx.font_dicts.map_dict(
+                &page.resources.fonts,
+                &mut ctx.fonts,
+                &mut ctx.font_ctx,
+                id_gen,
+            ),
+            x_object: ctx.x_object_dicts.map_stream_dict(
+                &page.resources.x_objects,
+                &mut ctx.x_objects,
+                id_gen,
+            ),
+            proc_set: &page.resources.proc_sets,
+        },
+        contents: contents_ref,
+        media_box: Some(page.media_box),
     }
 }

@@ -266,8 +266,21 @@ impl<'a, T: Lowerable<'a>> LowerBox<'a, T> {
     }
 }
 
-pub(crate) struct Lowering<'a> {
+pub(crate) struct Lowering {
     pub id_gen: NextId,
+}
+
+impl Lowering {
+    pub(crate) fn new() -> Self {
+        Lowering {
+            id_gen: NextId::new(1),
+        }
+    }
+}
+
+pub(crate) struct LowerPagesCtx<'a> {
+    pub pages_ref: ObjRef,
+
     pub x_objects: LowerBox<'a, XObject>,
     pub x_object_dicts: LowerBox<'a, DictResource<XObject>>,
     pub fonts: LowerBox<'a, Font<'a>>,
@@ -275,10 +288,9 @@ pub(crate) struct Lowering<'a> {
     pub font_ctx: LowerFontCtx<'a>,
 }
 
-impl<'a> Lowering<'a> {
-    pub(crate) fn new(doc: &'a Handle) -> Self {
-        Lowering {
-            id_gen: NextId::new(1),
+impl<'a> LowerPagesCtx<'a> {
+    pub(crate) fn new(doc: &'a Handle, pages_ref: ObjRef) -> Self {
+        Self {
             x_objects: LowerBox::new(&doc.res.x_objects),
             x_object_dicts: LowerBox::new(&doc.res.x_object_dicts),
             fonts: LowerBox::new(&doc.res.fonts),
@@ -288,6 +300,7 @@ impl<'a> Lowering<'a> {
                 &doc.res.encodings,
                 &doc.res.to_unicode,
             ),
+            pages_ref,
         }
     }
 }

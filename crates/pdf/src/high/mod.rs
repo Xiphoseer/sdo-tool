@@ -8,6 +8,7 @@ use std::{
 };
 
 use chrono::Local;
+use page::lower_page;
 use uuid::Uuid;
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
         StreamMetadata,
     },
     low::{self, ID},
-    lowering::{lower_dict, lower_outline_items, Lowerable, Lowering},
+    lowering::{lower_dict, lower_outline_items, LowerPagesCtx, Lowerable, Lowering},
     write::{Formatter, Serialize},
     xmp::{self, XmpWriter},
 };
@@ -241,7 +242,7 @@ impl Handle<'_> {
 
         let gen = 0;
         let make_ref = move |id: u64| ObjRef { id, gen };
-        let mut lowering = Lowering::new(self);
+        let mut lowering = Lowering::new();
 
         // Start
         writeln!(fmt.inner, "%PDF-1.5")?;
@@ -317,6 +318,8 @@ impl Handle<'_> {
         let pages_id = lowering.id_gen.next();
         let pages_ref = make_ref(pages_id);
 
+        let mut pages_ctx = LowerPagesCtx::new(self, pages_ref);
+
         for page in &self.pages {
             let page_id = lowering.id_gen.next();
             let contents_id = lowering.id_gen.next();
@@ -329,58 +332,40 @@ impl Handle<'_> {
             fmt.obj(contents_ref, &contents)?;
 
             let page_ref = make_ref(page_id);
-            let page_low = low::Page {
-                parent: pages_ref,
-                resources: low::Resources {
-                    font: lowering.font_dicts.map_dict(
-                        &page.resources.fonts,
-                        &mut lowering.fonts,
-                        &mut lowering.font_ctx,
-                        &mut lowering.id_gen,
-                    ),
-                    x_object: lowering.x_object_dicts.map_stream_dict(
-                        &page.resources.x_objects,
-                        &mut lowering.x_objects,
-                        &mut lowering.id_gen,
-                    ),
-                    proc_set: &page.resources.proc_sets,
-                },
-                contents: contents_ref,
-                media_box: Some(page.media_box),
-            };
+            let page_low = lower_page(page, &mut pages_ctx, &mut lowering.id_gen, contents_ref);
             fmt.obj(page_ref, &page_low)?;
             pages.kids.push(page_ref);
         }
 
-        for (font_dict_ref, font_dict) in lowering.font_dicts.store_values() {
+        for (font_dict_ref, font_dict) in pages_ctx.font_dicts.store_values() {
             let dict = lower_dict(
                 font_dict,
-                &mut lowering.fonts,
-                &mut lowering.font_ctx,
+                &mut pages_ctx.fonts,
+                &mut pages_ctx.font_ctx,
                 &mut lowering.id_gen,
             );
             fmt.obj(font_dict_ref, &dict)?;
         }
 
-        for (font_ref, font) in lowering.fonts.store_values() {
-            let font_low = font.lower(&mut lowering.font_ctx, &mut lowering.id_gen);
+        for (font_ref, font) in pages_ctx.fonts.store_values() {
+            let font_low = font.lower(&mut pages_ctx.font_ctx, &mut lowering.id_gen);
             fmt.obj(font_ref, &font_low)?;
         }
 
-        for (x_ref, x) in lowering.x_objects.store_values() {
+        for (x_ref, x) in pages_ctx.x_objects.store_values() {
             fmt.obj(x_ref, &x.to_stream())?;
         }
 
         // FIXME: this only works AFTER all fonts are lowered
-        for (cproc_ref, char_proc) in lowering.font_ctx.text_stream_values() {
+        for (cproc_ref, char_proc) in pages_ctx.font_ctx.text_stream_values() {
             fmt.obj(cproc_ref, &char_proc.to_stream())?;
         }
 
-        for (cmap_ref, cmap) in lowering.font_ctx.to_unicode_values() {
+        for (cmap_ref, cmap) in pages_ctx.font_ctx.to_unicode_values() {
             fmt.obj(cmap_ref, &cmap.to_stream())?;
         }
 
-        for (encoding_ref, encoding) in lowering.font_ctx.encoding_values() {
+        for (encoding_ref, encoding) in pages_ctx.font_ctx.encoding_values() {
             fmt.obj(encoding_ref, &encoding.lower(&mut (), &mut lowering.id_gen))?;
         }
 
