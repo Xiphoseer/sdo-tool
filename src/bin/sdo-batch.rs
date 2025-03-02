@@ -16,7 +16,7 @@ use sdo_pdf::{
     font::Fonts, prepare_info, prepare_pdfa_output_intent, sdoc::generate_pdf_pages, Pdf,
 };
 use signum::{
-    chsets::{cache::ChsetCache, printer::PrinterKind, UseTableVec},
+    chsets::{cache::ChsetCache, printer::PrinterKind, UseMatrix, UseTableVec},
     util::LocalFS,
 };
 
@@ -106,9 +106,13 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     prepare_pdfa_output_intent(&mut hnd)?;
 
     let mut use_table_vec = UseTableVec::new();
+    let mut use_table_vec_bold = UseTableVec::new();
     for (doc, di) in &documents {
-        let use_matrix = doc.text_buffer().use_matrix();
+        let pages = doc.text_pages();
+        let use_matrix = UseMatrix::of_matching(pages, |k| !k.style.is_bold());
+        let use_matrix_bold = UseMatrix::of_matching(pages, |k| k.style.is_bold());
         use_table_vec.append(&di.fonts, use_matrix);
+        use_table_vec_bold.append(&di.fonts, use_matrix_bold);
     }
 
     // FIXME: Auto-Detect from font cache
@@ -117,7 +121,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let fonts_capacity = fc.chsets().len();
     let mut font_info = Fonts::new(fonts_capacity);
 
-    font_info.make_fonts(&fc, &mut hnd.res, use_table_vec, pk);
+    font_info.make_fonts(&fc, &mut hnd.res, use_table_vec, use_table_vec_bold, pk);
 
     let overrides = script.meta.to_overrides();
     for (doc, di) in &documents {

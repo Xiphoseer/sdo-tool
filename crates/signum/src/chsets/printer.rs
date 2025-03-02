@@ -289,16 +289,18 @@ impl PSetChar<'_> {
     /// ```
     pub fn bold_light(&self) -> PSetChar<'static> {
         let mut bitmap = Vec::with_capacity(self.bitmap.len());
-        for row in self.bitmap.chunks(self.width as usize) {
-            let mut acc = 0;
-            for slice in row.windows(2) {
-                let a = slice[0];
-                let b = slice[1];
-                bitmap.push(acc | a << 1 | a | a >> 1 | b >> 7);
-                acc = a << 7;
-            }
-            if let Some(c) = row.last().copied() {
-                bitmap.push(acc | c << 1 | c | c >> 1)
+        if self.width > 0 {
+            for row in self.bitmap.chunks(self.width as usize) {
+                let mut acc = 0;
+                for slice in row.windows(2) {
+                    let a = slice[0];
+                    let b = slice[1];
+                    bitmap.push(acc | a << 1 | a | a >> 1 | b >> 7);
+                    acc = a << 7;
+                }
+                if let Some(c) = row.last().copied() {
+                    bitmap.push(acc | c << 1 | c | c >> 1)
+                }
             }
         }
         PSetChar {
@@ -339,13 +341,15 @@ impl PSetChar<'_> {
     pub fn bold_light_vertical(&self) -> PSetChar<'static> {
         let mut bitmap = self.bitmap.to_vec();
         let w = self.width as usize;
-        let w2 = w * 2;
-        bitmap.resize(bitmap.len() + w2, 0);
-        for (src, dst) in self.bitmap.iter().zip(bitmap[w..].iter_mut()) {
-            *dst |= *src
-        }
-        for (src, dst) in self.bitmap.iter().zip(bitmap[w2..].iter_mut()) {
-            *dst |= *src
+        if w > 0 {
+            let w2 = w * 2;
+            bitmap.resize(bitmap.len() + w2, 0);
+            for (src, dst) in self.bitmap.iter().zip(bitmap[w..].iter_mut()) {
+                *dst |= *src
+            }
+            for (src, dst) in self.bitmap.iter().zip(bitmap[w2..].iter_mut()) {
+                *dst |= *src
+            }
         }
         PSetChar {
             top: self.top,

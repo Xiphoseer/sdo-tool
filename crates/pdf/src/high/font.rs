@@ -3,7 +3,7 @@ use crate::{
     low,
     lowering::{DebugName, LowerBox, Lowerable},
     util::NextId,
-    write::PdfName,
+    write::PdfNameBuf,
 };
 
 use super::{Ascii85Stream, Resource, ToUnicode};
@@ -12,11 +12,11 @@ use super::{Ascii85Stream, Resource, ToUnicode};
 /// A type 3 font
 pub struct Type3Font<'a> {
     /// The name of the font
-    pub name: Option<PdfName<'a>>,
+    pub name: Option<PdfNameBuf>,
     /// The largest boundig box that fits all glyphs
     pub font_bbox: Rectangle<i32>,
     /// Font characteristics
-    pub font_descriptor: Option<FontDescriptor<'a>>,
+    pub font_descriptor: Option<FontDescriptor>,
     /// The matrix to map glyph space into text space
     pub font_matrix: Matrix<f32>,
     /// The first used char key
@@ -133,7 +133,7 @@ fn lower_font<'a>(
                 .as_ref()
                 .map(|res| ctx.text_streams.map_ref(res, id_gen));
             low::Font::Type3(low::Type3Font {
-                name: font.name,
+                name: font.name.as_ref().map(|f| f.as_ref()),
                 font_bbox: font.font_bbox,
                 font_descriptor: font.font_descriptor.clone(),
                 font_matrix: font.font_matrix,

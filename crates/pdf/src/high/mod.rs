@@ -42,13 +42,20 @@ pub(crate) use font::LowerFontCtx;
 pub(crate) use stream::ToStream;
 
 /// This struct represents a global resource
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct GlobalResource<T> {
     /// The index into the global list
     pub(crate) index: usize,
     /// Marker for contained T
     _phantom: PhantomData<fn() -> T>,
 }
+
+impl<T> Clone for GlobalResource<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Copy for GlobalResource<T> {}
 
 impl<T> From<GlobalResource<T>> for Resource<T> {
     fn from(value: GlobalResource<T>) -> Self {

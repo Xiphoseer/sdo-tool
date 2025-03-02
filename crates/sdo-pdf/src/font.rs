@@ -13,7 +13,7 @@ use pdf_create::{
         Rectangle, SparseSet, StreamMetadata,
     },
     high::{Ascii85Stream, DictResource, Font, GlobalResource, Res, Resource, Type3Font},
-    write::PdfName,
+    write::{PdfName, PdfNameBuf},
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::{
@@ -25,6 +25,7 @@ use signum::{
         UseMatrix, UseTable, UseTableVec,
     },
     docs::GenerationContext,
+    util::Buf,
 };
 
 use crate::cmap::write_cmap;
@@ -179,10 +180,10 @@ const EMPTY_GLYPH_PROC: &[u8] = b"0 0 0 0 0 0 d1";
 /// Create a type 3 font
 pub fn type3_font<'a>(
     efont: Option<&'a ESet>,
-    pfont: &'a PSet,
+    pfont: &PSet,
     use_table: &UseTable,
     to_unicode: Option<Resource<Ascii85Stream<'static>>>,
-    name: &'a str,
+    name: &str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
     let font_matrix = Matrix::scale(0.001, 0.001);
@@ -286,7 +287,7 @@ pub fn type3_font<'a>(
     }
 
     let font_descriptor = Some(FontDescriptor {
-        font_name: PdfName(name),
+        font_name: PdfNameBuf::new(name),
         font_family: PdfString::from_str(name).unwrap(),
         font_stretch: None,
         font_weight: None,
@@ -303,7 +304,7 @@ pub fn type3_font<'a>(
     });
 
     Some(Type3Font {
-        name: Some(PdfName(name)),
+        name: Some(PdfNameBuf::new(name)),
         font_bbox,
         font_matrix,
         first_char,
@@ -335,6 +336,8 @@ pub struct FontInfo {
     first_char: u8,
     /// Index within the PDF document of the font resource
     index: GlobalResource<Font<'static>>,
+    /// Index within the PDF document of the font resource (bold variant)
+    index_bold: Option<GlobalResource<Font<'static>>>,
 }
 
 impl FontInfo {
@@ -379,11 +382,13 @@ impl Fonts {
         fc: &'a ChsetCache,
         res: &mut Res<'a>,
         use_table_vec: UseTableVec,
+        use_table_vec_bold: UseTableVec,
         pk: PrinterKind,
     ) {
         let chsets = fc.chsets();
         for (index, cs) in chsets.iter().enumerate() {
             let use_table = &use_table_vec.csets[index];
+            let use_table_bold = &use_table_vec_bold.csets[index];
 
             if let Some(pfont) = cs.printer(pk) {
                 // FIXME: FontDescriptor
@@ -396,11 +401,27 @@ impl Fonts {
                     .map(Box::new)
                     .map(Resource::Immediate);
 
-                if let Some(font) = type3_font(efont, pfont, use_table, to_unicode, cs.name()) {
+                let font_regular =
+                    type3_font(efont, pfont, use_table, to_unicode.clone(), cs.name());
+                let font_bold_name = format!("{}-Bold", cs.name());
+                let pfont_bold: PSet<'static> = PSet {
+                    pk,
+                    header: Buf(&[]),
+                    chars: pfont.chars.iter().map(PSetChar::bold_normal).collect(),
+                };
+                let mut font_bold = type3_font(
+                    efont,
+                    &pfont_bold,
+                    use_table_bold,
+                    to_unicode,
+                    &font_bold_name,
+                );
+                if let Some(font) = font_regular {
                     let info = FontInfo {
                         widths: font.widths.clone(),
                         first_char: font.first_char,
                         index: res.push_font(Font::Type3(font)),
+                        index_bold: font_bold.take().map(|f| res.push_font(Font::Type3(f))),
                     };
                     self.info.push(Some(info));
                     continue;
@@ -413,6 +434,9 @@ impl Fonts {
 
 /// The names used for the charsets in a font
 pub const FONTS: [&str; 8] = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+
+/// The names used for the bold charsets in a font
+pub const FONTS_BOLD: [&str; 8] = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7"];
 
 impl Fonts {
     /// Prepare the font dictionary
@@ -428,7 +452,10 @@ impl Fonts {
             .enumerate()
             .filter_map(|(cset, fci)| self.info(fci).map(|info| (cset, info)))
         {
-            dict.insert(FONTS[cset].to_owned(), Resource::from(info.index.clone()));
+            dict.insert(FONTS[cset].to_owned(), Resource::from(info.index));
+            if let Some(index) = info.index_bold {
+                dict.insert(FONTS_BOLD[cset].to_owned(), Resource::from(index));
+            }
             infos[cset] = Some(info);
         }
         (dict, infos)
@@ -447,13 +474,17 @@ pub fn prepare_pdf_fonts<'f, GC: GenerationContext>(
     let use_table_vec = {
         let mut v = UseTableVec::new();
         let use_matrix_regular = UseMatrix::of_matching(pages, |k| !k.style.is_bold());
-        let use_matrix_bold = UseMatrix::of_matching(pages, |k| k.style.is_bold());
         v.append(dfci, use_matrix_regular);
+        v
+    };
+    let use_table_vec_bold = {
+        let mut v = UseTableVec::new();
+        let use_matrix_bold = UseMatrix::of_matching(pages, |k| k.style.is_bold());
         v.append(dfci, use_matrix_bold);
         v
     };
 
     let mut font_info = Fonts::new(8);
-    font_info.make_fonts(fc, res, use_table_vec, pk);
+    font_info.make_fonts(fc, res, use_table_vec, use_table_vec_bold, pk);
     font_info
 }

@@ -21,6 +21,8 @@ pub struct TextContents<O> {
 
     /// slant
     slant: f32,
+    /// bold
+    bold: bool,
 
     open: bool,
     needs_space: bool,
@@ -59,6 +61,7 @@ impl<O: io::Write> TextContents<O> {
             line_y: 0,
             line_x: 0,
             slant: 0.0,
+            bold: false,
             buf: vec![],
             open: false,
             needs_space: false,
@@ -111,12 +114,14 @@ impl<O: io::Write> TextContents<O> {
     /// Set the font and size (`Tf` operator)
     ///
     /// Font size is in (2 x natural font size)
-    pub fn cset(&mut self, cset: u8, font_size: u8) -> io::Result<()> {
-        if self.cset != cset || self.fs != font_size {
+    pub fn cset(&mut self, cset: u8, bold: bool, font_size: u8) -> io::Result<()> {
+        if self.cset != cset || self.bold != bold || self.fs != font_size {
             self.cset = cset;
+            self.bold = bold;
             self.fs = font_size;
             self.flush()?;
-            writeln!(self.inner, "/C{} {} Tf", cset, font_size as f32)?;
+            let prefix = if bold { "B" } else { "C" };
+            writeln!(self.inner, "/{prefix}{} {} Tf", cset, font_size as f32)?;
         }
         Ok(())
     }

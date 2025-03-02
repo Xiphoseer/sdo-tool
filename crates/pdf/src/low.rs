@@ -167,7 +167,7 @@ pub struct Type3Font<'a> {
     /// Width of every char between first and last
     pub widths: &'a [u32],
     /// Font characteristics
-    pub font_descriptor: Option<FontDescriptor<'a>>,
+    pub font_descriptor: Option<FontDescriptor>,
     /// Optional reference to a CMap stream
     pub to_unicode: Option<ObjRef>,
 }

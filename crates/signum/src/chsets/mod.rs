@@ -163,11 +163,8 @@ impl UseTableVec {
                 if self.csets.len() == index {
                     self.csets.push(*use_table);
                 } else {
-                    for (left, right) in self.csets[index]
-                        .chars
-                        .iter_mut()
-                        .zip(use_table.chars.iter())
-                    {
+                    let inner = &mut self.csets[index];
+                    for (left, right) in inner.chars.iter_mut().zip(use_table.chars.iter()) {
                         *left += *right
                     }
                 }

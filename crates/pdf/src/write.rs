@@ -388,6 +388,22 @@ impl Serialize for ObjRef {
     }
 }
 
+/// An owned [PdfName]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PdfNameBuf(String);
+
+impl PdfNameBuf {
+    /// Create a new instance
+    pub fn new(text: &str) -> Self {
+        Self(text.to_owned())
+    }
+
+    /// Get a reference [PdfName]
+    pub fn as_ref(&self) -> PdfName<'_> {
+        PdfName(&self.0)
+    }
+}
+
 /// A borrowed PDF name (e.g. `/Info`)
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PdfName<'a>(pub &'a str);

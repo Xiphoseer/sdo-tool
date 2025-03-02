@@ -12,7 +12,7 @@ use std::{
 
 use crate::{
     encoding::{pdf_doc_encode, PDFDocEncodingError},
-    write::{Formatter, PdfName, Serialize, ToDict},
+    write::{Formatter, PdfName, PdfNameBuf, Serialize, ToDict},
 };
 
 /// A PDF Byte string
@@ -176,9 +176,9 @@ impl Serialize for FontFlags {
 
 /// A font descriptor
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FontDescriptor<'a> {
+pub struct FontDescriptor {
     /// **FontName**
-    pub font_name: PdfName<'a>,
+    pub font_name: PdfNameBuf,
     /// **FontFamily**
     pub font_family: PdfString,
     /// **FontStretch**
@@ -256,11 +256,11 @@ pub struct FontDescriptor<'a> {
     pub stem_h: Option<NonZeroU32>,
 }
 
-impl Serialize for FontDescriptor<'_> {
+impl Serialize for FontDescriptor {
     fn write(&self, f: &mut Formatter) -> io::Result<()> {
         let mut dict = f.pdf_dict();
         dict.field("Type", &PdfName("FontDescriptor"))?
-            .field("FontName", &self.font_name)?
+            .field("FontName", &self.font_name.as_ref())?
             .field("FontFamily", &self.font_family)?
             .opt_field("FontStretch", &self.font_stretch)?
             .opt_field("FontWeight", &self.font_weight)?

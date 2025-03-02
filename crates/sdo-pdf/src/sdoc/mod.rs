@@ -74,7 +74,10 @@ fn write_pdf_page_text<O: io::Write>(
                 false => raw_width,
             };
 
-            contents.cset(te.cset, font_size).map_err(Error::Contents)?;
+            let is_bold = te.style.is_bold();
+            contents
+                .cset(te.cset, is_bold, font_size)
+                .map_err(Error::Contents)?;
             contents.fwidth(font_width).map_err(Error::Contents)?;
 
             let cx_pdf = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
@@ -277,15 +280,7 @@ pub fn generate_pdf_pages<GC: GenerationContext>(
     for page in gc.text_pages() {
         let page_info = gc.page_at(page.index as usize).unwrap();
 
-        let page = generate_pdf_page(
-            gc,
-            overrides,
-            &infos,
-            font_dict.clone(),
-            page,
-            page_info,
-            res,
-        )?;
+        let page = generate_pdf_page(gc, overrides, &infos, font_dict, page, page_info, res)?;
         pages.push(page);
     }
     Ok(())
