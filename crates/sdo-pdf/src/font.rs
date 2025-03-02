@@ -442,9 +442,14 @@ pub fn prepare_pdf_fonts<'f, GC: GenerationContext>(
     fc: &'f ChsetCache,
     pk: PrinterKind,
 ) -> Fonts {
+    let pages = gc.text_pages();
+    let dfci = gc.fonts();
     let use_table_vec = {
         let mut v = UseTableVec::new();
-        v.append(gc.fonts(), UseMatrix::from(gc.text_pages()));
+        let use_matrix_regular = UseMatrix::of_matching(pages, |k| !k.style.is_bold());
+        let use_matrix_bold = UseMatrix::of_matching(pages, |k| k.style.is_bold());
+        v.append(dfci, use_matrix_regular);
+        v.append(dfci, use_matrix_bold);
         v
     };
 

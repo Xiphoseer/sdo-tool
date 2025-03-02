@@ -11,7 +11,10 @@ use cache::DocumentFontCacheInfo;
 use printer::PrinterKind;
 use thiserror::*;
 
-use crate::util::FourCC;
+use crate::{
+    docs::tebu::{Char, PageText},
+    util::FourCC,
+};
 
 use self::cache::FontCacheInfo;
 
@@ -87,6 +90,40 @@ impl UseMatrix {
         Self {
             csets: [UseTable::new(); 8],
         }
+    }
+
+    /// Get a [UseMatrix] of only the chars matching `predicate`
+    pub fn of_matching<F: Fn(&Char) -> bool>(pages: &[PageText], predicate: F) -> Self {
+        let mut use_matrix = Self::new();
+        for page in pages {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    if predicate(tw) {
+                        let cval = tw.cval as usize;
+                        let cset = tw.cset as usize;
+                        use_matrix.csets[cset].chars[cval] += 1;
+                    }
+                }
+            }
+        }
+        use_matrix
+    }
+}
+
+impl From<&[PageText]> for UseMatrix {
+    fn from(value: &[PageText]) -> Self {
+        let mut use_matrix = UseMatrix::new();
+
+        for page in value {
+            for (_, line) in &page.content {
+                for tw in &line.data {
+                    let cval = tw.cval as usize;
+                    let cset = tw.cset as usize;
+                    use_matrix.csets[cset].chars[cval] += 1;
+                }
+            }
+        }
+        use_matrix
     }
 }
 

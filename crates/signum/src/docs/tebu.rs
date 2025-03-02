@@ -129,19 +129,7 @@ pub struct TeBu {
 impl TeBu {
     /// Return a [UseMatrix] for all pages in this text buffer chunk
     pub fn use_matrix(&self) -> UseMatrix {
-        let mut use_matrix = UseMatrix::new();
-
-        for page in &self.pages {
-            for (_, line) in &page.content {
-                for tw in &line.data {
-                    let cval = tw.cval as usize;
-                    let cset = tw.cset as usize;
-                    use_matrix.csets[cset].chars[cval] += 1;
-                }
-            }
-        }
-
-        use_matrix
+        UseMatrix::from(&self.pages[..])
     }
 }
 
@@ -386,24 +374,6 @@ pub struct PageText {
     pub rskip: u16,
     /// The content
     pub content: Vec<(u16, Line)>,
-}
-
-impl From<&[PageText]> for UseMatrix {
-    fn from(value: &[PageText]) -> Self {
-        let mut use_matrix = UseMatrix::new();
-
-        for page in value {
-            for (_, line) in &page.content {
-                for tw in &line.data {
-                    let cval = tw.cval as usize;
-                    let cset = tw.cset as usize;
-                    use_matrix.csets[cset].chars[cval] += 1;
-                }
-            }
-        }
-
-        use_matrix
-    }
 }
 
 /// Parse the text of an entire page
