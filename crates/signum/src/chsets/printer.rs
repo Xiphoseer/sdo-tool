@@ -262,6 +262,109 @@ impl PSetChar<'_> {
         let byte = self.bitmap[y * wu + offset];
         0x80 & (byte << (x % 8)) > 0
     }
+
+    /// Apply bold mode "light", a 3x1 kernel
+    ///
+    /// ```
+    /// # use signum::chsets::printer::PSetChar;
+    /// let ch = PSetChar::new(1, 7, 10, &[
+    ///     0b00111000,
+    ///     0b00011100,
+    ///     0b00001100,
+    ///     0b00001100,
+    ///     0b00001100,
+    ///     0b00011100,
+    ///     0b00111000,
+    /// ]);
+    /// let bch = ch.bold_light();
+    /// assert_eq!(bch.bitmap.as_ref(), &[
+    ///     0b01111100,
+    ///     0b00111110,
+    ///     0b00011110,
+    ///     0b00011110,
+    ///     0b00011110,
+    ///     0b00111110,
+    ///     0b01111100,
+    /// ]);
+    /// ```
+    pub fn bold_light(&self) -> PSetChar<'static> {
+        let mut bitmap = Vec::with_capacity(self.bitmap.len());
+        for row in self.bitmap.chunks(self.width as usize) {
+            let mut acc = 0;
+            for slice in row.windows(2) {
+                let a = slice[0];
+                let b = slice[1];
+                bitmap.push(acc | a << 1 | a | a >> 1 | b >> 7);
+                acc = a << 7;
+            }
+            if let Some(c) = row.last().copied() {
+                bitmap.push(acc | c << 1 | c | c >> 1)
+            }
+        }
+        PSetChar {
+            top: self.top,
+            height: self.height,
+            width: self.width,
+            _d: self._d,
+            bitmap: Cow::Owned(bitmap),
+        }
+    }
+
+    /// Apply bold "light" vertically, a 1x3 kernel
+    ///
+    /// ```
+    /// # use signum::chsets::printer::PSetChar;
+    /// let ch = PSetChar::new(1, 7, 10, &[
+    ///     0b00111000,
+    ///     0b00011100,
+    ///     0b00001100,
+    ///     0b00001100,
+    ///     0b00001100,
+    ///     0b00011100,
+    ///     0b00111000,
+    /// ]);
+    /// let bch = ch.bold_light_vertical();
+    /// assert_eq!(bch.bitmap.as_ref(), &[
+    ///     0b00111000,
+    ///     0b00111100,
+    ///     0b00111100,
+    ///     0b00011100,
+    ///     0b00001100,
+    ///     0b00011100,
+    ///     0b00111100,
+    ///     0b00111100,
+    ///     0b00111000,
+    /// ]);
+    /// ```
+    pub fn bold_light_vertical(&self) -> PSetChar<'static> {
+        let mut bitmap = self.bitmap.to_vec();
+        let w = self.width as usize;
+        let w2 = w * 2;
+        bitmap.resize(bitmap.len() + w2, 0);
+        for (src, dst) in self.bitmap.iter().zip(bitmap[w..].iter_mut()) {
+            *dst |= *src
+        }
+        for (src, dst) in self.bitmap.iter().zip(bitmap[w2..].iter_mut()) {
+            *dst |= *src
+        }
+        PSetChar {
+            top: self.top,
+            height: self.height + 2,
+            width: self.width,
+            _d: self._d,
+            bitmap: Cow::Owned(bitmap),
+        }
+    }
+
+    /// Apply the "normal" bold modifier, a 3x3 kernel
+    pub fn bold_normal(&self) -> PSetChar<'static> {
+        self.bold_light().bold_light_vertical()
+    }
+
+    /// Apply the "strong" bold modifier, a 5x3 kernel
+    pub fn bold_strong(&self) -> PSetChar<'static> {
+        self.bold_normal().bold_light()
+    }
 }
 
 /// An owned printer character set
