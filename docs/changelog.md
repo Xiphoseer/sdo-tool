@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 02.03.2025
+
+- `sdo-pdf`: Support bold font modifier
+
 ### 13.02.2025
 
 - `signum`: Add `sigfontdiff` example binary
