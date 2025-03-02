@@ -177,9 +177,21 @@ pub(crate) const FONTUNITS_PER_SIGNUM_X: u32 = 800;
 
 const EMPTY_GLYPH_PROC: &[u8] = b"0 0 0 0 0 0 d1";
 
+/// Calculate all the glyph widths
+pub fn glyph_widths(efont: &ESet<'_>) -> Vec<u32> {
+    let mut widths = Vec::with_capacity(128);
+    for i in 0..128 {
+        let ewidth = efont.chars[i].width;
+        let font_size = DEFAULT_FONT_SIZE as u32;
+        let width = u32::from(ewidth) * (FONTUNITS_PER_SIGNUM_X / font_size);
+        widths.push(width);
+    }
+    widths
+}
+
 /// Create a type 3 font
 pub fn type3_font<'a>(
-    efont: Option<&'a ESet>,
+    efont: &'a ESet,
     pfont: &PSet,
     use_table: &UseTable,
     to_unicode: Option<Resource<Ascii85Stream<'static>>>,
@@ -203,11 +215,7 @@ pub fn type3_font<'a>(
 
     for cval in first_char..=last_char {
         let cvu = cval as usize;
-        let ewidth = if let Some(efont) = efont {
-            efont.chars[cvu].width
-        } else {
-            todo!("missing character #{} in editor font", cvu);
-        };
+        let ewidth = efont.chars[cvu].width;
         let num_uses = use_table.chars[cvu];
         let pchar = &pfont.chars[cvu];
 
@@ -333,9 +341,8 @@ fn to_unicode(name: &str, mapping: &Mapping) -> Ascii85Stream<'static> {
 pub struct FontInfo {
     /// The widths of each glyph (int fontunits, i.e. 1/72000 in)
     widths: Vec<u32>,
-    first_char: u8,
     /// Index within the PDF document of the font resource
-    index: GlobalResource<Font<'static>>,
+    index: Option<GlobalResource<Font<'static>>>,
     /// Index within the PDF document of the font resource (bold variant)
     index_bold: Option<GlobalResource<Font<'static>>>,
 }
@@ -344,9 +351,7 @@ impl FontInfo {
     /// Get the width of the character in this font
     pub fn width(&self, cval: u8) -> u32 {
         assert!(cval < 128);
-        let fc = self.first_char;
-        let wi = (cval - fc) as usize;
-        self.widths[wi]
+        self.widths[cval as usize]
     }
 }
 
@@ -393,7 +398,7 @@ impl Fonts {
             if let Some(pfont) = cs.printer(pk) {
                 // FIXME: FontDescriptor
 
-                let efont = cs.e24();
+                let efont = cs.e24().expect("editor font required"); // FIXME: widths?
                 let mappings = cs.map();
 
                 let to_unicode = mappings
@@ -409,19 +414,21 @@ impl Fonts {
                     header: Buf(&[]),
                     chars: pfont.chars.iter().map(PSetChar::bold_normal).collect(),
                 };
-                let mut font_bold = type3_font(
+                let font_bold = type3_font(
                     efont,
                     &pfont_bold,
                     use_table_bold,
                     to_unicode,
                     &font_bold_name,
                 );
-                if let Some(font) = font_regular {
+                if font_regular.is_some() || font_bold.is_some() {
+                    let index = font_regular.map(|f| res.push_font(Font::Type3(f)));
+                    let index_bold = font_bold.map(|f| res.push_font(Font::Type3(f)));
+                    let widths = glyph_widths(efont);
                     let info = FontInfo {
-                        widths: font.widths.clone(),
-                        first_char: font.first_char,
-                        index: res.push_font(Font::Type3(font)),
-                        index_bold: font_bold.take().map(|f| res.push_font(Font::Type3(f))),
+                        widths,
+                        index,
+                        index_bold,
                     };
                     self.info.push(Some(info));
                     continue;
@@ -452,7 +459,9 @@ impl Fonts {
             .enumerate()
             .filter_map(|(cset, fci)| self.info(fci).map(|info| (cset, info)))
         {
-            dict.insert(FONTS[cset].to_owned(), Resource::from(info.index));
+            if let Some(index) = info.index {
+                dict.insert(FONTS[cset].to_owned(), Resource::from(index));
+            }
             if let Some(index) = info.index_bold {
                 dict.insert(FONTS_BOLD[cset].to_owned(), Resource::from(index));
             }
