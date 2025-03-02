@@ -118,7 +118,7 @@ pub fn write_char_stream<W: Write>(
     let left_x = hb.max_lead;
     let box_width = right_x - left_x;
     let box_height = pchar.height as usize;
-    let mut encoder = Encoder::new(box_width, pchar.bitmap);
+    let mut encoder = Encoder::new(box_width, &pchar.bitmap);
     encoder.skip_lead = hb.max_lead;
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();

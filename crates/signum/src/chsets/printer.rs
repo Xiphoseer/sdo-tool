@@ -15,6 +15,7 @@ use nom::{
     Finish, IResult,
 };
 use std::{
+    borrow::Cow,
     num::{NonZero, NonZeroU8},
     path::Path,
 };
@@ -142,7 +143,7 @@ pub struct HBounds {
     pub max_tail: usize,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 /// A single printer character
 pub struct PSetChar<'a> {
     /// The distance to the top of the line box
@@ -154,22 +155,11 @@ pub struct PSetChar<'a> {
     /// Some unknown property
     _d: u8,
     /// The pixel data
-    pub bitmap: &'a [u8],
+    pub bitmap: Cow<'a, [u8]>,
 }
 
 /// An owned version of a PSetChar
-pub struct OwnedPSetChar {
-    inner: PSetChar<'static>,
-    #[allow(dead_code)]
-    buffer: Box<[u8]>,
-}
-
-impl<'a> OwnedPSetChar {
-    /// Get the borrowed version of this struct
-    pub fn borrowed(&'a self) -> &'a PSetChar<'a> {
-        &self.inner
-    }
-}
+pub type OwnedPSetChar = PSetChar<'static>;
 
 impl<'a> PSetChar<'a> {
     /// Create a new instance
@@ -182,7 +172,7 @@ impl<'a> PSetChar<'a> {
             height,
             top,
             _d: 0,
-            bitmap,
+            bitmap: Cow::Borrowed(bitmap),
         }
     }
 }
@@ -190,16 +180,12 @@ impl<'a> PSetChar<'a> {
 impl PSetChar<'_> {
     /// Create an owned version of this character
     pub fn owned(&self) -> OwnedPSetChar {
-        let buffer = self.bitmap.to_vec().into_boxed_slice();
-        OwnedPSetChar {
-            inner: PSetChar {
-                top: self.top,
-                height: self.height,
-                width: self.width,
-                _d: self._d,
-                bitmap: unsafe { std::mem::transmute::<&[u8], &[u8]>(buffer.as_ref()) },
-            },
-            buffer,
+        PSetChar {
+            top: self.top,
+            height: self.height,
+            width: self.width,
+            _d: self._d,
+            bitmap: Cow::Owned(self.bitmap.to_vec()),
         }
     }
 
@@ -346,7 +332,7 @@ pub fn parse_char<'a, E: ParseError<&'a [u8]>>(
             height,
             width,
             _d,
-            bitmap,
+            bitmap: Cow::Borrowed(bitmap),
         },
     ))
 }

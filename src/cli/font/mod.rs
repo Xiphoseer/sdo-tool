@@ -82,7 +82,7 @@ fn save_as_ccitt(pset: &PSet, opt: &Options, file: &Path) -> eyre::Result<()> {
 
             let width = chr.width as usize;
             let width = width - hb.max_tail - hb.max_lead;
-            let mut encoder = Encoder::new(width, chr.bitmap);
+            let mut encoder = Encoder::new(width, &chr.bitmap);
             encoder.skip_lead = hb.max_lead;
             encoder.skip_tail = hb.max_tail;
             //encoder.debug = cval == 87;
