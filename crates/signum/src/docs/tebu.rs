@@ -16,23 +16,69 @@ use crate::{chsets::UseMatrix, util::FourCC};
 
 use super::bytes16;
 
-#[derive(Debug, Copy, Clone, Default, Serialize)]
-/// The style of a character
-pub struct Style {
-    /// Whether the char is underlined
-    pub underlined: bool,
-    /// Whether the char is a footnote
-    pub footnote: bool,
-    /// Whether the character is double width
-    pub wide: bool,
-    /// Whether the char is bold
-    pub bold: bool,
-    /// Whether the char is italic
-    pub italic: bool,
-    /// Whether the character is tall
-    pub tall: bool,
-    /// Whether the char is small
-    pub small: bool,
+bitflags! {
+    /// The font modifiers applied to a character
+    #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize)]
+    pub struct Style : u16 {
+        /// Whether the char is underlined
+        const UNDERLINED = 0x20;
+        /// unknown 1
+        const V = 0x10;
+        /// unknown 1
+        const W = 0x08;
+        /// unknown 1
+        const X = 0x04;
+        /// Whether the char is a footnote
+        const FOOTNOTE = 0x02;
+
+        /// Whether the character is double width
+        const WIDE = 0x8000;
+        /// Whether the char is bold
+        const BOLD = 0x4000;
+        /// Whether the char is italic
+        const ITALIC = 0x2000;
+        /// Whether the character is tall
+        const TALL = 0x1000;
+        /// Whether the char is small
+        const SMALL = 0x0800;
+    }
+}
+
+impl Style {
+    /// Check whether the character is underlined
+    pub fn is_underlined(&self) -> bool {
+        self.contains(Self::UNDERLINED)
+    }
+
+    /// Check whether the character is double width
+    pub fn is_wide(&self) -> bool {
+        self.contains(Self::WIDE)
+    }
+
+    /// Check whether the character is bold
+    pub fn is_bold(&self) -> bool {
+        self.contains(Self::BOLD)
+    }
+
+    /// Check whether the character is italic
+    pub fn is_italic(&self) -> bool {
+        self.contains(Self::ITALIC)
+    }
+
+    /// Check whether the character is tall
+    pub fn is_tall(&self) -> bool {
+        self.contains(Self::TALL)
+    }
+
+    /// Check whether the character is small
+    pub fn is_small(&self) -> bool {
+        self.contains(Self::SMALL)
+    }
+
+    /// Check whether the character is small
+    pub fn is_footnote(&self) -> bool {
+        self.contains(Self::FOOTNOTE)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -153,15 +199,7 @@ fn te<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Char, E
         let offset = extra & 0x07ff;
 
         let cset = cset | (((val & 0x01) as u8) << 2);
-        let style = Style {
-            underlined: val & 0x20 > 0,
-            footnote: val & 0x02 > 0,
-            wide: extra & 0x8000 > 0,
-            bold: extra & 0x4000 > 0,
-            italic: extra & 0x2000 > 0,
-            tall: extra & 0x1000 > 0,
-            small: extra & 0x0800 > 0,
-        };
+        let style = Style::from_bits_retain(extra & 0xF800 | val);
         let char = Char {
             cval,
             cset,

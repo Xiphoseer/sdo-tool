@@ -97,28 +97,28 @@ impl<'a> HtmlGen<'a> {
                 continue;
             }
 
-            if !k.style.underlined && style.underlined {
-                style.underlined = false;
+            if !k.style.is_underlined() && style.is_underlined() {
+                style.remove(Style::UNDERLINED);
                 write!(self.out, "</u>")?;
             }
-            if !k.style.bold && style.bold {
-                style.bold = false;
+            if !k.style.is_bold() && style.is_bold() {
+                style.remove(Style::BOLD);
                 write!(self.out, "</b>")?;
             }
-            if !k.style.italic && style.italic {
-                style.italic = false;
+            if !k.style.is_italic() && style.is_italic() {
+                style.remove(Style::ITALIC);
                 write!(self.out, "</i>")?;
             }
-            if !k.style.tall && style.tall {
-                style.tall = false;
+            if !k.style.is_tall() && style.is_tall() {
+                style.remove(Style::TALL);
                 write!(self.out, "</span>")?;
             }
-            if !k.style.wide && style.wide {
-                style.wide = false;
+            if !k.style.is_wide() && style.is_wide() {
+                style.remove(Style::WIDE);
                 write!(self.out, "</span>")?;
             }
-            if !k.style.small && style.small {
-                style.small = false;
+            if !k.style.is_small() && style.is_small() {
+                style.remove(Style::SMALL);
                 write!(self.out, "</small>")?;
             }
 
@@ -136,31 +136,31 @@ impl<'a> HtmlGen<'a> {
                 }
             }
 
-            if k.style.footnote {
+            if k.style.is_footnote() {
                 write!(self.out, "<footnote>")?;
             }
-            if k.style.small && !style.small {
-                style.small = true;
+            if k.style.is_small() && !style.is_small() {
+                style.insert(Style::SMALL);
                 write!(self.out, "<small>")?;
             }
-            if k.style.wide && !style.wide {
-                style.wide = true;
+            if k.style.is_wide() && !style.is_wide() {
+                style.insert(Style::WIDE);
                 write!(self.out, "<span class=\"wide\">")?;
             }
-            if k.style.tall && !style.tall {
-                style.tall = true;
+            if k.style.is_tall() && !style.is_tall() {
+                style.insert(Style::TALL);
                 write!(self.out, "<span class=\"tall\">")?;
             }
-            if k.style.italic && !style.italic {
-                style.italic = true;
+            if k.style.is_italic() && !style.is_italic() {
+                style.insert(Style::ITALIC);
                 write!(self.out, "<i>")?;
             }
-            if k.style.bold && !style.bold {
-                style.bold = true;
+            if k.style.is_bold() && !style.is_bold() {
+                style.insert(Style::BOLD);
                 write!(self.out, "<b>")?;
             }
-            if k.style.underlined && !style.underlined {
-                style.underlined = true;
+            if k.style.is_underlined() && !style.is_underlined() {
+                style.insert(Style::UNDERLINED);
                 write!(self.out, "<u>")?;
             }
 
@@ -170,7 +170,7 @@ impl<'a> HtmlGen<'a> {
                 // default for fonts that are missing
                 antikro::WIDTH[k.cval as usize]
             };
-            if style.wide {
+            if style.is_wide() {
                 width *= 2;
             }
             last_char_width = if chr == '\n' { 0 } else { width };
@@ -182,22 +182,22 @@ impl<'a> HtmlGen<'a> {
                 write!(self.out, "{}", chr)?;
             }
         }
-        if style.underlined {
+        if style.is_underlined() {
             write!(self.out, "</u>")?;
         }
-        if style.bold {
+        if style.is_bold() {
             write!(self.out, "</b>")?;
         }
-        if style.italic {
+        if style.is_italic() {
             write!(self.out, "</i>")?;
         }
-        if style.tall {
+        if style.is_tall() {
             write!(self.out, "</span>")?;
         }
-        if style.wide {
+        if style.is_wide() {
             write!(self.out, "</span>")?;
         }
-        if style.small {
+        if style.is_small() {
             write!(self.out, "</small>")?;
         }
         Ok(())

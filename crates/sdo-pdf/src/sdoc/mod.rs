@@ -41,9 +41,9 @@ fn write_pdf_page_text<O: io::Write>(
         let mut pdf_page_cursor: u32 = 0;
 
         for (cx, te) in line.characters() {
-            let is_wide = te.style.wide;
-            let is_tall = te.style.tall;
-            let is_small = te.style.small;
+            let is_wide = te.style.is_wide();
+            let is_tall = te.style.is_tall();
+            let is_small = te.style.is_small();
 
             let default_font_size = DEFAULT_FONT_SIZE as u8;
             let default_font_width = 100.0f32;
@@ -86,7 +86,9 @@ fn write_pdf_page_text<O: io::Write>(
             pdf_page_cursor += diff;
 
             // Note: slant has to be _after_ x-offset adjustment
-            contents.slant(te.style.italic).map_err(Error::Contents)?;
+            contents
+                .slant(te.style.is_italic())
+                .map_err(Error::Contents)?;
             let byte_width = width * DEFAULT_FONT_SIZE as u32;
             contents
                 .byte(te.cval, byte_width)
@@ -121,8 +123,8 @@ fn write_pdf_page_underlines(
         for (cx, te) in line.characters() {
             let x_new = cx as f32 * UNITS_PER_SIGNUM_X;
 
-            let is_wide = te.style.wide;
-            let is_underlined = te.style.underlined;
+            let is_wide = te.style.is_wide();
+            let is_underlined = te.style.is_underlined();
 
             // check underlined
             match (is_underlined, underline_start) {

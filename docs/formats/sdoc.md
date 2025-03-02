@@ -181,31 +181,28 @@ selected charset.
 
 **Normal character**:
 ```
-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-| 1 |         OFFSET        | CHSET |          CHARACTER        |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+  
+| 1 |         OFFSET        | CHSET |          CHARACTER        |  
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
 
 **Extended character**
 ```
-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-| 0 | U | V | W | X | Y |   CHSET   |          CHARACTER        |
-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-| A | B | I | D | S |                 OFFSET                    |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+  
+| 0 | U | V | W | X | Y |   CHSET   |          CHARACTER        |  
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+  
+| B | F | C | G | K |                 OFFSET                    |  
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
 
-- A: *unknown* (wide?)
-- B: bold
-- I: italic
-- D: *unknown* (tall?)
-- S: small
+They map to the [font-modifiers](../signum/font-modifiers.md) as follows:
 
-- U: underlined
-- V: *unknown* (mark 1 ?)
-- W: *unknown* (mark 2 ?)
-- X: *unknown* (mark 3 ?)
-- Y: footnote
+|---|---|---|---|
+| `B` | wide | `U` | underlined |
+| `F` | bold | `V` | *unknown* (mark 1 ?) |
+| `C` | italic | `W` | *unknown* (mark 2 ?) |
+| `G` | tall | `X` | *unknown* (mark 3 ?) |
+| `K` | small | `Y` | footnote |
 
 ### Hardcopy Images `hcim`
 

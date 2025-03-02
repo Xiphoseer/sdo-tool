@@ -32,24 +32,24 @@ fn print_tebu_data(
             continue;
         }
 
-        if !k.style.bold && style.bold {
-            style.bold = false;
+        if !k.style.is_bold() && style.is_bold() {
+            style.remove(Style::BOLD);
             print!("</b>");
         }
-        if !k.style.italic && style.italic {
-            style.italic = false;
+        if !k.style.is_italic() && style.is_italic() {
+            style.remove(Style::ITALIC);
             print!("</i>");
         }
-        if !k.style.tall && style.tall {
-            style.tall = false;
+        if !k.style.is_tall() && style.is_tall() {
+            style.remove(Style::TALL);
             print!("</tall>");
         }
-        if !k.style.wide && style.wide {
-            style.wide = false;
+        if !k.style.is_wide() && style.is_wide() {
+            style.remove(Style::WIDE);
             print!("</wide>");
         }
-        if !k.style.small && style.small {
-            style.small = false;
+        if !k.style.is_small() && style.is_small() {
+            style.remove(Style::SMALL);
             print!("</small>");
         }
 
@@ -67,27 +67,27 @@ fn print_tebu_data(
             }
         }
 
-        if k.style.footnote {
+        if k.style.is_footnote() {
             print!("<footnote>");
         }
-        if k.style.small && !style.small {
-            style.small = true;
+        if k.style.is_small() && !style.is_small() {
+            style.insert(Style::SMALL);
             print!("<small>");
         }
-        if k.style.wide && !style.wide {
-            style.wide = true;
+        if k.style.is_wide() && !style.is_wide() {
+            style.insert(Style::WIDE);
             print!("<wide>");
         }
-        if k.style.tall && !style.tall {
-            style.tall = true;
+        if k.style.is_tall() && !style.is_tall() {
+            style.insert(Style::TALL);
             print!("<tall>");
         }
-        if k.style.italic && !style.italic {
-            style.italic = true;
+        if k.style.is_italic() && !style.is_italic() {
+            style.insert(Style::ITALIC);
             print!("<i>");
         }
-        if k.style.bold && !style.bold {
-            style.bold = true;
+        if k.style.is_bold() && !style.is_bold() {
+            style.insert(Style::BOLD);
             print!("<b>");
         }
 
@@ -98,7 +98,7 @@ fn print_tebu_data(
             antikro::WIDTH[k.cval as usize]
         };
         last_char_width = if chr == '\n' { 0 } else { width };
-        if k.style.wide {
+        if k.style.is_wide() {
             last_char_width *= 2;
         }
         if (0xE000..=0xE080).contains(&(chr as u32)) {
@@ -106,25 +106,25 @@ fn print_tebu_data(
         } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
             print!("[{}]", chr as u32 - 0x1FBF0);
         } else {
-            if k.style.underlined {
+            if k.style.is_underlined() {
                 print!("\u{0332}");
             }
             print!("{}", chr);
         }
     }
-    if style.bold {
+    if style.is_bold() {
         print!("</b>");
     }
-    if style.italic {
+    if style.is_italic() {
         print!("</i>");
     }
-    if style.tall {
+    if style.is_tall() {
         print!("</tall>");
     }
-    if style.wide {
+    if style.is_wide() {
         print!("</wide>");
     }
-    if style.small {
+    if style.is_small() {
         print!("</small>");
     }
 }
