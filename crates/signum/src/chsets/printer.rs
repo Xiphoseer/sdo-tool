@@ -134,6 +134,14 @@ pub struct PSet<'a> {
     pub chars: Vec<PSetChar<'a>>,
 }
 
+/// A struct to hold information on computed character dimensions
+pub struct HBounds {
+    /// The number of bits that are zero in every line from the left
+    pub max_lead: usize,
+    /// The number of bits that are zero in every line from the right
+    pub max_tail: usize,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// A single printer character
 pub struct PSetChar<'a> {
@@ -163,12 +171,20 @@ impl<'a> OwnedPSetChar {
     }
 }
 
-/// A struct to hold information on computed character dimensions
-pub struct HBounds {
-    /// The number of bits that are zero in every line from the left
-    pub max_lead: usize,
-    /// The number of bits that are zero in every line from the right
-    pub max_tail: usize,
+impl<'a> PSetChar<'a> {
+    /// Create a new instance
+    ///
+    /// Panics if the width and height don't match the bitmap
+    pub fn new(width: u8, height: u8, top: u8, bitmap: &'a [u8]) -> Self {
+        assert_eq!(bitmap.len(), width as usize * height as usize);
+        Self {
+            width,
+            height,
+            top,
+            _d: 0,
+            bitmap,
+        }
+    }
 }
 
 impl PSetChar<'_> {
@@ -224,6 +240,41 @@ impl PSetChar<'_> {
             max_tail = max_tail.min(tail);
         }
         HBounds { max_lead, max_tail }
+    }
+
+    /// Check whether the given pixel position in the actual bitmap
+    /// (which may be smaller than the full bbox) is set to 1 / ink.
+    ///
+    /// ```
+    /// use signum::chsets::printer::PSetChar;
+    ///
+    /// let p = PSetChar::new(1, 8, 10, &[
+    ///     0b10000000,
+    ///     0b01000000,
+    ///     0b00100000,
+    ///     0b00010000,
+    ///     0b00001000,
+    ///     0b00000100,
+    ///     0b00000010,
+    ///     0b00000001,
+    /// ]);
+    /// for i in 0..8 {
+    ///     for j in 0..8 {
+    ///         assert_eq!(p.get_ink_at(i, j), i == j);
+    ///     }
+    /// }
+    /// ```
+    pub fn get_ink_at(&self, x: usize, y: usize) -> bool {
+        let offset = x / 8;
+        let wu = self.width as usize;
+        if offset >= wu {
+            return false;
+        }
+        if y >= self.height as usize {
+            return false;
+        }
+        let byte = self.bitmap[y * wu + offset];
+        0x80 & (byte << (x % 8)) > 0
     }
 }
 
