@@ -48,7 +48,7 @@ pub fn main() -> eyre::Result<()> {
     let use_table = UseTable::from("HelloJ@rgen!1");
 
     let mut fonts = BTreeMap::new();
-    if let Some(font) = type3_font(Some(&efont), &pfont, &use_table, None, "MYFONT") {
+    if let Some(font) = type3_font(&efont, &pfont, &use_table, None, "MYFONT") {
         doc.res.fonts.push(Font::Type3(font));
         fonts.insert(String::from("C0"), Resource::global(0));
     }
