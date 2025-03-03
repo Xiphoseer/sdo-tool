@@ -449,4 +449,9 @@ impl DocumentFontCacheInfo {
     pub fn font_cache_info(&self) -> &[FontCacheInfo; 8] {
         &self.chsets
     }
+
+    /// Get all [FontCacheInfo]s
+    pub fn cset_name(&self, cset: u8) -> Option<&str> {
+        self.chsets.get(cset as usize).and_then(FontCacheInfo::name)
+    }
 }

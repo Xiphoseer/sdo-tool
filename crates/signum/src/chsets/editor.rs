@@ -138,30 +138,24 @@ impl ESet<'_> {
         }
         println!();
         println!("pub const WIDTH: [u8; 128] = [");
-        print!("  0, ");
         for (i, w) in widths.iter().cloned().enumerate() {
+            print!("{:3},", w);
             if i % 16 == 15 {
                 println!();
-            }
-            print!("{:3},", w);
-            if i % 16 != 14 {
+            } else {
                 print!(" ");
             }
         }
-        println!();
         println!("];");
         println!("pub const SKIP: [u8; 128] = [");
-        print!("  0, ");
         for (i, s) in skips.iter().cloned().enumerate() {
+            print!("{:3},", s);
             if i % 16 == 15 {
                 println!();
-            }
-            print!("{:3},", s);
-            if i % 16 != 14 {
+            } else {
                 print!(" ");
             }
         }
-        println!();
         println!("];");
     }
 }
