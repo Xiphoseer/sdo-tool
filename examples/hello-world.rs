@@ -49,7 +49,7 @@ pub fn main() -> eyre::Result<()> {
 
     let mut fonts = BTreeMap::new();
     let widths = glyph_widths(&efont);
-    if let Some(font) = type3_font(&widths, &pfont, &use_table, None, "MYFONT") {
+    if let Some(font) = type3_font(&widths, &pfont, &use_table, None, "MYFONT", "MYFONT") {
         doc.res.fonts.push(Font::Type3(font));
         fonts.insert(String::from("C0"), Resource::global(0));
     }

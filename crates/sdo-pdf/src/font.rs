@@ -197,6 +197,7 @@ pub fn type3_font<'a>(
     use_table: &UseTable,
     to_unicode: Option<Resource<ToUnicode>>,
     name: &str,
+    font_family: &str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
     let font_matrix = Matrix::scale(0.001, 0.001);
@@ -291,7 +292,7 @@ pub fn type3_font<'a>(
 
     let font_descriptor = Some(FontDescriptor {
         font_name: PdfNameBuf::new(name),
-        font_family: PdfString::from_str(name).unwrap(),
+        font_family: PdfString::from_str(font_family).unwrap(),
         font_stretch: None,
         font_weight: None,
         flags: FontFlags::SYMBOLIC,
@@ -404,14 +405,23 @@ fn make_font<'a>(
         .map(|to_unicode| res.push_to_unicode(to_unicode))
         .map(Resource::from);
 
-    let font_regular = type3_font(&widths, pfont, use_table, to_unicode.clone(), cs.name())
-        .map(|f| res.push_font(Font::Type3(f)));
+    let font_family = cs.name();
+    let font_regular = type3_font(
+        &widths,
+        pfont,
+        use_table,
+        to_unicode.clone(),
+        cs.name(),
+        font_family,
+    )
+    .map(|f| res.push_font(Font::Type3(f)));
     let font_bold = type3_font(
         &widths,
         &pset_bold(pfont),
         use_table_bold,
         to_unicode,
         &format!("{}-Bold", cs.name()),
+        font_family,
     )
     .map(|f| res.push_font(Font::Type3(f)));
     if font_regular.is_none() && font_bold.is_none() {
