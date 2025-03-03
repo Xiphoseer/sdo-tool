@@ -326,6 +326,7 @@ impl PSetChar<'_> {
     ///     0b00111000,
     /// ]);
     /// let bch = ch.bold_light_vertical();
+    /// assert_eq!(bch.top, 9);
     /// assert_eq!(bch.bitmap.as_ref(), &[
     ///     0b00111000,
     ///     0b00111100,
@@ -341,19 +342,22 @@ impl PSetChar<'_> {
     pub fn bold_light_vertical(&self) -> PSetChar<'static> {
         let mut bitmap = self.bitmap.to_vec();
         let w = self.width as usize;
+        let w2 = w * 2;
+        let (dc, dy) = if self.top > 0 { (w2, 2) } else { (w, 1) };
         if w > 0 {
-            let w2 = w * 2;
-            bitmap.resize(bitmap.len() + w2, 0);
+            bitmap.resize(bitmap.len() + dc, 0);
             for (src, dst) in self.bitmap.iter().zip(bitmap[w..].iter_mut()) {
                 *dst |= *src
             }
-            for (src, dst) in self.bitmap.iter().zip(bitmap[w2..].iter_mut()) {
-                *dst |= *src
+            if self.top > 0 {
+                for (src, dst) in self.bitmap.iter().zip(bitmap[w2..].iter_mut()) {
+                    *dst |= *src
+                }
             }
         }
         PSetChar {
-            top: self.top,
-            height: self.height + 2,
+            top: self.top.saturating_sub(1),
+            height: self.height + dy,
             width: self.width,
             _d: self._d,
             bitmap: Cow::Owned(bitmap),
