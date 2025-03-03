@@ -12,15 +12,16 @@ use pdf_create::{
         BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,
         Rectangle, SparseSet, StreamMetadata,
     },
-    high::{Ascii85Stream, DictResource, Font, GlobalResource, Res, Resource, Type3Font},
+    high::{
+        Ascii85Stream, DictResource, Font, GlobalResource, Res, Resource, ToUnicode, Type3Font,
+    },
     write::{PdfName, PdfNameBuf},
 };
 use sdo_ps::dvips::CacheDevice;
 use signum::{
     chsets::{
-        cache::{ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
+        cache::{CSet, ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
         editor::ESet,
-        encoding::Mapping,
         printer::{PSet, PSetChar, PrinterKind},
         UseMatrix, UseTable, UseTableVec,
     },
@@ -28,7 +29,7 @@ use signum::{
     util::Buf,
 };
 
-use crate::cmap::write_cmap;
+use crate::cmap;
 
 /// Names for all signum glyph positions, e.g. `Zfive`
 #[rustfmt::skip]
@@ -191,10 +192,10 @@ pub fn glyph_widths(efont: &ESet<'_>) -> Vec<u32> {
 
 /// Create a type 3 font
 pub fn type3_font<'a>(
-    efont: &'a ESet,
+    widths: &[u32], // in font-units, see `glyph_widths`
     pfont: &PSet,
     use_table: &UseTable,
-    to_unicode: Option<Resource<Ascii85Stream<'static>>>,
+    to_unicode: Option<Resource<ToUnicode>>,
     name: &str,
 ) -> Option<Type3Font<'a>> {
     let font_metrics = FontMetrics::from(pfont.pk);
@@ -202,7 +203,6 @@ pub fn type3_font<'a>(
 
     let (first_char, last_char) = use_table.first_last()?;
     let capacity = (last_char - first_char + 1) as usize;
-    let mut widths = Vec::with_capacity(capacity);
     let mut procs: Vec<(&str, Vec<u8>)> = Vec::with_capacity(capacity);
 
     let mut max_width = 0;
@@ -215,7 +215,7 @@ pub fn type3_font<'a>(
 
     for cval in first_char..=last_char {
         let cvu = cval as usize;
-        let ewidth = efont.chars[cvu].width;
+        let width = widths[cvu];
         let num_uses = use_table.chars[cvu];
         let pchar = &pfont.chars[cvu];
 
@@ -226,9 +226,7 @@ pub fn type3_font<'a>(
         max_above_baseline = max_above_baseline.max(sig_upper_y * fpy);
         max_below_baseline = max_below_baseline.min(sig_lower_y * fpy);
 
-        if ewidth > 0 && num_uses > 0 {
-            let width = u32::from(ewidth) * (FONTUNITS_PER_SIGNUM_X / font_size);
-            widths.push(width);
+        if width > 0 && num_uses > 0 {
             max_width = max_width.max(width as i32);
 
             if pchar.width > 0 {
@@ -245,17 +243,14 @@ pub fn type3_font<'a>(
                 );
                 procs.push((DEFAULT_NAMES[cvu], EMPTY_GLYPH_PROC.to_vec()));
             }
-        } else {
-            if num_uses > 0 {
-                log::warn!(
-                    "Empty zero-advance glyph {} in {:?} [used {} time(s)], inserting empty glyph",
-                    cvu,
-                    name,
-                    num_uses
-                );
-                procs.push((DEFAULT_NAMES[cvu], EMPTY_GLYPH_PROC.to_vec()));
-            }
-            widths.push(0);
+        } else if num_uses > 0 {
+            log::warn!(
+                "Empty zero-advance glyph {} in {:?} [used {} time(s)], inserting empty glyph",
+                cvu,
+                name,
+                num_uses
+            );
+            procs.push((DEFAULT_NAMES[cvu], EMPTY_GLYPH_PROC.to_vec()));
         }
     }
 
@@ -323,18 +318,9 @@ pub fn type3_font<'a>(
             base_encoding: Some(BaseEncoding::WinAnsiEncoding),
             differences: Some(differences),
         },
-        widths,
+        widths: widths[(first_char as usize)..=(last_char as usize)].to_vec(),
         to_unicode,
     })
-}
-
-fn to_unicode(name: &str, mapping: &Mapping) -> Ascii85Stream<'static> {
-    let mut out = String::new();
-    write_cmap(&mut out, mapping, name, true).unwrap();
-    Ascii85Stream {
-        data: Cow::Owned(out.into_bytes()),
-        meta: StreamMetadata::None,
-    }
 }
 
 /// Information on one font
@@ -395,47 +381,55 @@ impl Fonts {
             let use_table = &use_table_vec.csets[index];
             let use_table_bold = &use_table_vec_bold.csets[index];
 
-            if let Some(pfont) = cs.printer(pk) {
-                // FIXME: FontDescriptor
-
-                let efont = cs.e24().expect("editor font required"); // FIXME: widths?
-                let mappings = cs.map();
-
-                let to_unicode = mappings
-                    .map(|mapping| to_unicode(cs.name(), mapping))
-                    .map(Box::new)
-                    .map(Resource::Immediate);
-
-                let font_regular =
-                    type3_font(efont, pfont, use_table, to_unicode.clone(), cs.name());
-                let font_bold_name = format!("{}-Bold", cs.name());
-                let pfont_bold: PSet<'static> = PSet {
-                    pk,
-                    header: Buf(&[]),
-                    chars: pfont.chars.iter().map(PSetChar::bold_normal).collect(),
-                };
-                let font_bold = type3_font(
-                    efont,
-                    &pfont_bold,
-                    use_table_bold,
-                    to_unicode,
-                    &font_bold_name,
-                );
-                if font_regular.is_some() || font_bold.is_some() {
-                    let index = font_regular.map(|f| res.push_font(Font::Type3(f)));
-                    let index_bold = font_bold.map(|f| res.push_font(Font::Type3(f)));
-                    let widths = glyph_widths(efont);
-                    let info = FontInfo {
-                        widths,
-                        index,
-                        index_bold,
-                    };
-                    self.info.push(Some(info));
-                    continue;
-                }
-            }
-            self.info.push(None);
+            let info = make_font(res, pk, cs, use_table, use_table_bold);
+            self.info.push(info);
         }
+    }
+}
+
+fn make_font<'a>(
+    res: &mut Res<'a>,
+    pk: PrinterKind,
+    cs: &'a CSet,
+    use_table: &UseTable,
+    use_table_bold: &UseTable,
+) -> Option<FontInfo> {
+    let pfont = cs.printer(pk)?;
+    let efont = cs.e24().expect("editor font required"); // FIXME: widths?
+    let widths = glyph_widths(efont);
+
+    let mappings = cs.map();
+    let to_unicode = mappings
+        .map(|mapping| cmap::new_from_mapping(mapping, cs.name()))
+        .map(|to_unicode| res.push_to_unicode(to_unicode))
+        .map(Resource::from);
+
+    let font_regular = type3_font(&widths, pfont, use_table, to_unicode.clone(), cs.name())
+        .map(|f| res.push_font(Font::Type3(f)));
+    let font_bold = type3_font(
+        &widths,
+        &pset_bold(pfont),
+        use_table_bold,
+        to_unicode,
+        &format!("{}-Bold", cs.name()),
+    )
+    .map(|f| res.push_font(Font::Type3(f)));
+    if font_regular.is_none() && font_bold.is_none() {
+        return None;
+    }
+    let info = FontInfo {
+        widths,
+        index: font_regular,
+        index_bold: font_bold,
+    };
+    Some(info)
+}
+
+fn pset_bold(pfont: &PSet<'_>) -> PSet<'static> {
+    PSet {
+        pk: pfont.pk,
+        header: Buf(&[]),
+        chars: pfont.chars.iter().map(PSetChar::bold_normal).collect(),
     }
 }
 

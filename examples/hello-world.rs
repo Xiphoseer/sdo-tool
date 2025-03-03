@@ -7,7 +7,7 @@ use pdf_create::{
     common::Rectangle,
     high::{Font, Handle, Page, Resource, Resources},
 };
-use sdo_pdf::font::type3_font;
+use sdo_pdf::font::{glyph_widths, type3_font};
 use signum::chsets::{editor::parse_eset, printer::parse_ls30, UseTable};
 use signum::nom::Finish;
 
@@ -48,7 +48,8 @@ pub fn main() -> eyre::Result<()> {
     let use_table = UseTable::from("HelloJ@rgen!1");
 
     let mut fonts = BTreeMap::new();
-    if let Some(font) = type3_font(&efont, &pfont, &use_table, None, "MYFONT") {
+    let widths = glyph_widths(&efont);
+    if let Some(font) = type3_font(&widths, &pfont, &use_table, None, "MYFONT") {
         doc.res.fonts.push(Font::Type3(font));
         fonts.insert(String::from("C0"), Resource::global(0));
     }

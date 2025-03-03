@@ -134,6 +134,14 @@ impl<'a> Res<'a> {
     }
 
     /// Push a font dictionary, returning the index it was pushed at
+    pub fn push_to_unicode(&mut self, value: ToUnicode) -> GlobalResource<ToUnicode> {
+        GlobalResource {
+            index: push(&mut self.to_unicode, value),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Push a font dictionary, returning the index it was pushed at
     pub fn push_font_dict(
         &mut self,
         value: DictResource<Font<'a>>,

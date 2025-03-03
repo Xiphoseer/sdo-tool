@@ -30,7 +30,7 @@ pub struct Type3Font<'a> {
     /// Width of every char between first and last (in fontunits, i.e. 1/72000 in)
     pub widths: Vec<u32>,
     /// ToUnicode CMap stream
-    pub to_unicode: Option<Resource<Ascii85Stream<'a>>>,
+    pub to_unicode: Option<Resource<ToUnicode>>,
 }
 
 impl Default for Type3Font<'_> {
@@ -131,7 +131,7 @@ fn lower_font<'a>(
             let to_unicode = font
                 .to_unicode
                 .as_ref()
-                .map(|res| ctx.text_streams.map_ref(res, id_gen));
+                .map(|res| ctx.to_unicode.map_ref(res, id_gen));
             low::Font::Type3(low::Type3Font {
                 name: font.name.as_ref().map(|f| f.as_ref()),
                 font_bbox: font.font_bbox,
