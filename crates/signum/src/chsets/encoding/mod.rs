@@ -158,6 +158,7 @@ pub mod antikro {
 /// The `NORMANDE` standard font
 pub mod normande {
     /// The widths of `NORMANDE` glyphs
+    #[rustfmt::skip]
     pub const WIDTH: [u8; 128] = [
         0,   5,   5,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   6,
         6,   8,   8,   7,   5,   7,   7,   6,   7,   7,   6,   7,   7,   0,   0,   0,
@@ -173,6 +174,7 @@ pub mod normande {
 /// The `GROTMIKR` standard font
 pub mod grotmikr {
     /// The widths of `GROTMIKR` glyphs
+    #[rustfmt::skip]
     pub const WIDTH: [u8; 128] = [
         0,   3,   3,   4,   4,  14,  13,  15,   0,   0,   0,   0,   0,   0,   0,   3,
         3,   4,   4,   4,   3,   4,   4,   4,   4,   4,   4,   4,   4,   0,   0,  15,
@@ -188,6 +190,7 @@ pub mod grotmikr {
 /// The `PINSEL` standard font
 pub mod pinsel {
     /// The widths of `PINSEL` glyphs
+    #[rustfmt::skip]
     pub const WIDTH: [u8; 128] = [
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   7,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
