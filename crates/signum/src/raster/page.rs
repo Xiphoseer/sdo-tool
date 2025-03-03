@@ -244,7 +244,7 @@ impl Page {
                     bw.write_bits(val as usize, 8);
                 }
                 if rmod > 0 {
-                    bw.write_bits(line[bpos] as usize, rmod);
+                    bw.write_bits((line[bpos] >> (8 - rmod)) as usize, rmod);
                 }
                 bw.flush();
             }
@@ -252,9 +252,15 @@ impl Page {
         } else {
             out = Vec::with_capacity(w * h / 8 + 1);
             let rmod = w % 8;
-            let len = if rmod > 0 { w / 8 + 1 } else { w / 8 };
+            let rmask = 0xFF >> (8 - rmod);
+            let len = w / 8;
+            let apos = lskip;
+            let bpos = lskip + len;
             for line in iter {
-                out.extend_from_slice(&line[lskip..lskip + len]);
+                out.extend_from_slice(&line[apos..bpos]);
+                if rmod > 0 {
+                    out.push(line[bpos] & rmask);
+                }
             }
         }
 
