@@ -15,6 +15,10 @@
       border: 1px dotted blue;
     }
 
+    #format-select .btn {
+      padding: 0;
+    }
+
     img.bimc {
       max-width: fit-content;
     }
@@ -54,27 +58,6 @@
           </li>
         </ul>
       </div>
-      <!--button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvas"
-        aria-controls="offcanvasNavbar" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvas" aria-labelledby="offcanvasLabel">
-        <div class="offcanvas-header">
-          <h5 class="offcanvas-title" id="offcanvasLabel">Menu</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
-          <ul class="navbar-nav justify-content-end flex-grow-1 pe-3">
-            <li class="nav-item">
-              <a class="nav-link" id="font-collection-link" href="#/CHSETS/">Font Collection</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="https://sdo.dseiler.eu">Signum! Document Toolbox</a>
-            </li>
-          </ul>
-        </div>
-      </div-->
     </div>
   </nav>
 
@@ -82,20 +65,29 @@
 
   <main class="container mt-4 vstack gap-3">
     <div class="row g-3 justify-content-center">
-      <div class="col-sm-8">
+      <div id="upload-area" class="col-sm-8">
         <input id="upload" class="form-control" type="file" accept=".sdo, .p24, .e24, .p09, .p9, .l30, .imc" multiple>
       </div>
-      <div class="col-sm-2">
-        <button id="add-to-collection" type="submit" class="form-control btn btn-primary">
+      <div id="tool-area" class="col-sm-2">
+        <button id="add-to-collection" type="submit" class="btn btn-primary form-control">
           Add to collection
         </button>
       </div>
-      <div class="col-sm-2">
-        <button id="export-to-pdf" type="submit" class="form-control btn btn-primary">
-          Export PDF
+      <div id="format-select" class="d-none btn-group btn-group-lg col-sm-2" role="group">
+        <button id="export-to-pdf" type="submit" class="btn btn-outline-primary" title="Export PDF">
+          <i class="bi bi-filetype-pdf"></i>
+        </button>
+        <button id="format-html" type="submit" disabled class="btn btn-outline-primary">
+          <i class="bi bi-filetype-html"></i>
+        </button>
+        <button id="format-txt" type="submit" disabled class="btn btn-outline-primary">
+          <i class="bi bi-filetype-txt"></i>
+        </button>
+        <button id="format-png" type="submit" class="btn btn-outline-primary active">
+          <i class="bi bi-filetype-png"></i>
         </button>
       </div>
-    </div>    
+    </div>
 
     <div class="row g-3 justify-content-center">
       <div class="col-12">

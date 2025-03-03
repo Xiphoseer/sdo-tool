@@ -16,6 +16,9 @@ async function run() {
     // Buttons
     const addToCollectionBtn = document.getElementById('add-to-collection');
     const exportToPdfBtn = document.getElementById('export-to-pdf');
+    const formatSelector = document.getElementById('format-select');
+    const toolArea = document.getElementById('tool-area');
+    const uploadArea = document.getElementById('upload-area');
 
     const navLinks = document.querySelectorAll('.nav-item, .navbar-brand')
     const menuToggle = document.getElementById('navbarNav')
@@ -112,6 +115,25 @@ async function run() {
 
     function clearProgress() {
         progressEl.style.display = 'none';
+    }
+
+    function clearFormatSelect() {
+        formatSelector.classList.add('d-none');
+
+        uploadArea.classList.add('col-sm-10');
+        uploadArea.classList.remove('col-sm-8');
+
+        //toolArea.classList.add('col-sm-2');
+        //toolArea.classList.remove('col-sm-1');
+    }
+
+    function setupFormatSelect() {
+        formatSelector.classList.remove('d-none');
+        uploadArea.classList.add('col-sm-8');
+        uploadArea.classList.remove('col-sm-10');
+
+        //toolArea.classList.add('col-sm-1');
+        //toolArea.classList.remove('col-sm-2');
     }
 
     async function renderOne(index) {
@@ -219,9 +241,11 @@ async function run() {
     async function handle(hash) {
         clearPagination();
         clearProgress();
+        clearFormatSelect();
         await h.open(hash);
         if (h.hasActive()) {
             setupPagination();
+            setupFormatSelect();
             render();
         }
     }
