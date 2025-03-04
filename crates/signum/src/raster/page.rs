@@ -514,6 +514,26 @@ impl Page {
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     /// Turn the page into a `GrayImage` from the `image` crate
+    pub fn from_image(g: GrayImage, threshold: u8) -> Self {
+        let bytes_per_line = (g.width() - 1) / 8 + 1;
+        let mut bit_writer = BitWriter::new();
+        for row in g.rows() {
+            for px in row {
+                bit_writer.write_bit(px.0[0] >= threshold);
+            }
+            bit_writer.flush();
+        }
+        Self {
+            bytes_per_line,
+            width: g.width(),
+            height: g.height(),
+            buffer: bit_writer.done(),
+        }
+    }
+
+    #[cfg(feature = "image")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+    /// Turn the page into a `GrayImage` from the `image` crate
     pub fn to_image(&self) -> GrayImage {
         let mut buffer = Vec::with_capacity(self.buffer.len() * 8);
         for byte in self.buffer.iter().map(|b| *b as usize) {

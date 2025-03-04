@@ -16,6 +16,7 @@ use nom::{
 use std::{
     borrow::Cow,
     fmt,
+    io::{self, Write},
     num::{NonZero, NonZeroU8},
     ops::Range,
     path::Path,
@@ -39,6 +40,15 @@ impl PrinterKind {
             Self::Needle24 => "P24",
             Self::Needle9 => "P9",
             Self::Laser30 => "L30",
+        }
+    }
+
+    /// Get the extension used for charset files for this printer kind
+    pub fn magic(&self) -> FourCC {
+        match self {
+            Self::Needle24 => FourCC::PS24,
+            Self::Needle9 => FourCC::PS09,
+            Self::Laser30 => FourCC::LS30,
         }
     }
 
@@ -182,6 +192,42 @@ impl PSet<'_> {
             }
         }
         bbox
+    }
+
+    /// Write printer font to a file
+    pub fn write_to(&self, buf: &mut Vec<u8>) -> io::Result<()> {
+        buf.write_all(self.pk.magic().as_slice())?;
+        buf.write_all(b"0001")?;
+        buf.write_all(&128u32.to_be_bytes())?;
+        for _ in 0..32 {
+            buf.write_all(&[0, 0, 0, 0])?;
+        }
+        let mut off: u32 = 4;
+        let mut offsets = Vec::with_capacity(128);
+        for i in 1..128 {
+            offsets.push(off);
+            let c = &self.chars[i];
+            off += (c.width as u32 * c.height as u32) + 4;
+            if off % 2 == 1 {
+                off += 1;
+            }
+        }
+        let max: u32 = off;
+        buf.write_all(&max.to_be_bytes())?;
+        for off in offsets {
+            buf.write_all(&off.to_be_bytes())?;
+        }
+        buf.write_all(&[0, 0, 0, 0])?; // 0 byte
+        for i in 1..128 {
+            let c = &self.chars[i];
+            let len = c.height as u32 * c.width as u32;
+            buf.write_all(&[c.top, c.height, c.width, c._d])?;
+            buf.write_all(c.bitmap.as_ref())?;
+            if len % 2 == 1 {
+                buf.write_all(&[0u8])?;
+            }
+        }
+        Ok(())
     }
 }
 

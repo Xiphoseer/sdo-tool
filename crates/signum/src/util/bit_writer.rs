@@ -1,36 +1,10 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 #[rustfmt::skip]
-#[repr(u8)]
-#[allow(dead_code)]
-enum State { #[default] S0, S1, S2, S3, S4, S5, S6, S7 }
+struct State(u8);
 
 impl State {
-    /*#[rustfmt::skip]
-    fn tick(&mut self) -> bool {
-        use State::*;
-        match self {
-            S0 => { *self = S7; true}
-            S1 => { *self = S0; false}
-            S2 => { *self = S1; false}
-            S3 => { *self = S2; false}
-            S4 => { *self = S3; false}
-            S5 => { *self = S4; false}
-            S6 => { *self = S5; false}
-            S7 => { *self = S6; false}
-        }
-    }*/
-
     fn as_usize(&self) -> usize {
-        match self {
-            Self::S0 => 0,
-            Self::S1 => 1,
-            Self::S2 => 2,
-            Self::S3 => 3,
-            Self::S4 => 4,
-            Self::S5 => 5,
-            Self::S6 => 6,
-            Self::S7 => 7,
-        }
+        self.0 as usize
     }
 }
 
@@ -53,7 +27,7 @@ impl BitWriter {
     pub fn new() -> Self {
         Self {
             buffer: vec![],
-            state: State::S7,
+            state: State(7),
             curr: 0,
         }
     }
@@ -62,14 +36,32 @@ impl BitWriter {
     pub fn _with_capacity(capacity: usize) -> Self {
         Self {
             buffer: Vec::with_capacity(capacity / 8 + (capacity % 8).min(1)),
-            state: State::S7,
+            state: State(7),
             curr: 0,
         }
     }
 
+    pub fn write_bit(&mut self, bit: bool) {
+        let avail = self.avail();
+        let val = if bit { 1 } else { 0 };
+        if avail < 8 {
+            self.curr <<= 1;
+            self.curr |= val;
+            self.state = State((avail - 2) as u8);
+        } else {
+            // at this point, the writer is starting the next byte
+            self.curr = val;
+            self.state = State(6u8);
+        }
+    }
+
+    fn avail(&self) -> usize {
+        self.state.as_usize() + 1
+    }
+
     /// Write {off} bits of {val}
     pub fn write_bits(&mut self, val: usize, mut todo: usize) {
-        let avail = self.state.as_usize() + 1;
+        let avail = self.avail();
         if avail < 8 {
             if todo < avail {
                 self.curr <<= todo;
@@ -99,10 +91,7 @@ impl BitWriter {
         // at this point, the writer is starting the next byte
         let mask = (1 << todo) - 1;
         self.curr = (mask & val) as u8;
-        self.state = unsafe {
-            // This is safe, because todo < 8 as per the loop above
-            std::mem::transmute::<u8, State>((7 - todo) as u8)
-        };
+        self.state = State((7 - todo) as u8);
     }
 
     /// flush the output buffer
@@ -112,7 +101,7 @@ impl BitWriter {
             self.curr <<= offset;
             self.buffer.push(self.curr);
             self.curr = 0;
-            self.state = State::S7;
+            self.state = State(7);
         }
     }
 
@@ -120,5 +109,21 @@ impl BitWriter {
     pub fn done(mut self) -> Vec<u8> {
         self.flush();
         self.buffer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_bit_writer() {
+        let mut bit_writer = super::BitWriter::new();
+        bit_writer.write_bits(0b111, 3);
+        bit_writer.write_bits(0, 4);
+        bit_writer.write_bits(0b11, 2);
+        bit_writer.write_bits(0, 7);
+        bit_writer.write_bits(0b10101, 5);
+        bit_writer.flush();
+        let vec = bit_writer.done();
+        assert_eq!(vec![0b11100001, 0b10000000, 0b10101000], vec);
     }
 }
