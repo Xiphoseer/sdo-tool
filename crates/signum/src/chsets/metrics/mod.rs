@@ -70,8 +70,10 @@ impl FontMetrics {
     ///
     /// ```
     /// # use signum::chsets::{printer::PrinterKind, metrics::FontMetrics};
-    /// let fm_p24 = FontMetrics::from(PrinterKind::Needle24);
-    /// assert_eq!((50,50), fm_p24.fontunits_to_pixels((1000, 1000)));
+    /// let fm_p24_10 = FontMetrics::new(PrinterKind::Needle24, 10);
+    /// assert_eq!((50,50), fm_p24_10.fontunits_to_pixels((1000, 1000)));
+    /// let fm_p24_12 = FontMetrics::new(PrinterKind::Needle24, 12);
+    /// assert_eq!((62,62), fm_p24_12.fontunits_to_pixels((1000, 1000)));
     /// let fm_p9 = FontMetrics::from(PrinterKind::Needle9);
     /// assert_eq!((33,30), fm_p9.fontunits_to_pixels((1000, 1000)));
     /// let fm_l30 = FontMetrics::from(PrinterKind::Laser30);
