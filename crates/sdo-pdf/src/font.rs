@@ -67,7 +67,7 @@ pub const DIFFERENCES: &[u8] = &[
 
 /// Font metrics
 pub struct FontMetrics {
-    baseline: i32,
+    baseline: u32,
     // pixels_per_inch_x: u32,
     // pixels_per_inch_y: u32,
     // pixels_per_pdfunit_x: u32,
@@ -77,7 +77,8 @@ pub struct FontMetrics {
 }
 
 const PDFUNITS_PER_INCH: u32 = 72;
-const FONTUNITS_PER_INCH: u32 = PDFUNITS_PER_INCH * 1000;
+const UNITS_PER_EM: u32 = 1000;
+const FONTUNITS_PER_INCH: u32 = PDFUNITS_PER_INCH * UNITS_PER_EM;
 
 impl From<PrinterKind> for FontMetrics {
     fn from(pk: PrinterKind) -> Self {
@@ -89,7 +90,7 @@ impl From<PrinterKind> for FontMetrics {
         let fontunits_per_pixel_x = FONTUNITS_PER_INCH / pixels_per_inch.x;
         let fontunits_per_pixel_y = FONTUNITS_PER_INCH / pixels_per_inch.y;
         Self {
-            baseline: pk.baseline() as i32,
+            baseline: pk.baseline(),
 
             // pixels_per_inch_x,
             // pixels_per_inch_y,
@@ -115,9 +116,8 @@ pub fn write_char_stream<W: Write>(
     font_metrics: &FontMetrics,
 ) -> io::Result<()> {
     // This is all in pixels
-    let hb = pchar.hbounds();
-    let right_x = (pchar.width as usize) * 8 - hb.max_tail;
-    let left_x = hb.max_lead;
+    let hb = pchar.hbounds().expect("a non zero-width glyph");
+    let (left_x, right_x) = hb.left_right_x();
     let box_width = right_x - left_x;
     let box_height = pchar.height as usize;
     let mut encoder = Encoder::new(box_width, &pchar.bitmap);
@@ -129,9 +129,8 @@ pub fn write_char_stream<W: Write>(
     let font_size = DEFAULT_FONT_SIZE;
 
     // This is in pixels
-    let top = font_metrics.baseline;
-    let upper_y = top - (pchar.top as i32);
-    let lower_y = upper_y - pchar.height as i32;
+    let vb = pchar.vbounds(font_metrics.baseline);
+    let (lower_y, upper_y) = (vb.start, vb.end);
 
     let fpx = font_metrics.fontunits_per_pixel_x as i32 / font_size;
     let fpy = font_metrics.fontunits_per_pixel_y as i32 / font_size;
@@ -221,11 +220,9 @@ pub fn type3_font<'a>(
         let pchar = &pfont.chars[cvu];
 
         // calculate font metrics
-        let sig_origin_y = font_metrics.baseline;
-        let sig_upper_y = sig_origin_y - pchar.top as i32;
-        let sig_lower_y = sig_upper_y - pchar.height as i32;
-        max_above_baseline = max_above_baseline.max(sig_upper_y * fpy);
-        max_below_baseline = max_below_baseline.min(sig_lower_y * fpy);
+        let vb = pchar.vbounds(font_metrics.baseline);
+        max_above_baseline = max_above_baseline.max(vb.end * fpy);
+        max_below_baseline = max_below_baseline.min(vb.start * fpy);
 
         if width > 0 && num_uses > 0 {
             max_width = max_width.max(width as i32);

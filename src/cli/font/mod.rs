@@ -75,17 +75,14 @@ fn save_as_ccitt(pset: &PSet, opt: &Options, file: &Path) -> eyre::Result<()> {
 
     for (cval, chr) in pset.chars.iter().enumerate() {
         if chr.width > 0 {
-            // TODO
-            let hb = chr.hbounds();
+            let hb = chr.hbounds().unwrap();
 
             println!("{}: {} .. {}", cval, hb.max_lead, hb.max_tail);
 
-            let width = chr.width as usize;
-            let width = width - hb.max_tail - hb.max_lead;
+            let width = hb.bit_width();
             let mut encoder = Encoder::new(width, &chr.bitmap);
             encoder.skip_lead = hb.max_lead;
             encoder.skip_tail = hb.max_tail;
-            //encoder.debug = cval == 87;
             let contents = encoder.encode();
             let file = format!("char-{}.{}.bin", cval, width);
             let path = out_dir.join(file);
@@ -119,6 +116,10 @@ fn print_pset(pset: &PSet) {
         }
         println!()
     }
+
+    let bbox = pset.font_bbox();
+    println!("{:?}", bbox);
+    println!("w={} h={}", bbox.width(), bbox.height());
 }
 
 fn save_pset_png(pset: &PSet, pk: PrinterKind, out: &Path) -> eyre::Result<()> {

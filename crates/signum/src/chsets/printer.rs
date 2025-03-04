@@ -1,11 +1,10 @@
 //! # The printer charsets
 
-use super::{FontResolution, LoadError};
+use super::{metrics::BBox, FontResolution, LoadError};
 use crate::{
     docs::four_cc,
     util::{Buf, FourCC},
 };
-use core::fmt;
 use nom::{
     bytes::complete::{tag, take},
     combinator::{cond, verify},
@@ -16,7 +15,9 @@ use nom::{
 };
 use std::{
     borrow::Cow,
+    fmt,
     num::{NonZero, NonZeroU8},
+    ops::Range,
     path::Path,
 };
 
@@ -161,12 +162,59 @@ pub struct PSet<'a> {
     pub chars: Vec<PSetChar<'a>>,
 }
 
+impl PSet<'_> {
+    /// Get the bounding box of pixels in this font
+    pub fn font_bbox(&self) -> BBox {
+        let mut bbox = BBox {
+            ll_x: usize::MAX,
+            ll_y: i32::MAX,
+            ur_x: usize::MIN,
+            ur_y: i32::MIN,
+        };
+        for chr in &self.chars {
+            if let Some(hb) = chr.hbounds() {
+                let (lx, rx) = hb.left_right_x();
+                bbox.ll_x = bbox.ll_x.min(lx);
+                bbox.ur_x = bbox.ur_x.max(rx);
+                let vb = chr.vbounds(self.pk.baseline());
+                bbox.ll_y = bbox.ll_y.min(vb.start);
+                bbox.ur_y = bbox.ur_y.max(vb.end);
+            }
+        }
+        bbox
+    }
+}
+
 /// A struct to hold information on computed character dimensions
 pub struct HBounds {
     /// The number of bits that are zero in every line from the left
     pub max_lead: usize,
     /// The number of bits that are zero in every line from the right
     pub max_tail: usize,
+    /// The number of bytes in the glyph
+    pub width: usize,
+}
+
+impl HBounds {
+    /// Get the right edge position
+    pub fn right_x(&self) -> usize {
+        self.width * 8 - self.max_tail
+    }
+
+    /// Get the left edge position
+    pub fn left_x(&self) -> usize {
+        self.max_lead
+    }
+
+    /// Get the actual width in bits of the glyph
+    pub fn bit_width(&self) -> usize {
+        self.right_x() - self.left_x()
+    }
+
+    /// Get the positions of the minimal left and right edge containing all pixels that are set
+    pub fn left_right_x(&self) -> (usize, usize) {
+        (self.left_x(), self.right_x())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -221,8 +269,21 @@ impl PSetChar<'_> {
         NonZero::new(self._d)
     }
 
+    /// Compute the vertical bounds of the char
+    ///
+    /// This assumes that blank lines are not encode in the bitmap for now
+    pub fn vbounds(&self, baseline: u32) -> Range<i32> {
+        let sig_origin_y = baseline as i32;
+        let sig_upper_y = sig_origin_y - self.top as i32;
+        let sig_lower_y = sig_upper_y - self.height as i32;
+        sig_lower_y..sig_upper_y
+    }
+
     /// Compute the horizontal bounds of the char
-    pub fn hbounds(&self) -> HBounds {
+    pub fn hbounds(&self) -> Option<HBounds> {
+        if self.width == 0 {
+            return None;
+        }
         let width = self.width as usize * 8;
         let mut max_lead = width;
         let mut max_tail = width;
@@ -251,7 +312,11 @@ impl PSetChar<'_> {
             max_lead = max_lead.min(lead);
             max_tail = max_tail.min(tail);
         }
-        HBounds { max_lead, max_tail }
+        Some(HBounds {
+            max_lead,
+            max_tail,
+            width: self.width as usize,
+        })
     }
 
     /// Check whether the given pixel position in the actual bitmap
