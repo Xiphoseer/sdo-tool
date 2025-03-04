@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use color_eyre::eyre::{self, eyre, Context, ContextCompat};
 use image::{GrayImage, ImageFormat};
-use signum::chsets::printer::PrinterKind;
+use signum::chsets::{metrics::FontMetrics, printer::PrinterKind};
 
 #[derive(Parser)]
 /// Options for decoding an ATARI String
@@ -30,14 +30,21 @@ fn main() -> eyre::Result<()> {
     // Parse it into the font type.
     let font = fontdue::Font::from_bytes(font, fontdue::FontSettings::default())
         .map_err(|e| eyre!("Failed to load font: {}", e))?;
-    // Rasterize and get the layout metrics for the letter 'g' at 17px.
 
-    let size = PrinterKind::Needle24.line_height();
+    // Rasterize and get the layout metrics for the letter 'g' at 45px.
+    let pk = PrinterKind::Needle24;
+    let fm = FontMetrics::new(pk, 10);
+    let px_per_em = fm.em_square_pixels();
+    dbg!(px_per_em);
+    let ascent = pk.max_ascent();
+    dbg!(ascent);
 
-    let (metrics, bitmap) = font.rasterize('g', size as f32);
+    let (metrics, bitmap) = font.rasterize('M', px_per_em as f32);
     let inverted = bitmap.iter().copied().map(discretize).collect();
     let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
         .context("image creation")?;
+
+    eprintln!("{:?}", metrics);
 
     let mut tmpfile =
         tempfile::NamedTempFile::with_suffix(".png").context("failed to create tempfile")?;
