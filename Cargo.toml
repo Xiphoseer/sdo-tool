@@ -25,10 +25,26 @@ ron = "0.6"
 serde = "1.0"
 futures-lite = "2.3.0"
 
+[features]
+ttf = ["dep:fontdue", "dep:tempfile"]
+default = ["ttf"]
+
 [dependencies.image]
 default-features = false
 version = "0.24"
 features = ["png"]
+
+[dependencies.fontdue]
+version = "0.9"
+optional = true
+
+[dependencies.tempfile]
+version = "3.17.1"
+optional = true
+
+[[bin]]
+name = "ttf2sig"
+required-features = ["ttf"]
 
 [dev-dependencies]
 pdf = "0.7"

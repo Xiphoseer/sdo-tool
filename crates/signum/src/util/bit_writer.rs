@@ -45,9 +45,16 @@ impl BitWriter {
         let avail = self.avail();
         let val = if bit { 1 } else { 0 };
         if avail < 8 {
-            self.curr <<= 1;
-            self.curr |= val;
-            self.state = State((avail - 2) as u8);
+            if 1 < avail {
+                self.curr <<= 1;
+                self.curr |= val;
+                self.state = State((avail - 2) as u8);
+            } else {
+                let rest = 1 - avail;
+                let prefix = val >> rest;
+                self.buffer.push(self.curr << avail | prefix);
+                self.state = State(7u8);
+            }
         } else {
             // at this point, the writer is starting the next byte
             self.curr = val;
@@ -125,5 +132,46 @@ mod tests {
         bit_writer.flush();
         let vec = bit_writer.done();
         assert_eq!(vec![0b11100001, 0b10000000, 0b10101000], vec);
+    }
+
+    #[test]
+    fn test_write_bit() {
+        let mut bit_writer = super::BitWriter::new();
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.flush();
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(false);
+        bit_writer.write_bit(true);
+        bit_writer.write_bit(true);
+        bit_writer.flush();
+        let vec = bit_writer.done();
+        assert_eq!(
+            vec![
+                0b10000111, 0b10011000, //
+                0b10000111, 0b10011000,
+            ],
+            vec
+        );
     }
 }

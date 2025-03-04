@@ -3,6 +3,7 @@
 use super::{metrics::BBox, FontResolution, LoadError};
 use crate::{
     docs::four_cc,
+    raster::Page,
     util::{Buf, FourCC},
 };
 use nom::{
@@ -15,9 +16,10 @@ use nom::{
 };
 use std::{
     borrow::Cow,
+    convert::TryInto,
     fmt,
     io::{self, Write},
-    num::{NonZero, NonZeroU8},
+    num::{NonZero, NonZeroU8, TryFromIntError},
     ops::Range,
     path::Path,
 };
@@ -195,7 +197,7 @@ impl PSet<'_> {
     }
 
     /// Write printer font to a file
-    pub fn write_to(&self, buf: &mut Vec<u8>) -> io::Result<()> {
+    pub fn write_to<W: Write>(&self, buf: &mut W) -> io::Result<()> {
         buf.write_all(self.pk.magic().as_slice())?;
         buf.write_all(b"0001")?;
         buf.write_all(&128u32.to_be_bytes())?;
@@ -217,11 +219,11 @@ impl PSet<'_> {
         for off in offsets {
             buf.write_all(&off.to_be_bytes())?;
         }
-        buf.write_all(&[0, 0, 0, 0])?; // 0 byte
-        for i in 1..128 {
+        for i in 0..128 {
             let c = &self.chars[i];
             let len = c.height as u32 * c.width as u32;
             buf.write_all(&[c.top, c.height, c.width, c._d])?;
+            assert_eq!(c.bitmap.len() as u32, c.height as u32 * c.width as u32);
             buf.write_all(c.bitmap.as_ref())?;
             if len % 2 == 1 {
                 buf.write_all(&[0u8])?;
@@ -295,6 +297,32 @@ impl<'a> PSetChar<'a> {
             bitmap: Cow::Borrowed(bitmap),
         }
     }
+
+    /// Create a printer char from a [Page]
+    pub fn from_page(top: u8, bitmap: Page) -> Result<Self, TryFromIntError> {
+        let width = bitmap.bytes_per_line().try_into()?;
+        let height = bitmap.bit_height().try_into()?;
+        let data = bitmap.into_vec();
+        assert_eq!(data.len(), width as usize * height as usize);
+        Ok(Self {
+            width,
+            height,
+            top,
+            _d: 0,
+            bitmap: Cow::Owned(data),
+        })
+    }
+}
+
+impl PSetChar<'static> {
+    /// Empty printer char
+    pub const EMPTY: Self = Self {
+        top: 0,
+        height: 0,
+        width: 0,
+        _d: 0,
+        bitmap: Cow::Owned(Vec::new()),
+    };
 }
 
 impl PSetChar<'_> {
