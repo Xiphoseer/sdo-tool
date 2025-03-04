@@ -4,6 +4,7 @@ use signum::{
     chsets::{
         cache::{ChsetCache, DocumentFontCacheInfo},
         encoding::antikro,
+        metrics::widths::{self, standard_widths},
     },
     docs::{
         hcim::ImageSite,
@@ -94,8 +95,11 @@ fn print_tebu_data(
         let width = if let Some(eset) = print.eset(fc, k.cset) {
             eset.chars[k.cval as usize].width
         } else {
-            // default for fonts that are missing
-            antikro::WIDTH[k.cval as usize]
+            let widths = print
+                .cset_name(k.cset)
+                .and_then(standard_widths)
+                .unwrap_or(&widths::ANTIKRO);
+            widths[k.cval as usize]
         };
         last_char_width = if chr == '\n' { 0 } else { width };
         if k.style.is_wide() {

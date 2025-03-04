@@ -22,6 +22,7 @@ pub mod cache;
 pub mod code;
 pub mod editor;
 pub mod encoding;
+pub mod metrics;
 pub mod printer;
 
 #[derive(Copy, Clone)]

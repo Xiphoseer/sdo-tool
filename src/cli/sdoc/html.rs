@@ -7,7 +7,7 @@ use color_eyre::eyre;
 use signum::{
     chsets::{
         cache::{ChsetCache, DocumentFontCacheInfo},
-        encoding::{antikro, grotmikr, normande, pinsel},
+        metrics::widths::{self, standard_widths},
     },
     docs::tebu::{Char, Flags, Line, Style},
 };
@@ -167,13 +167,11 @@ impl<'a> HtmlGen<'a> {
             let mut width = if let Some(eset) = &self.print.eset(self.fc, k.cset) {
                 eset.chars[k.cval as usize].width
             } else {
-                let widths = match self.print.cset_name(k.cset) {
-                    Some("NORMANDE") => &normande::WIDTH,
-                    Some("PINSEL") => &pinsel::WIDTH,
-                    Some("GROTMIKR") => &grotmikr::WIDTH,
-                    // default for fonts that are missing
-                    _ => &antikro::WIDTH,
-                };
+                let widths = self
+                    .print
+                    .cset_name(k.cset)
+                    .and_then(standard_widths)
+                    .unwrap_or(&widths::ANTIKRO);
                 widths[k.cval as usize]
             };
             if style.is_wide() {
