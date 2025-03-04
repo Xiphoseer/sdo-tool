@@ -123,7 +123,7 @@ fn print_pset(pset: &PSet) {
 
 fn save_pset_png(pset: &PSet, pk: PrinterKind, out: &Path) -> eyre::Result<()> {
     for (index, glyph) in pset.chars.iter().enumerate() {
-        let mut page = Page::new((glyph.width as u32 + 1) * 8, 8 + pk.line_height());
+        let mut page = Page::new((glyph.width as u32 + 1) * 8, 8 + pk.max_height());
         if glyph.width > 0 {
             page.draw_printer_char(4, 4, glyph)?;
         }

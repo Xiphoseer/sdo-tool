@@ -89,7 +89,7 @@ impl From<PrinterKind> for FontMetrics {
         let fontunits_per_pixel_x = FONTUNITS_PER_INCH / pixels_per_inch.x;
         let fontunits_per_pixel_y = FONTUNITS_PER_INCH / pixels_per_inch.y;
         Self {
-            baseline: pk.baseline(),
+            baseline: pk.baseline() as i32,
 
             // pixels_per_inch_x,
             // pixels_per_inch_y,
@@ -256,8 +256,8 @@ pub fn type3_font<'a>(
     }
 
     // FIXME: this works best in evice => why?
-    let ascent = pfont.pk.ascent() as i32 * fpy * 2 / 3;
-    let descent = -(pfont.pk.descent() as i32) * fpy / 4;
+    let ascent = pfont.pk.reference_cap_height() as i32 * fpy * 2 / 3;
+    let descent = -(pfont.pk.max_descent() as i32) * fpy / 4;
 
     let font_bbox = Rectangle {
         ll: Point {

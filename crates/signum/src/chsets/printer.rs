@@ -73,7 +73,7 @@ impl PrinterKind {
     }
 
     /// Get the position of the character baseline from the top of the glyph bounding box
-    pub fn baseline(self) -> i32 {
+    pub fn baseline(self) -> u32 {
         match self {
             Self::Needle9 => 35,
             Self::Needle24 => 58,
@@ -81,8 +81,8 @@ impl PrinterKind {
         }
     }
 
-    /// Get maximum height of a character
-    pub fn line_height(self) -> u32 {
+    /// Get maximum height of a character, as indicated by the font editors
+    pub fn max_height(self) -> u32 {
         match self {
             Self::Needle9 => 48,
             Self::Needle24 => 80,
@@ -91,7 +91,15 @@ impl PrinterKind {
     }
 
     /// The space between the baseline and the bottom of the bounding box (in pixels)
-    pub fn descent(self) -> u32 {
+    ///
+    /// ```
+    /// # use signum::chsets::printer::PrinterKind;
+    /// let (p9, p24, l30) = (PrinterKind::Needle9, PrinterKind::Needle24, PrinterKind::Laser30);
+    /// assert_eq!(p9.max_descent(), p9.max_height() - p9.baseline());
+    /// assert_eq!(p24.max_descent(), p24.max_height() - p24.baseline());
+    /// assert_eq!(l30.max_descent(), l30.max_height() - l30.baseline());
+    /// ```
+    pub fn max_descent(self) -> u32 {
         match self {
             Self::Needle9 => 13,
             Self::Needle24 => 22,
@@ -99,8 +107,26 @@ impl PrinterKind {
         }
     }
 
+    /// Distance between the baseline and the top of the bounding box (in pixels)
+    ///
+    /// Alias for [`baseline`][Self::baseline]
+    ///
+    /// ```
+    /// # use signum::chsets::printer::PrinterKind;
+    /// let (p9, p24, l30) = (PrinterKind::Needle9, PrinterKind::Needle24, PrinterKind::Laser30);
+    /// assert_eq!(p9.max_height(), p9.max_ascent() + p9.max_descent());
+    /// assert_eq!(p24.max_height(), p24.max_ascent() + p24.max_descent());
+    /// assert_eq!(l30.max_height(), l30.max_ascent() + l30.max_descent());
+    /// ```
+    pub fn max_ascent(self) -> u32 {
+        self.baseline()
+    }
+
     /// The default height of the character box (in pixels)
-    pub fn ascent(self) -> u32 {
+    ///
+    /// This is the distance from the baseline to the dashed-line indicating
+    /// the "default" cap height in the signum font editors.
+    pub fn reference_cap_height(self) -> u32 {
         match self {
             Self::Needle9 => 22,
             Self::Needle24 => 36,
