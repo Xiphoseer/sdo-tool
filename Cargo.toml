@@ -3,6 +3,7 @@ name = "sdo-tool"
 version = "0.3.2"
 authors = ["daniel"]
 edition = "2018"
+default-run = "sdo-tool"
 
 [dependencies]
 color-eyre = { version = "0.6", default-features = false }
