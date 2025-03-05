@@ -112,3 +112,8 @@ backgrounds with some patterns into something that doesn't need to be stored.
 
 Note: When the XOR header bytes are 0, applying an XOR does nothing,
 so you can skip this step if that is the case.
+
+## References
+
+- [Piccolo (AtariUpToDate)](https://www.atariuptodate.de/de/677/piccolo)
+- [PICCOLO ... im zweiten Anlauf (ST-Computer 02/1993)](https://www.stcarchiv.de/stc1993/02/piccolo)
