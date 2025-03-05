@@ -522,7 +522,7 @@ impl Page {
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     /// Turn the page into a `GrayImage` from the `image` crate
-    pub fn from_image(g: GrayImage, threshold: u8) -> Self {
+    pub fn from_image(g: &GrayImage, threshold: u8) -> Self {
         let width = g.width();
         let height = g.height();
         let bytes_per_line = (width - 1) / 8 + 1;

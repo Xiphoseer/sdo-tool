@@ -18,8 +18,16 @@ pub struct Opts {
     /// The file to convert
     font_file: PathBuf,
 
-    /// The file to output
+    /// The directory to output
     out: PathBuf,
+
+    /// Force overwrite existing files
+    #[clap(short, long)]
+    force: bool,
+
+    /// The new name of the font
+    #[clap(short, long)]
+    name: Option<String>,
 
     /// Threshold at which to treat coverage as "on"
     #[clap(short, long, default_value = "128")]
@@ -48,6 +56,11 @@ fn main() -> eyre::Result<()> {
     let discretize = |c: u8| if c >= opt.threshold { 0x00 } else { 0xFF };
 
     let map = antikro::MAP;
+    let name = opt.name.as_deref();
+    let name = match name {
+        Some(name) => name.to_owned(),
+        None => derive_font_name(font.name().expect("missing font name")),
+    };
 
     let mut chars = Vec::new();
     for (index, c) in map.iter().copied().enumerate() {
@@ -57,13 +70,13 @@ fn main() -> eyre::Result<()> {
         }
         let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
         let inverted = bitmap.iter().copied().map(discretize).collect();
-        let _img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
+        let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
             .context("image creation")?;
 
         eprintln!("{:03}: {:?}", index, metrics);
 
-        let page = signum::raster::Page::from_image(_img, opt.threshold);
-        let pchar = PSetChar::from_page(10, page).unwrap();
+        let page = signum::raster::Page::from_image(&img, opt.threshold);
+        let pchar = PSetChar::from_page(10, page).expect("failed to convert bitmap to char");
         chars.push(pchar);
     }
     let pset = PSet {
@@ -71,11 +84,28 @@ fn main() -> eyre::Result<()> {
         header: Buf(&[0u8; 128]),
         chars,
     };
-    let outfile = std::fs::File::create_new(&opt.out).wrap_err("failed to create output file")?;
+    let outfile = opt.out.join(name).with_extension("P24");
+    let outfile = match opt.force {
+        true => std::fs::File::create(&outfile),
+        false => std::fs::File::create_new(&outfile),
+    }
+    .wrap_err("failed to create output file")?;
     let mut writer = BufWriter::new(outfile);
     pset.write_to(&mut writer)?;
 
     Ok(())
+}
+
+fn derive_font_name(f: &str) -> String {
+    let mut f: String = f
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .map(|c| c.to_ascii_uppercase())
+        .collect();
+    if f.len() > 8 {
+        f = f.replace(['A', 'E', 'I', 'O', 'U'], "");
+    }
+    f
 }
 
 fn _show(img: &GrayImage) -> color_eyre::Result<()> {
