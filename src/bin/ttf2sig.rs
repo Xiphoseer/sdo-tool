@@ -38,7 +38,7 @@ pub struct Opts {
     name: Option<String>,
 
     /// Threshold at which to treat coverage as "on"
-    #[clap(short, long, default_value = "128")]
+    #[clap(short, long, default_value = "170")]
     threshold: u8,
 }
 
@@ -133,7 +133,7 @@ fn make_echar(
     metrics: fontdue::Metrics,
     bitmap: signum::raster::Page,
 ) -> Result<EChar<'static>, TryFromIntError> {
-    let width = 16; // FIXME
+    let width = metrics.advance_width.round() as u8;
     let height = bitmap.bit_height().try_into()?;
     let top = ((FontKind::Editor.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
     Ok(EChar::new_owned(width, height, top, bitmap.into_vec()).unwrap())
