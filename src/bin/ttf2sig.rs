@@ -81,7 +81,7 @@ fn main() -> eyre::Result<()> {
             continue;
         }
 
-        eprintln!("{}", index);
+        println!("Converting 0x{:02x}: {} (U+{:04X})", index, c, u32::from(c));
 
         let (p_metrics, p_bitmap) = rasterize(threshold, &font, px_per_em, None, c)?;
         let (e_metrics, e_bitmap) = rasterize(threshold, &font, e_px_per_em, Some(16), c)?;
@@ -110,6 +110,7 @@ fn write_pset(name: &str, pset: PSet<'_>, out_dir: &Path, force: bool) -> Result
     let outfile = out_dir.join(name).with_extension(pset.pk.extension());
     let mut writer = create_output_file(&outfile, force)?;
     pset.write_to(&mut writer)?;
+    eprintln!("Wrote {}", outfile.display());
     Ok(())
 }
 
@@ -117,6 +118,7 @@ fn write_eset(name: &str, pset: ESet<'_>, out_dir: &Path, force: bool) -> Result
     let outfile = out_dir.join(name).with_extension(Editor.extension());
     let mut writer = create_output_file(&outfile, force)?;
     pset.write_to(&mut writer)?;
+    eprintln!("Wrote {}", outfile.display());
     Ok(())
 }
 
@@ -157,7 +159,6 @@ fn rasterize(
     c: char,
 ) -> Result<(fontdue::Metrics, signum::raster::Page), eyre::Error> {
     let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
-    eprintln!("{c}: {:?}", metrics);
     let inverted = bitmap.iter().copied().map(|c| 255 - c).collect();
     let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
         .context("image creation")?;
