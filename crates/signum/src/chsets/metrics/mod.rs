@@ -8,7 +8,7 @@
 //! - The *font size* defines the height of the *em square* in points
 //! - A *font unit* is the subdivision of the *em square*, usually 1/1000 or 1/1024
 
-use super::printer::PrinterKind;
+use super::{printer::PrinterKind, Device, FontKind};
 
 pub mod widths;
 
@@ -46,8 +46,8 @@ pub struct FontMetrics {
 
 impl FontMetrics {
     /// Create a new font metric
-    pub fn new(pk: PrinterKind, font_size: u32) -> Self {
-        let pixels_per_inch = pk.resolution();
+    pub fn new<D: Device>(device: D, font_size: u32) -> Self {
+        let pixels_per_inch = device.resolution();
 
         let fontunits_per_pixel_x = FONTUNITS_PER_INCH_UNSCALED / font_size / pixels_per_inch.x;
         let fontunits_per_pixel_y = FONTUNITS_PER_INCH_UNSCALED / font_size / pixels_per_inch.y;
@@ -119,6 +119,13 @@ impl FontMetrics {
 impl From<PrinterKind> for FontMetrics {
     /// Get the font metrics for the given printer, assuming the specified font size
     fn from(value: PrinterKind) -> Self {
+        Self::from(FontKind::Printer(value))
+    }
+}
+
+impl From<FontKind> for FontMetrics {
+    /// Get the font metrics for the given font kind, assuming the specified font size
+    fn from(value: FontKind) -> Self {
         Self::new(value, DEFAULT_FONT_SIZE)
     }
 }

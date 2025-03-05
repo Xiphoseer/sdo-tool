@@ -5,7 +5,7 @@ use log::warn;
 use sdo_ps::out::PsWriter;
 use signum::chsets::{
     cache::{ChsetCache, DocumentFontCacheInfo},
-    FontKind,
+    Device, FontKind,
 };
 
 use crate::cli::{font::ps::write_ls30_ps_bitmap, opt::Options};

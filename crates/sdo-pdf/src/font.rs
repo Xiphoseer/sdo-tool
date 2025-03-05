@@ -23,7 +23,7 @@ use signum::{
         cache::{CSet, ChsetCache, DocumentFontCacheInfo, FontCacheInfo},
         editor::ESet,
         printer::{PSet, PSetChar, PrinterKind},
-        UseMatrix, UseTable, UseTableVec,
+        Device, UseMatrix, UseTable, UseTableVec,
     },
     docs::GenerationContext,
     util::Buf,
@@ -68,10 +68,6 @@ pub const DIFFERENCES: &[u8] = &[
 /// Font metrics
 pub struct FontMetrics {
     baseline: u32,
-    // pixels_per_inch_x: u32,
-    // pixels_per_inch_y: u32,
-    // pixels_per_pdfunit_x: u32,
-    // pixels_per_pdfunit_y: u32,
     fontunits_per_pixel_x: u32,
     fontunits_per_pixel_y: u32,
 }
@@ -84,19 +80,11 @@ impl From<PrinterKind> for FontMetrics {
     fn from(pk: PrinterKind) -> Self {
         let pixels_per_inch = pk.resolution();
 
-        // let pixels_per_pdfunit_x = pixels_per_inch_x / pdfunits_per_inch;
-        // let pixels_per_pdfunit_y = pixels_per_inch_y / pdfunits_per_inch;
-
         let fontunits_per_pixel_x = FONTUNITS_PER_INCH / pixels_per_inch.x;
         let fontunits_per_pixel_y = FONTUNITS_PER_INCH / pixels_per_inch.y;
         Self {
             baseline: pk.baseline(),
 
-            // pixels_per_inch_x,
-            // pixels_per_inch_y,
-
-            // pixels_per_pdfunit_x,
-            // pixels_per_pdfunit_y,
             fontunits_per_pixel_x,
             fontunits_per_pixel_y,
         }

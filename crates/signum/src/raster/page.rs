@@ -7,9 +7,7 @@ use crate::{
     chsets::{editor::EChar, printer::PSetChar},
     docs::hcim::ImageArea,
     images::imc::MonochromeScreen,
-    util::data::BIT_PROJECTION,
-    util::BitIter,
-    util::BitWriter,
+    util::{data::BIT_PROJECTION, BitIter, BitWriter},
 };
 
 use super::{scalers::VScaler, trace::Dir, DrawPrintErr};
@@ -216,6 +214,16 @@ impl Page {
     /// Clear the page
     pub fn clear(&mut self) {
         self.buffer.fill(0);
+    }
+
+    /// Return the containing vector
+    pub fn into_vec(self) -> Vec<u8> {
+        self.buffer
+    }
+
+    /// Return a copy of the containing vector
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.buffer.clone()
     }
 
     /// Get a part of the image as bitmap (1-bit per pixel) image
@@ -514,20 +522,39 @@ impl Page {
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     /// Turn the page into a `GrayImage` from the `image` crate
-    pub fn from_image(g: GrayImage, threshold: u8) -> Self {
-        let bytes_per_line = (g.width() - 1) / 8 + 1;
+    pub fn from_image(g: &GrayImage, threshold: u8, hpad: (u8, u8)) -> Self {
+        let width = g.width() + hpad.0 as u32 + hpad.1 as u32;
+        let height = g.height();
+        let bytes_per_line = (width - 1) / 8 + 1;
         let mut bit_writer = BitWriter::new();
+        let mut c = 0;
+        assert!(hpad.0 < 32);
+        assert!(hpad.1 < 32);
         for row in g.rows() {
+            bit_writer.write_bits(0, hpad.0 as usize);
             for px in row {
-                bit_writer.write_bit(px.0[0] >= threshold);
+                c += 1;
+                bit_writer.write_bit(px.0[0] < threshold);
             }
+            bit_writer.write_bits(0, hpad.1 as usize);
             bit_writer.flush();
+        }
+        let buffer = bit_writer.done();
+        if buffer.len() != bytes_per_line as usize * height as usize {
+            panic!(
+                "Unexpected buffer size {}: w={}, h={}, bpl={}, c={}",
+                buffer.len(),
+                width,
+                height,
+                bytes_per_line,
+                c
+            )
         }
         Self {
             bytes_per_line,
-            width: g.width(),
-            height: g.height(),
-            buffer: bit_writer.done(),
+            width,
+            height,
+            buffer,
         }
     }
 
@@ -565,6 +592,8 @@ impl Page {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use crate::chsets::editor::EChar;
 
     use super::Page;
@@ -575,7 +604,7 @@ mod tests {
             width: 8,
             top: 10,
             height: 10,
-            buf: &[0xFF; 20],
+            buf: Cow::Borrowed(&[0xFF; 20]),
         };
 
         let mut page = Page::new(24, 24);
@@ -648,7 +677,7 @@ mod tests {
             width: 12,
             top: 10,
             height: 10,
-            buf: &[0xFF; 20],
+            buf: Cow::Borrowed(&[0xFF; 20]),
         };
 
         let mut page = Page::new(24, 24);

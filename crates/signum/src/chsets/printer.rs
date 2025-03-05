@@ -1,9 +1,10 @@
 //! # The printer charsets
 
-use super::{metrics::BBox, FontResolution, LoadError};
+use super::{metrics::BBox, Device, FontResolution, LoadError};
 use crate::{
     docs::four_cc,
-    util::{Buf, FourCC},
+    raster::Page,
+    util::{Buf, FileFormatKind, FourCC},
 };
 use nom::{
     bytes::complete::{tag, take},
@@ -15,9 +16,10 @@ use nom::{
 };
 use std::{
     borrow::Cow,
+    convert::TryInto,
     fmt,
     io::{self, Write},
-    num::{NonZero, NonZeroU8},
+    num::{NonZero, NonZeroU8, TryFromIntError},
     ops::Range,
     path::Path,
 };
@@ -33,9 +35,19 @@ pub enum PrinterKind {
     Laser30,
 }
 
-impl PrinterKind {
+impl Device for PrinterKind {
+    fn resolution(&self) -> &'static FontResolution {
+        match self {
+            Self::Needle9 => &FontResolution { x: 240, y: 216 },
+            Self::Needle24 => &FontResolution { x: 360, y: 360 },
+            Self::Laser30 => &FontResolution { x: 300, y: 300 },
+        }
+    }
+}
+
+impl FileFormatKind for PrinterKind {
     /// Get the extension used for charset files for this printer kind
-    pub fn extension(&self) -> &'static str {
+    fn extension(&self) -> &'static str {
         match self {
             Self::Needle24 => "P24",
             Self::Needle9 => "P9",
@@ -44,7 +56,7 @@ impl PrinterKind {
     }
 
     /// Get the extension used for charset files for this printer kind
-    pub fn magic(&self) -> FourCC {
+    fn magic(&self) -> FourCC {
         match self {
             Self::Needle24 => FourCC::PS24,
             Self::Needle9 => FourCC::PS09,
@@ -53,14 +65,16 @@ impl PrinterKind {
     }
 
     /// Get the file format name for this printer kind
-    pub fn file_format_name(&self) -> &'static str {
+    fn file_format_name(&self) -> &'static str {
         match self {
             Self::Needle24 => "Signum! 24-Needle Printer Bitmap Font",
             Self::Needle9 => "Signum! 9-Needle Printer Bitmap Font",
             Self::Laser30 => "Signum! Laser Printer Bitmap Font",
         }
     }
+}
 
+impl PrinterKind {
     /// Get the number of dots for the given amount of horizontal units
     ///
     /// FIXME: this introduces rounding errors
@@ -144,15 +158,6 @@ impl PrinterKind {
             Self::Laser30 => 30,
         }
     }
-
-    /// Get the resolution of this printer font in dots per inch
-    pub fn resolution(&self) -> &'static FontResolution {
-        match self {
-            Self::Needle9 => &FontResolution { x: 240, y: 216 },
-            Self::Needle24 => &FontResolution { x: 360, y: 360 },
-            Self::Laser30 => &FontResolution { x: 300, y: 300 },
-        }
-    }
 }
 
 impl fmt::Display for PrinterKind {
@@ -195,7 +200,7 @@ impl PSet<'_> {
     }
 
     /// Write printer font to a file
-    pub fn write_to(&self, buf: &mut Vec<u8>) -> io::Result<()> {
+    pub fn write_to<W: Write>(&self, buf: &mut W) -> io::Result<()> {
         buf.write_all(self.pk.magic().as_slice())?;
         buf.write_all(b"0001")?;
         buf.write_all(&128u32.to_be_bytes())?;
@@ -217,11 +222,11 @@ impl PSet<'_> {
         for off in offsets {
             buf.write_all(&off.to_be_bytes())?;
         }
-        buf.write_all(&[0, 0, 0, 0])?; // 0 byte
-        for i in 1..128 {
+        for i in 0..128 {
             let c = &self.chars[i];
             let len = c.height as u32 * c.width as u32;
             buf.write_all(&[c.top, c.height, c.width, c._d])?;
+            assert_eq!(c.bitmap.len() as u32, c.height as u32 * c.width as u32);
             buf.write_all(c.bitmap.as_ref())?;
             if len % 2 == 1 {
                 buf.write_all(&[0u8])?;
@@ -295,6 +300,32 @@ impl<'a> PSetChar<'a> {
             bitmap: Cow::Borrowed(bitmap),
         }
     }
+
+    /// Create a printer char from a [Page]
+    pub fn from_page(top: u8, bitmap: Page) -> Result<Self, TryFromIntError> {
+        let width = bitmap.bytes_per_line().try_into()?;
+        let height = bitmap.bit_height().try_into()?;
+        let data = bitmap.into_vec();
+        assert_eq!(data.len(), width as usize * height as usize);
+        Ok(Self {
+            width,
+            height,
+            top,
+            _d: 0,
+            bitmap: Cow::Owned(data),
+        })
+    }
+}
+
+impl PSetChar<'static> {
+    /// Empty printer char
+    pub const EMPTY: Self = Self {
+        top: 0,
+        height: 0,
+        width: 0,
+        _d: 0,
+        bitmap: Cow::Owned(Vec::new()),
+    };
 }
 
 impl PSetChar<'_> {
