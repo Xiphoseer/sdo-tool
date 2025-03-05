@@ -5,6 +5,7 @@ mod bit_writer;
 mod buf;
 mod bytes;
 pub mod data;
+mod file_format;
 mod four_cc;
 mod vfs;
 
@@ -12,6 +13,7 @@ pub use bit_iter::{BitIter, ByteBits};
 pub(crate) use bit_writer::BitWriter;
 pub use buf::Buf;
 pub use bytes::{Bytes16, Bytes32};
+pub use file_format::FileFormatKind;
 pub use four_cc::FourCC;
 pub use vfs::{AsyncIterator, LocalFS, VFS};
 

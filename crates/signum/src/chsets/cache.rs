@@ -18,7 +18,7 @@ use crate::{
         LoadError,
     },
     docs::cset,
-    util::{AsyncIterator, VFS},
+    util::{AsyncIterator, FileFormatKind, VFS},
 };
 
 use super::{encoding::decode_atari_str, FontKind};

@@ -588,6 +588,8 @@ impl Page {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use crate::chsets::editor::EChar;
 
     use super::Page;
@@ -598,7 +600,7 @@ mod tests {
             width: 8,
             top: 10,
             height: 10,
-            buf: &[0xFF; 20],
+            buf: Cow::Borrowed(&[0xFF; 20]),
         };
 
         let mut page = Page::new(24, 24);
@@ -671,7 +673,7 @@ mod tests {
             width: 12,
             top: 10,
             height: 10,
-            buf: &[0xFF; 20],
+            buf: Cow::Borrowed(&[0xFF; 20]),
         };
 
         let mut page = Page::new(24, 24);

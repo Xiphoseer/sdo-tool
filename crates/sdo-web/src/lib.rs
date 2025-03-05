@@ -34,7 +34,7 @@ use signum::{
     },
     images::imc::parse_imc,
     raster::{self, render_doc_page, render_editor_text, render_printer_char},
-    util::{AsyncIterator, FourCC, VFS},
+    util::{AsyncIterator, FileFormatKind, FourCC, VFS},
 };
 use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter, path::Path};
 use vfs::{DirEntry, OriginPrivateFS};

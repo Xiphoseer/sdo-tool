@@ -1,6 +1,6 @@
 //! # The editor fonts
 
-use super::LoadError;
+use super::{error::ChsetSizeError, LoadError};
 use crate::util::{data::BIT_STRING, Buf};
 use log::warn;
 use nom::{
@@ -8,7 +8,7 @@ use nom::{
     number::complete::{be_u32, u8},
     IResult,
 };
-use std::{ops::Deref, path::Path};
+use std::{borrow::Cow, ops::Deref, path::Path};
 
 const BORDER: [&str; 17] = [
     "+|---------------+",
@@ -81,7 +81,32 @@ pub struct EChar<'a> {
     /// The distance of the top edge of the stored glyph from the top of the available box
     pub top: u8,
     /// The buffer that contains the pixels
-    pub buf: &'a [u8],
+    pub buf: Cow<'a, [u8]>,
+}
+
+impl<'a> EChar<'a> {
+    /// Create a new glyph from a bitmap and metrics
+    pub const fn new(
+        width: u8,
+        height: u8,
+        top: u8,
+        buf: &'a [u8],
+    ) -> Result<EChar<'a>, ChsetSizeError> {
+        let expected = height as usize * 2;
+        if buf.len() == expected {
+            Ok(Self {
+                width,
+                height,
+                top,
+                buf: Cow::Borrowed(buf),
+            })
+        } else {
+            Err(ChsetSizeError::UnexpectedBitmapSize {
+                expected,
+                actual: buf.len(),
+            })
+        }
+    }
 }
 
 impl EChar<'_> {
@@ -119,7 +144,7 @@ pub const ECHAR_NULL: EChar<'static> = EChar {
     width: 0,
     height: 0,
     top: 0,
-    buf: &[],
+    buf: Cow::Borrowed(&[]),
 };
 
 impl ESet<'_> {
@@ -173,7 +198,7 @@ pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
             width,
             height,
             top,
-            buf,
+            buf: Cow::Borrowed(buf),
         },
     ))
 }

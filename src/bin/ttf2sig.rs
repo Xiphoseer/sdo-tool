@@ -5,8 +5,9 @@ use color_eyre::eyre::{self, eyre, Context, ContextCompat};
 use image::{GrayImage, ImageFormat};
 use signum::{
     chsets::{
+        editor::{ESet, ECHAR_NULL},
         encoding::antikro,
-        metrics::FontMetrics,
+        metrics::{FontMetrics, DEFAULT_FONT_SIZE},
         printer::{PSet, PSetChar, PrinterKind},
     },
     util::Buf,
@@ -45,14 +46,6 @@ fn main() -> eyre::Result<()> {
     let font = fontdue::Font::from_bytes(font, fontdue::FontSettings::default())
         .map_err(|e| eyre!("Failed to load font: {}", e))?;
 
-    // Rasterize and get the layout metrics for the letter 'g' at 45px.
-    let pk = PrinterKind::Needle24;
-    let fm = FontMetrics::new(pk, 10);
-    let px_per_em = fm.em_square_pixels();
-    dbg!(px_per_em);
-    let ascent = pk.max_ascent();
-    dbg!(ascent);
-
     let discretize = |c: u8| if c >= opt.threshold { 0x00 } else { 0xFF };
 
     let map = antikro::MAP;
@@ -62,10 +55,19 @@ fn main() -> eyre::Result<()> {
         None => derive_font_name(font.name().expect("missing font name")),
     };
 
-    let mut chars = Vec::new();
+    // Rasterize and get the layout metrics for the letter 'g' at 45px.
+    let font_size = DEFAULT_FONT_SIZE;
+    let pk = PrinterKind::Needle24;
+    let fm = FontMetrics::new(pk, font_size);
+    let px_per_em = fm.em_square_pixels();
+    dbg!(px_per_em);
+
+    let mut pset_chars = Vec::new();
+    let mut eset_chars = Vec::new();
     for (index, c) in map.iter().copied().enumerate() {
         if c == '\0' || c == char::REPLACEMENT_CHARACTER || !font.has_glyph(c) {
-            chars.push(PSetChar::EMPTY);
+            pset_chars.push(PSetChar::EMPTY);
+            eset_chars.push(ECHAR_NULL);
             continue;
         }
         let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
@@ -73,17 +75,23 @@ fn main() -> eyre::Result<()> {
         let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
             .context("image creation")?;
 
-        eprintln!("{:03}: {:?}", index, metrics);
+        eprintln!("PCHAR: {:03}: {:?}", index, metrics);
 
-        let page = signum::raster::Page::from_image(&img, opt.threshold);
-        let pchar = PSetChar::from_page(10, page).expect("failed to convert bitmap to char");
-        chars.push(pchar);
+        let bitmap = signum::raster::Page::from_image(&img, opt.threshold);
+        let top = ((pk.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
+        let pchar = PSetChar::from_page(top, bitmap).expect("failed to convert bitmap to char");
+        pset_chars.push(pchar);
     }
     let pset = PSet {
         pk,
         header: Buf(&[0u8; 128]),
-        chars,
+        chars: pset_chars,
     };
+    let _eset = ESet {
+        buf1: Buf(&[0u8; 128]),
+        chars: eset_chars,
+    };
+
     let outfile = opt.out.join(name).with_extension("P24");
     let outfile = match opt.force {
         true => std::fs::File::create(&outfile),

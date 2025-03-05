@@ -1,10 +1,10 @@
 //! # The printer charsets
 
-use super::{metrics::BBox, FontResolution, LoadError};
+use super::{metrics::BBox, Device, FontResolution, LoadError};
 use crate::{
     docs::four_cc,
     raster::Page,
-    util::{Buf, FourCC},
+    util::{Buf, FileFormatKind, FourCC},
 };
 use nom::{
     bytes::complete::{tag, take},
@@ -35,9 +35,19 @@ pub enum PrinterKind {
     Laser30,
 }
 
-impl PrinterKind {
+impl Device for PrinterKind {
+    fn resolution(&self) -> &'static FontResolution {
+        match self {
+            Self::Needle9 => &FontResolution { x: 240, y: 216 },
+            Self::Needle24 => &FontResolution { x: 360, y: 360 },
+            Self::Laser30 => &FontResolution { x: 300, y: 300 },
+        }
+    }
+}
+
+impl FileFormatKind for PrinterKind {
     /// Get the extension used for charset files for this printer kind
-    pub fn extension(&self) -> &'static str {
+    fn extension(&self) -> &'static str {
         match self {
             Self::Needle24 => "P24",
             Self::Needle9 => "P9",
@@ -46,7 +56,7 @@ impl PrinterKind {
     }
 
     /// Get the extension used for charset files for this printer kind
-    pub fn magic(&self) -> FourCC {
+    fn magic(&self) -> FourCC {
         match self {
             Self::Needle24 => FourCC::PS24,
             Self::Needle9 => FourCC::PS09,
@@ -55,14 +65,16 @@ impl PrinterKind {
     }
 
     /// Get the file format name for this printer kind
-    pub fn file_format_name(&self) -> &'static str {
+    fn file_format_name(&self) -> &'static str {
         match self {
             Self::Needle24 => "Signum! 24-Needle Printer Bitmap Font",
             Self::Needle9 => "Signum! 9-Needle Printer Bitmap Font",
             Self::Laser30 => "Signum! Laser Printer Bitmap Font",
         }
     }
+}
 
+impl PrinterKind {
     /// Get the number of dots for the given amount of horizontal units
     ///
     /// FIXME: this introduces rounding errors
@@ -144,15 +156,6 @@ impl PrinterKind {
             Self::Needle9 => 22,
             Self::Needle24 => 36,
             Self::Laser30 => 30,
-        }
-    }
-
-    /// Get the resolution of this printer font in dots per inch
-    pub fn resolution(&self) -> &'static FontResolution {
-        match self {
-            Self::Needle9 => &FontResolution { x: 240, y: 216 },
-            Self::Needle24 => &FontResolution { x: 360, y: 360 },
-            Self::Laser30 => &FontResolution { x: 300, y: 300 },
         }
     }
 }

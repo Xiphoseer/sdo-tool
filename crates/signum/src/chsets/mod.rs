@@ -13,7 +13,7 @@ use thiserror::*;
 
 use crate::{
     docs::tebu::{Char, PageText},
-    util::FourCC,
+    util::{FileFormatKind, FourCC},
 };
 
 use self::cache::FontCacheInfo;
@@ -22,6 +22,7 @@ pub mod cache;
 pub mod code;
 pub mod editor;
 pub mod encoding;
+pub mod error;
 pub mod metrics;
 pub mod printer;
 
@@ -215,14 +216,6 @@ impl FontKind {
         }
     }
 
-    /// Return the resolution (in DPI per direction)
-    pub fn resolution(&self) -> &'static FontResolution {
-        match self {
-            Self::Editor => &FontResolution { x: 104, y: 90 },
-            Self::Printer(p) => p.resolution(),
-        }
-    }
-
     /*/// Get the scale that needs to be applied to the font to
     /// get the correct resoltion.
     ///
@@ -233,23 +226,51 @@ impl FontKind {
             Self::Editor => todo!(),
         }
     }*/
+}
 
+impl Device for FontKind {
+    fn resolution(&self) -> &'static FontResolution {
+        match self {
+            Self::Editor => &FontResolution { x: 104, y: 90 },
+            Self::Printer(p) => p.resolution(),
+        }
+    }
+}
+
+/// Provide device-dependent information
+pub trait Device {
+    /// Return the resolution of the device (in DPI per direction)
+    fn resolution(&self) -> &'static FontResolution;
+}
+
+impl FileFormatKind for FontKind {
     /// Get the file extension use for this format
-    pub fn extension(&self) -> &'static str {
+    fn extension(&self) -> &'static str {
         match self {
             Self::Editor => "E24",
             Self::Printer(p) => p.extension(),
         }
     }
 
-    /// Get the file format name associated with this printer kind
-    pub fn file_format_name(&self) -> &'static str {
+    /// Get the magic bytes associated with this font kind
+    fn magic(&self) -> FourCC {
+        match self {
+            Self::Editor => FourCC::ESET,
+            Self::Printer(p) => p.magic(),
+        }
+    }
+
+    /// Get the file format name associated with this font kind
+    fn file_format_name(&self) -> &'static str {
         match self {
             Self::Editor => "Signum! Editor Bitmap Font",
             Self::Printer(p) => p.file_format_name(),
         }
     }
 }
+
+/// Trait implemented for values that encode a kind of font format
+pub trait FontFormat: Device + FileFormatKind {}
 
 #[derive(Debug, Error)]
 #[error("Unknown print driver!")]
