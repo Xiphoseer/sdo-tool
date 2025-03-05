@@ -5,6 +5,11 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 05.03.2025
+
+- `ttf2sig`: Initial version to create `E24` and `P24` from TrueType or OpenType font files
+- `signum`: Move more of the chset API into traits
+
 ### 02.03.2025
 
 - `sdo-pdf`: Support bold font modifier
