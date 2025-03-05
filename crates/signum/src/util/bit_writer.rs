@@ -68,6 +68,9 @@ impl BitWriter {
 
     /// Write {off} bits of {val}
     pub fn write_bits(&mut self, val: usize, mut todo: usize) {
+        if todo == 0 {
+            return;
+        }
         let avail = self.avail();
         if avail < 8 {
             if todo < avail {

@@ -1,14 +1,14 @@
 //! # The editor fonts
 
-use super::{error::ChsetSizeError, LoadError};
-use crate::util::{data::BIT_STRING, Buf};
+use super::{error::ChsetSizeError, FontKind, LoadError};
+use crate::util::{data::BIT_STRING, Buf, FileFormatKind};
 use log::warn;
 use nom::{
     bytes::complete::{tag, take},
     number::complete::{be_u32, u8},
     IResult,
 };
-use std::{borrow::Cow, ops::Deref, path::Path};
+use std::{borrow::Cow, io, ops::Deref, path::Path};
 
 const BORDER: [&str; 17] = [
     "+|---------------+",
@@ -91,7 +91,7 @@ impl<'a> EChar<'a> {
         height: u8,
         top: u8,
         buf: &'a [u8],
-    ) -> Result<EChar<'a>, ChsetSizeError> {
+    ) -> Result<Self, ChsetSizeError> {
         let expected = height as usize * 2;
         if buf.len() == expected {
             Ok(Self {
@@ -99,6 +99,26 @@ impl<'a> EChar<'a> {
                 height,
                 top,
                 buf: Cow::Borrowed(buf),
+            })
+        } else {
+            Err(ChsetSizeError::UnexpectedBitmapSize {
+                expected,
+                actual: buf.len(),
+            })
+        }
+    }
+}
+
+impl EChar<'static> {
+    /// Create a new, owned [EChar]
+    pub fn new_owned(width: u8, height: u8, top: u8, buf: Vec<u8>) -> Result<Self, ChsetSizeError> {
+        let expected = height as usize * 2;
+        if buf.len() == expected {
+            Ok(Self {
+                width,
+                height,
+                top,
+                buf: Cow::Owned(buf),
             })
         } else {
             Err(ChsetSizeError::UnexpectedBitmapSize {
@@ -182,6 +202,35 @@ impl ESet<'_> {
             }
         }
         println!("];");
+    }
+
+    /// Write editor font to a file
+    pub fn write_to<W: io::Write>(&self, buf: &mut W) -> io::Result<()> {
+        buf.write_all(FontKind::Editor.magic().as_slice())?;
+        buf.write_all(b"0001")?;
+        buf.write_all(&128u32.to_be_bytes())?;
+        for _ in 0..32 {
+            buf.write_all(&[0, 0, 0, 0])?;
+        }
+        let mut off: u32 = 4;
+        let mut offsets = Vec::with_capacity(128);
+        for i in 1..128 {
+            offsets.push(off);
+            let c = &self.chars[i];
+            off += (c.height as u32 * 2) + 4;
+        }
+        let max: u32 = off;
+        buf.write_all(&max.to_be_bytes())?;
+        for off in offsets {
+            buf.write_all(&off.to_be_bytes())?;
+        }
+        for i in 0..128 {
+            let c = &self.chars[i];
+            buf.write_all(&[c.top, c.height, c.width, 0])?;
+            assert_eq!(c.buf.len(), c.height as usize * 2);
+            buf.write_all(c.buf.as_ref())?;
+        }
+        Ok(())
     }
 }
 

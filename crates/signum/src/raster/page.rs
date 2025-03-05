@@ -522,17 +522,21 @@ impl Page {
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     /// Turn the page into a `GrayImage` from the `image` crate
-    pub fn from_image(g: &GrayImage, threshold: u8) -> Self {
-        let width = g.width();
+    pub fn from_image(g: &GrayImage, threshold: u8, hpad: (u8, u8)) -> Self {
+        let width = g.width() + hpad.0 as u32 + hpad.1 as u32;
         let height = g.height();
         let bytes_per_line = (width - 1) / 8 + 1;
         let mut bit_writer = BitWriter::new();
         let mut c = 0;
+        assert!(hpad.0 < 32);
+        assert!(hpad.1 < 32);
         for row in g.rows() {
+            bit_writer.write_bits(0, hpad.0 as usize);
             for px in row {
                 c += 1;
                 bit_writer.write_bit(px.0[0] < threshold);
             }
+            bit_writer.write_bits(0, hpad.1 as usize);
             bit_writer.flush();
         }
         let buffer = bit_writer.done();

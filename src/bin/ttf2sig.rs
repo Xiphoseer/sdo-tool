@@ -1,16 +1,23 @@
-use std::{io::BufWriter, path::PathBuf};
+use std::{
+    convert::TryInto,
+    io::BufWriter,
+    num::TryFromIntError,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre, Context, ContextCompat};
 use image::{GrayImage, ImageFormat};
 use signum::{
     chsets::{
-        editor::{ESet, ECHAR_NULL},
+        editor::{EChar, ESet, ECHAR_NULL},
         encoding::antikro,
         metrics::{FontMetrics, DEFAULT_FONT_SIZE},
         printer::{PSet, PSetChar, PrinterKind},
+        FontKind,
+        FontKind::Editor,
     },
-    util::Buf,
+    util::{Buf, FileFormatKind},
 };
 
 #[derive(Parser)]
@@ -46,7 +53,7 @@ fn main() -> eyre::Result<()> {
     let font = fontdue::Font::from_bytes(font, fontdue::FontSettings::default())
         .map_err(|e| eyre!("Failed to load font: {}", e))?;
 
-    let discretize = |c: u8| if c >= opt.threshold { 0x00 } else { 0xFF };
+    let threshold = opt.threshold;
 
     let map = antikro::MAP;
     let name = opt.name.as_deref();
@@ -62,6 +69,9 @@ fn main() -> eyre::Result<()> {
     let px_per_em = fm.em_square_pixels();
     dbg!(px_per_em);
 
+    let editor_font_metrics = FontMetrics::new(FontKind::Editor, font_size);
+    let e_px_per_em = editor_font_metrics.em_square_pixels();
+
     let mut pset_chars = Vec::new();
     let mut eset_chars = Vec::new();
     for (index, c) in map.iter().copied().enumerate() {
@@ -70,38 +80,94 @@ fn main() -> eyre::Result<()> {
             eset_chars.push(ECHAR_NULL);
             continue;
         }
-        let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
-        let inverted = bitmap.iter().copied().map(discretize).collect();
-        let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
-            .context("image creation")?;
 
-        eprintln!("PCHAR: {:03}: {:?}", index, metrics);
+        eprintln!("{}", index);
 
-        let bitmap = signum::raster::Page::from_image(&img, opt.threshold);
-        let top = ((pk.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
-        let pchar = PSetChar::from_page(top, bitmap).expect("failed to convert bitmap to char");
-        pset_chars.push(pchar);
+        let (p_metrics, p_bitmap) = rasterize(threshold, &font, px_per_em, None, c)?;
+        let (e_metrics, e_bitmap) = rasterize(threshold, &font, e_px_per_em, Some(16), c)?;
+
+        pset_chars.push(make_pchar(pk, p_metrics, p_bitmap));
+        eset_chars.push(make_echar(e_metrics, e_bitmap).unwrap());
     }
     let pset = PSet {
         pk,
         header: Buf(&[0u8; 128]),
         chars: pset_chars,
     };
-    let _eset = ESet {
+    let eset = ESet {
         buf1: Buf(&[0u8; 128]),
         chars: eset_chars,
     };
 
-    let outfile = opt.out.join(name).with_extension("P24");
-    let outfile = match opt.force {
-        true => std::fs::File::create(&outfile),
-        false => std::fs::File::create_new(&outfile),
-    }
-    .wrap_err("failed to create output file")?;
-    let mut writer = BufWriter::new(outfile);
-    pset.write_to(&mut writer)?;
+    let out_dir = &opt.out;
+    write_pset(&name, pset, out_dir, opt.force)?;
+    write_eset(&name, eset, out_dir, opt.force)?;
 
     Ok(())
+}
+
+fn write_pset(name: &str, pset: PSet<'_>, out_dir: &Path, force: bool) -> Result<(), eyre::Error> {
+    let outfile = out_dir.join(name).with_extension(pset.pk.extension());
+    let mut writer = create_output_file(&outfile, force)?;
+    pset.write_to(&mut writer)?;
+    Ok(())
+}
+
+fn write_eset(name: &str, pset: ESet<'_>, out_dir: &Path, force: bool) -> Result<(), eyre::Error> {
+    let outfile = out_dir.join(name).with_extension(Editor.extension());
+    let mut writer = create_output_file(&outfile, force)?;
+    pset.write_to(&mut writer)?;
+    Ok(())
+}
+
+fn create_output_file(path: &Path, force: bool) -> Result<BufWriter<std::fs::File>, eyre::Error> {
+    match force {
+        true => std::fs::File::create(path),
+        false => std::fs::File::create_new(path),
+    }
+    .wrap_err("failed to create output file")
+    .map(BufWriter::new)
+}
+
+fn make_echar(
+    metrics: fontdue::Metrics,
+    bitmap: signum::raster::Page,
+) -> Result<EChar<'static>, TryFromIntError> {
+    let width = 16; // FIXME
+    let height = bitmap.bit_height().try_into()?;
+    let top = ((FontKind::Editor.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
+    Ok(EChar::new_owned(width, height, top, bitmap.into_vec()).unwrap())
+}
+
+fn make_pchar(
+    pk: PrinterKind,
+    metrics: fontdue::Metrics,
+    bitmap: signum::raster::Page,
+) -> PSetChar<'static> {
+    let top = ((pk.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
+    let pchar = PSetChar::from_page(top, bitmap).expect("failed to convert bitmap to char");
+    pchar
+}
+
+fn rasterize(
+    threshold: u8,
+    font: &fontdue::Font,
+    px_per_em: u32,
+    req_width: Option<u8>,
+    c: char,
+) -> Result<(fontdue::Metrics, signum::raster::Page), eyre::Error> {
+    let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
+    eprintln!("{c}: {:?}", metrics);
+    let inverted = bitmap.iter().copied().map(|c| 255 - c).collect();
+    let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
+        .context("image creation")?;
+    let lpad = metrics.xmin.max(0); // FIXME: not ideal, but we can't draw left of origin
+    let rpad = match req_width {
+        Some(w) => w - lpad as u8 - metrics.width as u8,
+        None => 0,
+    };
+    let bitmap = signum::raster::Page::from_image(&img, threshold, (lpad as _, rpad));
+    Ok((metrics, bitmap))
 }
 
 fn derive_font_name(f: &str) -> String {

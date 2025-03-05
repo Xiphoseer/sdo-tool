@@ -215,17 +215,6 @@ impl FontKind {
             Self::Printer(pk) => pk.baseline(),
         }
     }
-
-    /*/// Get the scale that needs to be applied to the font to
-    /// get the correct resoltion.
-    ///
-    /// FIXME: Make this part of the font matrix?
-    pub fn scale(&self) -> f32 {
-        match self {
-            Self::Printer(pk) => pk.scale(),
-            Self::Editor => todo!(),
-        }
-    }*/
 }
 
 impl Device for FontKind {
