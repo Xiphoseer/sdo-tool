@@ -32,12 +32,8 @@ jobs:
       - name: Build the Studio
         working-directory: ./crates/sdo-web
         run: wasm-pack build --target web
-      - name: Copy studio files to site
-        run: |
-          mkdir ./docs/studio
-          cp -r ./crates/sdo-web/pkg ./docs/studio/
-          cp ./crates/sdo-web/index.html ./docs/studio
-          cp ./crates/sdo-web/index.mjs ./docs/studio
+      - name: Run rustdoc
+        run: cargo doc --no-deps --workspace --lib
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Build with Jekyll
@@ -45,6 +41,14 @@ jobs:
         with:
           source: ./docs
           destination: ./_site
+      - name: Copy files to site
+        run: |
+          mkdir ./_site/studio
+          cp -r ./crates/sdo-web/pkg ./_site/studio/
+          cp ./crates/sdo-web/index.html ./_site/studio
+          cp ./crates/sdo-web/index.mjs ./_site/studio
+          mkdir ./_site/rustdoc
+          cp -r ./target/doc ./_site/rustdoc
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
