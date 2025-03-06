@@ -40,7 +40,7 @@ jobs:
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./docs
-          destination: ${{ github.workspace }}/_site
+          destination: ./_site # relative to github.workspace
       - name: Copy files to site
         run: |
           pwd
@@ -52,8 +52,6 @@ jobs:
           cp -r ./target/doc ${{ github.workspace }}/_site/rustdoc
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
-        with:
-          path: ${{ github.workspace }}/_site
 
   # Deployment job
   deploy:
