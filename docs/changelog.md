@@ -5,6 +5,10 @@ The name in brackets indicates the relevant crate.
 
 ## Version 0.4.x (dev)
 
+### 06.03.2025
+
+- `signum`: basic support for ligatures in font mappings
+
 ### 05.03.2025
 
 - `ttf2sig`: Initial version to create `E24` and `P24` from TrueType or OpenType font files
