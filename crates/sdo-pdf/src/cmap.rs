@@ -36,27 +36,37 @@ pub fn new_from_mapping(mapping: &Mapping, name: &str) -> ToUnicodeCMap {
     let mut bfranges = vec![];
 
     let mut iter = mapping
-        .chars
-        .iter()
-        .copied()
+        .chars()
         .enumerate()
         //.filter(|(_, c)| *c != char::REPLACEMENT_CHARACTER)
         .map(|(index, chr)| (index as u8, chr))
         .peekable();
-    while let Some((index, chr)) = iter.next() {
+    while let Some((index, chrs)) = iter.next() {
         let mut end = index;
-        let mut chr_last = u32::from(chr);
-        while iter.peek().map(|(_, chr)| u32::from(*chr)) == Some(chr_last + 1) {
-            let (next_index, chr_next) = iter.next().unwrap();
+        let chr = single(chrs);
+        let mut chr_last = chr;
+        while iter
+            .peek()
+            .and_then(|(_, chrs)| single(chrs))
+            .is_some_and(|t| Some(t) == chr_last.map(|c| c + 1))
+        {
+            let (next_index, chrs_next) = iter.next().unwrap();
             end = next_index;
-            chr_last = u32::from(chr_next);
+            chr_last = single(chrs_next);
         }
         if end > index {
-            bfranges.push(BFRange::new(index..=end, chr));
+            bfranges.push(BFRange::new(index..=end, chrs[0]));
         } else {
-            bfchars.push(BFChar::new(index, chr));
+            bfchars.push(BFChar::new_slice(index, chrs));
         }
     }
 
     ToUnicodeCMap::new(REGISTRY.to_owned(), name.to_owned(), 0, bfchars, bfranges)
+}
+
+fn single(chrs: &[char]) -> Option<u32> {
+    match chrs {
+        [chr] => Some(u32::from(*chr)),
+        _ => None,
+    }
 }

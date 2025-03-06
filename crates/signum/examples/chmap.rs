@@ -42,11 +42,13 @@ fn print_table(mapping: &Mapping) -> color_eyre::Result<()> {
         "_e", "_f"
     ]);
 
-    for (index, chars) in mapping.chars.chunks(16).enumerate() {
+    let mut iter = mapping.chars();
+    for index in 0..8usize {
         let mut cells = Vec::with_capacity(16);
+        let chars = (&mut iter).take(16);
         cells.push(Cell::new(&format!("{:x}_", index)));
         for chr in chars {
-            if *chr == '\0' || *chr == char::REPLACEMENT_CHARACTER {
+            if *chr == ['\0'] || *chr == [char::REPLACEMENT_CHARACTER] {
                 cells.push(Cell::new(""));
             } else {
                 let cdisp = format!("{:?}", chr);

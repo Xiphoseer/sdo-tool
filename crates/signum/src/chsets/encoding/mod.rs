@@ -1,38 +1,139 @@
 //! # Mapping charsets to unicode
+use std::char::REPLACEMENT_CHARACTER;
+
 use displaydoc::Display;
 use nom::{
     bytes::complete::tag,
     character::complete::{hex_digit1, space1},
-    combinator::map_res,
+    combinator::{map_opt, map_res},
     error::ErrorKind,
+    multi::many1,
     sequence::{preceded, tuple},
     Finish, IResult, Offset,
 };
+use smallvec::SmallVec;
 use thiserror::Error;
-
-use std::char::REPLACEMENT_CHARACTER;
 
 mod atari;
 
 pub use atari::{decode_atari, decode_atari_str};
 
+/// Indicates that the implementing type encodes a mapping from a byte value to a sequence of unicode codepoints
+pub trait ToUnicode {
+    /// Decode a single byte
+    fn decode(&self, cval: u8) -> &[char];
+}
+
+impl ToUnicode for [char; 128] {
+    fn decode(&self, cval: u8) -> &[char] {
+        std::slice::from_ref(&self[cval as usize])
+    }
+}
+
+impl ToUnicode for [&[char]; 128] {
+    fn decode(&self, cval: u8) -> &[char] {
+        self[cval as usize]
+    }
+}
+
+impl<T: ToUnicode> ToUnicode for Box<T> {
+    fn decode(&self, cval: u8) -> &[char] {
+        self.as_ref().decode(cval)
+    }
+}
+
+impl<const N: usize> ToUnicode for [SmallVec<[char; N]>; 128] {
+    fn decode(&self, cval: u8) -> &[char] {
+        self[cval as usize].as_slice()
+    }
+}
+
+impl ToUnicode for [[char; 2]; 128] {
+    fn decode(&self, cval: u8) -> &[char] {
+        match &self[cval as usize] {
+            ['\0', '\0'] => &[],
+            [c, '\0'] => std::slice::from_ref(c),
+            slice => slice,
+        }
+    }
+}
+
 /// A mapping table for a charset
 #[derive(Debug, Clone, PartialEq)]
-pub struct Mapping {
+pub enum Mapping {
     /// The corresponding unicode characters
-    pub chars: [char; 128],
+    Single {
+        /// characters in this variant
+        chars: Box<[char; 128]>,
+    },
+    /// The corresponding unicode characters
+    Static {
+        /// characters in this variant
+        chars: &'static [char; 128],
+    },
+    /// The corresponding unicode characters
+    Dynamic {
+        /// characters in this variant
+        chars: Box<[SmallVec<[char; 2]>; 128]>,
+    },
+    /// The corresponding unicode characters
+    BiLevel {
+        /// characters in this variant
+        chars: &'static [&'static [char]; 128],
+    },
 }
 
 impl Mapping {
-    /// Decodes a single character value
-    pub fn decode(&self, cval: u8) -> char {
-        self.chars[cval as usize]
+    /// Iterate over all mappings
+    pub fn chars(&self) -> impl Iterator<Item = &[char]> {
+        (0..128).map(move |c| self.decode(c))
+    }
+
+    /// Iterate over all mappings
+    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &[char]>> {
+        (0..8).map(move |row| (0..16).map(move |c| self.decode((row << 4) + c)))
+    }
+
+    /// If the mapping can be encoded as a char array, return it
+    pub fn as_char_array(&self) -> Option<&[char; 128]> {
+        match self {
+            Mapping::Single { chars } => Some(chars),
+            Mapping::Static { chars } => Some(chars),
+            Mapping::Dynamic { chars: _ } => None,
+            Mapping::BiLevel { chars: _ } => None,
+        }
+    }
+}
+
+impl ToUnicode for Mapping {
+    fn decode(&self, cval: u8) -> &[char] {
+        match self {
+            Mapping::Single { chars } => chars.decode(cval),
+            Mapping::Static { chars } => chars.decode(cval),
+            Mapping::Dynamic { chars } => chars.decode(cval),
+            Mapping::BiLevel { chars } => chars.decode(cval),
+        }
+    }
+}
+
+impl Mapping {
+    fn new(chars: [SmallVec<[char; 2]>; 128]) -> Self {
+        if chars.iter().all(|c| c.len() <= 1) {
+            let chars = chars.map(|v| v.first().copied().unwrap_or(REPLACEMENT_CHARACTER));
+            Self::Single {
+                chars: Box::new(chars),
+            }
+        } else {
+            Self::Dynamic {
+                chars: Box::new(chars),
+            }
+        }
     }
 }
 
 /// The mapping for ANTIKRO
-pub const ANTIKRO_MAP: Mapping = Mapping {
-    chars: antikro::MAP,
+pub const ANTIKRO_MAP: Mapping = Mapping::Static {
+    chars: &antikro::MAP,
 };
 
 impl Default for &'_ Mapping {
@@ -64,13 +165,17 @@ fn hex_u32(input: &str) -> IResult<&str, u32> {
     )(input)
 }
 
-fn p_mapping_line(input: &str) -> IResult<&str, (u8, u32)> {
-    tuple((hex_u8, preceded(space1, hex_u32)))(input)
+fn p_mapping_line(input: &str) -> IResult<&str, (u8, Vec<char>)> {
+    tuple((
+        hex_u8,
+        many1(map_opt(preceded(space1, hex_u32), std::char::from_u32)),
+    ))(input)
 }
 
 /// Parse a mapping file to a mapping struct
 pub fn p_mapping_file(input: &str) -> Result<Mapping, MappingError> {
-    let mut chars = [REPLACEMENT_CHARACTER; 128];
+    const VEC: SmallVec<[char; 2]> = SmallVec::new_const();
+    let mut chars = [VEC; 128];
     for (num, line) in input.lines().enumerate() {
         let valid = line.split('#').next().unwrap().trim();
         if !valid.is_empty() {
@@ -79,12 +184,12 @@ pub fn p_mapping_file(input: &str) -> Result<Mapping, MappingError> {
                 .map_err(|e| MappingError::Problem(num, line.offset(e.input), e.code))?;
             if key > 127 {
                 eprintln!("[signum.chsets.encoding] Invalid key {}, ignoring!", key);
-            } else if let Some(chr) = std::char::from_u32(value) {
-                chars[key as usize] = chr;
+            } else {
+                chars[key as usize] = SmallVec::from_vec(value);
             }
         }
     }
-    Ok(Mapping { chars })
+    Ok(Mapping::new(chars))
 }
 
 /// The unicode characters for legacy computing 7-segment digits 0 through 9

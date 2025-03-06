@@ -26,6 +26,7 @@ fn main() -> io::Result<()> {
         let name = path.file_stem().unwrap().to_str().unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         let _mapping = p_mapping_file(&text).unwrap();
+        println!("cargo::rerun-if-changed={}", path.display());
 
         let mut code = String::new();
         signum::chsets::code::write_map(&_mapping, &mut code, name).unwrap();
@@ -41,10 +42,7 @@ fn main() -> io::Result<()> {
     )?;
     writeln!(writer, "    match name {{")?;
     for name in names {
-        writeln!(
-            writer,
-            "        {name:?} => Some(&Mapping {{ chars: {name} }}),"
-        )?;
+        writeln!(writer, "        {name:?} => Some(&{name}),")?;
     }
     writeln!(writer, "        _ => None")?;
     writeln!(writer, "    }}")?;

@@ -7,6 +7,7 @@ use color_eyre::eyre;
 use signum::{
     chsets::{
         cache::{ChsetCache, DocumentFontCacheInfo},
+        encoding::ToUnicode,
         metrics::widths::{self, standard_widths},
     },
     docs::tebu::{Char, Flags, Line, Style},
@@ -90,12 +91,14 @@ impl<'a> HtmlGen<'a> {
         for k in data {
             let cset = self.fc.cset(k.cset as usize);
             let mapping = cset.and_then(|c| c.map()).unwrap_or_default();
-            let chr = mapping.decode(k.cval);
+            let decoded = mapping.decode(k.cval);
 
+            /*
             if chr == '\0' {
                 writeln!(self.out, "<!-- NUL -->")?;
                 continue;
             }
+            */
 
             if !k.style.is_underlined() && style.is_underlined() {
                 style.remove(Style::UNDERLINED);
@@ -177,13 +180,15 @@ impl<'a> HtmlGen<'a> {
             if style.is_wide() {
                 width *= 2;
             }
-            last_char_width = if chr == '\n' { 0 } else { width };
-            if (0xE000..=0xE080).contains(&(chr as u32)) {
-                write!(self.out, "<!-- C{} -->", (chr as u32) - 0xE000)?;
-            } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
-                write!(self.out, "{}", chr as u32 - 0x1FBF0)?;
-            } else {
-                write!(self.out, "{}", chr)?;
+            last_char_width = width; // if chr == '\n' { 0 } else { width };
+            for &chr in decoded {
+                if (0xE000..=0xE080).contains(&(chr as u32)) {
+                    write!(self.out, "<!-- C{} -->", (chr as u32) - 0xE000)?;
+                } else if (0x1FBF0..=0x1FBF9).contains(&(chr as u32)) {
+                    write!(self.out, "{}", chr as u32 - 0x1FBF0)?;
+                } else {
+                    write!(self.out, "{}", chr)?;
+                }
             }
         }
         if style.is_underlined() {

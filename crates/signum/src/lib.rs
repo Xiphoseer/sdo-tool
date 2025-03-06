@@ -19,3 +19,5 @@ pub mod util;
 
 #[doc(hidden)]
 pub use nom;
+#[doc(hidden)]
+pub use smallvec;

@@ -16,6 +16,8 @@
 
 use std::{borrow::Cow, fmt, ops::RangeInclusive};
 
+use smallvec::SmallVec;
+
 use crate::{common::StreamMetadata, low, lowering::DebugName};
 
 use super::stream::ToStream;
@@ -50,26 +52,39 @@ impl BFRange {
 }
 
 /// A simple code to unicode character mapping
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BFChar {
     /// Character ID (CID)
     cid: u8,
-    /// Mapped unicode code-point
-    ucs: char,
+    /// Mapped unicode code-points
+    ucs: SmallVec<[char; 4]>,
 }
 
 impl BFChar {
     /// Create a new [BFChar]
-    pub const fn new(cid: u8, ucs: char) -> Self {
-        Self { cid, ucs }
+    pub fn new(cid: u8, ucs: char) -> Self {
+        Self {
+            cid,
+            ucs: SmallVec::from_elem(ucs, 1),
+        }
+    }
+
+    /// Create a new [BFChar]
+    pub fn new_slice(cid: u8, ucs: &[char]) -> Self {
+        Self {
+            cid,
+            ucs: SmallVec::from_slice(ucs),
+        }
     }
 
     fn write<W: fmt::Write>(&self, out: &mut W) -> fmt::Result {
         let mut buf = [0; 2];
-        let slice = self.ucs.encode_utf16(&mut buf);
         write!(out, "<{:02X}> <", self.cid)?;
-        for utf16char in slice {
-            write!(out, "{:04X}", utf16char)?;
+        for chr in self.ucs.as_slice() {
+            let slice = chr.encode_utf16(&mut buf);
+            for utf16char in slice {
+                write!(out, "{:04X}", utf16char)?;
+            }
         }
         writeln!(out, ">")?;
         Ok(())

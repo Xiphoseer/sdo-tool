@@ -315,25 +315,35 @@ impl Handle {
             el_th.append_with_str_1(&format!("_{i:X}"))?;
             el_tr_head.append_child(&el_th)?;
         }
-        for (y, crow) in mapping.chars.chunks(dx).enumerate() {
+        for (y, crow) in mapping.rows().enumerate() {
             let el_tr = self.document.create_element("tr")?;
             el_table.append_child(&el_tr)?;
 
             let el_th_row = self.document.create_element("th")?;
             el_th_row.append_with_str_1(&format!("{y:X}_"))?;
             el_tr.append_child(&el_th_row)?;
-            for (x, c) in crow.iter().enumerate() {
+            for (x, c) in crow.enumerate() {
                 let el_td = self.document.create_element("td")?;
                 let _i = y * dx + x;
-                if !matches!(*c, char::REPLACEMENT_CHARACTER | '\0') {
-                    let text = format!("&#x{:04X};", u32::from(*c));
+                if !matches!(*c, [char::REPLACEMENT_CHARACTER] | ['\0']) {
+                    let mut text = String::new();
+                    for char in c {
+                        write!(text, "&#x{:04X};", u32::from(*char)).unwrap();
+                    }
                     el_td.set_inner_html(&text);
 
                     let br = self.document.create_element("br")?;
                     el_td.append_child(&br)?;
 
                     let sub = self.document.create_element("small")?;
-                    sub.set_inner_html(&format!("U+{:04X}", u32::from(*c)));
+                    let mut sub_text = String::new();
+                    for char in c {
+                        if !sub_text.is_empty() {
+                            write!(sub_text, " ").unwrap();
+                        }
+                        write!(sub_text, "U+{:04X}", u32::from(*char)).unwrap();
+                    }
+                    sub.set_inner_html(&sub_text);
                     el_td.append_child(&sub)?;
                 }
                 el_tr.append_child(&el_td)?;

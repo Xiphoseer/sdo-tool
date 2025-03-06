@@ -1108,6 +1108,7 @@ dependencies = [
  "flate2",
  "md5",
  "pdf",
+ "smallvec",
  "uuid",
 ]
 
@@ -1396,6 +1397,7 @@ dependencies = [
  "nom",
  "prettytable-rs",
  "serde",
+ "smallvec",
  "thiserror",
 ]
 
@@ -1404,6 +1406,12 @@ name = "simd-adler32"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+
+[[package]]
+name = "smallvec"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
 
 [[package]]
 name = "snafu"
