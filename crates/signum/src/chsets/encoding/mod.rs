@@ -1,5 +1,5 @@
 //! # Mapping charsets to unicode
-use std::char::REPLACEMENT_CHARACTER;
+use std::{char::REPLACEMENT_CHARACTER, fmt};
 
 use displaydoc::Display;
 use nom::{
@@ -58,29 +58,29 @@ impl ToUnicode for [[char; 2]; 128] {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub(super) enum MappingImpl {
+    Single(Box<[char; 128]>),
+    Static(&'static [char; 128]),
+    Dynamic(Box<[SmallVec<[char; 2]>; 128]>),
+    BiLevel(&'static [&'static [char]; 128]),
+}
+
 /// A mapping table for a charset
-#[derive(Debug, Clone, PartialEq)]
-pub enum Mapping {
-    /// The corresponding unicode characters
-    Single {
-        /// characters in this variant
-        chars: Box<[char; 128]>,
-    },
-    /// The corresponding unicode characters
-    Static {
-        /// characters in this variant
-        chars: &'static [char; 128],
-    },
-    /// The corresponding unicode characters
-    Dynamic {
-        /// characters in this variant
-        chars: Box<[SmallVec<[char; 2]>; 128]>,
-    },
-    /// The corresponding unicode characters
-    BiLevel {
-        /// characters in this variant
-        chars: &'static [&'static [char]; 128],
-    },
+#[derive(Clone, PartialEq)]
+pub struct Mapping(pub(super) MappingImpl);
+
+impl fmt::Debug for Mapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("Mapping");
+        match &self.0 {
+            MappingImpl::Single(chars) => s.field("chars", chars),
+            MappingImpl::Static(chars) => s.field("chars", chars),
+            MappingImpl::Dynamic(chars) => s.field("chars", chars),
+            MappingImpl::BiLevel(chars) => s.field("chars", chars),
+        };
+        s.finish()
+    }
 }
 
 impl Mapping {
@@ -96,51 +96,48 @@ impl Mapping {
 
     /// If the mapping can be encoded as a char array, return it
     pub fn as_char_array(&self) -> Option<&[char; 128]> {
-        match self {
-            Mapping::Single { chars } => Some(chars),
-            Mapping::Static { chars } => Some(chars),
-            Mapping::Dynamic { chars: _ } => None,
-            Mapping::BiLevel { chars: _ } => None,
+        match &self.0 {
+            MappingImpl::Single(chars) => Some(chars),
+            MappingImpl::Static(chars) => Some(chars),
+            MappingImpl::Dynamic(_) => None,
+            MappingImpl::BiLevel(_) => None,
+        }
+    }
+
+    /// Create a new static instance
+    pub const fn new_static(map: &'static [char; 128]) -> Self {
+        Self(MappingImpl::Static(map))
+    }
+
+    /// Create a new static instance
+    pub const fn new_static_slices(map: &'static [&'static [char]; 128]) -> Self {
+        Self(MappingImpl::BiLevel(map))
+    }
+
+    /// Create a new instance from an array of vectors
+    pub fn new(chars: [SmallVec<[char; 2]>; 128]) -> Self {
+        if chars.iter().all(|c| c.len() <= 1) {
+            let chars = chars.map(|v| v.first().copied().unwrap_or(REPLACEMENT_CHARACTER));
+            Self(MappingImpl::Single(Box::new(chars)))
+        } else {
+            Self(MappingImpl::Dynamic(Box::new(chars)))
         }
     }
 }
 
 impl ToUnicode for Mapping {
     fn decode(&self, cval: u8) -> &[char] {
-        match self {
-            Mapping::Single { chars } => chars.decode(cval),
-            Mapping::Static { chars } => chars.decode(cval),
-            Mapping::Dynamic { chars } => chars.decode(cval),
-            Mapping::BiLevel { chars } => chars.decode(cval),
-        }
-    }
-}
-
-impl Mapping {
-    fn new(chars: [SmallVec<[char; 2]>; 128]) -> Self {
-        if chars.iter().all(|c| c.len() <= 1) {
-            let chars = chars.map(|v| v.first().copied().unwrap_or(REPLACEMENT_CHARACTER));
-            Self::Single {
-                chars: Box::new(chars),
-            }
-        } else {
-            Self::Dynamic {
-                chars: Box::new(chars),
-            }
+        match &self.0 {
+            MappingImpl::Single(chars) => chars.decode(cval),
+            MappingImpl::Static(chars) => chars.decode(cval),
+            MappingImpl::Dynamic(chars) => chars.decode(cval),
+            MappingImpl::BiLevel(chars) => chars.decode(cval),
         }
     }
 }
 
 /// The mapping for ANTIKRO
-pub const ANTIKRO_MAP: Mapping = Mapping::Static {
-    chars: &antikro::MAP,
-};
-
-impl Default for &'_ Mapping {
-    fn default() -> Self {
-        &ANTIKRO_MAP
-    }
-}
+pub static ANTIKRO_MAP: Mapping = Mapping::new_static(&antikro::MAP);
 
 /// Error when parsing a mapping
 #[derive(Debug, Display, Error)]

@@ -7,7 +7,7 @@ use color_eyre::eyre;
 use signum::{
     chsets::{
         cache::{ChsetCache, DocumentFontCacheInfo},
-        encoding::ToUnicode,
+        encoding::{ToUnicode, ANTIKRO_MAP},
         metrics::widths::{self, standard_widths},
     },
     docs::tebu::{Char, Flags, Line, Style},
@@ -90,7 +90,7 @@ impl<'a> HtmlGen<'a> {
 
         for k in data {
             let cset = self.fc.cset(k.cset as usize);
-            let mapping = cset.and_then(|c| c.map()).unwrap_or_default();
+            let mapping = cset.and_then(|c| c.map()).unwrap_or(&ANTIKRO_MAP);
             let decoded = mapping.decode(k.cval);
 
             /*

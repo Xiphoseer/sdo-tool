@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use super::encoding::Mapping;
+use super::encoding::{Mapping, MappingImpl};
 
 /// Write a mapping as rust code
 pub fn write_map<W: fmt::Write>(mapping: &Mapping, out: &mut W, ident: &str) -> fmt::Result {
@@ -17,7 +17,7 @@ pub fn write_map<W: fmt::Write>(mapping: &Mapping, out: &mut W, ident: &str) -> 
             writeln!(out,)?;
         }
         writeln!(out, "]}};")?;
-    } else if let Mapping::Dynamic { chars } = mapping {
+    } else if let MappingImpl::Dynamic(chars) = &mapping.0 {
         writeln!(out, "pub const {ident}: ::signum::chsets::encoding::Mapping = signum::chsets::encoding::Mapping::BiLevel {{ chars: &[")?;
         for row in chars.chunks(16) {
             write!(out, "    ")?;
