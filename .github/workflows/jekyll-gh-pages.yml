@@ -43,13 +43,14 @@ jobs:
           destination: ./_site # relative to github.workspace
       - name: Copy files to site
         run: |
-          pwd
-          mkdir ${{ github.workspace }}/_site/studio
-          cp -r ./crates/sdo-web/pkg ${{ github.workspace }}/_site/studio/
-          cp ./crates/sdo-web/index.html ${{ github.workspace }}/_site/studio
-          cp ./crates/sdo-web/index.mjs ${{ github.workspace }}/_site/studio
-          mkdir ${{ github.workspace }}/_site/rustdoc
-          cp -r ./target/doc ${{ github.workspace }}/_site/rustdoc
+          ls -la ${{ github.workspace }}/_site
+          whoami
+          # mkdir ${{ github.workspace }}/_site/studio
+          # cp -r ./crates/sdo-web/pkg ${{ github.workspace }}/_site/studio/
+          # cp ./crates/sdo-web/index.html ${{ github.workspace }}/_site/studio
+          # cp ./crates/sdo-web/index.mjs ${{ github.workspace }}/_site/studio
+          # mkdir ${{ github.workspace }}/_site/rustdoc
+          # cp -r ./target/doc ${{ github.workspace }}/_site/rustdoc/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
