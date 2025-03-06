@@ -49,10 +49,7 @@ jobs:
           cp -r ./crates/sdo-web/pkg ./_site/studio/
           cp ./crates/sdo-web/index.html ./_site/studio
           cp ./crates/sdo-web/index.mjs ./_site/studio
-          mkdir ./_site/rustdoc
-          ls -la ./target/doc
-          cp -r ./target/doc ./_site/rustdoc/
-          ls -la ./_site
+          cp -r ./target/doc ./_site/rustdoc
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
