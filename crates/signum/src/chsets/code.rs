@@ -8,7 +8,7 @@ use super::encoding::{Mapping, MappingImpl};
 pub fn write_map<W: fmt::Write>(mapping: &Mapping, out: &mut W, ident: &str) -> fmt::Result {
     writeln!(out, "#[rustfmt::skip]")?;
     if let Some(chars) = mapping.as_char_array() {
-        writeln!(out, "pub const {ident}: ::signum::chsets::encoding::Mapping = signum::chsets::encoding::Mapping::Static {{ chars: &[")?;
+        writeln!(out, "pub static {ident}: ::signum::chsets::encoding::Mapping = signum::chsets::encoding::Mapping::new_static(&[")?;
         for row in chars.chunks(16) {
             write!(out, "    ")?;
             for char in row {
@@ -16,9 +16,9 @@ pub fn write_map<W: fmt::Write>(mapping: &Mapping, out: &mut W, ident: &str) -> 
             }
             writeln!(out,)?;
         }
-        writeln!(out, "]}};")?;
+        writeln!(out, "]);")?;
     } else if let MappingImpl::Dynamic(chars) = &mapping.0 {
-        writeln!(out, "pub const {ident}: ::signum::chsets::encoding::Mapping = signum::chsets::encoding::Mapping::BiLevel {{ chars: &[")?;
+        writeln!(out, "pub static {ident}: ::signum::chsets::encoding::Mapping = signum::chsets::encoding::Mapping::new_static_slices(&[")?;
         for row in chars.chunks(16) {
             write!(out, "    ")?;
             for slice in row {
@@ -31,7 +31,7 @@ pub fn write_map<W: fmt::Write>(mapping: &Mapping, out: &mut W, ident: &str) -> 
             }
             writeln!(out,)?;
         }
-        writeln!(out, "]}};")?;
+        writeln!(out, "]);")?;
     } else {
         unimplemented!()
     }
