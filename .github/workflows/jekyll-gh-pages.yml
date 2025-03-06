@@ -36,6 +36,8 @@ jobs:
         run: cargo doc --no-deps --workspace --lib
       - name: Setup Pages
         uses: actions/configure-pages@v3
+      - name: Create output dir with permissions
+        run: mkdir ${{ github.workspace }}/_site
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
@@ -43,14 +45,14 @@ jobs:
           destination: ./_site # relative to github.workspace
       - name: Copy files to site
         run: |
-          ls -la ${{ github.workspace }}/_site
+          ls -la ./_site
           whoami
-          # mkdir ${{ github.workspace }}/_site/studio
-          # cp -r ./crates/sdo-web/pkg ${{ github.workspace }}/_site/studio/
-          # cp ./crates/sdo-web/index.html ${{ github.workspace }}/_site/studio
-          # cp ./crates/sdo-web/index.mjs ${{ github.workspace }}/_site/studio
-          # mkdir ${{ github.workspace }}/_site/rustdoc
-          # cp -r ./target/doc ${{ github.workspace }}/_site/rustdoc/
+          mkdir ./_site/studio
+          cp -r ./crates/sdo-web/pkg ./_site/studio/
+          cp ./crates/sdo-web/index.html ./_site/studio
+          cp ./crates/sdo-web/index.mjs ./_site/studio
+          mkdir ./_site/rustdoc
+          cp -r ./target/doc ./_site/rustdoc/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
