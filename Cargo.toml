@@ -26,7 +26,7 @@ serde = "1.0"
 futures-lite = "2.3.0"
 
 [features]
-ttf = ["dep:fontdue", "dep:tempfile"]
+ttf = ["dep:fontdue", "dep:tempfile", "dep:ttf-parser"]
 default = ["ttf"]
 
 [dependencies.image]
@@ -36,6 +36,10 @@ features = ["png"]
 
 [dependencies.fontdue]
 version = "0.9"
+optional = true
+
+[dependencies.ttf-parser]
+version = "0.25"
 optional = true
 
 [dependencies.tempfile]
