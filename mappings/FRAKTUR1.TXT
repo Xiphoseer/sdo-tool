@@ -18,7 +18,7 @@
 0x27	0x0027	# APOSTROPHE                                	# '	ASCII
 0x28	0x0028	# LEFT PARENTHESIS                          	# (	ASCII
 0x29	0x0029	# RIGHT PARENTHESIS                         	# )	ASCII
-0x2A	0x0066 0x0074	# LATIN LIGATURE SMALL FT           	# ft
+0x2A	0xFB05	# LATIN SMALL LIGATURE LONG S T             	# ﬅ
 0x2B	0x0073	# LATIN SMALL LETTER S                      	# s
 0x2C	0x002C	# COMMA                                     	# ,	ASCII
 0x2D	0x002D	# HYPHEN-MINUS                              	# -	ASCII
@@ -91,7 +91,7 @@
 0x70	0x0070	# LATIN SMALL LETTER P                      	# p	ASCII
 0x71	0x0071	# LATIN SMALL LETTER Q                      	# q	ASCII
 0x72	0x0072	# LATIN SMALL LETTER R                      	# r	ASCII
-0x73	0x0073	# LATIN SMALL LETTER S                      	# s	ASCII
+0x73	0x017F	# LATIN SMALL LETTER LONG S                 	# ſ
 0x74	0x0074	# LATIN SMALL LETTER T                      	# t	ASCII
 0x75	0x0075	# LATIN SMALL LETTER U                      	# u	ASCII
 0x76	0x0076	# LATIN SMALL LETTER V                      	# v	ASCII
