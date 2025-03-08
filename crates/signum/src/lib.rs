@@ -17,6 +17,9 @@ pub mod images;
 pub mod raster;
 pub mod util;
 
+#[cfg(feature = "image")]
+#[doc(hidden)]
+pub use image;
 #[doc(hidden)]
 pub use nom;
 #[doc(hidden)]

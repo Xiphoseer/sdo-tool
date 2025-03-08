@@ -2,12 +2,14 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use color_eyre::eyre::{Context, ContextCompat, OptionExt};
-use image::{GrayImage, ImageFormat};
-use sdo_tool::ttf::{glyph_index_vec, LigatureInfo};
-use signum::chsets::{
-    metrics::{FontMetrics, DEFAULT_FONT_SIZE},
-    printer::PrinterKind,
+use signum::{
+    chsets::{
+        metrics::{FontMetrics, DEFAULT_FONT_SIZE},
+        printer::PrinterKind,
+    },
+    image::{GrayImage, ImageFormat},
 };
+use ttf2sig::{glyph_index_vec, LigatureInfo};
 use ttf_parser::{Face, GlyphId};
 
 #[derive(Parser)]

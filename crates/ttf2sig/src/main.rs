@@ -7,7 +7,6 @@ use std::{
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre, Context, ContextCompat};
-use image::{GrayImage, ImageFormat};
 use signum::{
     chsets::{
         editor::{EChar, ESet, ECHAR_NULL},
@@ -17,6 +16,7 @@ use signum::{
         FontKind,
         FontKind::Editor,
     },
+    image::{GrayImage, ImageFormat},
     util::{Buf, FileFormatKind},
 };
 

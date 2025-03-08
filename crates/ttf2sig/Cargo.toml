@@ -1,0 +1,13 @@
+[package]
+name = "ttf2sig"
+version = "0.1.0"
+edition = "2021"
+default-run = "ttf2sig"
+
+[dependencies]
+fontdue = { version = "0.9.3", features = ["std"] }
+ttf-parser = "0.25.1"
+tempfile = "3.17.1"
+clap = { version = "4.5.31", features = ["derive"] }
+color-eyre = "0.6.3"
+signum = { path = "../signum" }
