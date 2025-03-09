@@ -10,7 +10,6 @@ use color_eyre::eyre::{self, eyre, Context, ContextCompat};
 use signum::{
     chsets::{
         editor::{EChar, ESet, ECHAR_NULL},
-        encoding::antikro,
         metrics::{FontMetrics, DEFAULT_FONT_SIZE},
         printer::{PSet, PSetChar, PrinterKind},
         FontKind,
@@ -19,6 +18,8 @@ use signum::{
     image::{GrayImage, ImageFormat},
     util::{Buf, FileFormatKind},
 };
+use ttf2sig::{glyph_index_vec, LigatureInfo};
+use ttf_parser::GlyphId;
 
 #[derive(Parser)]
 /// Options for decoding an ATARI String
@@ -29,9 +30,16 @@ pub struct Opts {
     /// The directory to output
     out: PathBuf,
 
+    #[clap(short, long, default_value = "ANTIKRO")]
+    mapping: String,
+
     /// Force overwrite existing files
     #[clap(short, long)]
     force: bool,
+
+    /// Index (of a multi-font file)
+    #[clap(short, long, default_value = "0")]
+    index: u32,
 
     /// The new name of the font
     #[clap(short, long)]
@@ -49,13 +57,23 @@ fn main() -> eyre::Result<()> {
     // Read the font data.
     let font = std::fs::read(&opt.font_file)
         .wrap_err_with(|| format!("failed to read file '{}'", opt.font_file.display()))?;
+    // Raw parse for ligature info
+    let face = ttf_parser::Face::parse(&font, opt.index)?;
+    let ligatures = LigatureInfo::new(&face);
+
     // Parse it into the font type.
-    let font = fontdue::Font::from_bytes(font, fontdue::FontSettings::default())
+    let font_settings = fontdue::FontSettings {
+        collection_index: opt.index,
+        load_substitutions: true,
+        ..Default::default()
+    };
+    let font = fontdue::Font::from_bytes(&font[..], font_settings)
         .map_err(|e| eyre!("Failed to load font: {}", e))?;
 
     let threshold = opt.threshold;
 
-    let map = antikro::MAP;
+    let map = sdo_fonts::mappings::lookup(&opt.mapping)
+        .ok_or_else(|| eyre!("Unknown mapping {:?}", opt.mapping))?;
     let name = opt.name.as_deref();
     let name = match name {
         Some(name) => name.to_owned(),
@@ -74,17 +92,19 @@ fn main() -> eyre::Result<()> {
 
     let mut pset_chars = Vec::new();
     let mut eset_chars = Vec::new();
-    for (index, c) in map.iter().copied().enumerate() {
-        if c == '\0' || c == char::REPLACEMENT_CHARACTER || !font.has_glyph(c) {
+    for (index, c) in map.chars().enumerate() {
+        let glyph_index = find_glyph(&face, &ligatures, c);
+
+        let Some(glyph_id) = glyph_index else {
             pset_chars.push(PSetChar::EMPTY);
             eset_chars.push(ECHAR_NULL);
             continue;
-        }
+        };
 
-        println!("Converting 0x{:02x}: {} (U+{:04X})", index, c, u32::from(c));
+        println!("Converting 0x{:02x}: {:?} => {}", index, c, glyph_id.0); //  (U+{:04X})
 
-        let (p_metrics, p_bitmap) = rasterize(threshold, &font, px_per_em, None, c)?;
-        let (e_metrics, e_bitmap) = rasterize(threshold, &font, e_px_per_em, Some(16), c)?;
+        let (p_metrics, p_bitmap) = rasterize(threshold, &font, px_per_em, None, glyph_id)?;
+        let (e_metrics, e_bitmap) = rasterize(threshold, &font, e_px_per_em, Some(16), glyph_id)?;
 
         pset_chars.push(make_pchar(pk, p_metrics, p_bitmap));
         eset_chars.push(make_echar(e_metrics, e_bitmap).unwrap());
@@ -104,6 +124,21 @@ fn main() -> eyre::Result<()> {
     write_eset(&name, eset, out_dir, opt.force)?;
 
     Ok(())
+}
+
+fn find_glyph(
+    face: &ttf_parser::Face<'_>,
+    ligatures: &LigatureInfo<'_>,
+    c: &[char],
+) -> Option<GlyphId> {
+    match c {
+        [] => None,
+        [c] => face.glyph_index(*c),
+        _ => {
+            let glyph_ids = glyph_index_vec(face, c)?;
+            ligatures.find(&glyph_ids)
+        }
+    }
 }
 
 fn write_pset(name: &str, pset: PSet<'_>, out_dir: &Path, force: bool) -> Result<(), eyre::Error> {
@@ -156,9 +191,9 @@ fn rasterize(
     font: &fontdue::Font,
     px_per_em: u32,
     req_width: Option<u8>,
-    c: char,
+    g: GlyphId,
 ) -> Result<(fontdue::Metrics, signum::raster::Page), eyre::Error> {
-    let (metrics, bitmap) = font.rasterize(c, px_per_em as f32);
+    let (metrics, bitmap) = font.rasterize_indexed(g.0, px_per_em as f32);
     let inverted = bitmap.iter().copied().map(|c| 255 - c).collect();
     let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
         .context("image creation")?;
