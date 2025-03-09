@@ -195,12 +195,29 @@ fn rasterize(
 ) -> Result<(fontdue::Metrics, signum::raster::Page), eyre::Error> {
     let (metrics, bitmap) = font.rasterize_indexed(g.0, px_per_em as f32);
     let inverted = bitmap.iter().copied().map(|c| 255 - c).collect();
-    let img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
+    let mut img = GrayImage::from_vec(metrics.width as u32, metrics.height as u32, inverted)
         .context("image creation")?;
-    let lpad = metrics.xmin.max(0); // FIXME: not ideal, but we can't draw left of origin
+    let mut lpad = metrics.xmin.max(0); // FIXME: not ideal, but we can't draw left of origin
+    if let Some(max) = req_width {
+        if img.width() > max as u32 {
+            println!(
+                "WARN: editor font limited to {max} width, is {}, truncating",
+                img.width()
+            );
+            let mut buf = Vec::new();
+            for row in img.rows() {
+                for pixel in row.take(max as usize) {
+                    buf.push(pixel.0[0]);
+                }
+            }
+            img = GrayImage::from_vec(max.into(), metrics.height as u32, buf).unwrap();
+            lpad = 0;
+        }
+    }
+    let covered = lpad as u8 + metrics.width as u8;
     let rpad = match req_width {
-        Some(w) => w - lpad as u8 - metrics.width as u8,
-        None => 0,
+        Some(w) if w > covered => w - covered,
+        _ => 0,
     };
     let bitmap = signum::raster::Page::from_image(&img, threshold, (lpad as _, rpad));
     Ok((metrics, bitmap))
