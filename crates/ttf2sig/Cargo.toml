@@ -10,5 +10,8 @@ ttf-parser = "0.25.1"
 tempfile = "3.17.1"
 clap = { version = "4.5.31", features = ["derive"] }
 color-eyre = "0.6.3"
-signum = { path = "../signum" }
 sdo-fonts = { path = "../sdo-fonts" }
+
+[dependencies.signum]
+path = "../signum"
+features = ["image"]
