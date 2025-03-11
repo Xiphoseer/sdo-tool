@@ -40,7 +40,7 @@ impl XmpDescription for Pdf {
     const NAMESPACE_KEY: &'static str = "pdf";
 
     fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
-        writeln!(w, "    <pdf:Producer>{}</pdf:Producer>", self.producer)?;
+        writeln!(w, "   <pdf:Producer>{}</pdf:Producer>", self.producer)?;
         Ok(())
     }
 }
@@ -104,10 +104,10 @@ impl XmpDescription for PdfAId {
     const NAMESPACE_KEY: &'static str = "pdfaid";
 
     fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
-        writeln!(w, "    <pdfaid:part>{}</pdfaid:part>", self.part)?;
+        writeln!(w, "   <pdfaid:part>{}</pdfaid:part>", self.part)?;
         writeln!(
             w,
-            "    <pdfaid:conformance>{}</pdfaid:conformance>",
+            "   <pdfaid:conformance>{}</pdfaid:conformance>",
             self.conformance
         )?;
         Ok(())
@@ -133,22 +133,22 @@ impl XmpDescription for XmpBasic {
     fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         writeln!(
             w,
-            "    <xmp:CreatorTool>{}</xmp:CreatorTool>",
+            "   <xmp:CreatorTool>{}</xmp:CreatorTool>",
             self.creator_tool
         )?;
         writeln!(
             w,
-            "    <xmp:ModifyDate>{}</xmp:ModifyDate>",
+            "   <xmp:ModifyDate>{}</xmp:ModifyDate>",
             self.modify_date.format("%+")
         )?;
         writeln!(
             w,
-            "    <xmp:CreateDate>{}</xmp:CreateDate>",
+            "   <xmp:CreateDate>{}</xmp:CreateDate>",
             self.create_date.format("%+")
         )?;
         writeln!(
             w,
-            "    <xmp:MetadataDate>{}</xmp:MetadataDate>",
+            "   <xmp:MetadataDate>{}</xmp:MetadataDate>",
             self.metadata_date.format("%+")
         )?;
         Ok(())
@@ -170,12 +170,12 @@ impl XmpDescription for XmpMM {
     fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         writeln!(
             w,
-            "    <xmpMM:DocumentID>uuid:{}</xmpMM:DocumentID>",
+            "   <xmpMM:DocumentID>uuid:{}</xmpMM:DocumentID>",
             self.document_id
         )?;
         writeln!(
             w,
-            "    <xmpMM:InstanceID>uuid:{}</xmpMM:InstanceID>",
+            "   <xmpMM:InstanceID>uuid:{}</xmpMM:InstanceID>",
             self.instance_id
         )?;
         Ok(())
@@ -210,12 +210,12 @@ impl<W: io::Write> XmpWriter<W> {
         let w = &mut self.0;
         writeln!(
             w,
-            "   <rdf:Description rdf:about=\"\" xmlns:{}=\"{}\">",
+            "  <rdf:Description rdf:about=\"\" xmlns:{}=\"{}\">",
             X::NAMESPACE_KEY,
             X::NAMESPACE_URL
         )?;
         desc.write(w)?;
-        writeln!(w, "   </rdf:Description>")?;
+        writeln!(w, "  </rdf:Description>")?;
         Ok(())
     }
 

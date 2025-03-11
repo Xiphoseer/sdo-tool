@@ -271,7 +271,11 @@ impl Handle<'_> {
                 conformance: 'B',
             },
             basic: xmp::XmpBasic {
-                creator_tool: self.meta.producer.clone(),
+                creator_tool: self
+                    .meta
+                    .creator
+                    .clone()
+                    .unwrap_or_else(|| "pdf-create".to_owned()),
                 create_date: self.meta.creation_date,
                 modify_date: self.meta.modify_date,
                 metadata_date: now,
