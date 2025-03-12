@@ -35,3 +35,9 @@ pdf = "0.7"
 
 [workspace]
 members = ["crates/*"]
+
+[patch.crates-io.fontdue]
+# variable font support
+git = 'https://github.com/xiphoseer/fontdue.git'
+rev = "7eb87c059487ff8a42e2488e40aaa6e1f1ac4480"
+#path = "../repos/fontdue"

@@ -35,6 +35,10 @@ fn main() -> color_eyre::Result<()> {
     let l = LigatureInfo::new(&face);
     let gpos = KerningInfo::new(&face);
 
+    for ax in face.variation_axes() {
+        println!("var: {:?}", ax);
+    }
+
     debug_kern(&face);
 
     let lig = opt.ligature.chars().collect::<Vec<_>>();
@@ -58,14 +62,12 @@ fn main() -> color_eyre::Result<()> {
     let fm = FontMetrics::new(pk, font_size);
     let px = fm.em_square_pixels() as f32;
 
-    let font = fontdue::Font::from_bytes(
-        &data[..],
-        fontdue::FontSettings {
-            collection_index: opt.index,
-            scale: 40.0,
-            load_substitutions: true,
-        },
-    )
+    let font = fontdue::Font::from_bytes(&data[..], {
+        let mut settings = fontdue::FontSettings::default();
+        settings.collection_index = opt.index;
+        settings.load_substitutions = true;
+        settings
+    })
     .expect("already ttf parsed");
 
     for pair in lig.windows(2) {

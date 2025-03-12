@@ -1,12 +1,15 @@
 use std::{
     convert::TryInto,
+    fmt,
     io::BufWriter,
-    num::TryFromIntError,
+    num::{ParseFloatError, TryFromIntError},
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre, Context, ContextCompat};
+use fontdue::VariationAxis;
 use signum::{
     chsets::{
         editor::{EChar, ESet, ECHAR_NULL},
@@ -48,6 +51,63 @@ pub struct Opts {
     /// Threshold at which to treat coverage as "on"
     #[clap(short, long, default_value = "170")]
     threshold: u8,
+
+    #[clap(short, long)]
+    variation: Vec<Variation>,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Variation {
+    axis: VariationAxis,
+    value: f32,
+}
+
+fn variation_tag(s: &str) -> Option<VariationAxis> {
+    if s.is_ascii() && s.len() == 4 {
+        let mut chars = s.chars();
+        let a = chars.next()?;
+        let b = chars.next()?;
+        let c = chars.next()?;
+        let d = chars.next()?;
+        Some(VariationAxis::from_bytes([
+            a as u8, b as u8, c as u8, d as u8,
+        ]))
+    } else {
+        None
+    }
+}
+
+#[derive(Debug, Clone)]
+enum VariationError {
+    NoEquals,
+    MalformedTag,
+    #[allow(dead_code)]
+    Value(ParseFloatError),
+}
+
+impl From<ParseFloatError> for VariationError {
+    fn from(value: ParseFloatError) -> Self {
+        Self::Value(value)
+    }
+}
+
+impl std::error::Error for VariationError {}
+
+impl fmt::Display for VariationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Debug>::fmt(self, f)
+    }
+}
+
+impl FromStr for Variation {
+    type Err = VariationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (first, rest) = s.split_once("=").ok_or(VariationError::NoEquals)?;
+        let axis = variation_tag(first).ok_or(VariationError::MalformedTag)?;
+        let value = f32::from_str(rest)?;
+        Ok(Variation { axis, value })
+    }
 }
 
 fn main() -> eyre::Result<()> {
@@ -62,11 +122,13 @@ fn main() -> eyre::Result<()> {
     let ligatures = LigatureInfo::new(&face);
 
     // Parse it into the font type.
-    let font_settings = fontdue::FontSettings {
-        collection_index: opt.index,
-        load_substitutions: true,
-        ..Default::default()
-    };
+    let mut font_settings = fontdue::FontSettings::default();
+    font_settings.collection_index = opt.index;
+    font_settings.load_substitutions = true;
+
+    for var in &opt.variation {
+        font_settings.variations.insert(var.axis, var.value);
+    }
     let font = fontdue::Font::from_bytes(&font[..], font_settings)
         .map_err(|e| eyre!("Failed to load font: {}", e))?;
 

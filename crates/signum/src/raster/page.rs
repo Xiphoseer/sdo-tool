@@ -525,7 +525,7 @@ impl Page {
     pub fn from_image(g: &GrayImage, threshold: u8, hpad: (u8, u8)) -> Self {
         let width = g.width() + hpad.0 as u32 + hpad.1 as u32;
         let height = g.height();
-        let bytes_per_line = (width - 1) / 8 + 1;
+        let bytes_per_line = if width > 0 { (width - 1) / 8 + 1 } else { 0 };
         let mut bit_writer = BitWriter::new();
         let mut c = 0;
         assert!(hpad.0 < 32);
