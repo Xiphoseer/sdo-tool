@@ -34,6 +34,7 @@ pub struct Opts {
     out: PathBuf,
 
     #[clap(short, long, default_value = "ANTIKRO")]
+    /// ToUnicode mapping name
     mapping: String,
 
     /// Force overwrite existing files
@@ -53,7 +54,28 @@ pub struct Opts {
     threshold: u8,
 
     #[clap(short, long)]
+    /// Specific OpenType font variations (AXIS=value)
     variation: Vec<Variation>,
+
+    #[clap(long)]
+    /// Variation: Italic (ital)
+    italic: Option<f32>,
+
+    #[clap(long)]
+    /// Variation: Weight (wght)
+    weight: Option<f32>,
+
+    #[clap(long)]
+    /// Variation: Width (wdth)
+    width: Option<f32>,
+
+    #[clap(long)]
+    /// Variation: Optical Size (opsz)
+    optical_size: Option<f32>,
+
+    #[clap(long)]
+    /// Variation: Grade Axis (GRAD)
+    grade: Option<f32>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -126,6 +148,25 @@ fn main() -> eyre::Result<()> {
     font_settings.collection_index = opt.index;
     font_settings.load_substitutions = true;
 
+    if let Some(grad) = opt.grade {
+        font_settings
+            .variations
+            .insert(VariationAxis::from_bytes(*b"GRAD"), grad);
+    }
+    if let Some(ital) = opt.italic {
+        font_settings.variations.insert(VariationAxis::ITALIC, ital);
+    }
+    if let Some(opsz) = opt.optical_size {
+        font_settings
+            .variations
+            .insert(VariationAxis::OPTICAL_SIZE, opsz);
+    }
+    if let Some(wdth) = opt.width {
+        font_settings.variations.insert(VariationAxis::WIDTH, wdth);
+    }
+    if let Some(wght) = opt.weight {
+        font_settings.variations.insert(VariationAxis::WEIGHT, wght);
+    }
     for var in &opt.variation {
         font_settings.variations.insert(var.axis, var.value);
     }
