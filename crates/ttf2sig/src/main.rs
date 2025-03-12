@@ -25,13 +25,17 @@ use ttf2sig::{glyph_index_vec, LigatureInfo};
 use ttf_parser::GlyphId;
 
 #[derive(Parser)]
-/// Options for decoding an ATARI String
+/// Turn a TrueType/OpenType font file into a signum font
 pub struct Opts {
     /// The file to convert
     font_file: PathBuf,
 
     /// The directory to output
     out: PathBuf,
+
+    /// Generate an editor (.E24) file
+    #[clap(short, long, default_value = "true")]
+    editor: bool,
 
     #[clap(short, long, default_value = "ANTIKRO")]
     /// ToUnicode mapping name
@@ -210,21 +214,24 @@ fn main() -> eyre::Result<()> {
         let (e_metrics, e_bitmap) = rasterize(threshold, &font, e_px_per_em, Some(16), glyph_id)?;
 
         pset_chars.push(make_pchar(pk, p_metrics, p_bitmap));
-        eset_chars.push(make_echar(e_metrics, e_bitmap).unwrap());
+        if opt.editor {
+            eset_chars.push(make_echar(e_metrics, e_bitmap).unwrap());
+        }
     }
+    let out_dir = &opt.out;
     let pset = PSet {
         pk,
         header: Buf(&[0u8; 128]),
         chars: pset_chars,
     };
-    let eset = ESet {
-        buf1: Buf(&[0u8; 128]),
-        chars: eset_chars,
-    };
-
-    let out_dir = &opt.out;
     write_pset(&name, pset, out_dir, opt.force)?;
-    write_eset(&name, eset, out_dir, opt.force)?;
+    if opt.editor {
+        let eset = ESet {
+            buf1: Buf(&[0u8; 128]),
+            chars: eset_chars,
+        };
+        write_eset(&name, eset, out_dir, opt.force)?;
+    }
 
     Ok(())
 }
