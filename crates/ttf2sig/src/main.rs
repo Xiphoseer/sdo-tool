@@ -330,19 +330,24 @@ fn rasterize(
         .context("image creation")?;
     let mut lpad = metrics.xmin.max(0); // FIXME: not ideal, but we can't draw left of origin
     if let Some(max) = req_width {
-        if img.width() > max as u32 {
-            println!(
-                "WARN: editor font limited to {max} width, is {}, truncating",
-                img.width()
-            );
-            let mut buf = Vec::new();
-            for row in img.rows() {
-                for pixel in row.take(max as usize) {
-                    buf.push(pixel.0[0]);
+        if img.width() + lpad as u32 > max as u32 {
+            if img.width() <= max as u32 {
+                println!("WARN: editor font limited to {max} width, reducing left bearing");
+                lpad = lpad.min(max as i32 - img.width() as i32);
+            } else {
+                println!(
+                    "WARN: editor font limited to {max} width, is {}, truncating",
+                    img.width()
+                );
+                let mut buf = Vec::new();
+                for row in img.rows() {
+                    for pixel in row.take(max as usize) {
+                        buf.push(pixel.0[0]);
+                    }
                 }
+                img = GrayImage::from_vec(max.into(), metrics.height as u32, buf).unwrap();
+                lpad = 0;
             }
-            img = GrayImage::from_vec(max.into(), metrics.height as u32, buf).unwrap();
-            lpad = 0;
         }
     }
     let covered = lpad as u8 + metrics.width as u8;
@@ -350,6 +355,17 @@ fn rasterize(
         Some(w) if w > covered => w - covered,
         _ => 0,
     };
+    if let Some(max_bits) = req_width {
+        let sum = img.width() + lpad as u32 + rpad as u32;
+        assert!(
+            sum <= max_bits.into(),
+            "{} < {} (l+{},r+{})",
+            img.width(),
+            max_bits,
+            lpad,
+            rpad
+        );
+    }
     let bitmap = signum::raster::Page::from_image(&img, threshold, (lpad as _, rpad));
     Ok((metrics, bitmap))
 }
