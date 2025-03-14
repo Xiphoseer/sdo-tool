@@ -1,25 +1,13 @@
 # File encoding:    UTF-8
-# Name:             Signum! GROTFE to Unicode
+# Name:             Signum! ANTIKRO to Unicode
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A
-# Date:             2025 February 01
+# Date:             2020 September 06
 # Authors:          Xiphoseer <xiphoseer AT mailbox.org>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646
-0x01	0x007B	# LEFT CURLY BRACKET                        	# {
-0x02	0x007D	# RIGHT CURLY BRACKET                       	# }
 
-0x0F	0x005B	# LEFT SQUARE BRACKET                       	# [
-0x10	0x005D	# RIGHT SQUARE BRACKET                      	# ]
-0x11	0x27E8	# MATHEMATICAL LEFT ANGLE BRACKET           	# ⟨
-0x12	0x27E9	# MATHEMATICAL RIGHT ANGLE BRACKET          	# ⟩
-
-0x13	0x2591	# LIGHT SHADE                               	# ░
-0x14	0x1F582	# BACK OF ENVELOPE                             	# 🖂
-0x15	0x1F920	# FACE WITH COWBOY HAT                      	# 🤠
-
-0x1F	0x260E	# BLACK TELEPHONE                           	# ☎
 0x20	0x00A7	# SECTION SIGN                              	# §
 0x21	0x0021	# EXCLAMATION MARK                          	# !	ASCII
 0x22	0x0022	# QUOTATION MARK                            	# "	ASCII

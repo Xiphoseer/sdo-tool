@@ -13,7 +13,7 @@ use fontdue::VariationAxis;
 use signum::{
     chsets::{
         editor::{EChar, ESet, ECHAR_NULL},
-        metrics::{FontMetrics, DEFAULT_FONT_SIZE},
+        metrics::FontMetrics,
         printer::{PSet, PSetChar, PrinterKind},
         FontKind,
         FontKind::Editor,
@@ -44,6 +44,10 @@ pub struct Opts {
     /// Force overwrite existing files
     #[clap(short, long)]
     force: bool,
+
+    /// Assume the font size
+    #[clap(short = 's', long, default_value = "10")]
+    font_size: u32,
 
     /// Index (of a multi-font file)
     #[clap(short, long, default_value = "0")]
@@ -188,13 +192,12 @@ fn main() -> eyre::Result<()> {
     };
 
     // Rasterize and get the layout metrics for the letter 'g' at 45px.
-    let font_size = DEFAULT_FONT_SIZE;
     let pk = PrinterKind::Needle24;
-    let fm = FontMetrics::new(pk, font_size);
+    let fm = FontMetrics::new(pk, opt.font_size);
     let px_per_em = fm.em_square_pixels();
     dbg!(px_per_em);
 
-    let editor_font_metrics = FontMetrics::new(FontKind::Editor, font_size);
+    let editor_font_metrics = FontMetrics::new(FontKind::Editor, opt.font_size);
     let e_px_per_em = editor_font_metrics.em_square_pixels();
 
     let mut pset_chars = Vec::new();
