@@ -242,7 +242,7 @@ fn find_glyph(
     c: &[char],
 ) -> Option<GlyphId> {
     match c {
-        [] => None,
+        [] | ['\0'] | [char::REPLACEMENT_CHARACTER] => None,
         [c] => face.glyph_index(*c),
         _ => {
             let glyph_ids = glyph_index_vec(face, c)?;
@@ -281,8 +281,14 @@ fn make_echar(
     bitmap: signum::raster::Page,
 ) -> Result<EChar<'static>, TryFromIntError> {
     let width = metrics.advance_width.round() as u8;
+    let ymin_from_top = (FontKind::Editor.baseline() as i32 - metrics.ymin) as usize;
+    let top = if ymin_from_top >= metrics.height {
+        (ymin_from_top - metrics.height) as u8
+    } else {
+        // bitmap = bitmap.v_offset((metrics.height - ymin_from_top) as u32);
+        0
+    };
     let height = bitmap.bit_height().try_into()?;
-    let top = ((FontKind::Editor.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
     Ok(EChar::new_owned(width, height, top, bitmap.into_vec()).unwrap())
 }
 
@@ -291,7 +297,19 @@ fn make_pchar(
     metrics: fontdue::Metrics,
     bitmap: signum::raster::Page,
 ) -> PSetChar<'static> {
-    let top = ((pk.baseline() as i32 - metrics.ymin) as usize - metrics.height) as u8;
+    let ymin_from_top = (pk.baseline() as i32 - metrics.ymin) as usize;
+    let top = if ymin_from_top >= metrics.height {
+        (ymin_from_top - metrics.height) as u8
+    } else {
+        eprintln!(
+            "WARN: glyph too high ({}px above {}, avail. ascent is {}), adjusting y!",
+            metrics.height,
+            metrics.ymin,
+            pk.baseline()
+        );
+        // bitmap = bitmap.v_offset(bitmap.bit_height() - ymin_from_top as u32);
+        0
+    };
     let pchar = PSetChar::from_page(top, bitmap).expect("failed to convert bitmap to char");
     pchar
 }

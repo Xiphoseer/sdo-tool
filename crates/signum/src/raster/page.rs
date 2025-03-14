@@ -221,9 +221,28 @@ impl Page {
         self.buffer
     }
 
+    /// Return the containing vector
+    pub fn as_slice(&self) -> &[u8] {
+        self.buffer.as_slice()
+    }
+
     /// Return a copy of the containing vector
     pub fn to_vec(&self) -> Vec<u8> {
         self.buffer.clone()
+    }
+
+    /// Trim `vdiff` pixel lines from the start of the image
+    pub fn v_offset(&self, vdiff: u32) -> Self {
+        assert!(vdiff <= self.height);
+        let height = self.height - vdiff;
+        let to_remove = vdiff as usize * self.bytes_per_line as usize;
+        let buffer = self.buffer.as_slice()[to_remove..].to_vec();
+        Self {
+            bytes_per_line: self.bytes_per_line,
+            width: self.width,
+            height,
+            buffer,
+        }
     }
 
     /// Get a part of the image as bitmap (1-bit per pixel) image
@@ -370,11 +389,18 @@ impl Page {
 
     /// Draw a single editor char on the page
     pub fn draw_echar(&mut self, x: u16, y: u16, ch: &EChar) -> Result<(), DrawPrintErr> {
-        if u32::from(x + u16::from(ch.width)) > self.width {
+        /*if u32::from(x + u16::from(ch.width)) > self.width {
             return Err(DrawPrintErr::OutOfBounds);
-        }
+        }*/
+        assert_eq!(
+            self.bytes_per_line as usize * self.height as usize,
+            self.buffer.len()
+        );
 
-        if u32::from(y + u16::from(ch.height + ch.top)) > self.height {
+        assert!(ch.top < 128);
+        assert!(ch.height < 128);
+
+        if u32::from(y + u16::from(ch.height) + u16::from(ch.top)) > self.height {
             return Err(DrawPrintErr::OutOfBounds);
         }
 
@@ -387,6 +413,10 @@ impl Page {
 
         let mut byte_index: usize = (y_byte + x_byte) as usize;
 
+        let first_byte = cols_avail > 0;
+        if !first_byte {
+            return Err(DrawPrintErr::OutOfBounds);
+        }
         let second_byte = cols_avail > 1;
         if x_bit == 0 {
             for y in 0..(ch.height as usize) {
@@ -403,6 +433,10 @@ impl Page {
                 let shifted = full << (8 - x_bit);
                 let [_, byte0, byte1, byte2] = shifted.to_be_bytes();
 
+                if byte_index >= self.buffer.len() {
+                    panic!("Out of bounds: img={}x{} bpl={} index={byte_index} y={y} x{x_byte} y{y_byte} cols_avail={cols_avail} ch=[h{},t{},b{}]",
+                    self.width, self.height, self.bytes_per_line, ch.height, ch.top, ch.buf.len())
+                }
                 self.buffer[byte_index] |= byte0;
                 if second_byte {
                     self.buffer[byte_index + 1] |= byte1;
