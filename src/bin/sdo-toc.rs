@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use clap::Parser;
 use color_eyre::eyre::{self, WrapErr};
 use log::info;
-use signum::{chsets::cache::ChsetCache, util::LocalFS};
+use signum::{chsets::cache::ChsetCache, docs::tebu::Style, util::LocalFS};
 
 use sdo_tool::cli::{self, opt::DocScript, sdoc::Document};
 
@@ -55,6 +55,19 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         info!("Loading document file '{}'", doc_file.display());
         let di = document.process_sdoc(input, &fs, &mut fc)?;
         documents.push((document, di));
+    }
+
+    for (doc, di) in documents {
+        for page in doc.text_pages() {
+            for (_, line) in &page.content {
+                if let Some((st, _cset)) = line.line_style() {
+                    if st == (Style::TALL | Style::WIDE) {
+                        let text = line.text(&fc, &di.fonts);
+                        println!("{}", text);
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

@@ -17,11 +17,15 @@ use crate::{
         printer::{OwnedPSet, PSet, PrinterKind},
         LoadError,
     },
-    docs::cset,
+    docs::{cset, tebu::Char},
     util::{AsyncIterator, FileFormatKind, VFS},
 };
 
-use super::{encoding::decode_atari_str, FontKind};
+use super::{
+    encoding::decode_atari_str,
+    metrics::widths::{self, standard_widths},
+    FontKind,
+};
 
 #[allow(dead_code)]
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -457,5 +461,26 @@ impl DocumentFontCacheInfo {
     /// Get all [FontCacheInfo]s
     pub fn cset_name(&self, cset: u8) -> Option<&str> {
         self.chsets.get(cset as usize).and_then(FontCacheInfo::name)
+    }
+
+    /// Get the horizontal advance for a character in signum x-units
+    ///
+    /// **Note**: this may be inaccurate when no editor font or other width source is available
+    pub fn width(&self, fc: &ChsetCache, k: &Char) -> u8 {
+        let width = if let Some(eset) = self.eset(fc, k.cset) {
+            eset.chars[k.cval as usize].width
+        } else {
+            // FIXME: precompute fallback widths
+            let widths = self
+                .cset_name(k.cset)
+                .and_then(standard_widths)
+                .unwrap_or(&widths::ANTIKRO);
+            widths[k.cval as usize]
+        };
+        if k.style.is_wide() {
+            width * 2
+        } else {
+            width
+        }
     }
 }

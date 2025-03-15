@@ -12,7 +12,14 @@ use nom::{
 };
 use serde::Serialize;
 
-use crate::{chsets::UseMatrix, util::FourCC};
+use crate::{
+    chsets::{
+        cache::{ChsetCache, DocumentFontCacheInfo},
+        encoding::{ToUnicode, ANTIKRO_MAP},
+        UseMatrix,
+    },
+    util::FourCC,
+};
 
 use super::bytes16;
 
@@ -268,6 +275,44 @@ impl Line {
             x: 0,
             inner: self.data.iter(),
         }
+    }
+
+    /// If all characters in the line have the same style and charset, return it
+    pub fn line_style(&self) -> Option<(Style, u8)> {
+        let (first, rest) = self.data.split_first()?;
+        let style = first.style;
+        let cset = first.cset;
+        if rest.iter().all(|k| k.style == style && k.cset == cset) {
+            Some((style, cset))
+        } else {
+            None
+        }
+    }
+
+    /// Get the decoded text on the line
+    pub fn text(&self, fc: &ChsetCache, dfci: &DocumentFontCacheInfo) -> String {
+        let mut text = String::new();
+        let mut last_char_width = 0;
+        for k in &self.data {
+            let cset = dfci.cset(fc, k.cset);
+            let mapping = cset.and_then(|c| c.map()).unwrap_or(&ANTIKRO_MAP);
+            let decoded = mapping.decode(k.cval);
+
+            let lcw = last_char_width.into();
+            if k.offset >= lcw {
+                let hdiff = k.offset - lcw;
+                if hdiff > 2 && !text.is_empty() {
+                    text.push(' ');
+                }
+            }
+
+            let width = dfci.width(fc, k);
+            last_char_width = width;
+            for &chr in decoded {
+                text.push(chr);
+            }
+        }
+        text
     }
 }
 
