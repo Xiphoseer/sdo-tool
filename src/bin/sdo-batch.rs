@@ -5,9 +5,8 @@ use std::{
     str::FromStr,
 };
 
-use clap::Parser;
 use color_eyre::eyre::{self, WrapErr};
-use log::{info, LevelFilter};
+use log::info;
 use pdf_create::{
     common::{PageLabel, PdfString},
     high::{self, Handle},
@@ -21,6 +20,7 @@ use signum::{
 };
 
 use sdo_tool::cli::{
+    self,
     opt::{DocScript, OutlineItem},
     sdoc::{
         pdf::{handle_out, GenCtx},
@@ -141,19 +141,28 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         );
     }
 
-    hnd.outline.children = map_outline_items(&script.outline)?;
+    if let Some(file) = &script.outline_file {
+        let real = opt.file.parent().unwrap().join(file);
+        match std::fs::File::open(real) {
+            Ok(file) => {
+                let reader = BufReader::new(file);
+                let outline: Vec<OutlineItem> = ron::de::from_reader(reader)?;
+                hnd.outline.children = map_outline_items(&outline)?;
+            }
+            Err(e) => {
+                log::warn!("Failed to open outline file '{}': {}", file.display(), e);
+            }
+        }
+    } else {
+        hnd.outline.children = map_outline_items(&script.outline)?;
+    }
 
     handle_out(Some(&opt.out), &opt.file, Pdf::from_raw(hnd))?;
     Ok(())
 }
 
 fn main() -> eyre::Result<()> {
-    color_eyre::install()?;
-    env_logger::builder()
-        .format_timestamp(None)
-        .filter_level(LevelFilter::Info)
-        .init();
-    let opt: RunOpts = RunOpts::parse();
+    let opt: RunOpts = cli::init()?;
 
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {

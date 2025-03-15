@@ -240,6 +240,9 @@ pub struct DocScript {
     #[serde(default)]
     pub outline: Vec<OutlineItem>,
 
+    #[serde(default)]
+    pub outline_file: Option<PathBuf>,
+
     /// The path to the fonts folder
     #[serde(default = "chsets_path")]
     pub chsets: PathBuf,

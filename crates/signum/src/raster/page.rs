@@ -279,7 +279,7 @@ impl Page {
         } else {
             out = Vec::with_capacity(w * h / 8 + 1);
             let rmod = w % 8;
-            let rmask = 0xFF >> (8 - rmod);
+            let rmask = if rmod > 0 { 0xFF >> (8 - rmod) } else { 0 };
             let len = w / 8;
             let apos = lskip;
             let bpos = lskip + len;

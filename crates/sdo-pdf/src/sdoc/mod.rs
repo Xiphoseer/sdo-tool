@@ -81,7 +81,7 @@ fn write_pdf_page_text<O: io::Write>(
             contents.fwidth(font_width).map_err(Error::Contents)?;
 
             let cx_pdf = cx as u32 * (FONTUNITS_PER_SIGNUM_X / DEFAULT_FONT_SIZE as u32);
-            let diff = cx_pdf - pdf_page_cursor;
+            let diff = cx_pdf.saturating_sub(pdf_page_cursor);
             if diff != 0 {
                 let xoff = -(diff as i32 * DEFAULT_FONT_SIZE);
                 contents.xoff(xoff).map_err(Error::Contents)?;

@@ -71,7 +71,6 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
     let mut pnum = 0;
     for (doc, di) in documents {
         for page in doc.text_pages() {
-            pnum += 1;
             let mut y = 0;
             let mut page_lines: Vec<(u8, u16, String)> = Vec::new();
             for (ydiff, line) in &page.content {
@@ -115,6 +114,7 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
                     children: vec![],
                 });
             }
+            pnum += 1;
         }
     }
 
