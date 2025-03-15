@@ -124,6 +124,8 @@ pub struct TeBu {
     ///
     /// A line is a sequence of characters in the same vertical position
     pub pages: Vec<PageText>,
+    /// Unknown
+    pub trailer: u32,
 }
 
 impl TeBu {
@@ -491,17 +493,22 @@ where
     }
     match it.finish() {
         Ok((rest, ())) => {
+            let (rest, trailer) = be_u32(rest)?;
             input = rest;
+            info!("Parsed {} pages", pages.len());
+            let tebu = TeBu {
+                header,
+                pages,
+                trailer,
+            };
+            Ok((input, tebu))
         }
         Err(e) => match e {
             nom::Err::Incomplete(needed) => panic!("Incomplete: {:?}", needed),
-            nom::Err::Error(e) => return Err(nom::Err::Error(e)),
-            nom::Err::Failure(e) => return Err(nom::Err::Failure(e)),
+            nom::Err::Error(e) => Err(nom::Err::Error(e)),
+            nom::Err::Failure(e) => Err(nom::Err::Failure(e)),
         },
     }
-    info!("Parsed {} pages", pages.len());
-
-    Ok((input, TeBu { header, pages }))
 }
 
 impl<'a> super::Chunk<'a> for TeBu {

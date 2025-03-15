@@ -58,7 +58,7 @@ impl Document {
     }
 
     fn process_cset(&mut self, part: Buf<'_>) -> eyre::Result<()> {
-        info!("Loading 'cset' chunk");
+        debug!("Loading 'cset' chunk");
         let charsets = util::load_chunk::<CSet>(part.0)?;
         info!("CHSETS: {:?}", charsets.names);
         self.cset = Some(charsets.into_owned());
@@ -66,7 +66,7 @@ impl Document {
     }
 
     fn process_sysp(&mut self, part: Buf) -> eyre::Result<()> {
-        info!("Loading 'sysp' chunk");
+        debug!("Loading 'sysp' chunk");
         let sysp = util::load_chunk::<SysP>(part.0)?;
         debug!("{:#?}", sysp);
         self.sysp = Some(sysp);
@@ -74,7 +74,7 @@ impl Document {
     }
 
     fn process_pbuf(&mut self, part: Buf<'_>) -> eyre::Result<()> {
-        info!("Loading 'pbuf' chunk");
+        debug!("Loading 'pbuf' chunk");
         let pbuf = util::load_chunk::<PBuf>(part.0)?;
 
         debug!(
@@ -91,14 +91,14 @@ impl Document {
     }
 
     fn process_tebu(&mut self, part: Buf) -> eyre::Result<()> {
-        info!("Loading 'tebu' chunk");
+        debug!("Loading 'tebu' chunk");
         self.tebu = util::load_chunk::<TeBu>(part.0)?;
         info!("Loaded text for {} page(s)!", self.page_count);
         Ok(())
     }
 
     fn process_hcim(&mut self, part: Buf) -> eyre::Result<()> {
-        info!("Loading 'hcim' chunk");
+        debug!("Loading 'hcim' chunk");
         let hcim = util::load_chunk::<Hcim>(part.0)?;
         self.hcim = Some(hcim.into_owned());
         Ok(())
@@ -131,7 +131,7 @@ impl Document {
 
     pub fn process_0001(&mut self, part: Buf) -> eyre::Result<()> {
         let header = util::load(parse_header, part.0)?;
-        info!("Loading '0001' chunk");
+        debug!("Loading '0001' chunk");
         info!("File created: {}", header.ctime);
         info!("File modified: {}", header.mtime);
         Ok(())

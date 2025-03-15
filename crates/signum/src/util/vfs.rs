@@ -61,6 +61,11 @@ pub trait VFS {
 
     /// Read a file
     fn read(&self, path: &Path) -> impl Future<Output = Result<Vec<u8>, Self::Error>>;
+
+    /// Check whether the error is a 'NotFound'
+    fn is_file_not_found(_e: &Self::Error) -> bool {
+        false
+    }
 }
 
 /// VFS for the Local File System ([`std::fs`])
@@ -127,6 +132,10 @@ impl VFS for LocalFS {
 
     fn dir_entry_path<'a>(&self, entry: &'a Self::DirEntry) -> Cow<'a, Path> {
         Cow::Owned(entry.path())
+    }
+
+    fn is_file_not_found(e: &Self::Error) -> bool {
+        e.kind() == io::ErrorKind::NotFound
     }
 }
 

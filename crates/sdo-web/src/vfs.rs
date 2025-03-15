@@ -140,7 +140,7 @@ async fn resolve_dir(
     h: &FileSystemDirectoryHandle,
     path: &Path,
     create: bool,
-) -> Result<FileSystemDirectoryHandle, JsValue> {
+) -> Result<FileSystemDirectoryHandle, js_sys::Error> {
     let mut curr = h.clone();
     let opt = FileSystemGetDirectoryOptions::new();
     if create {
@@ -164,7 +164,7 @@ async fn resolve_dir(
             );
             let err = js_sys::Error::new(&err_message);
             err.set_name("SDOWebError");
-            return Err(err.into());
+            return Err(err);
         }
     }
     Ok(curr)

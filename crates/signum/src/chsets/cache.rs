@@ -77,7 +77,11 @@ async fn load_printer_font<FS: VFS>(
     let buffer = fs
         .read(&printer_cset_file)
         .await
-        .inspect_err(|e| warn!("Failed to load {:?}: {}", printer_cset_file, e))
+        .inspect_err(|e| {
+            if !FS::is_file_not_found(e) {
+                warn!("Failed to load {:?}: {}", printer_cset_file, e);
+            }
+        })
         .ok()?;
     match OwnedPSet::load_from_buffer(buffer, pk) {
         Ok(pset) => {
