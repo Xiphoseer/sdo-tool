@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap, fmt, io, path::PathBuf, str::FromS
 use clap::Parser;
 use pdf_create::high;
 use sdo_pdf::MetaInfo;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use signum::{chsets::FontKind, docs::Overrides};
 use thiserror::*;
 
@@ -245,18 +245,18 @@ pub struct DocScript {
     pub chsets: PathBuf,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OutlineItem {
     /// The title of the outline item
     pub title: String,
     /// The destination to navigate to
     pub dest: Destination,
     /// Immediate children of this item
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<OutlineItem>,
 }
 
-#[derive(Debug, Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
 pub enum Destination {
     PageFitH(usize, usize),
 }
