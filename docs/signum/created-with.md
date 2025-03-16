@@ -20,7 +20,7 @@ This section lists documents for which plausible claims exist that they were typ
 
 ## Books
 
-- [**Donnerwetter : meteorologisches Handbuch unter besonderer Berücksichtigung kulturatmosphärisch-klimatokultureller Aspekte** (1987)](http://d-nb.info/871526166); (Source: EBzG – Beispieltext "Antik")
+- [**Donnerwetter : meteorologisches Handbuch unter besonderer Berücksichtigung kulturatmosphärisch-klimatokultureller Aspekte** (1987)](http://d-nb.info/871526166); (Source: EBzG – Beispieltext "Antik", [Computer persönlich](http://web.archive.org/web/20071217015336/http://www.fulgura.de/extern/md/11/cp.html))
 - [**Das frühmittelalterliche Gräberfeld von Saint-Sulpice VD** (1990)](https://katalog.ub.uni-heidelberg.de/cgi-bin/titel.cgi?katkey=3585528)
 - [**Der arabische Dialekt der Juden von ʿAqra und Arbīl** / Otto Jastrow (1990)](http://d-nb.info/900282592); [(According to this search on Google Books)](https://books.google.de/books?id=NNQUHKM_BJQC&q="Signum!2")
 - [**Sprachwissenschaft und Sprachphilosophie in der Romania**: von den Anfängen bis August Wilhelm Schlegel / Georg Bossong (1990)](http://d-nb.info/900699809); [(Google Books)](https://books.google.de/books?hl=de&id=Lst9tnN0w4QC&q="Signum!Zwei")
