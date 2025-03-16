@@ -5,6 +5,7 @@ This section lists documents that describe Signum!
 ## Magazine Articles
 
 - [Ja, der Franz, der kann’s: Signum!2 setzt neue Zeichen (ST-Computer 12/1987)](https://www.stcarchiv.de/stc1987/12/signum2)
+- [Multilinguale Textverarbeitung mit Signum2! und Sigrevers (ST-Computer 12/1988)](https://archive.org/details/st-computer-1988-12/ST-Computer%201988-12/page/n159)
 - [Aus 24 mach 9: Umwandlung von SIGNUM!-Druckerzeichensätzen (ST-Computer 06/1989)](https://www.stcarchiv.de/stc1989/06/umwandlung-von-signum-druckerzeichensaetzen)
 - [Desktop Publishing mit SIGNUM!Zwei (ST-Computer 04/1989)](https://www.stcarchiv.de/stc1989/04/desktop-publishing-mit-signum-zwei)
 - [Erste Erfahrungen mit SIGNUM! Zwei – Praxisbericht eines doktorierenden Philologen (ST-Computer 12/1989)](https://www.stcarchiv.de/stc1989/12/erfahrungen-mit-signum-zwei)
