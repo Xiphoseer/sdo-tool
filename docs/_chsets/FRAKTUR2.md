@@ -1,6 +1,6 @@
 ---
 name: FRAKTUR2
-disc: SiFoX-22
+discs: [SiFoX-22, SiFoX-29]
 page: 182/2
 missing: true
 ---
