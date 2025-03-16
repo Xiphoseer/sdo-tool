@@ -128,6 +128,14 @@ at your own risk and without claiming fitness for any particular purpose. If you
 contribute to this project or use it for any kind of distribution or commercial purpose,
 please contact me.
 
+Parts of this toolbox (in particular the `signum` crate that implements the file format)
+are available under the `MIT OR Apache-2.0` license.
+
+This only applies to the copying and distribution of the software in this collection, any
+document prepared with it is exclusively a derivative work of the source material (text,
+images and fonts) and can be distributed without additional restrictions under whatever
+conditions apply for derivative works of that material.
+
 ## Contact 
 
 If you had some reason to use this tool, I'd love to hear your story! Please reach out to
