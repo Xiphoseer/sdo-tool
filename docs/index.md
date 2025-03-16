@@ -131,7 +131,7 @@ please contact me.
 Parts of this toolbox (in particular the `signum` crate that implements the file format)
 are available under the `MIT OR Apache-2.0` license.
 
-This only applies to the copying and distribution of the software in this collection, any
+This only applies to the copying and distribution of the software in this collection. Any
 document prepared with it is exclusively a derivative work of the source material (text,
 images and fonts) and can be distributed without additional restrictions under whatever
 conditions apply for derivative works of that material.
