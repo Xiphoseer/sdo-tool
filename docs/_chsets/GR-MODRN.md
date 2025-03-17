@@ -1,6 +1,6 @@
 ---
 name: GR_MODRN
-disc: SiFoX-36
+discs: [SiFoX-36, SiFoX-37]
 page: 188/2
 missing: true
 ---
