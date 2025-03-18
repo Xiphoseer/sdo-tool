@@ -1,6 +1,6 @@
 ---
 title: Standard (American Signum)
-name: Standard Charsets (American)
+link_name: Standard Charsets (American)
 sort-key: Standard US
 short: Standard US
 ---

@@ -1,5 +1,5 @@
 ---
-name: Eurofontdiskette
+link_name: Eurofontdiskette
 title: Eurofontdiskette
 sort-key: Euro Font Disk
 short: Euro

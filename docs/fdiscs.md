@@ -46,6 +46,6 @@ terms of the SiFoX itself, for use with Signum!.
 <ul>
 {% assign fdiscs = site.fdiscs | sort: "sort-key" %}
 {% for disc in fdiscs %}
-<li><a href="{{ disc.url | relative_url }}">{{ disc.name | default:disc.short }}</a></li>
+<li><a href="{{ disc.url | relative_url }}">{{ disc.link_name | default:disc.short }}</a></li>
 {% endfor %}
 </ul>

@@ -1,6 +1,6 @@
 ---
 title: Standard (British Signum)
-name: Standard Charsets (British)
+link_name: Standard Charsets (British)
 sort-key: Standard UK
 short: Standard UK
 ---

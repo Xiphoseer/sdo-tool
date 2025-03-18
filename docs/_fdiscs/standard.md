@@ -1,5 +1,5 @@
 ---
-name: Standard Charsets
+link_name: Standard Charsets
 title: Standard Charsets
 sort-key: Standard
 short: Standard

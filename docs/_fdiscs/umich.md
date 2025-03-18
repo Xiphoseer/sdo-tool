@@ -1,6 +1,6 @@
 ---
 sort-key: UMich
-name: University of Michigan
+link_name: University of Michigan
 title: Atari Archive at the University of Michigan
 short: UMich
 index: false
