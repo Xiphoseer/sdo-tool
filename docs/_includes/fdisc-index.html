@@ -7,9 +7,9 @@
                 <th>Page</th>
             </tr>
         </thead>
-    {% assign chsets = site.chsets | sort:"name" %}
-    {% for font in chsets %}
-        {% if font.disc == include.disc or font.discs contains include.disc %}
+    {% assign disc = include.disc %}
+    {% assign in_disc = site.chsets | where_exp: "font", "font.disc == disc or font.discs contains disc" %}
+    {% for font in in_disc %}
         <tr>
             <td>
             {% if font.missing %}{% else %}<a href="#{{font.name}}">{% endif%}
@@ -17,9 +17,8 @@
             {% if font.missing %}{% else %}</a>{% endif%}
             </td>
             <td>{% if font.full_name %}{{font.full_name}} {% endif %}</td>
-            <td>{{ font.page }}</td> 
+            <td>{{ font.page }}</td>
         </tr>
-        {% endif %}
     {% endfor %}
     </table>
 </div>

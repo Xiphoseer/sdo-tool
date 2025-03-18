@@ -1,7 +1,7 @@
-{% assign chsets = site.chsets | sort:"name" %}
-{% for font in chsets %}
-{% if font.disc == include.disc or font.discs contains include.disc %}
-{% if font.missing %}{% else %}
+{% assign disc = include.disc %}
+{% assign in_disc = site.chsets | where_exp: "font", "font.disc == disc or font.discs contains disc" %}
+{% assign filtered = in_disc | where:'missing',nil %}
+{% for font in filtered %}
 <figure id="{{font.name}}">
     <img src="{{ font.name | prepend:'img/kb/' | append: '.png' | relative_url }}">
     <img src="{{ font.name | prepend:'img/np/' | append: '.png' | relative_url }}" class="numpad">
@@ -14,6 +14,4 @@
     {{ font.content | markdownify }}
 </figure>
 <hr class="thick">
-{% endif %}
-{% endif %}
 {% endfor %}

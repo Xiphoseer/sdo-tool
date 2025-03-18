@@ -18,14 +18,24 @@ email: xiphoseer@mailbox.org
 description: >- # this means to ignore newlines until "baseurl:"
   Tool to process Signum! 1/2 document files (*.SDO)
 #baseurl: "/sdo-tool" # the subpath of your site, e.g. /blog
-#url: "" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://sdo.dseiler.eu" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: Xiphoseer
 github_username: Xiphoseer
+
+repository: xiphoseer/sdo-tool
 
 # Build settings
 markdown: kramdown
 theme: jekyll-theme-slate
-plugins: []
+plugins:
+  - jekyll-github-metadata
+  - jekyll-optional-front-matter
+  - jekyll-sitemap
+  - jekyll-default-layout
+  - jekyll-redirect-from
+  - jekyll-titles-from-headings
+  - jekyll-include-cache
+  - jekyll-relative-links
 #  - jekyll-feed
 
 # Exclude from processing.

@@ -5,6 +5,10 @@ layout: default
 
 <h1>{{ page.title | default:page.name }}</h1>
 
+{% if page.printer %}
+<em>Printer Types:</em> <code>{{ page.printer }}</code>
+{% endif %}
+
 {{ content }}
 
 {% if page.index %}
