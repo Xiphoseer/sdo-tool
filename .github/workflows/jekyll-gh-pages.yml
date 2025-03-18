@@ -49,7 +49,7 @@ jobs:
       - name: Build with Jekyll
         run: >
           bundle exec jekyll build
-          --baseurl "${{ steps.pages.outputs.base_path }}
+          --baseurl "${{ steps.pages.outputs.base_path }}"
           --source ./docs
           --destination ./_site
         env:
