@@ -50,8 +50,8 @@ jobs:
         run: >
           bundle exec jekyll build
           --baseurl "${{ steps.pages.outputs.base_path }}"
-          --source ./docs
-          --destination ./_site
+          --destination "${{github.workspace}}/_site"
+        working-directory: ./docs
         env:
           JEKYLL_ENV: production
       - name: Copy files to site
@@ -61,6 +61,8 @@ jobs:
           cp ./crates/sdo-web/index.html ./_site/studio
           cp ./crates/sdo-web/index.mjs ./_site/studio
           cp -r ./target/doc ./_site/rustdoc
+          mkdir ./_site/pub
+          cp -r ./mappings ./_site/pub/mappings
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
