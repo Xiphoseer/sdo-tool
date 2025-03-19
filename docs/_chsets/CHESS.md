@@ -1,6 +1,6 @@
 ---
 name: CHESS
-disc: SiFoX-49
+discs: [SiFoX-49, SiFoX-50]
 page: 262/2
 missing: true
 ---
