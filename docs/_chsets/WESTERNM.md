@@ -1,6 +1,6 @@
 ---
 name: WESTERNM
-discs: [SiFoX-22, SiFoX-45]
+discs: [SiFoX-22, SiFoX-45, SiFoX-51]
 page: 146/2
 missing: true
 ---
