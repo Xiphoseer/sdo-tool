@@ -55,6 +55,7 @@ jobs:
         working-directory: ./docs
         env:
           JEKYLL_ENV: production
+          JEKYLL_GITHUB_TOKEN: ${{ github.token }}
       - name: Copy files to site
         run: |
           mkdir ./_site/studio
