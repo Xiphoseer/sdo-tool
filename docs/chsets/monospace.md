@@ -1,0 +1,38 @@
+# Monospace character sets
+
+This page lists all character sets marked with `monospace: true` (unproportional)
+
+<div class="table-responsive">
+<table style="width: 100%;">
+<thead>
+    <tr>
+        <th>Key</th>
+        <th>Name</th>
+        <th>Disc</th>
+        <th>Page</th>
+    </tr>
+</thead>
+<tbody>
+{% assign fonts = site.chsets | where_exp:"f","f.monospace" %}
+{% for font in fonts %}
+<tr>
+    <td><code>{{font.name}}</code></td>
+    <td>{{font.full_name}}</td>
+    <td>
+        {% if font.discs %}
+        {% for disc_short in font.discs %}
+        {% assign disc = site.fdiscs | where_exp:"disc","disc.short == disc_short" | first %}
+        <a href="{{disc.url}}#{{font.name}}">{{ disc.short }}</a>
+        {% endfor %}
+        {% else %}
+        {% assign key = font.disc %}
+        {% assign disc = site.fdiscs | where_exp:"disc","disc.short == key" | first %}
+        <a href="{{disc.url}}#{{font.name}}">{{ disc.short }}</a>
+        {% endif %}
+    </td>
+    <td>{{font.page}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
