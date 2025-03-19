@@ -1,7 +1,7 @@
 ---
 name: GROTMCRO
 full_name: matches GROTMIKR
-disc: Standard UK
+discs: [Standard UK, SiFoX-Exot-1]
 page: 223/2
 missing: true
 ---

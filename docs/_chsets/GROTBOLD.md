@@ -1,7 +1,7 @@
 ---
 name: GROTBOLD
 full_name: matches GROTFE
-disc: Standard UK
+discs: [Standard UK, SiFoX-Exot-1]
 page: 223/2
 missing: true
 ---
