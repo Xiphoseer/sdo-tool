@@ -1,9 +1,9 @@
 # File encoding:    UTF-8
-# Name:             Signum! ANTIKRO to Unicode
+# Name:             Signum! PINSEL to Unicode
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A
-# Date:             2020 September 06
+# Date:             2025 March 14
 # Authors:          Xiphoseer <xiphoseer AT mailbox.org>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646

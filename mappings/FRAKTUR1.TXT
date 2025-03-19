@@ -1,5 +1,5 @@
 # File encoding:    UTF-8
-# Name:             Signum! NORMANDE to Unicode
+# Name:             Signum! FRAKTUR1 to Unicode
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A

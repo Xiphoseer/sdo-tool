@@ -1,8 +1,9 @@
 ---
 name: GRIECH
 full_name: Griechische Zeichen
+page: 72/1
 disc: Standard
-map: https://cdn.jsdelivr.net/gh/Xiphoseer/sdo-tool@main/mappings/GRIECH.TXT
+map: https://sdo.dseiler.eu/pub/mappings/GRIECH.TXT
 ---
 
 - 0x37 should be "SMALL SOLIDUS" (0xFE67)

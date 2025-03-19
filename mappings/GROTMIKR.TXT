@@ -1,9 +1,9 @@
 # File encoding:    UTF-8
-# Name:             Signum! GROTFE to Unicode
+# Name:             Signum! GROTMIKR to Unicode
 # Unicode version:  13.0
 # Table version:    1.0
 # Table format:     Format A
-# Date:             2025 February 01
+# Date:             2025 March 14
 # Authors:          Xiphoseer <xiphoseer AT mailbox.org>
 
 0x00	0x0000	# NULL                                      	# <NUL> ISO646
