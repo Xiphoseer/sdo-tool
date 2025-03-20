@@ -4,3 +4,5 @@ sort-key: SiFoX-34
 short: SiFoX-34
 printer: P24
 ---
+
+This disk seems to be a set of standard fonts for Poland and the [polish alphabet](https://en.wikipedia.org/wiki/Polish_alphabet). These names are not original but match the glyphs in the font.
