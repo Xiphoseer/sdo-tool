@@ -35,7 +35,7 @@ pub struct ImcHeader {
     /// size of byte-stream
     size_of_data: u32,
     /// Final XOR
-    final_xor: u16,
+    final_xor: Bytes16,
     u4: Bytes16,
     u5: Bytes32,
     u6: Bytes32,
@@ -66,7 +66,7 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
     let (input, size_of_bits) = be_u32(input)?;
     let (input, size_of_data) = be_u32(input)?;
 
-    let (input, s14) = be_u16(input)?;
+    let (input, final_xor) = bytes16(input)?;
     let (input, u4) = bytes16(input)?;
     let (input, u5) = bytes32(input)?;
     let (input, u6) = bytes32(input)?;
@@ -79,7 +79,7 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
         vchunks,
         size_of_bits,
         size_of_data,
-        final_xor: s14,
+        final_xor,
         u4,
         u5,
         u6,
@@ -261,8 +261,8 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], (ImcHeader, MonochromeScreen)> {
         dest = &mut dest[bytes_per_group..];
     }
 
-    if header.final_xor != 0 {
-        let [a, b] = header.final_xor.to_be_bytes();
+    if header.final_xor.0 != 0 {
+        let [a, b] = header.final_xor.to_bytes();
         /*// subroutine K
 
         state.proc_l(a, &mut buffer[..], header.s08, header.s0a);

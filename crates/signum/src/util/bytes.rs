@@ -7,6 +7,13 @@ use serde::{Deserialize, Serialize};
 #[serde(transparent)]
 pub struct Bytes16(pub u16);
 
+impl Bytes16 {
+    /// Return the bytes in big endian order
+    pub fn to_bytes(&self) -> [u8; 2] {
+        self.0.to_be_bytes()
+    }
+}
+
 impl fmt::Debug for Bytes16 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "0x{:04X}", self.0)
