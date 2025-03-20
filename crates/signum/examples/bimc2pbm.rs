@@ -16,7 +16,7 @@ fn main() -> color_eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
     let file = std::fs::read(opts.file)?;
-    let image = parse_imc(&file).map_err(|e| eyre!("{}", e))?;
+    let (_, image) = parse_imc(&file).map_err(|e| eyre!("{}", e))?;
     println!("P1 640 400");
     for line in image.into_inner().chunks(8) {
         for byte in line {

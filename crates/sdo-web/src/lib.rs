@@ -702,7 +702,7 @@ impl Handle {
     }
 
     async fn show_image(&self, _name: &str, data: &[u8]) -> Result<(), JsValue> {
-        let decoded =
+        let (_header, decoded) =
             parse_imc(data).map_err(|err| js_error_with_cause(err, "Failed to parse IMC image"))?;
         let page = raster::Page::from(decoded);
         let blob = page_to_blob(&page)?;

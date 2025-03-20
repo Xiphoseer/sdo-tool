@@ -173,7 +173,7 @@ pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
 
     let (input, _) = tag(ZERO)(input)?;
     let (input, bytes) = take(27usize - key_bytes.len())(input)?;
-    let (input, image) = decode_imc(input)?;
+    let (input, (_header, image)) = decode_imc(input)?;
 
     let bytes = Buf(bytes);
     Ok((input, Image { key, bytes, image }))

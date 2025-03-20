@@ -17,8 +17,9 @@ use nom::{
 use std::convert::TryInto;
 
 #[derive(Debug)]
-#[allow(dead_code)] // format definition
-struct ImcHeader {
+#[allow(dead_code)]
+/// IMC metadata
+pub struct ImcHeader {
     size: u32,
 
     width: u16,
@@ -112,10 +113,12 @@ impl MonochromeScreen {
 /// Parse a plain IMC file to a screen buffer.
 ///
 /// This method checks for the magic bytes `bimc0002`
-pub fn parse_imc(input: &[u8]) -> Result<MonochromeScreen, Err<nom::error::Error<&[u8]>>> {
+pub fn parse_imc(
+    input: &[u8],
+) -> Result<(ImcHeader, MonochromeScreen), Err<nom::error::Error<&[u8]>>> {
     let (input, _) = tag(b"bimc0002")(input)?;
-    let (_input, image) = decode_imc(input)?;
-    Ok(image)
+    let (_input, (header, image)) = decode_imc(input)?;
+    Ok((header, image))
 }
 
 fn eof_at<'a>(iter: &std::slice::Iter<'a, u8>) -> nom::Err<nom::error::Error<&'a [u8]>> {
@@ -132,7 +135,7 @@ macro_rules! next {
 }
 
 /// Decode a Signum! .IMC image
-pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
+pub fn decode_imc(src: &[u8]) -> IResult<&[u8], (ImcHeader, MonochromeScreen)> {
     let mut buffer = vec![0; 32000];
     let mut dest = &mut buffer[..]; // state[A] moving destination address
 
@@ -267,7 +270,7 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], MonochromeScreen> {
         }
     }
 
-    Ok((byte_iter.as_slice(), MonochromeScreen(buffer)))
+    Ok((byte_iter.as_slice(), (header, MonochromeScreen(buffer))))
 }
 
 #[cfg(test)]
