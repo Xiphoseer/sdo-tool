@@ -15,5 +15,6 @@ This section is about *Signum!* in general. This information is not limited to t
 - [Character Sets]({{ '/chsets' | relative_url }})
   - [Font Discs]({{ '/fdiscs' | relative_url }})
   - [Standard]({{ '/fdiscs/standard' | relative_url }})
+  - [All Character Sets]({{ '/chsets/all' | relative_url }})
   - [Miscellaneous]({{ '/chsets/other' | relative_url }})
   - [Missing characters]({{ '/chsets/missing' | relative_url }})

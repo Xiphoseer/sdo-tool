@@ -81,8 +81,11 @@ See: [ASH font disks]({{ '/fdiscs' | relative_url }})
 ---
 
 Some non-standard fonts that I came across are listed [here]({{ '/chsets/other' | relative_url }}).
-There's also a [list of all charsets]({{ '/chsets/all' | relative_url }}) and a
-[list of characters not in Unicode]({{ '/chsets/missing' | relative_url }}).
+There's also:
+- a [list of all charsets]({{ '/chsets/all' | relative_url }})
+- a [list of characters not in Unicode]({{ '/chsets/missing' | relative_url }}).
+- a [list of monospace fonts]({{ '/chsets/monospace' | relative_url }}).
+- a [list of tagged fonts]({{ '/chsets/tags' | relative_url }}).
 
 ## Links
 
