@@ -2,6 +2,12 @@
 layout: default
 ---
 <a href="{{ '/fdiscs' | relative_url }}#disc-index">Overview</a>
+{% if page.previous %}
+| <a href="{{page.previous.url}}">Previous</a>
+{% endif %}
+{% if page.next %}
+| <a href="{{page.next.url}}">Next</a>
+{% endif %}
 
 <h1>{{ page.title | default:page.name }}</h1>
 
