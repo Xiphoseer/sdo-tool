@@ -25,7 +25,7 @@ smallvec = { version = "1.14.0", features = ["const_new"] }
 [dependencies.image]
 optional = true
 default-features = false
-version = "0.24"
+version = "0.25"
 features = ["png"]
 
 [dependencies.chrono]

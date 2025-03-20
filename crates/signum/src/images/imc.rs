@@ -8,6 +8,7 @@ use crate::{
     docs::{bytes16, bytes32},
     util::{BitIter, Bytes16, Bytes32},
 };
+use core::fmt;
 use nom::{
     bytes::complete::{tag, take},
     error::ErrorKind,
@@ -16,27 +17,43 @@ use nom::{
 };
 use std::convert::TryInto;
 
-#[derive(Debug)]
 #[allow(dead_code)]
 /// IMC metadata
 pub struct ImcHeader {
+    /// total size
     size: u32,
-
+    /// pixel width
     width: u16,
+    /// pixel height
     height: u16,
-    /// ???
+    /// inner count
     hchunks: u16,
     /// outer_count
     vchunks: u16,
     /// data offset
     size_of_bits: u32,
-    //u1: Bytes16,
+    /// size of byte-stream
     size_of_data: u32,
-    /// ???
-    s14: u16,
+    /// Final XOR
+    final_xor: u16,
     u4: Bytes16,
     u5: Bytes32,
     u6: Bytes32,
+}
+
+impl fmt::Debug for ImcHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImcHeader")
+            .field("size", &self.size)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("hchunks", &self.hchunks)
+            .field("vchunks", &self.vchunks)
+            .field("size_of_bits", &self.size_of_bits)
+            .field("size_of_data", &self.size_of_data)
+            .field("final_xor", &self.final_xor)
+            .finish()
+    }
 }
 
 fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
@@ -62,7 +79,7 @@ fn parse_imc_header(input: &[u8]) -> IResult<&[u8], ImcHeader> {
         vchunks,
         size_of_bits,
         size_of_data,
-        s14,
+        final_xor: s14,
         u4,
         u5,
         u6,
@@ -244,8 +261,8 @@ pub fn decode_imc(src: &[u8]) -> IResult<&[u8], (ImcHeader, MonochromeScreen)> {
         dest = &mut dest[bytes_per_group..];
     }
 
-    if header.s14 != 0 {
-        let [a, b] = header.s14.to_be_bytes();
+    if header.final_xor != 0 {
+        let [a, b] = header.final_xor.to_be_bytes();
         /*// subroutine K
 
         state.proc_l(a, &mut buffer[..], header.s08, header.s0a);

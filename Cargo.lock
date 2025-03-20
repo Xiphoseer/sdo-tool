@@ -441,12 +441,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "color_quant"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
-
-[[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -618,7 +612,7 @@ version = "0.1.0"
 dependencies = [
  "clap 4.5.31",
  "ctrlc",
- "image 0.25.5",
+ "image",
  "nix",
 ]
 
@@ -835,19 +829,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "image"
-version = "0.24.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color_quant",
- "num-traits",
- "png",
 ]
 
 [[package]]
@@ -1377,7 +1358,7 @@ dependencies = [
  "color-eyre 0.6.3",
  "env_logger 0.8.4",
  "futures-lite",
- "image 0.24.9",
+ "image",
  "log",
  "nom-supreme",
  "pdf",
@@ -1407,7 +1388,6 @@ version = "0.1.0"
 dependencies = [
  "bstr",
  "console_log",
- "image 0.24.9",
  "js-sys",
  "log",
  "sdo-fonts",
@@ -1489,7 +1469,7 @@ dependencies = [
  "clap 3.2.25",
  "color-eyre 0.5.11",
  "displaydoc",
- "image 0.24.9",
+ "image",
  "log",
  "nom",
  "prettytable-rs",
