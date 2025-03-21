@@ -1,6 +1,8 @@
 ---
 name: UPDATE
+full_name: Update
 disc: Typeart 03
-page: 95/2
+docs: 95/2
+page: 153/2
 missing: true
 ---

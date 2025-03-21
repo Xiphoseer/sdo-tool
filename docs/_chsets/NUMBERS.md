@@ -1,6 +1,8 @@
 ---
 name: NUMBERS
+full_name: Numbers
 disc: Typeart 04
-page: 62/2
+docs: 62/2
+page: 266/2
 missing: true
 ---
