@@ -4,4 +4,14 @@ full_name: Futur 13 condensed
 disc: Futur
 page: 49/1
 missing: true
+tags:
+- Dänisch
+- Finnisch
+- Französisch
+- Italienisch
+- Niederländisch
+- Norwegisch
+- Portugiesisch
+- Schwedisch
+- Spanisch
 ---

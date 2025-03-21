@@ -4,5 +4,16 @@ full_name: Grotesk fett Eurosonderzeichen (matches GROTEFE)
 src: FALC-3968
 page: 93/1
 disc: Euro
+tags:
+- Dänisch
+- Finnisch
+- Französisch
+- Europäische Sonderzeichen
+- Italienisch
+- Niederländisch
+- Norwegisch
+- Portugiesisch
+- Schwedisch
+- Spanisch
 ---
 Matches GROTEFE

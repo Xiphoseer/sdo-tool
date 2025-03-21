@@ -4,4 +4,14 @@ full_name: Futur 15
 disc: Futur
 page: 49/1
 missing: true
+tags:
+- Dänisch
+- Finnisch
+- Französisch
+- Italienisch
+- Niederländisch
+- Norwegisch
+- Portugiesisch
+- Schwedisch
+- Spanisch
 ---
