@@ -9,6 +9,7 @@
 - key: Bulgarisch
 - key: Chemie
 - key: Chinesisch
+  title: Chinesisch (Fragmente)
 - key: Dänisch
 - key: Deutsch
 - key: Devanagari
@@ -18,6 +19,8 @@
 - key: Estnisch
 - key: Finnisch
 - key: Finnugrisch
+- key: Fraktur
+  title: Fraktur etc.
 - key: Französisch
 - key: Italienisch
 - key: Niederländisch

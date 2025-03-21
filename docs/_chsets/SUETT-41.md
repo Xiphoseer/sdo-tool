@@ -4,4 +4,5 @@ full_name: Sütterlin 41
 disc: SiFoX-28
 page: 296/2
 missing: true
+tags: [Fraktur]
 ---
