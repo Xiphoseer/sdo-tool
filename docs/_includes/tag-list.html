@@ -1,4 +1,7 @@
-<h2>{{include.tag}}</h2>
+<h2>{{include.tag.title | default:include.tag.key }}</h2>
+{% if include.tag.title %}
+<p><code>{{include.tag.key}}</code></p>
+{% endif %}
 
-{% assign fonts = site.chsets | where_exp:"f","f.tags contains include.tag" %}
+{% assign fonts = site.chsets | where_exp:"f","f.tags contains include.tag.key" %}
 {% include chset-list.html chsets=fonts %}

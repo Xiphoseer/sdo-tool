@@ -8,7 +8,7 @@ tags:
 - Dänisch
 - Finnisch
 - Französisch
-- Europäische Sonderzeichen
+- Eurosonderzeichen
 - Italienisch
 - Niederländisch
 - Norwegisch

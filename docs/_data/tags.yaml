@@ -1,23 +1,24 @@
-- APL
-- Arabisch
-- Armenisch
-- Astrologie
-- Astronomie
-- Bengali
-- Belorussisch
-- Bibelsonderzeichen
-- Bulgarisch
-- Chemie
-- Chinesisch
-- Dänisch
-- Deutsch
-- Devanagari
-- Finnisch
-- Französisch
-- Europäische Sonderzeichen
-- Italienisch
-- Niederländisch
-- Norwegisch
-- Portugiesisch
-- Schwedisch
-- Spanisch
+- key: APL
+- key: Arabisch
+- key: Armenisch
+- key: Astrologie
+- key: Astronomie
+- key: Bengali
+- key: Belorussisch
+- key: Bibelsonderzeichen
+- key: Bulgarisch
+- key: Chemie
+- key: Chinesisch
+- key: Dänisch
+- key: Deutsch
+- key: Devanagari
+- key: Eurosonderzeichen
+  title: Europäische Sonderzeichen
+- key: Finnisch
+- key: Französisch
+- key: Italienisch
+- key: Niederländisch
+- key: Norwegisch
+- key: Portugiesisch
+- key: Schwedisch
+- key: Spanisch
