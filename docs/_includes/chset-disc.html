@@ -2,7 +2,7 @@
 {% assign in_disc = site.chsets | where_exp: "font", "font.disc == disc or font.discs contains disc" %}
 {% for font in in_disc %}
 {% assign content = font.content | strip_newlines %}
-{% if content != "" or font.missing != true or font.map %}
+{% if content != "" or font.missing != true or font.map or font.docs or font.tags != empty %}
 <figure class="font" id="{{font.name}}">
     {% unless font.missing %}
     <img src="{{ font.name | prepend:'img/kb/' | append: '.png' | relative_url }}">
@@ -10,6 +10,8 @@
     {% endunless %}
     <h4 class="chset">{% if font.full_name %}{{font.full_name}} {% endif %}»{{font.name}}«</h4>
     {% if font.page %}Page: {{font.page}}<br>{% endif %}
+    {% if font.docs %}Docs: {{font.docs}}<br>{% endif %}
+    {% unless font.tags == empty %}Tags: {% for tag in font.tags %}{% unless forloop.first %}, {% endunless%}<a href="/chsets/tags#{{tag}}">{{tag}}</a>{% endfor %}<br>{% endunless %}
     {% if font.map %}
     Mapping file: <a href="{{font.map}}">{{font.map}}</a>
     {% endif %}
