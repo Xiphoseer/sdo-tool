@@ -2,7 +2,7 @@
 {% assign in_disc = site.chsets | where_exp: "font", "font.disc == disc or font.discs contains disc" %}
 {% for font in in_disc %}
 {% assign content = font.content | strip_newlines %}
-{% if content != "" or font.missing != true or font.map or font.docs or font.tags != empty or font.matches %}
+{% if content != "" or font.missing != true or font.map or font.docs or font.tags != empty or font.matches or font.monospace %}
 <figure class="font" id="{{font.name}}">
     {% unless font.missing %}
     <img src="{{ font.name | prepend:'img/kb/' | append: '.png' | relative_url }}">
