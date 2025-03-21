@@ -6,6 +6,7 @@ disc: Standard
 map: https://sdo.dseiler.eu/pub/mappings/PINSEL.TXT
 tags:
 - Dänisch
+- Deutsch
 - Finnisch
 - Französisch
 - Italienisch
