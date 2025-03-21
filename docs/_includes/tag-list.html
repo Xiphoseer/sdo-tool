@@ -1,4 +1,4 @@
-<h2>{{include.tag.title | default:include.tag.key }}</h2>
+<h2 id="{{include.tag.key}}">{{include.tag.title | default:include.tag.key }}</h2>
 {% if include.tag.title %}
 <p>Tag: <code>{{include.tag.key}}</code></p>
 {% endif %}
