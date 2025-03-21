@@ -1,9 +1,10 @@
 ---
 name: EURO_GRL
-full_name: Grotesk leicht Eurosonderzeichen (matches GROTLT)
+full_name: Grotesk leicht Eurosonderzeichen
 page: 93/1
 disc: Euro
 missing: true
+matches: GROTLT
 tags:
 - Dänisch
 - Finnisch

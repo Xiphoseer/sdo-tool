@@ -1,9 +1,10 @@
 ---
 name: EURO_NOR
-full_name: Normande Eurosonderzeichen (matches NORMANDE)
+full_name: Normande Eurosonderzeichen
 page: 94/1
 disc: Euro
 missing: true
+matches: NORMANDE
 tags:
 - Dänisch
 - Finnisch

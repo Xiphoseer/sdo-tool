@@ -1,9 +1,10 @@
 ---
 name: EURO_GRM
-full_name: Grotesk mikro Eurosonderzeichen (matches GROTMIKR)
+full_name: Grotesk mikro Eurosonderzeichen
 page: 94/1
 disc: Euro
 missing: true
+matches: GROTMIKR
 tags:
 - Dänisch
 - Finnisch
