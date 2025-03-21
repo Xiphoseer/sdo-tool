@@ -4,7 +4,7 @@ This page collects the *tags* of the fonts from the "Anwendungsverzeichnis" of t
 
 <ul>
 {% for tag in site.data.tags %}
-<li><a href="#{{tag.key}}">{{ tag.title | default:tag.key }}</a>
+<li><a href="#{{tag.key}}">{{ tag.title | default:tag.key }}</a></li>
 {% endfor %}
 </ul>
 
