@@ -8,6 +8,7 @@ tags:
 - Dänisch
 - Finnisch
 - Französisch
+- Groß
 - Italienisch
 - Niederländisch
 - Norwegisch

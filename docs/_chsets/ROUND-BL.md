@@ -4,4 +4,5 @@ full_name: Round black
 disc: Lisa
 page: 44/1
 missing: true
+tags: [Groß]
 ---
