@@ -10,4 +10,6 @@ tags:
 - Obersorbisch
 - Polnisch
 - Serbokroatisch
+- Slowakisch
+- Slowenisch
 ---
