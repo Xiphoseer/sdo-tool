@@ -3,6 +3,7 @@ link_name: Standard Charsets
 title: Standard Charsets
 sort-key: Standard
 short: Standard
+series: Standard
 ---
 
 At some point, the standard 9-needle (P9) and 24-needle (P24) fonts

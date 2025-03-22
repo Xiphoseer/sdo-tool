@@ -1,5 +1,5 @@
 ---
-link_name: Professional Font-Disk
+link_name: Professional
 title: Professional Font-Disk
 sort-key: Professional Font Disk
 short: Professional

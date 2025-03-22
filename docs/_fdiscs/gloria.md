@@ -1,5 +1,5 @@
 ---
-link_name: Fontdiskette »Gloria«
+link_name: »Gloria«
 title: Fontdiskette »Gloria«
 sort-key: Font Disk Gloria
 short: Gloria

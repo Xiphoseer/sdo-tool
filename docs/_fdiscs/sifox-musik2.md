@@ -4,4 +4,5 @@ short: SiFoX-Musik-2
 sort-key: SiFoX-Musik-II
 link_name: SiFoX-Musik II
 printer: P9, P24
+series: SiFoX-Specials
 ---

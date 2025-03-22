@@ -9,12 +9,13 @@ up to redistribute user-generated fonts to Signum licensees.
 
 ## Disc index
 
-<ul>
-{% assign fdiscs = site.fdiscs | sort: "sort-key" %}
-{% for disc in fdiscs %}
-<li><a href="{{ disc.url | relative_url }}">{{ disc.link_name | default:disc.short }}</a></li>
+{% assign groups = site.fdiscs | group_by:"series" %}
+{% for group in groups %}
+{% unless group.name == empty %}
+<h3>{{group.name}}</h3>
+{% endunless %}
+{% for disc in group.items %}<a href="{{ disc.url | relative_url }}">{{ disc.link_name | default:disc.short }}</a>{% unless forloop.last %}, {% endunless %}{% endfor %}
 {% endfor %}
-</ul>
 
 ### Signum-Font-eXchange (SiFoX)
 

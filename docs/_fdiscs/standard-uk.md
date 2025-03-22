@@ -3,6 +3,7 @@ title: Standard (British Signum)
 link_name: Standard Charsets (British)
 sort-key: Standard UK
 short: Standard UK
+series: Standard
 ---
 
 At some point around 1987, the british edition was sold with just the
