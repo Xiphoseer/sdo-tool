@@ -6,4 +6,5 @@ missing: true
 tags:
 - Eurosonderzeichen
 - Französisch
+- Norwegisch
 ---
