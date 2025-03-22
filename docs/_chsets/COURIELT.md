@@ -5,5 +5,7 @@ src: Whiteline Alpha
 monospace: true
 page: 27/1
 discs: [Julia, SiFoX-33]
-tags: [Schreibmaschine]
+tags:
+- Schreibmaschine
+- Unproportional
 ---

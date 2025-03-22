@@ -8,4 +8,5 @@ tags:
 - Finnisch
 - Finnugrisch
 - Lettisch
+- Ungarisch
 ---

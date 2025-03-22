@@ -14,4 +14,5 @@ tags:
 - Slowakisch
 - Slowenisch
 - Tschechisch
+- Ungarisch
 ---

@@ -5,5 +5,7 @@ disc: SiFoX-26
 page: 149/2
 missing: true
 monospace: true
-tags: [Schreibmaschine]
+tags:
+- Schreibmaschine
+- Unproportional
 ---
