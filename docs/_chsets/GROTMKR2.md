@@ -7,4 +7,5 @@ tags:
 - Estnisch
 - Finnisch
 - Finnugrisch
+- Lettisch
 ---

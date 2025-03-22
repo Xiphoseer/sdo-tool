@@ -5,4 +5,5 @@ page: 225/2
 missing: true
 tags:
 - Estnisch
+- Lettisch
 ---
