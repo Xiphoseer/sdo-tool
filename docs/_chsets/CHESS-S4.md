@@ -4,4 +4,5 @@ full_name: Chess-S4
 page: 107/1
 disc: SiFoX-17
 missing: true
+tags: [Schach]
 ---
