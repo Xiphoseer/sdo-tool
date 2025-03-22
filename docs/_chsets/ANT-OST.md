@@ -9,4 +9,5 @@ tags:
 - Litauisch
 - Niedersorbisch
 - Obersorbisch
+- Polnisch
 ---

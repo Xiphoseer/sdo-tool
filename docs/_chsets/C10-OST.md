@@ -8,4 +8,5 @@ tags:
 - Lettisch
 - Niedersorbisch
 - Obersorbisch
+- Polnisch
 ---

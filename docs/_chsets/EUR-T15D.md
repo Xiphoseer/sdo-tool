@@ -12,6 +12,7 @@ tags:
 - Italienisch
 - Niederländisch
 - Norwegisch
+- Polnisch
 - Portugiesisch
 - Schwedisch
 - Spanisch
