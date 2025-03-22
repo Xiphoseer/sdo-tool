@@ -7,6 +7,15 @@ Application Systems sold a collection of font discs. The named ones were
 professional creations, while the *Signum-Font-eXchange* (SiFoX) was set
 up to redistribute user-generated fonts to Signum licensees.
 
+## Disc index
+
+<ul>
+{% assign fdiscs = site.fdiscs | sort: "sort-key" %}
+{% for disc in fdiscs %}
+<li><a href="{{ disc.url | relative_url }}">{{ disc.link_name | default:disc.short }}</a></li>
+{% endfor %}
+</ul>
+
 ### Signum-Font-eXchange (SiFoX)
 
 By sending in a complete font of your own design for distribution through
@@ -40,12 +49,3 @@ Buch zur Gestaltung*):
 In other words, the font copyright remains with their authors, there's
 a limited license granted to ASH to re-distribute the fonts under the
 terms of the SiFoX itself, for use with Signum!.
-
-## Disc index
-
-<ul>
-{% assign fdiscs = site.fdiscs | sort: "sort-key" %}
-{% for disc in fdiscs %}
-<li><a href="{{ disc.url | relative_url }}">{{ disc.link_name | default:disc.short }}</a></li>
-{% endfor %}
-</ul>
