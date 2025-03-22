@@ -10,4 +10,5 @@ tags:
 - Niedersorbisch
 - Obersorbisch
 - Polnisch
+- Serbokroatisch
 ---
