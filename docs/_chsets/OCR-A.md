@@ -5,4 +5,5 @@ src: FaST.755
 page: 30/1
 disc: Julia
 monospace: true
+tags: [Maschinenlesbar]
 ---

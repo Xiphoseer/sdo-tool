@@ -4,5 +4,7 @@ full_name: Mathematische Sonderzeichen
 page: 102/1
 disc: Standard
 map: https://sdo.dseiler.eu/pub/mappings/MATHEM.TXT
-tags: [Chemie]
+tags:
+- Chemie
+- Mathematik
 ---

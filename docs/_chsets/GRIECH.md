@@ -4,7 +4,10 @@ full_name: Griechische Zeichen
 page: 72/1
 disc: Standard
 map: https://sdo.dseiler.eu/pub/mappings/GRIECH.TXT
-tags: [Chemie, Griechisch]
+tags:
+- Chemie
+- Griechisch
+- Mathematik
 ---
 
 - 0x37 should be "SMALL SOLIDUS" (0xFE67)
