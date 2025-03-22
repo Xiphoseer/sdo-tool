@@ -9,6 +9,7 @@ tags:
 - Finnisch
 - Französisch
 - Italienisch
+- Klein
 - Niederländisch
 - Norwegisch
 - Portugiesisch
