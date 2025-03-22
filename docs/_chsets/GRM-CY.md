@@ -6,4 +6,6 @@ missing: true
 tags:
 - Belorussisch
 - Bulgarisch
+- Kyrillisch
+- Makedonisch
 ---

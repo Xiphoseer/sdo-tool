@@ -7,4 +7,5 @@ tags:
 - Belorussisch
 - Bulgarisch 
 - Kyrillisch
+- Makedonisch
 ---
