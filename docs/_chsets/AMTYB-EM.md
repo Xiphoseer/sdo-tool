@@ -8,4 +8,5 @@ tags:
 - Französisch
 - Norwegisch
 - Portugiesisch
+- Spanisch
 ---
