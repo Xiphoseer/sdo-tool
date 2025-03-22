@@ -3,5 +3,7 @@ name: SIGNETS
 disc: Lisa
 page: 117/1
 missing: true
-tags: [Symbole]
+tags:
+- Grafische Symbole
+- Symbole
 ---

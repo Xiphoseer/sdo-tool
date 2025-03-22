@@ -3,5 +3,5 @@ name: KEYBOARD
 disc: Lisa
 page: 114/1
 missing: true
-tags: [Symbole]
+tags: [Grafische Symbole]
 ---

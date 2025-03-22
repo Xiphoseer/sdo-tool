@@ -5,5 +5,5 @@ disc: Typeart 05
 page: 259/2
 docs: 69/2
 missing: true
-tags: [Symbole]
+tags: [Grafische Symbole]
 ---

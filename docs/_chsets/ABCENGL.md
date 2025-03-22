@@ -5,5 +5,5 @@ page: 97/1
 missing: true
 tags:
 - Englisch
-- Symbole
+- Grafische Symbole
 ---

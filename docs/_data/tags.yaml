@@ -24,8 +24,7 @@
 - key: Französisch
 - key: Georgisch
 - key: Galgolitisch
-- key: Symbole
-  title: Grafische Symbole
+- key: Grafische Symbole
 - key: Griechisch
 - key: Groß
   title: Große Schriften
@@ -85,3 +84,5 @@
 - key: Slowenisch
 - key: Spanisch
 - key: Sütterlin
+- key: Symbole
+- key: Syrisch
