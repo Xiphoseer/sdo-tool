@@ -7,4 +7,5 @@ tags:
 - Eurosonderzeichen
 - Französisch
 - Norwegisch
+- Portugiesisch
 ---
