@@ -7,4 +7,5 @@ page: 25/1
 monospace: true
 tags:
 - Raumsparend
+- Schreibmaschine
 ---

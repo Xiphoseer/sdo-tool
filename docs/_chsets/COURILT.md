@@ -5,4 +5,5 @@ disc: SiFoX-30
 page: 149/2
 missing: true
 monospace: true
+tags: [Schreibmaschine]
 ---
