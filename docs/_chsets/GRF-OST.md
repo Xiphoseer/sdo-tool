@@ -12,4 +12,5 @@ tags:
 - Serbokroatisch
 - Slowakisch
 - Slowenisch
+- Tschechisch
 ---
