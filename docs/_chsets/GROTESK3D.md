@@ -4,4 +4,6 @@ full_name: Grotesk 3D
 page: 17/1
 disc: Julia
 missing: true
+tags:
+- Unproportional im Ziffernblock
 ---

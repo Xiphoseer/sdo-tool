@@ -4,5 +4,7 @@ full_name: Rokwel 15
 disc: Rokwel
 page: 11/1
 missing: true
-tags: [Groß]
+tags:
+- Groß
+- Unproportional im Ziffernblock
 ---
