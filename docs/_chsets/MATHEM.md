@@ -7,4 +7,5 @@ map: https://sdo.dseiler.eu/pub/mappings/MATHEM.TXT
 tags:
 - Chemie
 - Mathematik
+- Physik
 ---

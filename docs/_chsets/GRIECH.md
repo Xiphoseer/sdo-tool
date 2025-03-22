@@ -8,6 +8,7 @@ tags:
 - Chemie
 - Griechisch
 - Mathematik
+- Physik
 ---
 
 - 0x37 should be "SMALL SOLIDUS" (0xFE67)
