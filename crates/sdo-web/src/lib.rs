@@ -22,6 +22,7 @@ use signum::{
         editor::{parse_eset, ESet},
         encoding::{decode_atari_str, Mapping},
         printer::{parse_pset, PSet, PrinterKind},
+        v2::TAG_CSET2,
         FontKind,
     },
     docs::{
@@ -30,6 +31,7 @@ use signum::{
         hcim::{parse_image, Hcim, ImageSite},
         header, pbuf,
         tebu::PageText,
+        v3::TAG_SDOC3,
         DocumentInfo, GenerationContext, Overrides, SDoc,
     },
     images::imc::parse_imc,
@@ -48,6 +50,7 @@ use web_sys::{
 mod convert;
 mod dom;
 mod glue;
+mod staged;
 mod vfs;
 
 /*
@@ -622,6 +625,10 @@ impl Handle {
             self.show_font(font_kind, name, &data).await?;
         } else if four_cc == FourCC::BIMC {
             self.show_image(name, &data).await?;
+        } else if data.starts_with(TAG_SDOC3) {
+            self.show_sdoc3(name, &data).await?;
+        } else if data.starts_with(TAG_CSET2) {
+            self.show_cset2(name, &data).await?;
         } else {
             warn!("Unknown format: {}", four_cc);
             let heading = self.document.create_element("h2")?;
@@ -873,7 +880,8 @@ impl Handle {
         card.class_list()
             .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
         card.set_attribute("href", href)?;
-        self.card_body(&card, name, four_cc)?;
+        let file_format_name = four_cc.file_format_name();
+        self.card_body(&card, name, file_format_name)?;
         Ok(card)
     }
 
@@ -933,7 +941,7 @@ impl Handle {
         }
     }
 
-    fn card_body(&self, card_body: &Element, name: &str, four_cc: FourCC) -> Result<(), JsValue> {
+    fn card_body(&self, card_body: &Element, name: &str, file_format_name: Option<&str>) -> Result<(), JsValue> {
         let card_title = self.document.create_element("h5")?;
         card_title.class_list().add_1("card-title")?;
         card_title.set_text_content(Some(name));
@@ -942,7 +950,7 @@ impl Handle {
         card_subtitle
             .class_list()
             .add_3("card-subtitle", "mb-2", "text-body-secondary")?;
-        card_subtitle.set_text_content(Some(four_cc.file_format_name().unwrap_or("Unknown")));
+        card_subtitle.set_text_content(Some(file_format_name.unwrap_or("Unknown")));
         card_body.append_child(&card_subtitle)?;
         Ok(())
     }

@@ -25,6 +25,7 @@ pub mod encoding;
 pub mod error;
 pub mod metrics;
 pub mod printer;
+pub mod v2;
 
 #[derive(Copy, Clone)]
 /// A table stores which characters of a charset are used
