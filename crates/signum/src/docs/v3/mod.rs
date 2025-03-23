@@ -2,24 +2,26 @@
 //!
 //! Signum! 3/4 uses a completely different format from 1/2.
 
-use std::num::NonZeroU32;
+use std::{borrow::Cow, num::NonZeroU32};
 
 use nom::{
-    bytes::complete::tag,
-    combinator::rest,
+    bytes::complete::{tag, take, take_while},
+    combinator::{map_parser, rest},
     error::ParseError,
-    multi::length_value,
+    multi::{length_value, many0},
     number::complete::{be_u16, be_u32},
     sequence::{preceded, terminated},
     IResult, Parser,
 };
 
-use crate::util::Buf;
+use crate::{chsets::encoding::decode_atari_str, util::Buf};
 
 /// Tag for a v3 document
 pub const TAG_SDOC3: &[u8; 12] = b"\0\0sdoc  03\0\0";
 
 const CHUNK_FLPTRS01: &[u8; 12] = b"\0\0flptrs01\0\0";
+/// Tag for *fonts used*
+pub const CHUNK_FOUSED01: &[u8; 12] = b"\0\0foused01\0\0";
 
 /// Document root
 #[allow(dead_code)]
@@ -28,22 +30,28 @@ pub struct SDocV3<'a> {
     /// Header buffer
     pub header: Buf<'a>,
     /// The file pointers
-    file_pointers: FilePointers,
+    pub file_pointers: FilePointers,
 }
 
 /// `flptrs01` chunk
 #[allow(dead_code)]
 #[derive(Debug)]
-struct FilePointers {
+pub struct FilePointers {
+    /// Offset of `foused01`
     pub ofs_foused01: Option<NonZeroU32>,
+    /// Offset of `params01`
     pub ofs_params01: Option<NonZeroU32>,
+    /// Offset of `cdilist0`
     pub ofs_cdilist0: Option<NonZeroU32>,
+    /// Offset of `foxlist `
     pub ofs_foxlist: Option<NonZeroU32>,
     u5: Option<NonZeroU32>,
     u6: Option<NonZeroU32>,
     u7: Option<NonZeroU32>,
     u8: Option<NonZeroU32>,
+    /// Offset of first `kapit 01`
     pub ofs_content_first: Option<NonZeroU32>,
+    /// Offset of last `kapit 01`
     pub ofs_content_last: Option<NonZeroU32>,
 }
 
@@ -61,6 +69,23 @@ fn be_u32_bounded<'a, E: ParseError<&'a [u8]>>(
         let (input, val) = be_u32(input)?;
         Ok((input, NonZeroU32::new(val)))
     }
+}
+
+type FontUsed<'a> = (u8, Cow<'a, str>);
+
+fn parse_font_used<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], FontUsed<'a>, E> {
+    let (input, index) = nom::number::complete::u8(input)?;
+    let (input, name) = map_parser(take(9usize), take_while(|c| c != 0u8))(input)?;
+    Ok((input, (index, decode_atari_str(name))))
+}
+
+/// Parse a `foused01` chunk
+pub fn parse_foused01<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Vec<FontUsed<'a>>, E> {
+    many0(parse_font_used)(input)
 }
 
 fn parse_flptrs01<'a, E: ParseError<&'a [u8]>>(
@@ -103,6 +128,13 @@ where
 {
     let p = length_value(terminated(be_u16, be_u16), parser);
     preceded(tag(chunk_tag), p)
+}
+
+/// Parse the *fonts used* chunk
+pub fn parse_chunk_foused01<'a, E: ParseError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Vec<FontUsed<'a>>, E> {
+    parse_chunk_head(CHUNK_FOUSED01, parse_foused01)(input)
 }
 
 /// Parse a Signum! document

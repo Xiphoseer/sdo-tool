@@ -14,7 +14,7 @@ use signum::{
         pbuf::{self, PBuf},
         sysp::SysP,
         tebu::{PageText, TeBu},
-        v3::parse_sdoc_v3,
+        v3::{parse_chunk_foused01, parse_sdoc_v3},
         DocumentInfo,
     },
     util::{Buf, FourCC, LocalFS, VFS},
@@ -213,5 +213,10 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
 pub fn process_sdoc_v3(input: &[u8], _opt: Options) -> eyre::Result<()> {
     let (_, _sdoc) = util::load_partial(parse_sdoc_v3, input)?;
     eprintln!("{:#?}", _sdoc);
+    if let Some(ofs_fonts_used) = _sdoc.file_pointers.ofs_foused01 {
+        let ofs = u32::from(ofs_fonts_used) as usize;
+        let (_, _foused) = util::load_partial(parse_chunk_foused01, &input[ofs..])?;
+        log::info!("Fonts Used: {:?}", _foused);
+    }
     Ok(())
 }
