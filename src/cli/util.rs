@@ -18,6 +18,16 @@ pub(super) fn to_err_tree<'a>(
     }
 }
 
+pub(super) fn load_partial<'a, F, T>(
+    fun: F,
+    input: &'a [u8],
+) -> Result<(&'a [u8], T), ErrorTree<usize>>
+where
+    F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,
+{
+    fun(input).finish().map_err(to_err_tree(input))
+}
+
 pub(super) fn load<'a, F, T>(fun: F, input: &'a [u8]) -> Result<T, ErrorTree<usize>>
 where
     F: FnOnce(&'a [u8]) -> IResult<&'a [u8], T, ErrorTree<&'a [u8]>>,

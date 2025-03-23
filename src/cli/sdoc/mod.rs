@@ -14,6 +14,7 @@ use signum::{
         pbuf::{self, PBuf},
         sysp::SysP,
         tebu::{PageText, TeBu},
+        v3::parse_sdoc_v3,
         DocumentInfo,
     },
     util::{Buf, FourCC, LocalFS, VFS},
@@ -206,5 +207,11 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
     // Output the document
     document.output(&fc, &di, &opt)?;
 
+    Ok(())
+}
+
+pub fn process_sdoc_v3(input: &[u8], _opt: Options) -> eyre::Result<()> {
+    let (_, _sdoc) = util::load_partial(parse_sdoc_v3, input)?;
+    eprintln!("{:#?}", _sdoc);
     Ok(())
 }

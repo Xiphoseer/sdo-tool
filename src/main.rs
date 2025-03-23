@@ -9,9 +9,12 @@ use sdo_tool::cli::{
     bimc::process_bimc,
     font::{process_eset, process_ls30, process_ps09, process_ps24},
     opt::Options,
-    sdoc::process_sdoc,
+    sdoc::{process_sdoc, process_sdoc_v3},
 };
-use signum::{docs::four_cc, util::FourCC};
+use signum::{
+    docs::four_cc,
+    util::{FourCC, Signum3Format},
+};
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -44,8 +47,15 @@ fn main() -> eyre::Result<()> {
         FourCC::LS30 => process_ls30(&buffer, &opt),
         FourCC::BIMC => process_bimc(&buffer, opt),
         fourcc => {
-            error!("Unknown file type {fourcc}");
-            Ok(())
+            if let Some(sig3) = Signum3Format::detect(&buffer) {
+                match sig3 {
+                    Signum3Format::Document => process_sdoc_v3(&buffer, opt),
+                    Signum3Format::Font => todo!(),
+                }
+            } else {
+                error!("Unknown file type {fourcc}");
+                Ok(())
+            }
         }
     }
 }
