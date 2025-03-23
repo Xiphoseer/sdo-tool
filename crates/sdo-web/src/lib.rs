@@ -1,6 +1,5 @@
 #![allow(non_snake_case)] // wasm_bindgen macro
 
-use bstr::BStr;
 use convert::page_to_blob;
 use dom::blob_image_el;
 use glue::{
@@ -12,52 +11,34 @@ use glue::{
     js_error_with_cause, js_file_data, js_input_file_list, js_input_files_iter, js_wrap_err,
     slice_to_blob,
 };
-use js_sys::{Array, JsString, Uint8Array};
+use js_sys::{Array, Uint8Array};
 use log::{info, warn, Level};
 use sdo_pdf::{generate_pdf, MetaInfo};
-use sdo_util::keymap::{KB_DRAW, NP_DRAW};
 use signum::{
-    chsets::{
-        cache::ChsetCache,
-        editor::{parse_eset, ESet},
-        encoding::{decode_atari_str, Mapping},
-        printer::{parse_pset, PSet, PrinterKind},
-        v2::TAG_CSET2,
-        FontKind,
-    },
+    chsets::{cache::ChsetCache, encoding::decode_atari_str, v2::TAG_CSET2, FontKind},
     docs::{
-        container::parse_sdoc0001_container,
-        four_cc,
-        hcim::{parse_image, Hcim, ImageSite},
-        header, pbuf,
-        tebu::PageText,
-        v3::TAG_SDOC3,
-        DocumentInfo, GenerationContext, Overrides, SDoc,
+        four_cc, hcim::ImageSite, pbuf, tebu::PageText, v3::TAG_SDOC3, DocumentInfo,
+        GenerationContext, Overrides, SDoc,
     },
     images::imc::parse_imc,
-    raster::{self, render_doc_page, render_editor_text, render_printer_char},
-    util::{AsyncIterator, FileFormatKind, FourCC, VFS},
+    raster::{self, render_doc_page},
+    util::{AsyncIterator, FourCC, VFS},
 };
-use std::{cell::RefCell, ffi::OsStr, fmt::Write, io::BufWriter, path::Path};
+use std::{cell::RefCell, ffi::OsStr, io::BufWriter, path::Path};
 use vfs::{DirEntry, OriginPrivateFS};
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    console, window, Blob, CanvasRenderingContext2d, Document, Element, Event,
-    FileSystemGetFileOptions, HtmlAnchorElement, HtmlCanvasElement, HtmlElement, HtmlInputElement,
-    ImageBitmap,
+    console, window, Blob, Document, Element, Event, FileSystemGetFileOptions, HtmlAnchorElement,
+    HtmlElement, HtmlInputElement,
 };
 
+mod chset;
 mod convert;
 mod dom;
 mod glue;
+mod sdoc;
 mod staged;
 mod vfs;
-
-/*
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
-*/
 
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]
@@ -171,288 +152,6 @@ impl Handle {
     #[wasm_bindgen]
     pub async fn init(&self) -> Result<(), JsValue> {
         self.fs.init().await?;
-        Ok(())
-    }
-
-    fn _write0001(&self, header: &header::Header<'_>) -> Result<(), JsValue> {
-        log::info!("Created: {}", &header.ctime);
-        log::info!("Modified: {}", &header.mtime);
-        let el_header = self.document.create_element("section")?;
-        let text = format!("Created: {}<br>Modified: {}", header.ctime, header.mtime);
-        el_header.set_inner_html(&text);
-        self.output.append_child(&el_header)?;
-        Ok(())
-    }
-
-    fn _write_cset(&self, charsets: &[&bstr::BStr]) -> Result<(), JsValue> {
-        let el_cset = self.document.create_element("section")?;
-        let ar = Array::new();
-        let mut html = "<h3>Character Sets</h3><ol>".to_string();
-        for chr in charsets {
-            let name = decode_atari_str(chr.as_ref());
-            html.push_str("<li>");
-            ar.push(JsString::from(name.as_ref()).as_ref());
-            html.push_str(&name);
-            html.push_str("</li>");
-        }
-        html.push_str("</ol>");
-        log_array("cset", ar);
-        el_cset.set_inner_html(&html);
-        self.output.append_child(&el_cset)?;
-        Ok(())
-    }
-
-    fn _write_hcim(&self, hcim: &Hcim<'_>) -> Result<(), JsValue> {
-        let el_hcim = self.document.create_element("section")?;
-        let heading = self.document.create_element("h3")?;
-        heading.set_inner_html("Embedded Images");
-        el_hcim.append_child(&heading)?;
-        for (i, im) in hcim.images.iter().enumerate() {
-            match parse_image(im) {
-                Ok((_rest, image)) => {
-                    let blob = page_to_blob(&image.image.into())?;
-
-                    let el_figure = self.document.create_element("figure")?;
-                    let el_image = blob_image_el(&blob)?;
-                    el_figure.append_child(&el_image)?;
-
-                    let el_figcaption = self.document.create_element("figcaption")?;
-                    el_figcaption.set_inner_html(&image.key);
-
-                    el_figure.append_child(&el_figcaption)?;
-
-                    el_hcim.append_child(&el_figure)?;
-                }
-                Err(e) => {
-                    log::error!("Failed to parse image {}: {}", i, e);
-                }
-            }
-        }
-        if let Ok(tebu) = serde_wasm_bindgen::to_value(hcim) {
-            log_val("hcim", &tebu);
-        }
-        self.output.append_child(&el_hcim)?;
-        Ok(())
-    }
-
-    fn parse_sdoc<'a>(&self, data: &'a [u8]) -> Result<SDoc<'a>, JsValue> {
-        match parse_sdoc0001_container::<signum::nom::error::Error<&'a [u8]>>(data) {
-            Ok((_rest, container)) => match SDoc::unpack(container) {
-                Ok(res) => {
-                    log("Parsing complete");
-                    Ok(res)
-                }
-                Err(e) => Err(JsError::new(&format!("Failed to parse: {:?}", e)).into()),
-            },
-            Err(_e) => Err(JsError::new("Failed to parse SDO container").into()),
-        }
-    }
-
-    /// Render a keyboard layout for the editor charset
-    fn eset_kb(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
-        let container = self.document.create_element("div")?;
-        container.class_list().add_1("overflow-x-auto")?;
-        let kb_img = KB_DRAW
-            .to_page(eset)
-            .or(Err("Failed to draw Keyboard Map"))?;
-        let np_img = NP_DRAW.to_page(eset).or(Err("Failed to draw Numpad Map"))?;
-
-        let kb_blob = page_to_blob(&kb_img)?;
-        let np_blob = page_to_blob(&np_img)?;
-
-        let kb_img_el = blob_image_el(&kb_blob)?;
-        let np_img_el = blob_image_el(&np_blob)?;
-
-        container.append_child(&kb_img_el)?;
-        container.append_child(&np_img_el)?;
-
-        self.output.append_child(&container)?;
-        Ok(())
-    }
-
-    fn parse_eset<'a>(&self, data: &'a [u8]) -> Result<ESet<'a>, JsValue> {
-        let (_, eset) =
-            parse_eset(data).map_err(|e| js_error_with_cause(e, "Failed to parse editor font"))?;
-        Ok(eset)
-    }
-
-    fn parse_pset<'a>(&self, data: &'a [u8]) -> Result<PSet<'a>, JsValue> {
-        let (_, pset) = parse_pset::<signum::nom::error::Error<&'a [u8]>>(data)
-            .map_err(|e| js_error_with_cause(e, "Failed to parse printer font"))?;
-        Ok(pset)
-    }
-
-    fn show_eset(&self, eset: &ESet<'_>) -> Result<(), JsValue> {
-        self.eset_kb(eset)?;
-        Ok(())
-    }
-
-    fn show_mapping(&self, mapping: &Mapping, name: &str, built_in: bool) -> Result<(), JsValue> {
-        let h3 = self.document.create_element("h3")?;
-        h3.set_text_content(Some("Mapping"));
-        self.output.append_child(&h3)?;
-        if built_in {
-            let alert = self.document.create_element("div")?;
-            alert.class_list().add_2("alert", "alert-light")?;
-            //alert.append_with_str_1("The font ")?;
-            let code = self.document.create_element("kbd")?;
-            code.set_inner_html(name);
-            alert.append_child(&code)?;
-            alert.append_with_str_1(
-                " is a well-known font associated with the following (built-in) unicode mapping:",
-            )?;
-            self.output.append_child(&alert)?;
-        }
-
-        let el_table_responsive = self.document.create_element("div")?;
-        el_table_responsive.class_list().add_1("table-responsive")?;
-        let el_table = self.document.create_element("table")?;
-        el_table.class_list().add_2("table", "mapping")?;
-        let dx = 16;
-        let el_tr_head = self.document.create_element("tr")?;
-        el_table.append_child(&el_tr_head)?;
-        let el_th0 = self.document.create_element("th")?;
-        el_tr_head.append_child(&el_th0)?;
-        for i in 0..dx {
-            let el_th = self.document.create_element("th")?;
-            el_th.append_with_str_1(&format!("_{i:X}"))?;
-            el_tr_head.append_child(&el_th)?;
-        }
-        for (y, crow) in mapping.rows().enumerate() {
-            let el_tr = self.document.create_element("tr")?;
-            el_table.append_child(&el_tr)?;
-
-            let el_th_row = self.document.create_element("th")?;
-            el_th_row.append_with_str_1(&format!("{y:X}_"))?;
-            el_tr.append_child(&el_th_row)?;
-            for (x, c) in crow.enumerate() {
-                let el_td = self.document.create_element("td")?;
-                let _i = y * dx + x;
-                if !matches!(*c, [char::REPLACEMENT_CHARACTER] | ['\0']) {
-                    let mut text = String::new();
-                    for char in c {
-                        write!(text, "&#x{:04X};", u32::from(*char)).unwrap();
-                    }
-                    el_td.set_inner_html(&text);
-
-                    let br = self.document.create_element("br")?;
-                    el_td.append_child(&br)?;
-
-                    let sub = self.document.create_element("small")?;
-                    let mut sub_text = String::new();
-                    for char in c {
-                        if !sub_text.is_empty() {
-                            write!(sub_text, " ").unwrap();
-                        }
-                        write!(sub_text, "U+{:04X}", u32::from(*char)).unwrap();
-                    }
-                    sub.set_inner_html(&sub_text);
-                    el_td.append_child(&sub)?;
-                }
-                el_tr.append_child(&el_td)?;
-            }
-        }
-        el_table_responsive.append_child(&el_table)?;
-        self.output.append_child(&el_table_responsive)?;
-
-        Ok(())
-    }
-
-    fn show_pset(&self, pset: &PSet<'_>) -> Result<(), JsValue> {
-        let h3 = self.document.create_element("h3")?;
-        h3.set_text_content(Some("Characters"));
-        self.output.append_child(&h3)?;
-
-        let el_table_responsive = self.document.create_element("div")?;
-        el_table_responsive.class_list().add_1("table-responsive")?;
-        let el_table = self.document.create_element("table")?;
-        el_table.class_list().add_2("table", "pset")?;
-        let dx = 16;
-        let el_tr_head = self.document.create_element("tr")?;
-        el_table.append_child(&el_tr_head)?;
-        let el_th0 = self.document.create_element("th")?;
-        el_tr_head.append_child(&el_th0)?;
-        for i in 0..dx {
-            let el_th = self.document.create_element("th")?;
-            el_th.append_with_str_1(&format!("_{i:X}"))?;
-            el_tr_head.append_child(&el_th)?;
-        }
-        for (y, crow) in pset.chars.chunks(dx).enumerate() {
-            let el_tr = self.document.create_element("tr")?;
-            el_table.append_child(&el_tr)?;
-
-            let el_th_row = self.document.create_element("th")?;
-            el_th_row.append_with_str_1(&format!("{y:X}_"))?;
-            el_tr.append_child(&el_th_row)?;
-            for (x, c) in crow.iter().enumerate() {
-                let el_td = self.document.create_element("td")?;
-                let i = y * dx + x;
-                el_tr.append_child(&el_td)?;
-                if let Some(special) = c.special() {
-                    warn!("pset char special {}: {}", i, special);
-                }
-                if c.height > 0 && c.width > 0 {
-                    let page = raster::Page::from(c);
-                    let blob = page_to_blob(&page)?;
-                    let img_el = blob_image_el(&blob)?;
-                    el_td.append_child(&img_el)?;
-                }
-            }
-        }
-        el_table_responsive.append_child(&el_table)?;
-        self.output.append_child(&el_table_responsive)?;
-
-        Ok(())
-    }
-
-    fn _trace_letter(&mut self, pset: &PSet<'_>) -> Result<(), JsValue> {
-        let char_capital_a = &pset.chars[b'A' as usize];
-        let page = raster::Page::from(char_capital_a);
-        let blob = page_to_blob(&page)?;
-
-        let window = window().ok_or("expected window")?;
-        let _p = window.create_image_bitmap_with_blob(&blob)?;
-
-        let canvas = self
-            .document
-            .create_element("canvas")?
-            .dyn_into::<HtmlCanvasElement>()?;
-        canvas.set_width(700);
-        canvas.set_height(900);
-        self.output.append_child(&canvas)?;
-        let ctx = canvas
-            .get_context("2d")?
-            .ok_or("context")?
-            .dyn_into::<CanvasRenderingContext2d>()?;
-
-        let callback = Closure::new(move |_v: JsValue| {
-            let img = _v.dyn_into::<ImageBitmap>().unwrap();
-            let w = img.width() * 10;
-            let h = img.height() * 10;
-            ctx.set_fill_style_str("green");
-            //ctx.fill_rect(0.0, 0.0, 150.0, 100.0);
-            ctx.draw_image_with_image_bitmap_and_dw_and_dh(&img, 10.0, 10.0, w as f64, h as f64)
-                .unwrap();
-
-            // Implement the rest of https://potrace.sourceforge.net/potrace.pdf
-            for (x, y) in page.vertices() {
-                ctx.fill_rect((9 + x * 10) as f64, (9 + y * 10) as f64, 2.0, 2.0);
-            }
-
-            ctx.set_stroke_style_str("blue");
-            if let Some(mut iter) = page.first_outline() {
-                log_val("Test", &JsValue::TRUE);
-                let (x0, y0) = iter.next().unwrap();
-                ctx.begin_path();
-                ctx.move_to((10 + x0 * 10) as f64, (10 + y0 * 10) as f64);
-                for (x, y) in iter {
-                    ctx.line_to((10 + x * 10) as f64, (10 + y * 10) as f64);
-                }
-                ctx.stroke();
-            }
-        });
-        let _ = _p.then(&callback);
-        self.closures.push(callback);
         Ok(())
     }
 
@@ -572,46 +271,6 @@ impl Handle {
             .map(|active| active.sdoc.tebu.pages.len())
     }
 
-    async fn show_sdoc(&self, name: &str, data: &[u8]) -> Result<(), JsValue> {
-        let heading = self.document.create_element("h2")?;
-        heading.set_text_content(Some(name));
-        self.output.append_child(&heading)?;
-
-        let sdoc = self.parse_sdoc(data)?;
-        let mut fc = ChsetCache::new();
-        let dfci = fc.load(&self.fs, &sdoc.cset).await;
-        for cset in fc.chsets_mut() {
-            if cset.map().is_none() {
-                if let Some(mapping) = sdo_fonts::mappings::lookup(cset.name()) {
-                    log::info!("Using built-in unicode mapping for {}", cset.name());
-                    cset.set_mapping(Some(mapping.clone()));
-                }
-            }
-        }
-        let pd = match dfci.print_driver(None) {
-            Some(pd) => pd,
-            None => {
-                // FIXME: pick the "best" format?
-                log::warn!("Could not auto-select a font format, some fonts are not available");
-                FontKind::Printer(PrinterKind::Needle24)
-            }
-        };
-        let images = sdoc
-            .hcim
-            .as_ref()
-            .map(|hcim| hcim.decode_images())
-            .unwrap_or_default();
-
-        *self.active.borrow_mut() = Some(ActiveDocument {
-            sdoc: sdoc.into_owned(),
-            di: DocumentInfo::new(dfci, images),
-            pd,
-            fc,
-            name: name.to_owned(),
-        });
-        Ok(())
-    }
-
     async fn show_staged(&self, name: &str) -> Result<(), JsValue> {
         let file = self.input_file(name)?;
         let data = js_file_data(&file).await?.to_vec();
@@ -716,41 +375,6 @@ impl Handle {
         let img = blob_image_el(&blob)?;
         img.class_list().add_1("bimc")?;
         self.output.append_child(&img)?;
-        Ok(())
-    }
-
-    async fn show_font(&self, font_kind: FontKind, name: &str, data: &[u8]) -> Result<(), JsValue> {
-        let h2 = self.document.create_element("h2")?;
-        h2.set_text_content(Some(name));
-        h2.append_with_str_1(" ")?;
-
-        let small = self.document.create_element("small")?;
-        small
-            .class_list()
-            .add_2("text-secondary", "d-inline-block")?;
-        small.set_text_content(Some(font_kind.file_format_name()));
-        h2.append_child(&small)?;
-        self.output.append_child(&h2)?;
-
-        let (font_name, _ext) = match name.rsplit_once('.') {
-            Some((name, ext)) => (name, ext),
-            None => (name, font_kind.extension()),
-        };
-
-        match font_kind {
-            FontKind::Editor => {
-                let eset = self.parse_eset(data)?;
-                self.show_eset(&eset)?;
-            }
-            FontKind::Printer(_) => {
-                let pset = self.parse_pset(data)?;
-                self.show_pset(&pset)?;
-            }
-        }
-
-        if let Some(mapping) = sdo_fonts::mappings::lookup(font_name) {
-            self.show_mapping(mapping, font_name, true)?;
-        }
         Ok(())
     }
 
@@ -941,7 +565,12 @@ impl Handle {
         }
     }
 
-    fn card_body(&self, card_body: &Element, name: &str, file_format_name: Option<&str>) -> Result<(), JsValue> {
+    fn card_body(
+        &self,
+        card_body: &Element,
+        name: &str,
+        file_format_name: Option<&str>,
+    ) -> Result<(), JsValue> {
         let card_title = self.document.create_element("h5")?;
         card_title.class_list().add_1("card-title")?;
         card_title.set_text_content(Some(name));
@@ -952,103 +581,6 @@ impl Handle {
             .add_3("card-subtitle", "mb-2", "text-body-secondary")?;
         card_subtitle.set_text_content(Some(file_format_name.unwrap_or("Unknown")));
         card_body.append_child(&card_subtitle)?;
-        Ok(())
-    }
-
-    fn eset_card(&self, list_item: &Element, eset: &ESet<'_>, name: &str) -> Result<(), JsValue> {
-        let chset = name.split_once('.').map(|a| a.0).unwrap_or(name);
-        let text = BStr::new(chset.as_bytes());
-        let page = render_editor_text(text, eset).map_err(|v| {
-            let err = format!("Failed to render editor font name: {}", v);
-            JsError::new(&err)
-        })?;
-        let blob = page_to_blob(&page)?;
-        let img = blob_image_el(&blob)?;
-        list_item.append_child(&img)?;
-        Ok(())
-    }
-
-    fn pset_card(&self, list_item: &Element, pset: &PSet<'_>, name: &str) -> Result<(), JsValue> {
-        let ch = name
-            .chars()
-            .next()
-            .and_then(|c| c.try_into().ok())
-            .unwrap_or(b'A');
-        let page = render_printer_char(ch, pset)
-            .ok_or_else(|| JsError::new("Failed to render printer char"))?;
-        let (width, height) = (page.bit_width(), page.bit_height());
-        log::trace!("Page generated ({width}x{height})");
-        if width > 0 && height > 0 {
-            let blob = page_to_blob(&page)?;
-            let img = blob_image_el(&blob)?;
-            list_item.append_child(&img)?;
-        }
-        Ok(())
-    }
-
-    async fn sdoc_card(&self, list_item: &Element, doc: &SDoc<'_>) -> Result<(), JsValue> {
-        let header_info = self.document.create_element("div")?;
-        header_info.class_list().add_1("mb-2")?;
-        let mut text = format!(
-            "Created: {} | Modified: {} | Text Pages: {}",
-            doc.header.ctime,
-            doc.header.mtime,
-            doc.tebu.pages.len()
-        );
-        if let Some(hcim) = &doc.hcim {
-            write!(text, " | Embedded images: {}", hcim.header.img_count).unwrap();
-        }
-        header_info.set_text_content(Some(&text));
-        list_item.append_child(&header_info)?;
-        let chset_list = self.document.create_element("ol")?;
-        chset_list
-            .class_list()
-            .add_2("list-group", "list-group-horizontal-md")?;
-        info!("Loading charsets");
-        let mut fc = ChsetCache::new();
-        for chset in doc.cset.names.iter().filter(|c| !c.is_empty()) {
-            info!("Loading {}", chset);
-            let (cls, tooltip) = {
-                let cset_index = fc.load_cset(&self.fs, chset).await;
-                console::log_2(&"Font Index".into(), &cset_index.into());
-                let cset = fc.cset(cset_index).unwrap();
-                if cset.e24().is_none() {
-                    (
-                        "list-group-item-danger",
-                        format!("Missing Editor Font {chset}.E24"),
-                    )
-                } else {
-                    let mut missing = vec![];
-                    if cset.p24().is_none() {
-                        missing.push(format!("{chset}.P24"));
-                    }
-                    if cset.p09().is_none() {
-                        missing.push(format!("{chset}.P09"));
-                    }
-                    if cset.l30().is_none() {
-                        missing.push(format!("{chset}.L30"));
-                    }
-                    if missing.is_empty() {
-                        ("list-group-item-success", "All fonts present".to_string())
-                    } else {
-                        (
-                            "list-group-item-warning",
-                            format!("Missing Printer Font {}", missing.join(", ")),
-                        )
-                    }
-                }
-            };
-
-            let chset_li = self.document.create_element("li")?;
-            chset_li.class_list().add_2("list-group-item", cls)?;
-            let text = decode_atari_str(chset);
-            chset_li.set_text_content(Some(text.as_ref()));
-            chset_li.set_attribute("title", &tooltip)?;
-            chset_list.append_child(&chset_li)?;
-        }
-        info!("Done Loading charsets");
-        list_item.append_child(&chset_list)?;
-
         Ok(())
     }
 }
