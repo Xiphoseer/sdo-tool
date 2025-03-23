@@ -18,6 +18,9 @@ fn info(buffer: &[u8], opt: &Options) -> color_eyre::Result<()> {
         println!("{}", ff);
         println!("Run `sdo-tool {:?}` to learn more", opt.file);
         Ok(())
+    } else if buffer.starts_with(b"\0\0sdoc  03\0\0") {
+        println!("Signum! 3/4 document");
+        Ok(())
     } else {
         Err(eyre!("Unknown file type {:?}", four_cc))
     }
