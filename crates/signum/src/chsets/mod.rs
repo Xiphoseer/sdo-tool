@@ -13,7 +13,7 @@ use thiserror::*;
 
 use crate::{
     docs::tebu::{Char, PageText},
-    util::{FileFormatKind, FourCC},
+    util::{FileFormatKind, FileFormatKindV1, FourCC},
 };
 
 use self::cache::FontCacheInfo;
@@ -176,7 +176,7 @@ impl UseTableVec {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// A kind of font
 pub enum FontKind {
     /// Font used in the signum editor (`E24`)
@@ -242,19 +242,21 @@ impl FileFormatKind for FontKind {
         }
     }
 
-    /// Get the magic bytes associated with this font kind
-    fn magic(&self) -> FourCC {
-        match self {
-            Self::Editor => FourCC::ESET,
-            Self::Printer(p) => p.magic(),
-        }
-    }
-
     /// Get the file format name associated with this font kind
     fn file_format_name(&self) -> &'static str {
         match self {
             Self::Editor => "Signum! Editor Bitmap Font",
             Self::Printer(p) => p.file_format_name(),
+        }
+    }
+}
+
+impl FileFormatKindV1 for FontKind {
+    /// Get the magic bytes associated with this font kind
+    fn magic(&self) -> FourCC {
+        match self {
+            Self::Editor => FourCC::ESET,
+            Self::Printer(p) => p.magic(),
         }
     }
 }

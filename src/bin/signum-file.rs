@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use color_eyre::eyre::{self, eyre};
-use signum::{docs::four_cc, nom::error::Error};
+use signum::util::{FileFormatKind, SignumFormat};
 
 #[derive(clap::Parser)]
 /// Describe the type of the Signum file
@@ -12,20 +12,12 @@ struct Options {
 }
 
 fn info(buffer: &[u8], opt: &Options) -> color_eyre::Result<()> {
-    let (_, four_cc) =
-        four_cc::<Error<_>>(buffer).map_err(|_e| eyre!("File has less than 4 bytes"))?;
-    if let Some(ff) = four_cc.file_format_name() {
-        println!("{}", ff);
+    if let Some(ff) = SignumFormat::detect(buffer) {
+        println!("{}", ff.file_format_name());
         println!("Run `sdo-tool {:?}` to learn more", opt.file);
         Ok(())
-    } else if buffer.starts_with(b"\0\0sdoc  03\0\0") {
-        println!("Signum! 3/4 document");
-        Ok(())
-    } else if buffer.starts_with(b"\0\x02chset001\0\0") {
-        println!("Signum! 3/4 font");
-        Ok(())
     } else {
-        Err(eyre!("Unknown file type {:?}", four_cc))
+        Err(eyre!("Unknown file type"))
     }
 }
 

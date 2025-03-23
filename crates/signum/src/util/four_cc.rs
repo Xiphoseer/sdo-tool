@@ -4,6 +4,8 @@ use bstr::{BStr, ByteSlice};
 
 use crate::chsets::{printer::PrinterKind, FontKind};
 
+use super::Signum1Format;
+
 /// A four character code
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FourCC(pub(crate) [u8; 4]);
@@ -64,15 +66,16 @@ impl FourCC {
     /// ```
     ///
     /// Returns `None` if the format is unknown
-    pub const fn file_format_name(&self) -> Option<&'static str> {
-        match *self {
-            Self::SDOC => Some("Signum! Document"),
-            Self::ESET => Some("Signum! Editor Font"),
-            Self::PS24 => Some("Signum! 24-Needle Printer Font"),
-            Self::PS09 => Some("Signum! 9-Needle Printer Font"),
-            Self::LS30 => Some("Signum! Laser Printer Font"),
-            Self::BIMC => Some("Signum! Hardcopy Image"),
-            Self::SCLB => Some("Signum! Clipboard"),
+    pub const fn file_format(self) -> Option<Signum1Format> {
+        use {FontKind::Printer, Signum1Format::Font};
+        match self {
+            FourCC::SDOC => Some(Signum1Format::Document),
+            FourCC::LS30 => Some(Font(Printer(PrinterKind::Laser30))),
+            FourCC::PS24 => Some(Font(Printer(PrinterKind::Needle24))),
+            FourCC::PS09 => Some(Font(Printer(PrinterKind::Needle9))),
+            FourCC::ESET => Some(Font(FontKind::Editor)),
+            FourCC::BIMC => Some(Signum1Format::HardcopyImage),
+            FourCC::SCLB => Some(Signum1Format::Clipboard),
             _ => None,
         }
     }
@@ -95,6 +98,12 @@ impl Deref for FourCC {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl From<FourCC> for Option<Signum1Format> {
+    fn from(value: FourCC) -> Self {
+        value.file_format()
     }
 }
 

@@ -13,7 +13,9 @@ pub use bit_iter::{BitIter, ByteBits};
 pub(crate) use bit_writer::BitWriter;
 pub use buf::Buf;
 pub use bytes::{Bytes16, Bytes32};
-pub use file_format::FileFormatKind;
+pub use file_format::{
+    FileFormatKind, FileFormatKindV1, Signum1Format, Signum3Format, SignumFormat,
+};
 pub use four_cc::FourCC;
 pub use vfs::{AsyncIterator, LocalFS, VFS};
 

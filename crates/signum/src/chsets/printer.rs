@@ -4,7 +4,7 @@ use super::{metrics::BBox, Device, FontResolution, LoadError};
 use crate::{
     docs::four_cc,
     raster::Page,
-    util::{Buf, FileFormatKind, FourCC},
+    util::{Buf, FileFormatKind, FileFormatKindV1, FourCC},
 };
 use nom::{
     bytes::complete::{tag, take},
@@ -24,7 +24,7 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// The supported kinds of printers
 pub enum PrinterKind {
     /// A 24-needle printer
@@ -55,21 +55,23 @@ impl FileFormatKind for PrinterKind {
         }
     }
 
-    /// Get the extension used for charset files for this printer kind
-    fn magic(&self) -> FourCC {
-        match self {
-            Self::Needle24 => FourCC::PS24,
-            Self::Needle9 => FourCC::PS09,
-            Self::Laser30 => FourCC::LS30,
-        }
-    }
-
     /// Get the file format name for this printer kind
     fn file_format_name(&self) -> &'static str {
         match self {
             Self::Needle24 => "Signum! 24-Needle Printer Bitmap Font",
             Self::Needle9 => "Signum! 9-Needle Printer Bitmap Font",
             Self::Laser30 => "Signum! Laser Printer Bitmap Font",
+        }
+    }
+}
+
+impl FileFormatKindV1 for PrinterKind {
+    /// Get the extension used for charset files for this printer kind
+    fn magic(&self) -> FourCC {
+        match self {
+            Self::Needle24 => FourCC::PS24,
+            Self::Needle9 => FourCC::PS09,
+            Self::Laser30 => FourCC::LS30,
         }
     }
 }

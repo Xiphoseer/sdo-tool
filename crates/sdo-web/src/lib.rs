@@ -22,7 +22,10 @@ use signum::{
     },
     images::imc::parse_imc,
     raster::{self, render_doc_page},
-    util::{AsyncIterator, FourCC, VFS},
+    util::{
+        AsyncIterator, FileFormatKind, FileFormatKindV1, FourCC, Signum1Format, Signum3Format,
+        SignumFormat, VFS,
+    },
 };
 use std::{cell::RefCell, ffi::OsStr, io::BufWriter, path::Path};
 use vfs::{DirEntry, OriginPrivateFS};
@@ -412,17 +415,18 @@ impl Handle {
         let file = self.fs.dir_entry_to_file(entry).await?;
         let data = js_file_data(&file).await?.to_vec();
 
-        let (_, four_cc) =
-            four_cc::<()>(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
-        info!("Loading {} ({})", name, four_cc);
+        let format = SignumFormat::detect(&data);
+        info!("Loading {} ({:?})", name, format);
         let href = format!("#/{}", path.display());
-        let card = self.card(name, four_cc, &href)?;
-        if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
-            console::error_3(
-                &JsValue::from_str("Failed to generate preview"),
-                &JsValue::from_str(name),
-                &e,
-            );
+        let card = self.card(name, format, &href)?;
+        if let Some(format) = format {
+            if let Err(e) = self.card_preview(&card, name, format, &data).await {
+                console::error_3(
+                    &JsValue::from_str("Failed to generate preview"),
+                    &JsValue::from_str(name),
+                    &e,
+                );
+            }
         }
         self.output.append_child(&card)?;
         Ok(())
@@ -452,17 +456,18 @@ impl Handle {
         let file = self.fs.dir_entry_to_file(entry).await?;
         let data = js_file_data(&file).await?.to_vec();
 
-        let (_, four_cc) =
-            four_cc::<()>(&data).map_err(|_| JsError::new("Failed to parse FourCC"))?;
-        info!("Loading {} ({})", name, four_cc);
+        let format = SignumFormat::detect(&data);
+        info!("Loading {} ({:?})", name, format);
         let href = format!("#/CHSETS/{}", name);
-        let card = self.card(name, four_cc, &href)?;
-        if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
-            console::error_3(
-                &JsValue::from_str("Failed to generate preview"),
-                &JsValue::from_str(name),
-                &e,
-            );
+        let card = self.card(name, format, &href)?;
+        if let Some(format) = format {
+            if let Err(e) = self.card_preview(&card, name, format, &data).await {
+                console::error_3(
+                    &JsValue::from_str("Failed to generate preview"),
+                    &JsValue::from_str(name),
+                    &e,
+                );
+            }
         }
         self.output.append_child(&card)?;
         Ok(())
@@ -498,14 +503,37 @@ impl Handle {
         Ok(())
     }
 
-    fn card(&self, name: &str, four_cc: FourCC, href: &str) -> Result<Element, JsValue> {
+    fn card(
+        &self,
+        name: &str,
+        format: Option<SignumFormat>,
+        href: &str,
+    ) -> Result<Element, JsValue> {
         let card = self.document.create_element("a")?;
-        let kind = decode_atari_str(four_cc.as_slice());
-        card.class_list()
-            .add_3("list-group-item", "list-group-item-action", kind.as_ref())?;
+        let class = card.class_list();
+        class.add_2("list-group-item", "list-group-item-action")?;
+        if let Some(f) = format {
+            match f {
+                SignumFormat::Signum1(sig1) => {
+                    let m = sig1.magic();
+                    let kind = decode_atari_str(m.as_slice());
+                    class.add_1(kind.as_ref())?;
+                }
+                SignumFormat::Signum3(sig3) => {
+                    let kind = match sig3 {
+                        Signum3Format::Document => "s3doc",
+                        Signum3Format::Font => "s3fnt",
+                    };
+                    class.add_1(kind.as_ref())?;
+                }
+            }
+        }
         card.set_attribute("href", href)?;
-        let file_format_name = four_cc.file_format_name();
-        self.card_body(&card, name, file_format_name)?;
+        self.card_body(
+            &card,
+            name,
+            format.as_ref().map(SignumFormat::file_format_name),
+        )?;
         Ok(card)
     }
 
@@ -513,31 +541,31 @@ impl Handle {
         &self,
         card: &Element,
         name: &str,
-        four_cc: FourCC,
+        format: SignumFormat,
         data: &[u8],
     ) -> Result<(), JsValue> {
-        match four_cc {
-            FourCC::SDOC => {
+        match format {
+            SignumFormat::Signum1(Signum1Format::Document) => {
                 let doc = self.parse_sdoc(data)?;
                 self.sdoc_card(card, &doc).await?;
             }
-            FourCC::ESET => {
+            SignumFormat::Signum1(Signum1Format::Font(FontKind::Editor)) => {
                 log::info!("{name}: Signum Editor Bitmap Font");
                 let eset = self.parse_eset(data)?;
                 log::info!("{name}: Parsed editor font");
                 self.eset_card(card, &eset, name)?;
             }
-            FourCC::PS24 | FourCC::PS09 | FourCC::LS30 => {
-                log::info!("{name}: {}", four_cc.file_format_name().unwrap());
+            SignumFormat::Signum1(Signum1Format::Font(FontKind::Printer(_))) => {
+                log::info!("{name}: {}", format.file_format_name());
                 let pset = self.parse_pset(data)?;
                 log::info!("{name}: Parsed printer font");
                 self.pset_card(card, &pset, name)?;
             }
-            FourCC::BIMC => {
+            SignumFormat::Signum1(Signum1Format::HardcopyImage) => {
                 // TODO: preview
             }
-            k => {
-                log::warn!("Unknown File Format '{}'", k);
+            _ => {
+                log::warn!("Unimplemented '{:?}'", format);
             }
         }
         Ok(())
@@ -547,22 +575,20 @@ impl Handle {
         let data = arr.to_vec();
         info!("Parsing file '{}'", name);
 
-        if let Ok((_, four_cc)) = four_cc::<()>(&data) {
-            let href = format!("#/staged/{name}");
-            let card = self.card(name, four_cc, &href)?;
-            if let Err(e) = self.card_preview(&card, name, four_cc, &data).await {
+        let format = SignumFormat::detect(&data);
+        let href = format!("#/staged/{name}");
+        let card = self.card(name, format, &href)?;
+        if let Some(format) = format {
+            if let Err(e) = self.card_preview(&card, name, format, &data).await {
                 console::error_3(
                     &JsValue::from_str("Failed to generate preview"),
                     &JsValue::from_str(name),
                     &e,
                 );
             }
-            self.output.append_child(&card)?;
-            Ok(())
-        } else {
-            log::warn!("File is less than 4 bytes long");
-            Ok(())
         }
+        self.output.append_child(&card)?;
+        Ok(())
     }
 
     fn card_body(

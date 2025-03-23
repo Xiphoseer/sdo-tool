@@ -1,7 +1,7 @@
 //! # The editor fonts
 
-use super::{error::ChsetSizeError, FontKind, LoadError};
-use crate::util::{data::BIT_STRING, Buf, FileFormatKind};
+use super::{error::ChsetSizeError, LoadError};
+use crate::util::{data::BIT_STRING, Buf, FourCC};
 use log::warn;
 use nom::{
     bytes::complete::{tag, take},
@@ -212,7 +212,7 @@ impl ESet<'_> {
 
     /// Write editor font to a file
     pub fn write_to<W: io::Write>(&self, buf: &mut W) -> io::Result<()> {
-        buf.write_all(FontKind::Editor.magic().as_slice())?;
+        buf.write_all(FourCC::ESET.as_slice())?;
         buf.write_all(b"0001")?;
         buf.write_all(&128u32.to_be_bytes())?;
         for _ in 0..32 {
