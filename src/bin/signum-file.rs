@@ -21,6 +21,9 @@ fn info(buffer: &[u8], opt: &Options) -> color_eyre::Result<()> {
     } else if buffer.starts_with(b"\0\0sdoc  03\0\0") {
         println!("Signum! 3/4 document");
         Ok(())
+    } else if buffer.starts_with(b"\0\x02chset001\0\0") {
+        println!("Signum! 3/4 font");
+        Ok(())
     } else {
         Err(eyre!("Unknown file type {:?}", four_cc))
     }
