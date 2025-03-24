@@ -20,34 +20,52 @@ to a more common format using something like zView.
 
 You can also set-up an emulator and install Signum! there with a similar effect.
 The major advantage is that you don't need actual Atari Hardware and that you
-can redirect the *ESC/P* printer commands to a file, which can then be
-interpreted by a virtual printer to create a PDF or image. The disadvantage
-is that you need an original TOS ROM (or MagiC, EmuTOS didn't seem to work) and
-that Signum only prints in bitmap mode, so any character information is lost
-this way too.
+can redirect the *ESC/P* (Epson) or *PCL* (HP) printer commands to a file,
+which can then be interpreted by a virtual printer to create a PDF or image.
 
-## 3. Use a converter
+You may need an original TOS ROM (or MagiC, EmuTOS didn't seem to work for me)
+and that Signum!2 only prints in bitmap mode, so any character information
+is lost this way too.
+
+## 3. Print with Signum!4, in Draft mode
+
+**Signum!4** features a "Draft"-Mode (under "Parameter" &rArr; "Druckqualität"
+/ ^Q), which embeds the actual text in the printer output as opposed to printing
+in graphics mode. I'm not sure whether it considers the ASCII mapping file(s).
+
+While the positioning information is relatively accurate, not all font attributes
+(e.g. tall, small) are supported.
+
+If you set the output channel (*Ausgabekanal* / ^K) to file (*Druck-Datei*) and set
+the driver to a PCL one like `HPDESKJ.TRB`, then you can convert the output
+`PRDAT.OUT` to PDF via ghostpcl using a command like
+
+```sh
+gpcl6 -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=PRDAT.PDF PRDAT.OUT
+```
+
+## 4. Use a converter
 
 I actually found a working copy of papyrus 7 (demo) after a lot of digging around
-and it turns out that this actually just calls `TEXTCONV.PRG` by Andreas Pirner.
-Version 1.23 is the one that comes with papyrus but it does not seem as useful
-as old usenet threads make it out to be.
+and it turns out that this actually just provides `TEXTCONV.PRG` by Andreas Pirner.
+Version 1.23 is the one that comes with papyrus.
 
-Yes, it can export to RTF and the letters and numbers survive, but  subscript,
-superscript and formulas are not close enough to be readable, the line-height is
-too small, the alignment is off, and more. Also, while papyrus *for ATARI*
-supports signum fonts, modern tools to read those files don't, so you still end
-up needing to find a perfect match for your font for newer systems.
+I was initially not convinced by the visual output of the produced RTF files,
+but RTF is a semi-structured plain text format so it could be very useful to
+get data out of Signum!2 files. It does seem to use some custom control sequences
+that would only be supported by payprus e.g. `\signumpixels`, `\m`, or `\fsh`.
 
 There's also the *SignumRead* (`S/MYUTIL/SIGNUMRE.M`) program from the
 [Megamax Modula-2][MM2] development environment, which scrapes some text
 from the SDO files.
 
-## 4. Use an alternative
+## 5. Use an alternative
 
-Finally, there's also [*FaaastPrint*][FPRINT], which is really similar to my tool.
+Finally, there's also [*FaaastPrint*][FPRINT], which is really similar to my tool
+or the Signum!4 draft mode.
+
 This program loads an SDO file and can generate "fast" printer output, i.e.
-ESC/P commands that print characters with the default printer font. I've not
+ESC/P or PCL commands that print characters with the default printer font. I've not
 tried it, but it seems very customizable by way of the "Konvert" tool, but also
 really hard to use, because every character in a charset needs a custom command.
 
