@@ -14,7 +14,7 @@ use signum::{
         pbuf::{self, PBuf},
         sysp::SysP,
         tebu::{PageText, TeBu},
-        v3::parse_sdoc_v3,
+        v3::{parse_sdoc_v3, Stream},
         DocumentInfo,
     },
     util::{Buf, FourCC, LocalFS, VFS},
@@ -210,6 +210,14 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
     Ok(())
 }
 
+fn process_stream(i: usize, stream: &Stream<'_>) -> eyre::Result<()> {
+    log::info!("Stream {i}");
+    for line in stream.text() {
+        log::info!("{:?}", line);
+    }
+    Ok(())
+}
+
 pub fn process_sdoc_v3(input: &[u8], _opt: Options) -> eyre::Result<()> {
     let (_, sdoc) = util::load_partial(parse_sdoc_v3, input)?;
     let head = sdoc.sdoc03();
@@ -218,6 +226,17 @@ pub fn process_sdoc_v3(input: &[u8], _opt: Options) -> eyre::Result<()> {
     log::info!("File Pointers: {:?}", sdoc.flptrs01());
     for (i, name) in sdoc.foused01().fonts() {
         log::info!("Font Used: {:>3} {:?}", i, name);
+    }
+    for chapter in sdoc.chapters() {
+        log::info!("Chapter: {:?}", chapter.header());
+        process_stream(1, chapter.main())?;
+        process_stream(2, chapter.header_footer())?;
+        if let Some(stream3) = chapter.stream3() {
+            process_stream(3, stream3)?;
+        }
+        if let Some(stream4) = chapter.stream4() {
+            process_stream(4, stream4)?;
+        }
     }
     Ok(())
 }
