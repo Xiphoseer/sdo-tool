@@ -213,6 +213,8 @@ pub fn process_sdoc(input: &[u8], opt: Options) -> eyre::Result<()> {
 pub fn process_sdoc_v3(input: &[u8], _opt: Options) -> eyre::Result<()> {
     let (_, sdoc) = util::load_partial(parse_sdoc_v3, input)?;
     log::info!("File Pointers: {:?}", sdoc.flptrs01());
-    log::info!("Fonts Used: {:?}", sdoc.foused01());
+    for (i, name) in sdoc.foused01().fonts() {
+        log::info!("Font Used: {:>3} {:?}", i, name);
+    }
     Ok(())
 }
