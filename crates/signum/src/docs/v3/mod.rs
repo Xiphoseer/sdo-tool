@@ -2,6 +2,7 @@
 //!
 //! Signum! 3/4 uses a completely different format from 1/2.
 
+use core::fmt;
 use std::{borrow::Cow, num::NonZeroU32};
 
 use nom::{
@@ -10,7 +11,7 @@ use nom::{
     error::{context, ContextError, ParseError},
     multi::{length_value, many0, many1},
     number::complete::{be_u16, be_u32},
-    sequence::{preceded, terminated},
+    sequence::{pair, preceded, terminated, tuple},
     IResult, Parser,
 };
 
@@ -28,7 +29,12 @@ pub const CHUNK_FOUSED01: &[u8; 12] = b"\0\0foused01\0\0";
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct Header<'a> {
-    buf: Buf<'a>,
+    lead: Buf<'a>,
+    /// Create time
+    pub ctime: DateTime,
+    /// Modified time
+    pub mtime: DateTime,
+    tail: Buf<'a>,
 }
 
 /// Document root
@@ -44,6 +50,11 @@ pub struct SDocV3<'a> {
 }
 
 impl<'a> SDocV3<'a> {
+    /// Get the *file pointers* `flptrs01` chunk
+    pub fn sdoc03(&self) -> &Header {
+        &self.header
+    }
+
     /// Get the *file pointers* `flptrs01` chunk
     pub fn flptrs01(&self) -> &FilePointers {
         &self.file_pointers
@@ -75,9 +86,86 @@ pub struct FilePointers {
     pub ofs_chapters: Vec<u32>,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// Full date
+pub struct Date {
+    year: u16,
+    month: u16,
+    day: u16,
+}
+
+impl fmt::Display for Date {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:04}-{:02}-{:02}", self.year, self.month, self.day)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// Time of day
+pub struct Time {
+    hour: u16,
+    minute: u16,
+    second: u16,
+}
+
+impl fmt::Display for Time {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02}:{:02}:{:02}", self.hour, self.minute, self.second)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// [Date] and [Time]
+pub struct DateTime {
+    date: Date,
+    time: Time,
+}
+
+impl fmt::Display for DateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.date.fmt(f)?;
+        f.write_str("T")?;
+        self.time.fmt(f)?;
+        Ok(())
+    }
+}
+
+fn parse_date<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Date, E> {
+    let (input, (year, month, day)) = tuple((be_u16, be_u16, be_u16))(input)?;
+    Ok((input, Date { year, month, day }))
+}
+
+fn parse_time<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Time, E> {
+    let (input, (hour, minute, second)) = tuple((be_u16, be_u16, be_u16))(input)?;
+    Ok((
+        input,
+        Time {
+            hour,
+            minute,
+            second,
+        },
+    ))
+}
+
+fn parse_datetime<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], DateTime, E> {
+    let (input, (date, time)) = pair(parse_date, parse_time)(input)?;
+    Ok((input, DateTime { date, time }))
+}
+
 fn parse_header<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Header<'a>, E> {
-    let (input, buf) = map(rest, Buf)(input)?;
-    Ok((input, Header { buf }))
+    let (input, lead) = map(take(40usize), Buf)(input)?;
+    let (input, ctime) = parse_datetime(input)?;
+    let (input, mtime) = parse_datetime(input)?;
+    let (input, tail) = map(rest, Buf)(input)?;
+    Ok((
+        input,
+        Header {
+            lead,
+            ctime,
+            mtime,
+            tail,
+        },
+    ))
 }
 
 fn opt_be_nonzero_u32<'a, E: ParseError<&'a [u8]>>(
