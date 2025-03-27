@@ -7,6 +7,7 @@ mod bytes;
 pub mod data;
 mod file_format;
 mod four_cc;
+mod parsers;
 mod vfs;
 
 pub use bit_iter::{BitIter, ByteBits};
@@ -17,6 +18,9 @@ pub use file_format::{
     FileFormatKind, FileFormatKindV1, Signum1Format, Signum3Format, SignumFormat,
 };
 pub use four_cc::FourCC;
+pub use parsers::V3Chunk;
+#[allow(unused_imports)]
+pub(crate) use parsers::{map_bstr, map_buf};
 pub use vfs::{AsyncIterator, LocalFS, VFS};
 
 /// A 16 bit position
