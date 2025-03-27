@@ -7,7 +7,7 @@ use env_logger::Env;
 use log::{error, info, LevelFilter};
 use sdo_tool::cli::{
     bimc::process_bimc,
-    font::{process_eset, process_ls30, process_ps09, process_ps24},
+    font::{process_cset_v2, process_eset, process_ls30, process_ps09, process_ps24},
     opt::Options,
     sdoc::{process_sdoc, process_sdoc_v3},
 };
@@ -50,7 +50,7 @@ fn main() -> eyre::Result<()> {
             if let Some(sig3) = Signum3Format::detect(&buffer) {
                 match sig3 {
                     Signum3Format::Document => process_sdoc_v3(&buffer, opt),
-                    Signum3Format::Font => todo!(),
+                    Signum3Format::Font => process_cset_v2(&buffer, opt),
                 }
             } else {
                 error!("Unknown file type {fourcc}");

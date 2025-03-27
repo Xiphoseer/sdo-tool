@@ -18,8 +18,10 @@ use std::{
 };
 
 pub mod ps;
+mod v2;
 
 use ps::write_ls30_ps_bitmap;
+pub use v2::process_cset_v2;
 
 use super::util;
 
