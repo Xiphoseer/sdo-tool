@@ -1,4 +1,7 @@
 //! # Signum 3/4 fonts
+//! 
+//! Signum 3/4 fonts consist of a sequence of chunks, each compressed (or encrypted)
+//! with some as yet unknown mechanism.
 
 use nom::{
     bytes::complete::tag,
@@ -36,7 +39,7 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
     }
 }
 
-/// The header of a `fdeskr01` font file
+/// A `fdeskr01` font file chunk
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct FontDescriptor<'a> {
@@ -57,7 +60,7 @@ impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
     }
 }
 
-/// The header of a `lgtab001` font file
+/// A `lgtab001` font file chunk
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct LigatureTable<'a> {
@@ -78,7 +81,7 @@ impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
     }
 }
 
-/// The header of a `chars001` font file
+/// A `chars001` font file chunk
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Characters<'a> {
@@ -99,7 +102,7 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
     }
 }
 
-/// The header of a `chars001` font file
+/// A `kerntab1` font file chunk
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct KerningTable<'a> {
