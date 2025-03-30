@@ -122,7 +122,18 @@ impl<'a> ChsetChunk<'a> for KerningTable<'a> {
 }
 
 /// A Signum 3/4 font
-pub struct ChsetV2 {}
+pub struct ChsetV2<'a> {
+    /// `chset001` chunk
+    pub chset001: ChsetHeader<'a>,
+    /// `fdeskr01` chunk
+    pub fdeskr01: FontDescriptor<'a>,
+    /// `lgtab001` chunk
+    pub lgtab001: LigatureTable<'a>,
+    /// `chars001` chunk
+    pub chars001: Characters<'a>,
+    /// `kerntab1` chunk
+    pub kerntab1: Option<KerningTable<'a>>,
+}
 
 trait ChsetChunk<'a>: Sized {
     /// The tag to check at the start
@@ -156,7 +167,7 @@ trait ChsetChunk<'a>: Sized {
 }
 
 /// Parse a Signum! 3/4 chset
-pub fn parse_chset_v2<'a, E>(input: &'a [u8]) -> IResult<&'a [u8], ChsetV2, E>
+pub fn parse_chset_v2<'a, E>(input: &'a [u8]) -> IResult<&'a [u8], ChsetV2<'a>, E>
 where
     E: ParseError<&'a [u8]>,
     E: ContextError<&'a [u8]>,
@@ -164,20 +175,22 @@ where
     let _data = input;
 
     let (input, chset001) = ChsetHeader::parse_chunk(input)?;
-    log::info!("{:#?}", chset001);
     let (input, fdeskr01) = FontDescriptor::parse_chunk(input)?;
-    log::info!("{:#?}", fdeskr01);
     let (input, lgtab001) = LigatureTable::parse_chunk(input)?;
-    log::info!("{:#?}", lgtab001);
     let (input, chars001) = Characters::parse_chunk(input)?;
-    log::info!("{:#?}", chars001);
     let (input, kerntab1) = if !input.is_empty() {
         map(KerningTable::parse_chunk, Some)(input)?
     } else {
         (input, None)
     };
-    if let Some(kerntab1) = kerntab1 {
-        log::info!("{:#?}", kerntab1);
-    }
-    Ok((input, ChsetV2 {}))
+    Ok((
+        input,
+        ChsetV2 {
+            chset001,
+            fdeskr01,
+            lgtab001,
+            chars001,
+            kerntab1,
+        },
+    ))
 }
