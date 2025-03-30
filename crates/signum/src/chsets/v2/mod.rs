@@ -1,5 +1,5 @@
 //! # Signum 3/4 fonts
-//! 
+//!
 //! Signum 3/4 fonts consist of a sequence of chunks, each compressed (or encrypted)
 //! with some as yet unknown mechanism.
 
@@ -155,7 +155,7 @@ trait ChsetChunk<'a>: Sized {
     }
 }
 
-/// Parse a Signum! document
+/// Parse a Signum! 3/4 chset
 pub fn parse_chset_v2<'a, E>(input: &'a [u8]) -> IResult<&'a [u8], ChsetV2, E>
 where
     E: ParseError<&'a [u8]>,
