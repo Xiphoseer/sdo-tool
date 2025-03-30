@@ -96,8 +96,11 @@ pub fn render_doc_page(
         let w = pd.scale_x(site.site.w);
         let py = pd.scale_y(10 + site.site.y - site._5 / 2);
         let h = pd.scale_y(site.site.h / 2);
-        let image = di.image_at(site.img);
-        page.draw_image(px, py, w, h, image, site.sel);
+        if let Some(image) = di.image_at(site.img) {
+            page.draw_image(px, py, w, h, image, site.sel);
+        } else {
+            log::warn!("Missing image {}", site.img);
+        }
     }
     page
 }

@@ -222,8 +222,8 @@ impl DocumentInfo {
     }
 
     /// Get the image associated with the given index
-    pub fn image_at(&self, img: u16) -> &Page {
-        &self.images[img as usize].image
+    pub fn image_at(&self, img: u16) -> Option<&Page> {
+        self.images.get(img as usize).map(|i| &i.image)
     }
 
     /// Iterator over all images

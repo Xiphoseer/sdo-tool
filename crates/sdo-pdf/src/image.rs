@@ -5,8 +5,8 @@ use pdf_create::{
 use signum::docs::{hcim::ImageSite, DocumentInfo};
 
 /// Return a PDF Image for a site
-pub(crate) fn image_for_site(di: &DocumentInfo, site: &ImageSite) -> Image {
-    Image {
+pub(crate) fn image_for_site(di: &DocumentInfo, site: &ImageSite) -> Option<Image> {
+    di.image_at(site.img).map(|i| Image {
         meta: ImageMetadata {
             width: site.sel.w as usize,
             height: site.sel.h as usize,
@@ -15,6 +15,6 @@ pub(crate) fn image_for_site(di: &DocumentInfo, site: &ImageSite) -> Image {
             image_mask: true,
             decode: ColorIs::One,
         },
-        data: di.image_at(site.img).select(site.sel),
-    }
+        data: i.select(site.sel),
+    })
 }

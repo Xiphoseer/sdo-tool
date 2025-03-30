@@ -2,6 +2,7 @@
 
 use std::io;
 
+use log::warn;
 use pdf_create::{
     common::{MediaBox, ProcSet, Rectangle},
     high::{DictResource, Font, GlobalResource, Handle, Page, Res, Resource, Resources, XObject},
@@ -201,11 +202,13 @@ fn write_pdf_page_images<GC: GenerationContext>(
             &key
         );
 
-        let image = image_for_site(gc.document_info(), site);
-
-        contents.image(site, &key).unwrap();
-        x_objects.insert(key.clone(), res.push_xobject(image).into());
-        has_images |= true;
+        if let Some(image) = image_for_site(gc.document_info(), site) {
+            contents.image(site, &key).unwrap();
+            x_objects.insert(key.clone(), res.push_xobject(image).into());
+            has_images |= true;
+        } else {
+            warn!("Missing image {} on page {}", site.img, site.page);
+        }
     }
     has_images
 }
