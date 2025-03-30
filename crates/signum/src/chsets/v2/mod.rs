@@ -1,7 +1,12 @@
 //! # Signum 3/4 fonts
 //!
 //! Signum 3/4 fonts consist of a sequence of chunks, each compressed (or encrypted)
-//! with some as yet unknown mechanism.
+//! with some as yet unknown mechanism:
+//!
+//! - The compressed data starts with a 32-bit uncompressed length specifier
+//! - The empty array is encoded as `0x1F 0xDA`
+//! - The compressed length is always a multiple of 2
+//! - A bitflip anywhere in the uncompressed chunk leads to changes all over the compressed chunk
 
 use nom::{
     bytes::complete::tag,
@@ -45,6 +50,13 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
 pub struct FontDescriptor<'a> {
     v1: u32,
     rest: Buf<'a>,
+}
+
+impl FontDescriptor<'_> {
+    /// Get the compressed data
+    pub fn compressed(&self) -> &[u8] {
+        self.rest.0
+    }
 }
 
 impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
@@ -108,6 +120,13 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
 pub struct KerningTable<'a> {
     v1: u32,
     rest: Buf<'a>,
+}
+
+impl<'a> KerningTable<'a> {
+    /// Get the compressed data
+    pub fn compressed(&self) -> &'a [u8] {
+        self.rest.0
+    }
 }
 
 impl<'a> ChsetChunk<'a> for KerningTable<'a> {
