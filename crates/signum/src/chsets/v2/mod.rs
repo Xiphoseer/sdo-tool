@@ -106,6 +106,7 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct KerningTable<'a> {
+    v1: u32,
     rest: Buf<'a>,
 }
 
@@ -116,8 +117,9 @@ impl<'a> ChsetChunk<'a> for KerningTable<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
+        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, KerningTable { rest }))
+        Ok((input, KerningTable { v1, rest }))
     }
 }
 

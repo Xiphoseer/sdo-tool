@@ -9,6 +9,8 @@ pub fn process_cset_v2(input: &[u8], _opt: Options) -> eyre::Result<()> {
     log::info!("{:#?}", cset.fdeskr01);
     log::info!("{:#?}", cset.lgtab001);
     log::info!("{:#?}", cset.chars001);
-    log::info!("{:#?}", cset.kerntab1);
+    if let Some(kerntab1) = cset.kerntab1 {
+        log::info!("{:#?}", kerntab1);
+    }
     Ok(())
 }
