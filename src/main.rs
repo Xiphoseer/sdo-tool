@@ -50,7 +50,7 @@ fn main() -> eyre::Result<()> {
             if let Some(sig3) = Signum3Format::detect(&buffer) {
                 match sig3 {
                     Signum3Format::Document => process_sdoc_v3(&buffer, opt),
-                    Signum3Format::Font => process_cset_v2(&buffer, opt),
+                    Signum3Format::Font { compressed: _ } => process_cset_v2(&buffer, opt),
                 }
             } else {
                 error!("Unknown file type {fourcc}");

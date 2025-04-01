@@ -3,7 +3,7 @@ use std::fmt;
 use serde::Serialize;
 
 /// A simple byte buffer
-#[derive(Hash, Serialize)]
+#[derive(Hash, Serialize, Clone, Copy)]
 #[serde(transparent)]
 pub struct Buf<'a>(pub &'a [u8]);
 

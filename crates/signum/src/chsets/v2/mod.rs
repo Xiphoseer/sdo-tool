@@ -8,26 +8,31 @@
 //! - The compressed length is always a multiple of 2
 //! - A bitflip anywhere in the uncompressed chunk leads to changes all over the compressed chunk
 
+use core::fmt;
+
 use nom::{
+    branch::alt,
     bytes::complete::tag,
     combinator::{map, map_opt, rest},
     error::{context, ContextError, ParseError},
     multi::length_value,
     number::complete::{be_u16, be_u32},
-    sequence::{preceded, tuple},
+    sequence::{preceded, terminated, tuple},
     IResult,
 };
 
 use crate::util::{map_buf, Buf};
 
-/// Tag (magic bytes) for Signum! 3/4 fonts
-pub const TAG_CSET2: &[u8; 12] = b"\0\x02chset001\0\0";
+/// Tag (magic bytes) for Signum!3 (uncompressed) fonts
+pub const TAG_CHSET: &[u8; 12] = b"\0\0chset001\0\0";
+
+/// Tag (magic bytes) for Signum!4 (compressed) fonts
+pub const TAG_CHSET_COMPRESSED: &[u8; 12] = b"\0\x02chset001\0\0";
 
 /// The header of a `chset001` font file
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct ChsetHeader<'a> {
-    v1: u32,
     rest: Buf<'a>,
 }
 
@@ -38,9 +43,8 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, ChsetHeader { v1, rest }))
+        Ok((input, ChsetHeader { rest }))
     }
 }
 
@@ -48,15 +52,7 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct FontDescriptor<'a> {
-    v1: u32,
     rest: Buf<'a>,
-}
-
-impl FontDescriptor<'_> {
-    /// Get the compressed data
-    pub fn compressed(&self) -> &[u8] {
-        self.rest.0
-    }
 }
 
 impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
@@ -66,9 +62,8 @@ impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, FontDescriptor { v1, rest }))
+        Ok((input, FontDescriptor { rest }))
     }
 }
 
@@ -76,7 +71,6 @@ impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct LigatureTable<'a> {
-    v1: u32,
     rest: Buf<'a>,
 }
 
@@ -87,9 +81,8 @@ impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, LigatureTable { v1, rest }))
+        Ok((input, LigatureTable { rest }))
     }
 }
 
@@ -97,7 +90,6 @@ impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Characters<'a> {
-    v1: u32,
     rest: Buf<'a>,
 }
 
@@ -108,9 +100,8 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, Characters { v1, rest }))
+        Ok((input, Characters { rest }))
     }
 }
 
@@ -118,15 +109,7 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct KerningTable<'a> {
-    v1: u32,
     rest: Buf<'a>,
-}
-
-impl<'a> KerningTable<'a> {
-    /// Get the compressed data
-    pub fn compressed(&self) -> &'a [u8] {
-        self.rest.0
-    }
 }
 
 impl<'a> ChsetChunk<'a> for KerningTable<'a> {
@@ -136,27 +119,63 @@ impl<'a> ChsetChunk<'a> for KerningTable<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, v1) = be_u32(input)?;
         let (input, rest) = map_buf(rest)(input)?;
-        Ok((input, KerningTable { v1, rest }))
+        Ok((input, KerningTable { rest }))
     }
+}
+
+fn parse_compressed<'a, E, T: ChsetChunk<'a>>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<'a, T>, E>
+where
+    E: ParseError<&'a [u8]>,
+{
+    let (input, len) = be_u32(input)?;
+    let (input, bytes) = map_buf(rest)(input)?;
+    Ok((input, Chunk::Compressed { len, bytes }))
 }
 
 /// A Signum 3/4 font
 pub struct ChsetV2<'a> {
     /// `chset001` chunk
-    pub chset001: ChsetHeader<'a>,
+    pub chset001: Chunk<'a, ChsetHeader<'a>>,
     /// `fdeskr01` chunk
-    pub fdeskr01: FontDescriptor<'a>,
+    pub fdeskr01: Chunk<'a, FontDescriptor<'a>>,
     /// `lgtab001` chunk
-    pub lgtab001: LigatureTable<'a>,
+    pub lgtab001: Chunk<'a, LigatureTable<'a>>,
     /// `chars001` chunk
-    pub chars001: Characters<'a>,
+    pub chars001: Chunk<'a, Characters<'a>>,
     /// `kerntab1` chunk
-    pub kerntab1: Option<KerningTable<'a>>,
+    pub kerntab1: Option<Chunk<'a, KerningTable<'a>>>,
 }
 
-trait ChsetChunk<'a>: Sized {
+/// A character set chunk
+#[derive(Clone)]
+pub enum Chunk<'a, T> {
+    /// An uncompresssed (Signum!3) chunk
+    Plain(T),
+    /// A compressed (Signum!4) chunk
+    Compressed {
+        /// Uncompressed length
+        len: u32,
+        /// Compressed bytes
+        bytes: Buf<'a>,
+    },
+}
+
+impl<'a, T: ChsetChunk<'a>> fmt::Debug for Chunk<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Plain(arg0) => arg0.fmt(f),
+            Self::Compressed { len, bytes } => f
+                .debug_struct("CompressedChunk")
+                .field("tag", &T::TAG)
+                .field("len", len)
+                .field("bytes", bytes)
+                .finish(),
+        }
+    }
+}
+
+trait ChsetChunk<'a>: fmt::Debug + Sized {
     /// The tag to check at the start
     const TAG: &'static str;
 
@@ -165,23 +184,29 @@ trait ChsetChunk<'a>: Sized {
     where
         E: ParseError<&'a [u8]>;
 
-    fn parse_chunk<E>(input: &'a [u8]) -> IResult<&'a [u8], Self, E>
+    fn parse_chunk<E>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<'a, Self>, E>
     where
         E: ParseError<&'a [u8]>,
         E: ContextError<&'a [u8]>,
     {
         let (input, rest) = context(
             Self::TAG,
-            length_value(
-                map_opt(
-                    preceded(
-                        tuple((tag(b"\0\x02"), tag(Self::TAG), tag(b"\0\0"))),
+            alt((
+                length_value(
+                    map_opt(
+                        preceded(tuple((tag(b"\0\x02"), tag(Self::TAG))), be_u32),
+                        |l| l.checked_sub(14),
+                    ),
+                    parse_compressed,
+                ),
+                length_value(
+                    terminated(
+                        preceded(tuple((tag(b"\0\0"), tag(Self::TAG))), be_u32),
                         be_u16,
                     ),
-                    |l| l.checked_sub(14),
+                    map(Self::parse, Chunk::Plain),
                 ),
-                Self::parse,
-            ),
+            )),
         )(input)?;
         Ok((input, rest))
     }

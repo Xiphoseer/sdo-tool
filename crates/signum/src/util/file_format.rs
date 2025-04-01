@@ -1,5 +1,8 @@
 use crate::{
-    chsets::{v2::TAG_CSET2, FontKind},
+    chsets::{
+        v2::{TAG_CHSET, TAG_CHSET_COMPRESSED},
+        FontKind,
+    },
     docs::v3::TAG_SDOC3,
 };
 
@@ -78,17 +81,22 @@ pub enum Signum3Format {
     /// Signum Document
     Document,
     /// Signum Font
-    Font,
+    Font {
+        /// Whether the file chunks are compressed (start with `\0\x02`)
+        compressed: bool,
+    },
 }
 
 impl Signum3Format {
     /// Detect a Signum 3/4 format
     pub fn detect(data: &[u8]) -> Option<Self> {
         const SDOC3: &[u8] = TAG_SDOC3;
-        const CSET2: &[u8] = TAG_CSET2;
+        const CSET3: &[u8] = TAG_CHSET;
+        const CSET4: &[u8] = TAG_CHSET_COMPRESSED;
         match data.get(..12)? {
             SDOC3 => Some(Self::Document),
-            CSET2 => Some(Self::Font),
+            CSET3 => Some(Self::Font { compressed: false }),
+            CSET4 => Some(Self::Font { compressed: true }),
             _ => None,
         }
     }
@@ -98,14 +106,15 @@ impl FileFormatKind for Signum3Format {
     fn extension(&self) -> &'static str {
         match self {
             Signum3Format::Document => "SDK",
-            Signum3Format::Font => "S01", // 9P, 24P, 30L
+            Signum3Format::Font { compressed: _ } => "S01", // 9P, 24P, 30L
         }
     }
 
     fn file_format_name(&self) -> &'static str {
         match self {
             Signum3Format::Document => "Signum! 3/4 Document",
-            Signum3Format::Font => "Signum! 3/4 Font",
+            Signum3Format::Font { compressed: true } => "Signum! 3/4 Font (compressed)",
+            Signum3Format::Font { compressed: false } => "Signum! 3/4 Font (uncompressed)",
         }
     }
 }

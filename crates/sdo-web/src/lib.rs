@@ -15,7 +15,7 @@ use js_sys::{Array, Uint8Array};
 use log::{info, warn, Level};
 use sdo_pdf::{generate_pdf, MetaInfo};
 use signum::{
-    chsets::{cache::ChsetCache, encoding::decode_atari_str, v2::TAG_CSET2, FontKind},
+    chsets::{cache::ChsetCache, encoding::decode_atari_str, v2::TAG_CHSET, FontKind},
     docs::{
         four_cc, hcim::ImageSite, pbuf, tebu::PageText, v3::TAG_SDOC3, DocumentInfo,
         GenerationContext, Overrides, SDoc,
@@ -289,7 +289,7 @@ impl Handle {
             self.show_image(name, &data).await?;
         } else if data.starts_with(TAG_SDOC3) {
             self.show_sdoc3(name, &data).await?;
-        } else if data.starts_with(TAG_CSET2) {
+        } else if data.starts_with(TAG_CHSET) {
             self.show_cset2(name, &data).await?;
         } else {
             warn!("Unknown format: {}", four_cc);
@@ -522,7 +522,7 @@ impl Handle {
                 SignumFormat::Signum3(sig3) => {
                     let kind = match sig3 {
                         Signum3Format::Document => "s3doc",
-                        Signum3Format::Font => "s3fnt",
+                        Signum3Format::Font { compressed: _ } => "s3fnt",
                     };
                     class.add_1(kind.as_ref())?;
                 }
