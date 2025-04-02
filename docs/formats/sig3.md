@@ -5,23 +5,21 @@ From `EXPERTE/FORMATS.SDK`
 ## Kurzanleitung zum Verändern der Helpdateien FONTED.HLP und DOCED.HLP:
 
 `@` in der ersten Spalte ist Fluchtsymbol gemäß:  
-`@identifierHelp` für Identifier.  
-`@+identifierHelp` auch für diesen Identifier (d.h dieselbe Helpinformation auch hierfür).  
-`@@identifierHelp` für Unteridentifier. (Die Information für den übergeordneten Identifier endet hier nicht!).  
-`@@+identifierHelp` auch für diesen Unteridentifier  
+`@identifier` Help für Identifier.  
+`@+identifier` Help auch für diesen Identifier (d.h dieselbe Helpinformation auch hierfür).  
+`@@identifier` Help für Unteridentifier. (Die Information für den übergeordneten Identifier endet hier nicht!).  
+`@@+identifier` Help auch für diesen Unteridentifier  
 `@/` Beginn einer neuen Seite (neue Box).  
 `@!` Kommentarzeile.  
 `@stop` Ende der Helpinformation für Identifier.  
 `@@stop` dito für Unteridentifier.
 
 *identifier* ist dabei die vom System festgelegte Kennung für eine bestimmte Hilfestellung.
-Hinter *identifier* dürfen höchstens blanks folgen! Die Namen der Identifier erhalten Sie,
-wenn Sie den gewünschten Menüpunkt bei gedrückter SHIFT- und ALTERNATE-Taste an-
-klicken.
+
+Hinter *identifier* dürfen höchstens blanks folgen! Die Namen der Identifier erhalten Sie, wenn Sie den gewünschten Menüpunkt bei gedrückter SHIFT- und ALTERNATE-Taste anklicken.
 
 Die Helpinformation eines Identifiers endet bei einem `@stop` oder einem neuen `@identifier`.
-Ebenso endet die Helpinformation eines Unteridentifiers bei einem `@@stop` oder einem
-neuen `@@identifier`.
+Ebenso endet die Helpinformation eines Unteridentifiers bei einem `@@stop` oder einem neuen `@@identifier`.
 
 Unteridentifier werden für den Fonteditor momentan nicht verwendet.
 
@@ -36,14 +34,11 @@ Sie im Kapitel IV des Handbuchs.
 
 ## Aufbau der Makro-Dateien.
 
-Wenn Sie Makros programmiert haben, und deren Inhalt geändert werden soll, dann kön-
-nen Sie sich ebenfalls eines ASCII-Editors bedienen. Der Aufbau der Makros ist dabei
-wie folgt:
+Wenn Sie Makros programmiert haben, und deren Inhalt geändert werden soll, dann können Sie sich ebenfalls eines ASCII-Editors bedienen. Der Aufbau der Makros ist dabei wie folgt:
 
 NAME: Sequenzen
 
-Der Name ist die definierte zweibuchstabige Sequenz zum Auslösen des Makros, wie sie
-bei der Programmierung gewählt wurde. **Sequenzen** steht für den Inhalt des Makros.
+Der Name ist die definierte zweibuchstabige Sequenz zum Auslösen des Makros, wie sie bei der Programmierung gewählt wurde. **Sequenzen** steht für den Inhalt des Makros.
 Diese können folgendes enthalten:
 
 `\` Leitet eine Kommandosequenz ein.  
@@ -78,22 +73,15 @@ ii: \esi\in\ck\ls*\cki\ckb
 
 ## Ändern der Kombitastenfunktion:
 
-Wie so ziemlich alles in Signum läßt sich auch die Belegung der Kombitasten umdefinie-
-ren. Mit einem ASCII-Editor können Sie beispielsweise die Datei `Oldtotli.ktl` im Ordner
-Doced.sys öffnen und den Inhalt entsprechend verändern.
+Wie so ziemlich alles in Signum läßt sich auch die Belegung der Kombitasten umdefinieren. Mit einem ASCII-Editor können Sie beispielsweise die Datei `Oldtotli.ktl` im Ordner `DOCED.SYS` öffnen und den Inhalt entsprechend verändern.
 Das Format dieser Datei ist ziemlich einfach:
 
     Schalter, Char1, Char2, Ergebnis; Darstellung1, Darstellung2
 
-Mit *Schalter* legen Sie fest, ob die Kombination an- oder ausgeschaltet ist. 1 steht da-
-bei für an und 0 für aus.
-Char1 ist das Kombizeichen 1, nach dessen Eingabe auf das zweiten Zeichen Char2 ge-
-wartet wird. Das Ergebnis ist das aus der Kombination resultierende Zeichen.
-Nach dem Strichpunkt folgt die Darstellung in der Dialogbox. Darstellung 1 ist das Son-
-derzeichen, das normalerweise *Ergebnis* entspricht. Danach folgt ein Text, der vor die-
-sem Sonderzeichen ausgegeben wird.
-Char1, Char2, Ergebnis und Darstellung1 dürfen als Zeichen (mit vorangestelltem `c`), als
-Dezimalzahl oder als Hexadezimalzahl (vorangestelltes `$`) eingegeben werden.
+Mit *Schalter* legen Sie fest, ob die Kombination an- oder ausgeschaltet ist. 1 steht dabei für an und 0 für aus.
+Char1 ist das Kombizeichen 1, nach dessen Eingabe auf das zweiten Zeichen Char2 gewartet wird. Das Ergebnis ist das aus der Kombination resultierende Zeichen.
+Nach dem Strichpunkt folgt die Darstellung in der Dialogbox. Darstellung1 ist das Sonderzeichen, das normalerweise *Ergebnis* entspricht. Danach folgt ein Text, der vor diesem Sonderzeichen ausgegeben wird.
+Char1, Char2, Ergebnis und Darstellung1 dürfen als Zeichen (mit vorangestelltem `c`), als Dezimalzahl oder als Hexadezimalzahl (vorangestelltes `$`) eingegeben werden.
 
 Beispiel:
 ```
