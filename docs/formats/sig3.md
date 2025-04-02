@@ -50,7 +50,8 @@ Diese können folgendes enthalten:
 `\cr` CURSOR LEFT (!).  
 `\co` CONTROL-Taste. Beispiel: \co\ta = CONTROL-Tab.  
 `\cu` CURSOR UP.  
-`\de` Betätigung der DELETE-Taste.\esStart einer Escapesequenz.  
+`\de` Betätigung der DELETE-Taste.  
+`\es` Start einer Escapesequenz.  
 `\ho` HOME-Taste.  
 `\in` INSERT-Taste.  
 `\ls` SHIFT-Taste. Beispiel: `\ls\ho` = SHIFT-HOME oder `\ls\es` = SHIFT-ESCAPE oder `\ls\cu` = SHIFT-CURSOR UP. Wird auch immer vor Großbuchstaben eingefügt, die ganz normal auszugeben sind.  
