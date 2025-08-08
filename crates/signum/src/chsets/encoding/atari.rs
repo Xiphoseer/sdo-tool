@@ -1,4 +1,4 @@
-use std::{borrow::Cow, char::REPLACEMENT_CHARACTER};
+use std::{borrow::Cow, char::REPLACEMENT_CHARACTER, io};
 
 /// The ATARI-ST character encoding 0 row
 pub const ATARI_CHAR_MAP_0: [char; 14] = [
@@ -81,9 +81,13 @@ pub fn decode_atari(byte: u8) -> char {
     }
 }
 
+fn first_non_ascii_char(input: &[u8]) -> Option<usize> {
+    input.iter().copied().position(|p| !(32..127).contains(&p))
+}
+
 /// Decode an ATARI-ST String into an UTF-8 String
 pub fn decode_atari_str(input: &[u8]) -> Cow<'_, str> {
-    if let Some(pos) = input.iter().copied().position(|p| !(32..127).contains(&p)) {
+    if let Some(pos) = first_non_ascii_char(input) {
         let (first, rest) = input.split_at(pos);
         let start = unsafe { std::str::from_utf8_unchecked(first) };
         let mut string = start.to_owned();
@@ -91,5 +95,51 @@ pub fn decode_atari_str(input: &[u8]) -> Cow<'_, str> {
         Cow::Owned(string)
     } else {
         Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(input) })
+    }
+}
+
+/// Decode an ATARI-ST String into an UTF-8 String
+pub fn decode_atari_string(input: Vec<u8>) -> String {
+    if let Some(pos) = first_non_ascii_char(&input) {
+        let (first, rest) = input.split_at(pos);
+        let start = unsafe { std::str::from_utf8_unchecked(first) };
+        let mut string = start.to_owned();
+        string.extend(rest.iter().copied().map(decode_atari));
+        string
+    } else {
+        unsafe { String::from_utf8_unchecked(input) }
+    }
+}
+
+/// An iterator over lines encoded in Atari ST character encoding
+pub struct AtariStrLines<B> {
+    buf: B,
+}
+
+impl<B: io::BufRead> AtariStrLines<B> {
+    /// Create a new instance of this iterator
+    pub fn new(buf: B) -> Self {
+        AtariStrLines { buf }
+    }
+}
+
+impl<B: io::BufRead> Iterator for AtariStrLines<B> {
+    type Item = io::Result<String>;
+
+    fn next(&mut self) -> Option<io::Result<String>> {
+        let mut buf = Vec::new();
+        match self.buf.read_until(b'\n', &mut buf) {
+            Ok(0) => None,
+            Ok(_n) => {
+                if buf.ends_with(b"\n") {
+                    buf.pop();
+                    if buf.ends_with(b"\r") {
+                        buf.pop();
+                    }
+                }
+                Some(Ok(decode_atari_string(buf)))
+            }
+            Err(e) => Some(Err(e)),
+        }
     }
 }

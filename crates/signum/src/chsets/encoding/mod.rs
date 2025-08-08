@@ -16,7 +16,7 @@ use thiserror::Error;
 
 mod atari;
 
-pub use atari::{decode_atari, decode_atari_str};
+pub use atari::{decode_atari, decode_atari_str, AtariStrLines};
 
 /// Indicates that the implementing type encodes a mapping from a byte value to a sequence of unicode codepoints
 pub trait ToUnicode {

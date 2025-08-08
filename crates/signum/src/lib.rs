@@ -13,6 +13,7 @@
 
 pub mod chsets;
 pub mod docs;
+pub mod help;
 pub mod images;
 pub mod raster;
 pub mod util;
