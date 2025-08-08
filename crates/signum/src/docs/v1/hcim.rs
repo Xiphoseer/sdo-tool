@@ -167,7 +167,7 @@ pub struct Image<'a> {
 const ZERO: &[u8] = &[0];
 
 /// Parse an embedded image file
-pub fn parse_image(input: &[u8]) -> IResult<&[u8], Image> {
+pub fn parse_image<'a>(input: &'a [u8]) -> IResult<&'a [u8], Image<'a>> {
     let (input, key_bytes) = take_until(ZERO)(input)?;
     let key = String::from_utf8_lossy(key_bytes);
 

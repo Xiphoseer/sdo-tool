@@ -86,7 +86,7 @@ impl fmt::Display for PDFDocEncodingError {
 
 impl From<PDFDocEncodingError> for io::Error {
     fn from(error: PDFDocEncodingError) -> Self {
-        io::Error::new(io::ErrorKind::Other, error)
+        io::Error::other(error)
     }
 }
 

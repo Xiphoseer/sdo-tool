@@ -241,7 +241,7 @@ impl ESet<'_> {
 }
 
 /// Parse a single editor char
-pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
+pub fn parse_echar<'a>(input: &'a [u8]) -> IResult<&'a [u8], EChar<'a>> {
     let (input, top) = u8(input)?;
     let (input, height) = u8(input)?;
     let (input, width) = u8(input)?;
@@ -261,7 +261,7 @@ pub fn parse_echar(input: &[u8]) -> IResult<&[u8], EChar> {
 /// Parse a full editor charset file.
 ///
 /// This method checks for the magic bytes `eset0001`
-pub fn parse_eset(input: &[u8]) -> IResult<&[u8], ESet> {
+pub fn parse_eset<'a>(input: &'a [u8]) -> IResult<&'a [u8], ESet<'a>> {
     let (input, _) = tag(b"eset")(input)?;
     let (input, _) = tag(b"0001")(input)?;
     let (input, skip) = be_u32(input)?;

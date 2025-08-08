@@ -77,7 +77,7 @@ impl Page {
     }
 
     /// Get a bit iterator for the given byte range
-    pub fn bits<R: SliceIndex<[u8], Output = [u8]>>(&self, range: R) -> BitIter {
+    pub fn bits<'buf, R: SliceIndex<[u8], Output = [u8]>>(&'buf self, range: R) -> BitIter<'buf> {
         BitIter::new(&self.buffer[range])
     }
 

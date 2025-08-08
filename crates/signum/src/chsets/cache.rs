@@ -317,7 +317,7 @@ impl ChsetCache {
 
     /// Reset the font cache
     pub fn reset(&mut self) {
-        let _ = std::mem::replace(self, ChsetCache::new());
+        let _ = std::mem::take(self);
     }
 }
 

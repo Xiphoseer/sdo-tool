@@ -42,7 +42,7 @@ pub struct SDocV3<'a> {
 
 impl<'a> SDocV3<'a> {
     /// Get the *file pointers* `flptrs01` chunk
-    pub fn sdoc03(&self) -> &Header {
+    pub fn sdoc03(&self) -> &Header<'a> {
         &self.header
     }
 

@@ -136,7 +136,7 @@ pub enum MetaError {
 }
 
 impl Options {
-    pub fn meta(&self) -> Result<Cow<Meta>, MetaError> {
+    pub fn meta<'opt>(&'opt self) -> Result<Cow<'opt, Meta>, MetaError> {
         if let Some(meta_path) = &self.meta {
             let text = std::fs::read_to_string(meta_path)?;
             let mut meta: Meta = ron::from_str(&text)?;

@@ -126,7 +126,7 @@ impl Iterator for CharHeaderIter<'_> {
 }
 
 impl CharHeader {
-    pub fn iter(&self) -> CharHeaderIter {
+    pub fn iter<'a>(&'a self) -> CharHeaderIter<'a> {
         CharHeaderIter { ch: self, st: 0 }
     }
 
