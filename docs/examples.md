@@ -13,6 +13,13 @@ This is the document converted to a PDF (Portable Document Format) file. The
 [MUSTER.pdf](img/MUSTER.pdf)  
 [CHEMMUST.pdf](img/CHEMMUST.pdf)
 
+Note: These should work with [Adobe Acrobat Reader](https://get.adobe.com/reader/),
+[GNOME Evince](https://gitlab.gnome.org/GNOME/evince) &amp; [KDE Okular](https://okular.kde.org/)
+([Poppler](https://poppler.freedesktop.org/)), [Mozilla Firefox](https://support.mozilla.org/kb/view-pdf-files-firefox-or-choose-another-viewer) ([PDF.js](https://github.com/mozilla/pdf.js))
+and they pass [VeraPDF](https://verapdf.org/) validation, but the custom embedded Type3
+fonts [don't seem to work for the Chrome and Edge built-in PDF viewers](https://github.com/Xiphoseer/sdo-tool/issues/21)
+([PDFium](https://pdfium.googlesource.com/pdfium/))
+
 ## Editor
 
 This is a render of the document with the editor font, *without* skew compensation.
