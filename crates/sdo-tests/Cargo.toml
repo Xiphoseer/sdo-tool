@@ -7,3 +7,5 @@ edition = "2024"
 pdfium-render = "0.8.36"
 mupdf = { version = "0.5.0", default-features = false }
 image = { version = "0.25.9", default-features = false, features = ["png"] }
+poppler-rs = { version = "0.25.0", default-features = false }
+cairo-rs = { version = "0.21.5", default-features = false, features = ["png"] }
