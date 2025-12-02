@@ -1,0 +1,8 @@
+[package]
+name = "sdo-tests"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+pdfium-render = "0.8.36"
+image = { version = "0.25.9", default-features = false, features = ["png"] }
