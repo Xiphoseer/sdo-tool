@@ -13,12 +13,27 @@ This is the document converted to a PDF (Portable Document Format) file. The
 [MUSTER.pdf](img/MUSTER.pdf)  
 [CHEMMUST.pdf](img/CHEMMUST.pdf)
 
-Note: These should work with [Adobe Acrobat Reader](https://get.adobe.com/reader/),
-[GNOME Evince](https://gitlab.gnome.org/GNOME/evince) &amp; [KDE Okular](https://okular.kde.org/)
-([Poppler](https://poppler.freedesktop.org/)), [Mozilla Firefox](https://support.mozilla.org/kb/view-pdf-files-firefox-or-choose-another-viewer) ([PDF.js](https://github.com/mozilla/pdf.js))
-and they pass [VeraPDF](https://verapdf.org/) validation, but the custom embedded Type3
-fonts [don't seem to work for the Chrome and Edge built-in PDF viewers](https://github.com/Xiphoseer/sdo-tool/issues/21)
-([PDFium](https://pdfium.googlesource.com/pdfium/))
+Note: These should work with [Adobe Acrobat Reader][adobe-reader] ([Preview][physik-acrobat]),
+[GNOME Evince][evince] &amp; [KDE Okular][okular] ([Poppler], [Preview][physik-poppler]),
+[Mozilla Firefox][mozpdf] ([pdf.js]), [MuPDF] ([Preview][physik-mupdf]),
+and they pass [VeraPDF] validation, but the custom embedded Type3 fonts
+[don't seem to work for the Chrome and Edge built-in PDF viewers][sdo-tool#21] ([PDFium], [Preview][physik-pdfium])
+
+[physik-acrobat]: {{ 'img/physik-acrobat.jpg' | relative_url }}
+[physik-mupdf]: {{ 'img/physik-mupdf.png' | relative_url }}
+[physik-poppler]: {{ 'img/physik-poppler.png' | relative_url }}
+[physik-pdfium]: {{ 'img/physik-pdfium.png' | relative_url }}
+
+[sdo-tool#21]: https://github.com/Xiphoseer/sdo-tool/issues/21
+[adobe-reader]: https://get.adobe.com/reader/
+[okular]: https://okular.kde.org/
+[evince]: https://gitlab.gnome.org/GNOME/evince
+[PDFium]: https://pdfium.googlesource.com/pdfium/
+[pdf.js]: https://github.com/mozilla/pdf.js
+[mozpdf]: https://support.mozilla.org/kb/view-pdf-files-firefox-or-choose-another-viewer
+[VeraPDF]: https://verapdf.org/
+[Poppler]: https://poppler.freedesktop.org/
+[MuPDF]: https://mupdf.readthedocs.io
 
 ## Editor
 
