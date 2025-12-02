@@ -1,5 +1,5 @@
 #[test]
-fn main() {
+fn render_pdfium() {
     use pdfium_render::prelude::*;
 
     let pdfium = Pdfium::new(

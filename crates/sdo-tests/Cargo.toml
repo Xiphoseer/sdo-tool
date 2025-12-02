@@ -5,4 +5,5 @@ edition = "2024"
 
 [dev-dependencies]
 pdfium-render = "0.8.36"
+mupdf = { version = "0.5.0", default-features = false }
 image = { version = "0.25.9", default-features = false, features = ["png"] }
