@@ -155,7 +155,7 @@ pub fn write_char_stream<W: Write>(
     writeln!(w, "ID")?;
 
     w.write_all(&buf)?;
-
+    writeln!(w)?;
     writeln!(w, "EI")?;
     Ok(())
 }
