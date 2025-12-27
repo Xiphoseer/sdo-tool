@@ -58,11 +58,12 @@ impl FourCC {
         Self(buf)
     }
 
-    /// Return a human readable name of the file format identified by this four-character-code
+    /// Return the Signum 1 file format identified by this four-character-code, if any
     ///
     /// ```
     /// # use signum::util::FourCC;
-    /// assert_eq!(FourCC::SDOC.file_format_name(), Some("Signum! Document"));
+    /// # use signum::util::Signum1Format;
+    /// assert_eq!(FourCC::SDOC.file_format(), Some(Signum1Format::Document));
     /// ```
     ///
     /// Returns `None` if the format is unknown
