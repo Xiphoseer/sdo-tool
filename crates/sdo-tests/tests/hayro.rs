@@ -23,7 +23,7 @@ fn render_hayro() {
         ..Default::default()
     };
 
-    let page = pdf.pages().iter().next().unwrap();
+    let page = pdf.pages().first().unwrap();
     let pixmap = render(page, &interpreter_settings, &render_settings);
     let save = img.join("physik-hayro.png");
     std::fs::write(save, pixmap.take_png()).unwrap();
