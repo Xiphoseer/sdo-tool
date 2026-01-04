@@ -70,17 +70,12 @@ pub struct PCFGlyphNames {
     pub names: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum PropVal {
+    #[default]
     None,
     Int(u32),
     String(String),
-}
-
-impl Default for PropVal {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl fmt::Debug for PropVal {

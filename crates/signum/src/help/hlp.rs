@@ -25,9 +25,7 @@ impl Term {
 
     /// Get or insert a subterm.
     pub fn get_or_insert_subterm(&mut self, subterm: &str) -> &mut SubTerm {
-        self.subterms
-            .entry(subterm.to_string())
-            .or_insert_with(SubTerm::default)
+        self.subterms.entry(subterm.to_string()).or_default()
     }
 }
 
@@ -48,6 +46,12 @@ pub struct HelpFile {
     pub terms: BTreeMap<String, Term>,
 }
 
+impl Default for HelpFile {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HelpFile {
     /// Create a new instance of `HelpFile`.
     pub fn new() -> Self {
@@ -63,9 +67,7 @@ impl HelpFile {
 
     /// Get or insert a term.
     pub fn get_or_insert_term(&mut self, term: &str) -> &mut Term {
-        self.terms
-            .entry(term.to_string())
-            .or_insert_with(Term::default)
+        self.terms.entry(term.to_string()).or_default()
     }
 
     /// Read help data from the format specified by the Signum documentation.
@@ -83,14 +85,14 @@ impl HelpFile {
         let mut current_term: Option<String> = None;
         let mut current_subterm: Option<String> = None;
 
-        while let Some(line) = lines.next() {
+        for line in lines {
             let line = line?;
-            if let Some(_) = line.strip_prefix("@stop") {
+            if line.strip_prefix("@stop").is_some() {
                 current_term = None;
                 current_subterm = None;
                 continue;
             }
-            if let Some(_) = line.strip_prefix("@@stop") {
+            if line.strip_prefix("@@stop").is_some() {
                 current_subterm = None;
                 continue;
             }

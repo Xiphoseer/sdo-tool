@@ -823,21 +823,16 @@ impl Serialize for ColorSpace {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 /// Specifies which value draws a color for an `ImageMask`
 ///
 /// This serializes to the array parameter for `Decode`
 pub enum ColorIs {
-    /// 0 means the color is drawn
+    /// 0 means the color is drawn (default)
+    #[default]
     Zero,
     /// 1 means the color is drawn
     One,
-}
-
-impl Default for ColorIs {
-    fn default() -> Self {
-        Self::Zero
-    }
 }
 
 impl Serialize for ColorIs {
