@@ -1,9 +1,9 @@
 //! Tool that uses pdf-rs to dump some low-level metadata about PDFs
 //! and creates an equivalent copy.
 use ccitt_t4_t6::{
-    bit_iter::{BitIter, BitWriter},
-    g42d::encode::Encoder,
-    g42d::{decode::Decoder, fax_decode},
+    bits::{BitIter, BitWriter},
+    g42d::Encoder,
+    g42d::{fax_decode, Decoder},
 };
 
 use io::{BufWriter, Write};

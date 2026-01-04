@@ -1,4 +1,4 @@
-use crate::bit_iter::BitIter;
+use crate::bits::BitIter;
 
 pub fn fax_decode_h_black(bit_iter: &mut BitIter) -> Option<u16> {
     if bit_iter.next()? {

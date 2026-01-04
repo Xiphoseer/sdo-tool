@@ -1,6 +1,6 @@
 [package]
 name = "ccitt-t4-t6"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
 license = "MPL-2.0"

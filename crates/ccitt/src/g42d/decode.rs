@@ -1,9 +1,7 @@
 //! Decoder implementation
 
-use crate::bit_iter::BitWriter;
+use crate::{bits::BitWriter, Color};
 use thiserror::Error;
-
-use super::common::Color;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]

@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use ccitt_t4_t6::g42d::encode::Encoder;
+use ccitt_t4_t6::g42d::Encoder;
 use pdf_create::{
     common::{
         BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,

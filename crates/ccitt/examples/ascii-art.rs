@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use ccitt_t4_t6::{bit_iter::BitIter, bit_iter::BitWriter, g42d::decode::Decoder};
+use ccitt_t4_t6::{bits::BitIter, bits::BitWriter, g42d::Decoder};
 use clap::Parser;
 use color_eyre::eyre;
 

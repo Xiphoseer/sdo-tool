@@ -2,12 +2,14 @@
 
 use terminals::{fax_decode_h_black, fax_decode_h_white};
 
-use super::bit_iter::BitIter;
+use super::bits::BitIter;
 
-pub mod common;
-pub mod decode;
-pub mod encode;
+mod decode;
+mod encode;
 mod terminals;
+
+pub use decode::Decoder;
+pub use encode::Encoder;
 
 struct FaxDecode {
     complete: Vec<bool>,
@@ -21,7 +23,7 @@ struct FaxDecode {
 
 /// Decode a bitmap and print it to the console
 ///
-/// **Note**: This does not use [`decode::Decoder`]!
+/// **Note**: This does not use [`Decoder`]!
 pub fn fax_decode(glyph_data: &[u8], width: usize) {
     let mut bit_iter = BitIter::new(glyph_data);
     let mut fax_decode = FaxDecode::new(width);

@@ -1,5 +1,5 @@
 use crate::cli::opt::{Format, Options};
-use ccitt_t4_t6::g42d::encode::Encoder;
+use ccitt_t4_t6::g42d::Encoder;
 use color_eyre::eyre::{self, eyre};
 use eyre::Context;
 use image::ImageFormat;

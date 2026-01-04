@@ -1,7 +1,9 @@
 //! Encoder implementation
 
-use super::common::Color;
-use crate::bit_iter::{BitIter, BitWriter};
+use crate::{
+    bits::{BitIter, BitWriter},
+    Color,
+};
 
 /// The encoder
 pub struct Encoder<'a> {

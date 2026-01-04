@@ -1,4 +1,4 @@
-//! A bit iterator
+//! # Bit Iterator and Writer
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 #[rustfmt::skip]
