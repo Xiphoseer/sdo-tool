@@ -47,6 +47,16 @@ impl MetaInfo {
     }
 }
 
+// These two constants must not be modified under AGPL-3.0 §7b. See NOTICE in the repo root
+const SDO_CREATOR: &str = "SIGNUM © 1986-93 F. Schmerbeck";
+const SDO_PRODUCER: &str = concat!(
+    "Signum! Document Toolbox (",
+    env!("CARGO_PKG_NAME"),
+    " v",
+    env!("CARGO_PKG_VERSION"),
+    ")"
+);
+
 /// Write PDF info data
 pub fn prepare_info(info: &mut Metadata, meta: &MetaInfo) -> Result<(), PDFDocEncodingError> {
     info.author = meta.author.clone();
@@ -56,8 +66,10 @@ pub fn prepare_info(info: &mut Metadata, meta: &MetaInfo) -> Result<(), PDFDocEn
     if let Some(title) = &meta.title {
         info.title = Some(title.clone());
     }
-    info.creator = Some("SIGNUM © 1986-93 F. Schmerbeck".to_owned());
-    info.producer = "Signum! Document Toolbox".to_owned();
+    // These two PDF fields must not be modified under AGPL-3.0 §7b. See NOTICE in the repo root
+    info.creator = Some(SDO_CREATOR.to_owned());
+    info.producer = SDO_PRODUCER.to_owned();
+
     if let Some(creation_date) = meta.creation_date {
         info.creation_date = creation_date;
     }

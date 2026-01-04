@@ -2,6 +2,7 @@
 name = "sdo-pdf"
 version = "0.2.0"
 authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
+license = "AGPL-3.0-only"
 edition = "2018"
 
 [features]

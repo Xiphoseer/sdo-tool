@@ -12,6 +12,15 @@ use crate::cli::{font::ps::write_ls30_ps_bitmap, opt::Options};
 
 use super::{ps_proc::prog_dict, Document};
 
+// This constant must not be modified under AGPL-3.0 §7b. See NOTICE in the repo root
+const SDO_CREATOR: &str = concat!(
+    "Signum! Document Toolbox (",
+    env!("CARGO_PKG_NAME"),
+    " v",
+    env!("CARGO_PKG_VERSION"),
+    ")"
+);
+
 fn output_ps_writer(
     doc: &Document,
     opt: &Options,
@@ -25,7 +34,8 @@ fn output_ps_writer(
     let vdpi = resolution.y;
 
     pw.write_magic()?;
-    pw.write_meta_field("Creator", "Signum! Document Toolbox v0.3")?;
+    // This field must not be modified under AGPL-3.0 §7b. See NOTICE in the repo root
+    pw.write_meta_field("Creator", SDO_CREATOR)?;
     let file_name = opt.file.file_name().unwrap().to_string_lossy();
     pw.write_meta_field("Title", file_name.as_ref())?;
     //pw.write_meta_field("CreationDate", "Sun Sep 13 23:55:06 2020")?;

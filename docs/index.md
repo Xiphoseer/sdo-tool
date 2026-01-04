@@ -128,8 +128,12 @@ at your own risk and without claiming fitness for any particular purpose. If you
 contribute to this project or use it for any kind of distribution or commercial purpose,
 please contact me.
 
-Parts of this toolbox (in particular the `signum` crate that implements the file format)
-are available under the `MIT OR Apache-2.0` license.
+Parts of this toolbox (in particular the `signum` crate that implements the file format,
+the `ccitt-t4-t6`, and `pdf-create` crates) are available under the `MIT OR Apache-2.0`
+license, common for the Rust ecosystem.
+
+The command line application (CLI) and web interface ("Studio") are licensed under
+`AGPL-3.0-only`. See the `NOTICE` file for additional terms under §7.
 
 This only applies to the copying and distribution of the software in this collection. Any
 document prepared with it is exclusively a derivative work of the source material (text,

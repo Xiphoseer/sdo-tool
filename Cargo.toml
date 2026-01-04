@@ -1,7 +1,8 @@
 [package]
 name = "sdo-tool"
 version = "0.3.2"
-authors = ["daniel"]
+authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
+license = "AGPL-3.0-only"
 edition = "2018"
 default-run = "sdo-tool"
 

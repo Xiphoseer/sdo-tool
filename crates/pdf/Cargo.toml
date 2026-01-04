@@ -3,7 +3,7 @@ name = "pdf-create"
 version = "0.3.0"
 authors = ["Xiphoseer <xiphoseer@mailbox.org>"]
 edition = "2018"
-license = "MPL-2.0"
+license = "MIT OR Apache-2.0"
 readme = "README.md"
 description = "low-level, strongly-typed PDF creation library"
 repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/pdf"
@@ -17,7 +17,6 @@ chrono = "0.4"
 md5 = "0.7"
 bitflags = "2.8"
 flate2 = "1.0"
-#guid-create = "0.2"
 uuid = { version = "1.12", features = ["v4"] }
 smallvec = { version = "1.14.0", features = ["const_new"] }
 

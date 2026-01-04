@@ -1,0 +1,20 @@
+AGPL-3.0 explicitly includes the ability to supplement the license
+with additional terms of a particular nature. This isn't an exception
+to the license (in the sense of a SPDX WITH) clause but rather provides
+that wherever the source code references additional terms under this
+section, AGPL requires any licensee to conform to them. This file
+describes the requirements that apply to the SDO-Toolbox:
+
+Pursuant to §7b of the AGPL-3.0 you must not remove partially or completely any parts
+of this NOTICE file, Cargo.toml author or license fields, or any source code explicitly
+referencing this NOTICE file.
+
+Pursuant to §7c of the AGPL-3.0 you must not remove from the source code any
+author attribution referencing this NOTICE file. If you create modified versions,
+you must take reasonable effort to reference the original SDO-Toolbox via the
+https://sdo.dseiler.eu URL and point out modifications.
+
+Pursuant to §7d of the AGPL-3.0 you must not use for publicity purposes the name
+of any author marked in Cargo.toml files, the credits in the README or people
+involved in the original Signum product by ASH whose file format this project
+implements for interoperability and digital preservation purposes.
