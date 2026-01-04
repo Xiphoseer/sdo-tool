@@ -9,6 +9,9 @@ description = "Implementation of ITU-T T.4 & T.6 (CCITTFaxDecode)"
 repository = "https://github.com/Xiphoseer/sdo-tool/tree/main/crates/ccitt"
 homepage = "https://xiphoseer.github.io/sdo-tool/implementation#ccitt-t4-t6"
 
+[features]
+debug = []
+
 [dependencies]
 thiserror = "1"
 

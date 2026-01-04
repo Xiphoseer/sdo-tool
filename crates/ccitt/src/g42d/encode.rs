@@ -19,6 +19,7 @@ pub struct Encoder<'a> {
     pub skip_lead: usize,
     /// How many bits of the source image to skip at the end of each line
     pub skip_tail: usize,
+    #[cfg(feature = "debug")]
     /// Whether to print debug info
     pub debug: bool,
 }
@@ -39,6 +40,7 @@ impl<'a> Encoder<'a> {
             done: false,
             skip_lead: 0,
             skip_tail: 0,
+            #[cfg(feature = "debug")]
             debug: false,
         }
     }
@@ -113,6 +115,7 @@ impl<'a> Encoder<'a> {
         let mut color = Color::White;
 
         loop {
+            #[cfg(feature = "debug")]
             if self.debug {
                 let mut cl = self.iter.clone();
                 print!("|");
@@ -166,6 +169,7 @@ impl<'a> Encoder<'a> {
 
                 if b2 < a1 {
                     // pass mode
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("P({})", b2);
                     }
@@ -180,6 +184,7 @@ impl<'a> Encoder<'a> {
                     //print!("(d/{})", d);
                     let v = match d {
                         -3 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VL3");
                             }
@@ -187,6 +192,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         -2 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VL2");
                             }
@@ -194,6 +200,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         -1 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VL1");
                             }
@@ -201,6 +208,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         0 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("V0");
                             }
@@ -208,6 +216,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         1 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VR1");
                             }
@@ -215,6 +224,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         2 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VR2");
                             }
@@ -222,6 +232,7 @@ impl<'a> Encoder<'a> {
                             true
                         }
                         3 => {
+                            #[cfg(feature = "debug")]
                             if self.debug {
                                 print!("VR3");
                             }
@@ -233,6 +244,7 @@ impl<'a> Encoder<'a> {
 
                     if v {
                         //println!("\n-----------------------------");
+                        #[cfg(feature = "debug")]
                         if self.debug {
                             print!("({})", b1);
                         }
@@ -245,6 +257,7 @@ impl<'a> Encoder<'a> {
                         // horizontal mode
                         let a0a1 = a1 - a0;
                         let a1a2 = a2 - a1;
+                        #[cfg(feature = "debug")]
                         if self.debug {
                             print!("H({},{})", a0a1, a1a2);
                         }
@@ -272,6 +285,7 @@ impl<'a> Encoder<'a> {
                 //println!("{} {} {} | {} {}", a0, a1, a2, b1, b2);
 
                 if a0 > self.width {
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         println!("#");
                     }
