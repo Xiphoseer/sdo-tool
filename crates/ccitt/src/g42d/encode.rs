@@ -68,33 +68,23 @@ impl<'a> Encoder<'a> {
 
     fn find_next_changing_ref(&mut self) -> usize {
         loop {
-            //print!("(rp/{})", self.ref_pos);
             if self.ref_pos >= self.width {
                 //println!("(rp/{})", self.width + 1);
                 break self.width + 1;
             }
             let color = self.reference[self.ref_pos];
-            /*match color {
-                Color::White => print!("[W]"),
-                Color::Black => print!("[B]"),
-            }*/
             self.ref_pos += 1;
             if color != self.ref_color {
                 // found changing element
                 self.ref_color = color;
-                //println!("(rp/{})", self.ref_pos);
                 break self.ref_pos;
             }
         }
     }
 
     fn find_next_opposite_ref(&mut self, color: Color) -> usize {
-        //println!("(c/{:?})", color);
-        //println!("(i/{:?})", self.ref_color);
         loop {
             let c = self.find_next_changing_ref();
-            //print!("(r/{:?})", self.ref_color);
-            //println!("(cp/{})", c);
             if self.ref_color != color || c > self.width {
                 break c;
             }
@@ -161,8 +151,6 @@ impl<'a> Encoder<'a> {
             let mut b2 = self.find_next_changing_ref();
 
             loop {
-                //println!("a0: {}, a1: {}, a2: {}, b1: {}, b2: {}", a0, a1, a2, b1, b2);
-
                 if a0 == 0 {
                     a0 = 1;
                 }
@@ -174,14 +162,11 @@ impl<'a> Encoder<'a> {
                         print!("P({})", b2);
                     }
                     self.output.write_bits(0b0001, 4);
-                    //println!("\n-----------------------------");
                     a0 = b2;
 
                     self.find_b1_b2_at(a0, color, &mut b1, &mut b2);
-                //println!("a0: {}, b1: {}, b2: {}", a0, b1, b2);
                 } else {
                     let d = (a1 as isize) - (b1 as isize);
-                    //print!("(d/{})", d);
                     let v = match d {
                         -3 => {
                             #[cfg(feature = "debug")]
@@ -243,7 +228,6 @@ impl<'a> Encoder<'a> {
                     };
 
                     if v {
-                        //println!("\n-----------------------------");
                         #[cfg(feature = "debug")]
                         if self.debug {
                             print!("({})", b1);
@@ -272,7 +256,6 @@ impl<'a> Encoder<'a> {
                                 write_white_len(&mut self.output, a1a2);
                             }
                         }
-                        //println!("\n-----------------------------");
 
                         a0 = a2;
                         a1 = self.find_next_changing_element();
@@ -280,9 +263,6 @@ impl<'a> Encoder<'a> {
                         self.find_b1_b2_at(a0, color, &mut b1, &mut b2);
                     }
                 }
-
-                //println!();
-                //println!("{} {} {} | {} {}", a0, a1, a2, b1, b2);
 
                 if a0 > self.width {
                     #[cfg(feature = "debug")]
@@ -303,8 +283,6 @@ impl<'a> Encoder<'a> {
             for _ in 0..self.skip_tail {
                 self.iter.next();
             }
-
-            //Color::_print_row(&self.reference);
 
             if self.done {
                 break;
