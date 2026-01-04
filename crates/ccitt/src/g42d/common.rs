@@ -19,6 +19,7 @@ impl From<bool> for Color {
     }
 }
 
+#[cfg(feature = "debug")]
 impl Color {
     /// Print a monochrome scanline
     pub fn _print_row(row: &[Color]) {
