@@ -1,132 +1,13 @@
-//! Decoder implementation
+//! # State-Machine based decoder
+//!
+//! This decoder is based on a manually implemented state machine
+//! that consumes bytes in a 3-3-2 (bits) pattern and updates the
+//! internal state accordingly.
 
-use crate::{bits::BitWriter, Color};
+use crate::{bits::BitWriter, g42d::decode::bits::Bits, Color};
 use thiserror::Error;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
-enum Bits {
-    B = 1,
-    B0,
-    B1,
-    B00,
-    B01,
-    B10,
-    B11,
-    B000,
-    B001,
-    B010,
-    B011,
-    B100,
-    B101,
-    B110,
-    B111,
-}
-
-impl Bits {
-    pub fn from_u8(input: u8) -> [Bits; 3] {
-        TABLE[input as usize]
-    }
-
-    fn off(state: u16, rem: Rem) -> Self {
-        let (bit, mask) = match rem {
-            Rem::R0 => (0b00000001, 0x0000),
-            Rem::R1 => (0b00000010, 0x0001),
-            Rem::R2 => (0b00000100, 0x0003),
-        };
-        unsafe { std::mem::transmute((state & mask) as u8 | bit) }
-    }
-
-    fn push(&self, state: &mut u16, off: &mut u8) {
-        use Bits::*;
-        match self {
-            B => {}
-            B0 | B1 => {
-                *state = (*state << 1) | ((*self as u8) & 0b00000001) as u16;
-                *off += 1;
-            }
-            B00 | B01 | B10 | B11 => {
-                *state = (*state << 2) | ((*self as u8) & 0b00000011) as u16;
-                *off += 2;
-            }
-            B000 | B001 | B010 | B011 | B100 | B101 | B110 | B111 => {
-                *state = (*state << 3) | ((*self as u8) & 0b00000111) as u16;
-                *off += 3;
-            }
-        }
-    }
-}
-
-#[rustfmt::skip]
-const TABLE: [[Bits; 3]; 256] = {
-    use Bits::*;
-    [
-        [B000, B000, B00], [B000, B000, B01], [B000, B000, B10], [B000, B000, B11],
-        [B000, B001, B00], [B000, B001, B01], [B000, B001, B10], [B000, B001, B11],
-        [B000, B010, B00], [B000, B010, B01], [B000, B010, B10], [B000, B010, B11],
-        [B000, B011, B00], [B000, B011, B01], [B000, B011, B10], [B000, B011, B11],
-        [B000, B100, B00], [B000, B100, B01], [B000, B100, B10], [B000, B100, B11],
-        [B000, B101, B00], [B000, B101, B01], [B000, B101, B10], [B000, B101, B11],
-        [B000, B110, B00], [B000, B110, B01], [B000, B110, B10], [B000, B110, B11],
-        [B000, B111, B00], [B000, B111, B01], [B000, B111, B10], [B000, B111, B11],
-        [B001, B000, B00], [B001, B000, B01], [B001, B000, B10], [B001, B000, B11],
-        [B001, B001, B00], [B001, B001, B01], [B001, B001, B10], [B001, B001, B11],
-        [B001, B010, B00], [B001, B010, B01], [B001, B010, B10], [B001, B010, B11],
-        [B001, B011, B00], [B001, B011, B01], [B001, B011, B10], [B001, B011, B11],
-        [B001, B100, B00], [B001, B100, B01], [B001, B100, B10], [B001, B100, B11],
-        [B001, B101, B00], [B001, B101, B01], [B001, B101, B10], [B001, B101, B11],
-        [B001, B110, B00], [B001, B110, B01], [B001, B110, B10], [B001, B110, B11],
-        [B001, B111, B00], [B001, B111, B01], [B001, B111, B10], [B001, B111, B11],
-        [B010, B000, B00], [B010, B000, B01], [B010, B000, B10], [B010, B000, B11],
-        [B010, B001, B00], [B010, B001, B01], [B010, B001, B10], [B010, B001, B11],
-        [B010, B010, B00], [B010, B010, B01], [B010, B010, B10], [B010, B010, B11],
-        [B010, B011, B00], [B010, B011, B01], [B010, B011, B10], [B010, B011, B11],
-        [B010, B100, B00], [B010, B100, B01], [B010, B100, B10], [B010, B100, B11],
-        [B010, B101, B00], [B010, B101, B01], [B010, B101, B10], [B010, B101, B11],
-        [B010, B110, B00], [B010, B110, B01], [B010, B110, B10], [B010, B110, B11],
-        [B010, B111, B00], [B010, B111, B01], [B010, B111, B10], [B010, B111, B11],
-        [B011, B000, B00], [B011, B000, B01], [B011, B000, B10], [B011, B000, B11],
-        [B011, B001, B00], [B011, B001, B01], [B011, B001, B10], [B011, B001, B11],
-        [B011, B010, B00], [B011, B010, B01], [B011, B010, B10], [B011, B010, B11],
-        [B011, B011, B00], [B011, B011, B01], [B011, B011, B10], [B011, B011, B11],
-        [B011, B100, B00], [B011, B100, B01], [B011, B100, B10], [B011, B100, B11],
-        [B011, B101, B00], [B011, B101, B01], [B011, B101, B10], [B011, B101, B11],
-        [B011, B110, B00], [B011, B110, B01], [B011, B110, B10], [B011, B110, B11],
-        [B011, B111, B00], [B011, B111, B01], [B011, B111, B10], [B011, B111, B11],
-        [B100, B000, B00], [B100, B000, B01], [B100, B000, B10], [B100, B000, B11],
-        [B100, B001, B00], [B100, B001, B01], [B100, B001, B10], [B100, B001, B11],
-        [B100, B010, B00], [B100, B010, B01], [B100, B010, B10], [B100, B010, B11],
-        [B100, B011, B00], [B100, B011, B01], [B100, B011, B10], [B100, B011, B11],
-        [B100, B100, B00], [B100, B100, B01], [B100, B100, B10], [B100, B100, B11],
-        [B100, B101, B00], [B100, B101, B01], [B100, B101, B10], [B100, B101, B11],
-        [B100, B110, B00], [B100, B110, B01], [B100, B110, B10], [B100, B110, B11],
-        [B100, B111, B00], [B100, B111, B01], [B100, B111, B10], [B100, B111, B11],
-        [B101, B000, B00], [B101, B000, B01], [B101, B000, B10], [B101, B000, B11],
-        [B101, B001, B00], [B101, B001, B01], [B101, B001, B10], [B101, B001, B11],
-        [B101, B010, B00], [B101, B010, B01], [B101, B010, B10], [B101, B010, B11],
-        [B101, B011, B00], [B101, B011, B01], [B101, B011, B10], [B101, B011, B11],
-        [B101, B100, B00], [B101, B100, B01], [B101, B100, B10], [B101, B100, B11],
-        [B101, B101, B00], [B101, B101, B01], [B101, B101, B10], [B101, B101, B11],
-        [B101, B110, B00], [B101, B110, B01], [B101, B110, B10], [B101, B110, B11],
-        [B101, B111, B00], [B101, B111, B01], [B101, B111, B10], [B101, B111, B11],
-        [B110, B000, B00], [B110, B000, B01], [B110, B000, B10], [B110, B000, B11],
-        [B110, B001, B00], [B110, B001, B01], [B110, B001, B10], [B110, B001, B11],
-        [B110, B010, B00], [B110, B010, B01], [B110, B010, B10], [B110, B010, B11],
-        [B110, B011, B00], [B110, B011, B01], [B110, B011, B10], [B110, B011, B11],
-        [B110, B100, B00], [B110, B100, B01], [B110, B100, B10], [B110, B100, B11],
-        [B110, B101, B00], [B110, B101, B01], [B110, B101, B10], [B110, B101, B11],
-        [B110, B110, B00], [B110, B110, B01], [B110, B110, B10], [B110, B110, B11],
-        [B110, B111, B00], [B110, B111, B01], [B110, B111, B10], [B110, B111, B11],
-        [B111, B000, B00], [B111, B000, B01], [B111, B000, B10], [B111, B000, B11],
-        [B111, B001, B00], [B111, B001, B01], [B111, B001, B10], [B111, B001, B11],
-        [B111, B010, B00], [B111, B010, B01], [B111, B010, B10], [B111, B010, B11],
-        [B111, B011, B00], [B111, B011, B01], [B111, B011, B10], [B111, B011, B11],
-        [B111, B100, B00], [B111, B100, B01], [B111, B100, B10], [B111, B100, B11],
-        [B111, B101, B00], [B111, B101, B01], [B111, B101, B10], [B111, B101, B11],
-        [B111, B110, B00], [B111, B110, B01], [B111, B110, B10], [B111, B110, B11],
-        [B111, B111, B00], [B111, B111, B01], [B111, B111, B10], [B111, B111, B11],
-    ]
-};
+mod bits;
 
 /// This struct can represents a scanline
 pub trait ColorLine {
@@ -203,23 +84,23 @@ impl Store for Vec<Color> {
 }
 
 #[derive(Debug)]
-struct Stack(Cmd, Cmd, Cmd, Cmd);
+struct Stack<T>(T, T, T, T);
 
-impl Stack {
-    fn peek(&self) -> Cmd {
+impl<T: Copy + Default> Stack<T> {
+    fn peek(&self) -> T {
         self.0
     }
 
-    fn replace(&mut self, cmd: Cmd) -> Cmd {
+    fn replace(&mut self, cmd: T) -> T {
         std::mem::replace(&mut self.0, cmd)
     }
 
-    fn pop(&mut self) -> Cmd {
+    fn pop(&mut self) -> T {
         let x = self.0;
         self.0 = self.1;
         self.1 = self.2;
         self.2 = self.3;
-        self.3 = Cmd::X;
+        self.3 = T::default();
         x
     }
 }
@@ -249,7 +130,7 @@ enum NextBits {
 pub struct Decoder<S: Store> {
     /// Whether to print debug info
     pub debug: bool,
-    stack: Stack,
+    stack: Stack<Cmd>,
     next_bits: NextBits,
     store: S,
     width: usize,
@@ -593,9 +474,11 @@ pub enum Err {
     ExtNotSupported,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 #[allow(clippy::upper_case_acronyms, dead_code)]
 enum Cmd {
+    /// no-op / end of stack
+    #[default]
     X,
     MP(ModePrefix),
     EX(Bits),
@@ -626,7 +509,7 @@ enum Cmd {
 }
 
 impl ModePrefix {
-    fn next(&self, bits: Bits) -> Result<Stack, Err> {
+    fn next(&self, bits: Bits) -> Result<Stack<Cmd>, Err> {
         use {Bits::*, Cmd::*, ModePrefix::*};
         match self {
             M => match bits {
