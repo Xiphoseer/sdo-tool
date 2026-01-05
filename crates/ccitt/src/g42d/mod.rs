@@ -6,7 +6,7 @@ mod decode;
 mod decode_iter;
 mod encode;
 
-pub use decode::{Decoder, Store, ColorLine};
+pub use decode::Decoder;
 use decode_iter::FaxDecode;
 pub use encode::Encoder;
 
