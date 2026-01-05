@@ -11,6 +11,7 @@ struct Options {
     width: usize,
     #[clap(long, short)]
     invert: bool,
+    #[cfg(feature = "debug")]
     #[clap(long)]
     debug: bool,
 }
@@ -21,7 +22,10 @@ fn main() -> eyre::Result<()> {
     let file = std::fs::read(&opt.file)?;
 
     let mut decoder = Decoder::<BitWriter>::new(opt.width);
-    decoder.debug = opt.debug;
+    #[cfg(feature = "debug")]
+    {
+        decoder.debug = opt.debug;
+    }
     decoder.decode(&file)?;
     let store = decoder.into_store();
 

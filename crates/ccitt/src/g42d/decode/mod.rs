@@ -55,6 +55,7 @@ enum NextBits {
 
 /// The decoder
 pub struct Decoder<S: Store> {
+    #[cfg(feature = "debug")]
     /// Whether to print debug info
     pub debug: bool,
     stack: Stack<Cmd>,
@@ -80,6 +81,7 @@ impl<S: Store> Decoder<S> {
             current: S::new_row(width),
             color: Color::White,
             a0: 0,
+            #[cfg(feature = "debug")]
             debug: false,
         }
     }
@@ -139,6 +141,7 @@ impl<S: Store> Decoder<S> {
 
     fn pass_mode(&mut self) {
         let b2 = self.find_b2();
+        #[cfg(feature = "debug")]
         if self.debug {
             print!("P({})", b2);
         }
@@ -197,6 +200,7 @@ impl<S: Store> Decoder<S> {
                 (input, black_len, white_len, bits)
             }
         };
+        #[cfg(feature = "debug")]
         if self.debug {
             print!("H({},{})", a, b);
         }
@@ -300,6 +304,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VL3 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VL3({})", b1);
                     }
@@ -307,6 +312,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VL2 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VL2({})", b1);
                     }
@@ -314,6 +320,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VL1 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VL1({})", b1);
                     }
@@ -321,6 +328,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::V0 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("V0({})", b1);
                     }
@@ -328,6 +336,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VR1 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VR1({})", b1);
                     }
@@ -335,6 +344,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VR2 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VR2({})", b1);
                     }
@@ -342,6 +352,7 @@ impl<S: Store> Decoder<S> {
                 }
                 Cmd::VR3 => {
                     let b1 = self.find_b1();
+                    #[cfg(feature = "debug")]
                     if self.debug {
                         print!("VR2({})", b1);
                     }
@@ -355,6 +366,7 @@ impl<S: Store> Decoder<S> {
             }
             if self.a0 > self.width {
                 // line end
+                #[cfg(feature = "debug")]
                 if self.debug {
                     println!("#");
                 }
