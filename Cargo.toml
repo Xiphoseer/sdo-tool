@@ -11,7 +11,7 @@ color-eyre.workspace = true
 prettytable-rs = { version = "0.10", default-features = false }
 clap = { version = "3.1", features = ["derive"] }
 log = "0.4"
-env_logger = { version = "0.8.4", default-features = false }
+env_logger.workspace = true
 bitflags = "2.8"
 thiserror.workspace = true
 nom-supreme = "0.8"
@@ -42,6 +42,11 @@ pdf = "0.9"
 ron = "0.12"
 thiserror = "2"
 tiff = "0.11"
+
+[workspace.dependencies.env_logger]
+version = "0.11.8"
+default-features = false
+features = ["color"]
 
 [patch.crates-io.fontdue]
 # variable font support
