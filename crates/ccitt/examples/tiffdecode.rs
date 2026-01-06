@@ -5,7 +5,7 @@ use std::{
 
 use ccitt_t4_t6::{
     bits::{BitWriter, FillOrder},
-    g42d::{fax_decode, Decoder, FaxOptions},
+    g42d::{fax_decode, G4Decoder, FaxOptions},
 };
 use color_eyre::eyre::{self, eyre};
 use tiff::{
@@ -148,7 +148,7 @@ fn main() -> eyre::Result<()> {
                 }
 
                 println!("DONE fax_decode");
-                let mut decoder = Decoder::<BitWriter>::new(width.into());
+                let mut decoder = G4Decoder::<BitWriter>::new(width.into());
                 decoder.decode(&bytes)?;
                 let store = decoder.into_store();
 

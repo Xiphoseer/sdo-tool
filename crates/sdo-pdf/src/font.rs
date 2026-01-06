@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use ccitt_t4_t6::g42d::Encoder;
+use ccitt_t4_t6::g42d::G4Encoder;
 use pdf_create::{
     common::{
         BaseEncoding, Dict, Encoding, FontDescriptor, FontFlags, Matrix, PdfString, Point,
@@ -108,7 +108,7 @@ pub fn write_char_stream<W: Write>(
     let (left_x, right_x) = hb.left_right_x();
     let box_width = right_x - left_x;
     let box_height = pchar.height as usize;
-    let mut encoder = Encoder::new(box_width, &pchar.bitmap);
+    let mut encoder = G4Encoder::new(box_width, &pchar.bitmap);
     encoder.skip_lead = hb.max_lead;
     encoder.skip_tail = hb.max_tail;
     let buf = encoder.encode();

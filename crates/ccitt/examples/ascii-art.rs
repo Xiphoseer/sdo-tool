@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use ccitt_t4_t6::{bits::BitWriter, g42d::Decoder};
+use ccitt_t4_t6::{bits::BitWriter, g42d::G4Decoder};
 use color_eyre::eyre;
 
 #[derive(argh::FromArgs)]
@@ -26,7 +26,7 @@ fn main() -> eyre::Result<()> {
     let opt: Options = argh::from_env();
     let file = std::fs::read(&opt.file)?;
 
-    let mut decoder = Decoder::<BitWriter>::new(opt.width);
+    let mut decoder = G4Decoder::<BitWriter>::new(opt.width);
     #[cfg(feature = "debug")]
     {
         decoder.debug = opt.debug;

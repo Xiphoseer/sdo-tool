@@ -1,5 +1,5 @@
 use crate::cli::opt::{Format, Options};
-use ccitt_t4_t6::g42d::Encoder;
+use ccitt_t4_t6::g42d::G4Encoder;
 use color_eyre::eyre::{self, eyre};
 use eyre::Context;
 use image::ImageFormat;
@@ -82,7 +82,7 @@ fn save_as_ccitt(pset: &PSet, opt: &Options, file: &Path) -> eyre::Result<()> {
             println!("{}: {} .. {}", cval, hb.max_lead, hb.max_tail);
 
             let width = hb.bit_width();
-            let mut encoder = Encoder::new(width, &chr.bitmap);
+            let mut encoder = G4Encoder::new(width, &chr.bitmap);
             encoder.skip_lead = hb.max_lead;
             encoder.skip_tail = hb.max_tail;
             let contents = encoder.encode();
