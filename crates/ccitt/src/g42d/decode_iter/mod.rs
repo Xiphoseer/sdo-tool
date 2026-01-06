@@ -4,58 +4,13 @@
 //! i.e. consuming bits from the input as a sequence of [`bool`] and matching
 //! on them.
 
+mod image;
 mod terminals;
-
-use std::io;
 
 use terminals::{black_terminal, fax_decode_h, white_terminal};
 
-use crate::{ascii_art::BorderDrawing, bits::BitIter, g42d::FaxResult, ASCII};
-
-pub struct FaxImage {
-    width: usize,
-    complete: Vec<bool>,
-}
-
-impl FaxImage {
-    fn print_border(&self, b: &BorderDrawing) {
-        print!("{}", b.left);
-        for _ in 0..self.width {
-            print!("{}", b.middle);
-        }
-        println!("{}", b.right);
-    }
-
-    pub fn print(&self) {
-        let b = ASCII;
-        self.print_border(&b.top);
-        for row in self.complete.chunks_exact(self.width) {
-            print!("{}", b.left);
-            for bit in row {
-                if *bit {
-                    print!("{}", b.ink);
-                } else {
-                    print!("{}", b.no_ink);
-                }
-            }
-            println!("{}", b.right);
-        }
-        self.print_border(&b.bottom);
-    }
-
-    pub fn write_pbm<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        let height = self.complete.len().div_ceil(self.width);
-        writeln!(writer, "P1 {} {}", self.width, height)?;
-        for row in self.complete.chunks_exact(self.width) {
-            for bit in row {
-                let v = if *bit { 0 } else { 1 };
-                write!(writer, "{:b}", v)?;
-            }
-            writeln!(writer)?;
-        }
-        Ok(())
-    }
-}
+use crate::{bits::BitIter, g42d::FaxResult};
+pub use image::FaxImage;
 
 pub struct FaxDecode {
     complete: Vec<bool>,

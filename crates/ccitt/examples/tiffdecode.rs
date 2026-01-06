@@ -39,8 +39,6 @@ fn main() -> eyre::Result<()> {
     let opt: Options = argh::from_env();
     let file = std::fs::read(&opt.file)?;
 
-    let _ = opt.invert;
-
     let mut tiff_decoder = TiffDecoder::new(Cursor::new(file))?;
     let compression = tiff_decoder.get_tag(Tag::Compression)?.into_u16()?;
     let compression = CompressionMethod::from_u16_exhaustive(compression);
@@ -99,7 +97,7 @@ fn main() -> eyre::Result<()> {
                 fax_options.debug = opt.debug;
                 let image = fax_decode(bytes, fax_options).expect("fax_decode");
                 if opt.print {
-                    image.print();
+                    image.print(opt.invert);
                 }
 
                 println!("DONE fax_decode");
