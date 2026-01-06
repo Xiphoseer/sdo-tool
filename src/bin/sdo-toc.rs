@@ -118,13 +118,14 @@ pub fn run(buffer: &[u8], opt: RunOpts) -> eyre::Result<()> {
         }
     }
 
-    let cfg = PrettyConfig::new().with_separate_tuple_members(false);
+    let cfg = PrettyConfig::new().separate_tuple_members(false);
+    let ron = ron::Options::default();
     if opt.out.as_os_str() == OsStr::new("-") {
-        ron::ser::to_writer_pretty(std::io::stdout(), &outline, cfg)?;
+        ron.to_io_writer_pretty(std::io::stdout(), &outline, cfg)?;
     } else {
         let file = std::fs::File::create_new(&opt.out)?;
         let writer = BufWriter::new(file);
-        ron::ser::to_writer_pretty(writer, &outline, cfg)?;
+        ron.to_io_writer_pretty(writer, &outline, cfg)?;
         log::info!("Wrote '{}'", opt.out.display());
     }
 

@@ -132,7 +132,7 @@ pub enum MetaError {
     #[error("IO Error")]
     Io(#[from] io::Error),
     #[error("Deserialize Error")]
-    Ron(#[from] ron::error::Error),
+    Ron(#[from] ron::error::SpannedError),
 }
 
 impl Options {

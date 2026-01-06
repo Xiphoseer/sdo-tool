@@ -8,8 +8,6 @@ use std::{
     str::FromStr,
 };
 
-//use pdf::primitive::PdfString;
-
 use crate::{
     encoding::{pdf_doc_encode, PDFDocEncodingError},
     write::{Formatter, PdfName, PdfNameBuf, Serialize, ToDict},

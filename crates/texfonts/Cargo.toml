@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 nom = "7"
-thiserror = "1.0"
+thiserror = { workspace = true }
 bitflags = "2.8"
 
 [dev-dependencies]

@@ -14,7 +14,7 @@ default = ["chrono"]
 
 [dependencies]
 nom = "7"
-thiserror = "1.0"
+thiserror = { workspace = true }
 bitflags = { version = "2.8", features = ["serde"] }
 displaydoc = "0.2"
 log = "0.4"

@@ -14,7 +14,7 @@ log = "0.4"
 env_logger = { version = "0.8.4", default-features = false }
 pretty_env_logger = "0.5"
 bitflags = "2.8"
-thiserror = "1.0"
+thiserror.workspace = true
 nom-supreme = "0.8"
 ccitt-t4-t6 = { path = "crates/ccitt" }
 pdf-create = { path = "crates/pdf" }
@@ -22,7 +22,7 @@ sdo-pdf = { path = "crates/sdo-pdf" }
 sdo-ps = { path = "crates/sdo-ps" }
 sdo-util = { path = "crates/sdo-util" }
 signum = { path = "crates/signum", features = ["image"] }
-ron = "0.6"
+ron.workspace = true
 serde = "1.0"
 futures-lite = "2.3.0"
 
@@ -32,13 +32,15 @@ version = "0.25"
 features = ["png"]
 
 [dev-dependencies]
-pdf = { workspace = true }
+pdf.workspace = true
 
 [workspace]
 members = ["crates/*"]
 
 [workspace.dependencies]
 pdf = "0.9"
+ron = "0.12"
+thiserror = "2"
 tiff = "0.11"
 
 [patch.crates-io.fontdue]
