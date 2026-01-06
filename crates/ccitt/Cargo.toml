@@ -13,9 +13,9 @@ homepage = "https://xiphoseer.github.io/sdo-tool/implementation#ccitt-t4-t6"
 debug = []
 
 [dependencies]
-argh = "0.1.13"
 thiserror = "1"
 
 [dev-dependencies]
+argh = "0.1.13"
 color-eyre = { version = "0.5", default-features = false }
 tiff = { version = "0.10" }
