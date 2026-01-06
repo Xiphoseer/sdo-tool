@@ -2,6 +2,7 @@ use std::{io, iter::Peekable};
 
 use crate::{ascii_art::BorderDrawing, ASCII};
 
+/// A decoded bi-level image
 pub struct FaxImage {
     pub(crate) width: usize,
     pub(crate) complete: Vec<bool>,
@@ -16,6 +17,7 @@ impl FaxImage {
         println!("{}", b.right);
     }
 
+    /// Print the image to the console / stdout
     pub fn print(&self, invert: bool) {
         let b = ASCII;
         self.print_border(&b.top);
@@ -30,7 +32,8 @@ impl FaxImage {
         self.print_border(&b.bottom);
     }
 
-    ///
+    /// Write a PBM file from the decoded image
+    /// 
     /// ## Parameters
     ///
     /// - `dbl` - write every line twice, because "Standard" fax is 200 dpi horizontal and 100 dpi vertical

@@ -1,9 +1,6 @@
 //! CCITT Group 4 2D-encoding
 
-use crate::{
-    bits::{BitIter, FillOrder},
-    g42d::decode_iter::FaxImage,
-};
+use crate::bits::{BitIter, FillOrder};
 
 mod decode;
 mod decode_iter;
@@ -11,6 +8,7 @@ mod encode;
 
 pub use decode::Decoder;
 use decode_iter::FaxDecode;
+pub use decode_iter::FaxImage;
 pub use encode::Encoder;
 
 /// Options for fax decoding
