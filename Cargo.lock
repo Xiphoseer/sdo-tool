@@ -2339,7 +2339,6 @@ dependencies = [
  "image",
  "log",
  "nom-supreme",
- "pdf 0.7.2",
  "pdf 0.9.1",
  "pdf-create",
  "pretty_env_logger",
