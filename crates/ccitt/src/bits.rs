@@ -137,10 +137,30 @@ impl BitWriter {
     }
 }
 
+/// Order of writing/reading bits to/from a byte (see TIFF spec)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum FillOrder {
+    /// A byte is iterated from most- to least-significant bit
+    #[default]
+    MsbToLsb = 1,
+    /// A byte is iterated from lest- to most-significant bit
+    LsbToMsb = 2,
+}
+
+impl FillOrder {
+    fn next(&self, buffer: u8) -> (u8, bool) {
+        match self {
+            FillOrder::MsbToLsb => buffer.overflowing_mul(2),
+            FillOrder::LsbToMsb => (buffer >> 1, buffer & 0b1 > 0),
+        }
+    }
+}
+
 /// Read bits from a slice
 #[derive(Debug, Clone)]
 pub struct BitIter<'a> {
     state: State,
+    fill_order: FillOrder,
     buffer: u8,
     inner: std::slice::Iter<'a, u8>,
 }
@@ -150,9 +170,17 @@ impl<'a> BitIter<'a> {
     pub fn new(bytes: &'a [u8]) -> BitIter<'a> {
         BitIter {
             state: State::default(),
+            fill_order: FillOrder::MsbToLsb,
             buffer: 0,
             inner: bytes.iter(),
         }
+    }
+
+    /// Update the fill order. This should be done before
+    /// any call to next, otherwise the resulting stream
+    /// may be corrupt, but it's not unsound.
+    pub fn set_fill_order(&mut self, fill_order: FillOrder) {
+        self.fill_order = fill_order;
     }
 
     /// Get the next two bits
@@ -214,9 +242,9 @@ impl Iterator for BitIter<'_> {
                 return None;
             }
         }
-        let (next_buffer, carry) = self.buffer.overflowing_mul(2);
+        let (next_buffer, bit) = self.fill_order.next(self.buffer);
         self.buffer = next_buffer;
-        Some(carry)
+        Some(bit)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -234,7 +262,23 @@ impl Iterator for BitIter<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{BitWriter, State};
+    use super::{BitWriter, FillOrder, State};
+
+    #[test]
+    fn test_fill_order_msb_to_lsb() {
+        let msbf = FillOrder::MsbToLsb;
+        assert_eq!(msbf.next(0b10000000), (0b00000000, true));
+        assert_eq!(msbf.next(0b01000000), (0b10000000, false));
+        assert_eq!(msbf.next(0b10100000), (0b01000000, true));
+    }
+
+    #[test]
+    fn test_fill_order_lsb_to_msb() {
+        let msbf = FillOrder::LsbToMsb;
+        assert_eq!(msbf.next(0b00000001), (0b00000000, true));
+        assert_eq!(msbf.next(0b00000010), (0b00000001, false));
+        assert_eq!(msbf.next(0b00000101), (0b00000010, true));
+    }
 
     #[test]
     fn test_bit_writer_write_bits() {

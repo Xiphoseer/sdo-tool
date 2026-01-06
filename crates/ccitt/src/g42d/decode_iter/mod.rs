@@ -6,9 +6,56 @@
 
 mod terminals;
 
-use terminals::{fax_decode_h_black, fax_decode_h_white};
+use std::io;
 
-use crate::bits::BitIter;
+use terminals::{black_terminal, fax_decode_h, white_terminal};
+
+use crate::{ascii_art::BorderDrawing, bits::BitIter, g42d::FaxResult, ASCII};
+
+pub struct FaxImage {
+    width: usize,
+    complete: Vec<bool>,
+}
+
+impl FaxImage {
+    fn print_border(&self, b: &BorderDrawing) {
+        print!("{}", b.left);
+        for _ in 0..self.width {
+            print!("{}", b.middle);
+        }
+        println!("{}", b.right);
+    }
+
+    pub fn print(&self) {
+        let b = ASCII;
+        self.print_border(&b.top);
+        for row in self.complete.chunks_exact(self.width) {
+            print!("{}", b.left);
+            for bit in row {
+                if *bit {
+                    print!("{}", b.ink);
+                } else {
+                    print!("{}", b.no_ink);
+                }
+            }
+            println!("{}", b.right);
+        }
+        self.print_border(&b.bottom);
+    }
+
+    pub fn write_pbm<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        let height = self.complete.len().div_ceil(self.width);
+        writeln!(writer, "P1 {} {}", self.width, height)?;
+        for row in self.complete.chunks_exact(self.width) {
+            for bit in row {
+                let v = if *bit { 0 } else { 1 };
+                write!(writer, "{:b}", v)?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+}
 
 pub struct FaxDecode {
     complete: Vec<bool>,
@@ -18,6 +65,7 @@ pub struct FaxDecode {
     a0: usize,
     ink: bool,
     first: bool,
+    debug: bool,
 }
 
 impl FaxDecode {
@@ -31,10 +79,15 @@ impl FaxDecode {
             a0: 0,
             ink: false,
             first: true,
+            debug: false,
         }
     }
 
-    pub fn decode(&mut self, bit_iter: &mut BitIter) {
+    pub fn set_debug(&mut self, debug: bool) {
+        self.debug = debug;
+    }
+
+    pub fn decode(mut self, bit_iter: &mut BitIter) -> FaxResult<FaxImage> {
         loop {
             let mut done = None;
             while self.a0 <= self.width {
@@ -43,7 +96,9 @@ impl FaxDecode {
                     break;
                 }
             }
-            println!();
+            if self.debug {
+                println!();
+            }
             if done == Some(true) {
                 break;
             }
@@ -54,36 +109,20 @@ impl FaxDecode {
             self.first = true;
             std::mem::swap(&mut self.current, &mut self.reference);
         }
-    }
-
-    fn print_border(&self) {
-        print!("+");
-        for _ in 0..self.width {
-            print!("-");
-        }
-        println!("+");
-    }
-
-    pub fn print(&self) {
-        self.print_border();
-        for row in self.complete.chunks_exact(self.width) {
-            print!("|");
-            for bit in row {
-                if *bit {
-                    print!(" ");
-                } else {
-                    print!("#");
-                }
-            }
-            println!("|");
-        }
-        self.print_border();
+        Ok(FaxImage {
+            width: self.width,
+            complete: self.complete,
+        })
     }
 
     fn vertical(&mut self, new_a0: usize) {
-        print!(" [{} v]", new_a0);
+        if self.debug {
+            print!(" [{} v]", new_a0);
+        }
         if new_a0 > self.width + 1 {
-            println!("ERROR!");
+            if self.debug {
+                println!("ERROR!");
+            }
             self.a0 = self.width + 1;
             return;
         }
@@ -95,7 +134,9 @@ impl FaxDecode {
     }
 
     fn next(&mut self, bit_iter: &mut BitIter) -> Option<bool> {
-        print!("[{}]", self.a0);
+        if self.debug {
+            print!("[{}]", self.a0);
+        }
         let mut ref_ink = if self.a0 == 0 {
             false
         } else {
@@ -126,36 +167,46 @@ impl FaxDecode {
             let b2 = b2.unwrap_or(self.width + 1);
             (b1, b2)
         };
-        print!("({},{})", b1, b2);
+        if self.debug {
+            print!("({},{})", b1, b2);
+        }
 
         if bit_iter.next().unwrap() {
-            print!(" 0 V");
+            if self.debug {
+                print!(" 0 V");
+            }
             // 1 --> V(0) --> a_1 just under b_1
             self.vertical(b1);
         } else if bit_iter.next().unwrap() {
             // 01
             if bit_iter.next().unwrap() {
                 // 011 --> V_R(1) --> a_1 is 1 right of b_1
-                print!(" 1 VR");
+                if self.debug {
+                    print!(" 1 VR");
+                }
                 self.vertical(b1 + 1);
             } else {
                 // 010 --> V_L(1) --> a_1 is 1 left of b_1
-                print!(" 1 VL");
+                if self.debug {
+                    print!(" 1 VL");
+                }
                 self.vertical(b1 - 1);
             }
         } else if bit_iter.next().unwrap() {
             // 001 --> horizontal writing mode
             let (a, b) = if self.ink {
-                let a = fax_decode_h_black(bit_iter)?;
-                let b = fax_decode_h_white(bit_iter)?;
+                let a = fax_decode_h(bit_iter, black_terminal)?;
+                let b = fax_decode_h(bit_iter, white_terminal)?;
                 (a, b)
             } else {
-                let a = fax_decode_h_white(bit_iter)?;
-                let b = fax_decode_h_black(bit_iter)?;
+                let a = fax_decode_h(bit_iter, white_terminal)?;
+                let b = fax_decode_h(bit_iter, black_terminal)?;
                 (a, b)
             };
 
-            print!(" {} {} H", a, b);
+            if self.debug {
+                print!(" {} {} H", a, b);
+            }
             let start = if self.first { 0 } else { 1 };
             for _ in start..a {
                 self.current[self.a0] = self.ink;
@@ -168,7 +219,9 @@ impl FaxDecode {
             self.a0 += 1;
         } else if bit_iter.next().unwrap() {
             // 0001 -> passtrough
-            print!(" P");
+            if self.debug {
+                print!(" P");
+            }
 
             let start = if self.a0 == 0 { 1 } else { self.a0 };
             for i in start..b2 {
@@ -178,24 +231,36 @@ impl FaxDecode {
         } else if bit_iter.next().unwrap() {
             // 00001
             if bit_iter.next().unwrap() {
-                print!(" 2 VR"); // 000011
+                if self.debug {
+                    print!(" 2 VR"); // 000011
+                }
                 self.vertical(b1 + 2);
             } else {
-                print!(" 2 VL"); // 000010
+                if self.debug {
+                    print!(" 2 VL"); // 000010
+                }
                 self.vertical(b1 - 2);
             }
         } else if bit_iter.next().unwrap() {
             // 000001
             if bit_iter.next().unwrap() {
-                print!(" 3 VR"); // 0000011
+                if self.debug {
+                    print!(" 3 VR"); // 0000011
+                }
                 self.vertical(b1 + 3);
             } else {
-                print!(" 3 VL"); // 0000010
+                if self.debug {
+                    print!(" 3 VL"); // 0000010
+                }
                 self.vertical(b1 - 3);
             }
         } else if bit_iter.next().unwrap() {
             // 0000001
-            panic!("Extension");
+            let a = bit_iter.next()?;
+            let b = bit_iter.next()?;
+            let c = bit_iter.next()?;
+            let bit = |v: bool| if v { 1 } else { 0 };
+            panic!("Extension {}{}{}", bit(a), bit(b), bit(c));
         } else {
             // 0000000
             let bi2 = bit_iter.clone();
@@ -208,7 +273,9 @@ impl FaxDecode {
             {
                 return Some(true);
             } else {
-                println!("Unknown");
+                if self.debug {
+                    println!("Unknown");
+                }
                 return Some(true);
             }
         }

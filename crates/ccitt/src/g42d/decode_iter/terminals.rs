@@ -1,6 +1,20 @@
 use crate::bits::BitIter;
 
-pub fn fax_decode_h_black(bit_iter: &mut BitIter) -> Option<u16> {
+pub fn fax_decode_h(
+    bit_iter: &mut BitIter,
+    terminal: fn(bit_iter: &mut BitIter) -> Option<u16>,
+) -> Option<u16> {
+    let mut sum = 0;
+    loop {
+        let v = terminal(bit_iter)?;
+        sum += v;
+        if v < 64 {
+            break Some(sum);
+        }
+    }
+}
+
+pub fn black_terminal(bit_iter: &mut BitIter) -> Option<u16> {
     if bit_iter.next()? {
         if bit_iter.next()? {
             Some(2) // 11
@@ -282,7 +296,7 @@ pub fn fax_decode_h_black(bit_iter: &mut BitIter) -> Option<u16> {
     }
 }
 
-pub fn fax_decode_h_white(bit_iter: &mut BitIter) -> Option<u16> {
+pub fn white_terminal(bit_iter: &mut BitIter) -> Option<u16> {
     if bit_iter.next()? {
         // 1..
         if bit_iter.next()? {

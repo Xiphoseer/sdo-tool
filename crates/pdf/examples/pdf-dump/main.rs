@@ -2,8 +2,7 @@
 //! and creates an equivalent copy.
 use ccitt_t4_t6::{
     bits::{BitIter, BitWriter},
-    g42d::Encoder,
-    g42d::{fax_decode, Decoder},
+    g42d::{fax_decode, Decoder, Encoder, FaxOptions},
 };
 
 use io::{BufWriter, Write};
@@ -152,7 +151,11 @@ fn main() -> io::Result<()> {
                             let width = col_str.parse::<usize>().unwrap();
                             println!("width: {}", width);
                             println!();
-                            fax_decode(glyph_data, width);
+                            let mut options = FaxOptions::default();
+                            options.width = width;
+                            if let Err(e) = fax_decode(glyph_data, options) {
+                                eprintln!("failed fax_decode: {:?}", e);
+                            }
 
                             let mut decoder: Decoder<BitWriter> = Decoder::new(width);
                             if let Err(e) = decoder.decode(glyph_data) {
