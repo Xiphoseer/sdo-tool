@@ -11,6 +11,6 @@ thiserror = { workspace = true }
 bitflags = "2.8"
 
 [dev-dependencies]
-color-eyre = { version = "0.5", default-features = false }
+color-eyre.workspace = true
 clap = { version = "3.1", features = ["derive"] }
 nom-supreme = "0.8"

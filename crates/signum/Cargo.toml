@@ -34,7 +34,7 @@ default-features = false
 version = "0.4"
 
 [dev-dependencies]
-color-eyre = { version = "0.5", default-features = false }
+color-eyre.workspace = true
 clap = { version = "3.1", features = ["derive"] }
 prettytable-rs = { version = "0.10", default-features = false }
 

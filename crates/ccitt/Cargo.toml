@@ -17,5 +17,5 @@ thiserror.workspace = true
 
 [dev-dependencies]
 argh = "0.1.13"
-color-eyre = { version = "0.5", default-features = false }
+color-eyre.workspace = true
 tiff.workspace = true

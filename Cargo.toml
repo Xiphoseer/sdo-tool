@@ -7,7 +7,7 @@ edition = "2018"
 default-run = "sdo-tool"
 
 [dependencies]
-color-eyre = { version = "0.6", default-features = false }
+color-eyre.workspace = true
 prettytable-rs = { version = "0.10", default-features = false }
 clap = { version = "3.1", features = ["derive"] }
 log = "0.4"
@@ -38,6 +38,7 @@ pdf.workspace = true
 members = ["crates/*"]
 
 [workspace.dependencies]
+color-eyre = { version = "0.6", default-features = false }
 pdf = "0.9"
 ron = "0.12"
 thiserror = "2"
