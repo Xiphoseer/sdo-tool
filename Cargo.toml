@@ -33,7 +33,7 @@ version = "0.25"
 features = ["png"]
 
 [dev-dependencies]
-pdf = "0.7"
+pdf = "0.9"
 
 [workspace]
 members = ["crates/*"]

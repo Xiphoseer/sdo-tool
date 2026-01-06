@@ -532,7 +532,7 @@ impl Handle<'_> {
 
         // --------------------------------------------------
 
-        let digest = id_ctx.compute();
+        let digest = id_ctx.finalize();
         ID {
             original: digest,
             current: digest,
