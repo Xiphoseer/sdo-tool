@@ -17,6 +17,7 @@ struct Options {
     invert: bool,
     #[cfg(feature = "debug")]
     #[argh(switch)]
+    /// print debug information
     debug: bool,
 }
 
