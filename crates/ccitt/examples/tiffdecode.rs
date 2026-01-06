@@ -1,4 +1,7 @@
-use std::{io::Cursor, path::PathBuf};
+use std::{
+    io::{BufWriter, Cursor},
+    path::PathBuf,
+};
 
 use ccitt_t4_t6::{
     bits::{BitWriter, FillOrder},
@@ -7,7 +10,7 @@ use ccitt_t4_t6::{
 use color_eyre::eyre::{self, eyre};
 use tiff::{
     decoder::{ifd::Value, Decoder as TiffDecoder},
-    tags::{CompressionMethod, PhotometricInterpretation, Tag},
+    tags::{CompressionMethod, PhotometricInterpretation, ResolutionUnit, Tag},
 };
 
 #[derive(argh::FromArgs)]
@@ -21,6 +24,10 @@ struct Options {
     /// path to output file
     output: Option<PathBuf>,
 
+    #[argh(option)]
+    /// write a PBM file from the decoded input
+    pbm: Option<PathBuf>,
+
     /// invert black and white
     #[argh(switch)]
     invert: bool,
@@ -32,6 +39,16 @@ struct Options {
     /// print a bitmap after decoding
     #[argh(switch)]
     debug: bool,
+}
+
+fn value_into_rational(v: Value) -> Option<f64> {
+    match v {
+        Value::Rational(num, denom) => Some(num as f64 / denom as f64),
+        Value::RationalBig(num, denom) => Some(num as f64 / denom as f64),
+        Value::SRational(num, denom) => Some(num as f64 / denom as f64),
+        Value::SRationalBig(num, denom) => Some(num as f64 / denom as f64),
+        _ => None,
+    }
 }
 
 fn main() -> eyre::Result<()> {
@@ -70,6 +87,30 @@ fn main() -> eyre::Result<()> {
                 None => None,
             }
             .unwrap_or(FillOrder::MsbToLsb);
+
+            let resolution_unit = tiff_decoder
+                .find_tag(Tag::ResolutionUnit)?
+                .map(Value::into_u16)
+                .transpose()?
+                .and_then(ResolutionUnit::from_u16);
+            let xres = tiff_decoder
+                .find_tag(Tag::XResolution)?
+                .and_then(value_into_rational);
+            let yres = tiff_decoder
+                .find_tag(Tag::YResolution)?
+                .and_then(value_into_rational);
+            let res = xres.zip(yres);
+            let mut dbl = false;
+            if let Some(resolution) = res {
+                dbg!(resolution);
+                let aspect_ratio = resolution.0 / resolution.1;
+                dbg!(aspect_ratio);
+                if aspect_ratio.round() == 2.0 {
+                    dbl = true;
+                }
+            }
+            dbg!(resolution_unit);
+
             dbg!(width, length);
             dbg!(fill_order);
             dbg!(tiff_decoder.byte_order());
@@ -96,6 +137,12 @@ fn main() -> eyre::Result<()> {
                 fax_options.width = width.into();
                 fax_options.debug = opt.debug;
                 let image = fax_decode(bytes, fax_options).expect("fax_decode");
+                if let Some(out) = &opt.pbm {
+                    let file = std::fs::File::create(&out)?;
+                    let mut buf_writer = BufWriter::new(file);
+                    image.write_pbm(&mut buf_writer, dbl, opt.invert)?;
+                }
+
                 if opt.print {
                     image.print(opt.invert);
                 }

@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, iter::Peekable};
 
 use crate::{ascii_art::BorderDrawing, ASCII};
 
@@ -30,16 +30,62 @@ impl FaxImage {
         self.print_border(&b.bottom);
     }
 
-    pub fn write_pbm<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        let height = self.complete.len().div_ceil(self.width);
+    ///
+    /// ## Parameters
+    ///
+    /// - `dbl` - write every line twice, because "Standard" fax is 200 dpi horizontal and 100 dpi vertical
+    pub fn write_pbm<W: io::Write>(
+        &self,
+        writer: &mut W,
+        dbl: bool,
+        invert: bool,
+    ) -> io::Result<()> {
+        let mut height = self.complete.len().div_ceil(self.width);
+        if dbl {
+            height <<= 1;
+        }
         writeln!(writer, "P1 {} {}", self.width, height)?;
-        for row in self.complete.chunks_exact(self.width) {
+        for row in RepeatIter::new(self.complete.chunks_exact(self.width), 2) {
             for bit in row {
-                let v = if *bit { 0 } else { 1 };
+                // PBM: 1 is black, 0 is white
+                let v = if *bit ^ invert { 1 } else { 0 };
                 write!(writer, "{:b}", v)?;
             }
             writeln!(writer)?;
         }
         Ok(())
+    }
+}
+
+struct RepeatIter<I: Iterator> {
+    inner: Peekable<I>,
+    rem: usize,
+    count: usize,
+}
+
+impl<I: Iterator> RepeatIter<I>
+where
+    I::Item: Copy,
+{
+    fn new(inner: I, count: usize) -> Self {
+        Self {
+            count,
+            rem: count,
+            inner: inner.peekable(),
+        }
+    }
+}
+
+impl<T: Copy, I: Iterator<Item = T>> Iterator for RepeatIter<I> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.rem == 0 {
+            self.rem = self.count;
+            self.inner.next()
+        } else {
+            self.rem -= 1;
+            self.inner.peek().copied()
+        }
     }
 }
