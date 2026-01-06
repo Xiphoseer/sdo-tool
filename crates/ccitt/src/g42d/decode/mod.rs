@@ -4,7 +4,7 @@
 //! that consumes bytes in a 3-3-2 (bits) pattern and updates the
 //! internal state accordingly.
 
-use crate::{Color, ColorLine, Store};
+use crate::{bits::FillOrder, Color, ColorLine, Store};
 use bits::Bits;
 use thiserror::Error;
 
@@ -65,6 +65,7 @@ pub struct Decoder<S: Store> {
     reference: S::Row,
     current: S::Row,
     color: Color,
+    bit_loader: fn(u8) -> [Bits; 3],
     a0: usize,
 }
 
@@ -79,6 +80,7 @@ impl<S: Store> Decoder<S> {
             store: S::new(),
             reference: S::new_row(width),
             current: S::new_row(width),
+            bit_loader: Bits::from_u8_msb_to_lsb,
             color: Color::White,
             a0: 0,
             #[cfg(feature = "debug")]
@@ -86,11 +88,19 @@ impl<S: Store> Decoder<S> {
         }
     }
 
+    /// Set a different [`FillOrder`]
+    pub fn set_fill_order(&mut self, fill_order: FillOrder) {
+        self.bit_loader = match fill_order {
+            FillOrder::MsbToLsb => Bits::from_u8_msb_to_lsb,
+            FillOrder::LsbToMsb => Bits::from_u8_lsb_to_msb,
+        }
+    }
+
     fn next_bits<'a>(&mut self, input: &'a [u8]) -> Result<(&'a [u8], Bits), Err> {
         match self.next_bits {
             NextBits::None => {
                 if let Some((first, rest)) = input.split_first() {
-                    let [b1, b2, b3] = Bits::from_u8(*first);
+                    let [b1, b2, b3] = (self.bit_loader)(*first);
                     self.next_bits = NextBits::A2(b2, b3);
                     Ok((rest, b1))
                 } else {
@@ -172,13 +182,21 @@ impl<S: Store> Decoder<S> {
         bits: Bits,
         mut input: &'a [u8],
     ) -> Result<(&'a [u8], u16, Bits), Err> {
+        let mut sum = 0;
         let mut off = 0;
         let mut state = 0;
         bits.push(&mut state, &mut off);
         loop {
             if let Some((val, rem)) = func(state, off) {
                 let bits = Bits::off(state, rem);
-                return Ok((input, val, bits));
+                sum += val;
+                if val < 64 {
+                    return Ok((input, sum, bits));
+                } else {
+                    off = 0;
+                    state = 0;
+                    bits.push(&mut state, &mut off);
+                }
             } else {
                 let (rest, bits) = self.next_bits(input)?;
                 bits.push(&mut state, &mut off);
@@ -1069,7 +1087,9 @@ fn white(state: u16, off: u8) -> Option<(u16, Rem)> {
         9 => white9(state),
         10 => white10(state),
         11 => white11(state),
-        _ => todo!(),
+        12 => white12(state),
+        13 => white13(state),
+        _ => todo!("white{off} {:016b}", state),
     }
 }
 
@@ -1201,6 +1221,7 @@ fn white8(state: u16) -> Option<(u16, Rem)> {
         0b01010110 | 0b01010111 => Some((25, Rem::R1)),
         0b01101110 | 0b01101111 => Some((256, Rem::R1)),
         // 8 bit
+        0b00000010 => Some((29, Rem::R0)),
         0b00000011 => Some((30, Rem::R0)),
         0b00000100 => Some((45, Rem::R0)),
         0b00000101 => Some((46, Rem::R0)),
@@ -1263,6 +1284,7 @@ fn white9(state: u16) -> Option<(u16, Rem)> {
         0b010101100..=0b010101111 => Some((25, Rem::R2)),
         0b011011100..=0b011011111 => Some((256, Rem::R2)),
         // 8 bit
+        0b000000100 | 0b000000101 => Some((29, Rem::R1)),
         0b000000110 | 0b000000111 => Some((30, Rem::R1)),
         0b000001000 | 0b000001001 => Some((45, Rem::R1)),
         0b000001010 | 0b000001011 => Some((46, Rem::R1)),
@@ -1329,6 +1351,7 @@ fn white9(state: u16) -> Option<(u16, Rem)> {
 fn white10(state: u16) -> Option<(u16, Rem)> {
     match state {
         // 8 bit
+        0b0000001000..=0b0000001011 => Some((29, Rem::R2)),
         0b0000001100..=0b0000001111 => Some((30, Rem::R2)),
         0b0000010000..=0b0000010011 => Some((45, Rem::R2)),
         0b0000010100..=0b0000010111 => Some((46, Rem::R2)),
@@ -1387,8 +1410,6 @@ fn white10(state: u16) -> Option<(u16, Rem)> {
         0b0110110010 | 0b0110110011 => Some((1280, Rem::R1)),
         0b0110110100 | 0b0110110101 => Some((1344, Rem::R1)),
         0b0110110110 | 0b0110110111 => Some((1408, Rem::R1)),
-        // 10 bit
-        // TODO
         // rest
         _ => None,
     }
@@ -1414,7 +1435,57 @@ fn white11(state: u16) -> Option<(u16, Rem)> {
         0b01101101000..=0b01101101011 => Some((1344, Rem::R2)),
         0b01101101100..=0b01101101111 => Some((1408, Rem::R2)),
         // 11 bit
-        // TODO
+        0b00000001000 => Some((1792, Rem::R0)),
+        0b00000001100 => Some((1856, Rem::R0)),
+        0b00000001101 => Some((1920, Rem::R0)),
+        // rest
+        _ => None,
+    }
+}
+
+fn white12(state: u16) -> Option<(u16, Rem)> {
+    match state {
+        // 11 bit
+        0b000000010000 | 0b000000010001 => Some((1792, Rem::R1)),
+        0b000000011000 | 0b000000011001 => Some((1856, Rem::R1)),
+        0b000000011010 | 0b000000011011 => Some((1920, Rem::R1)),
+
+        // 12 bit
+        0b000000010010 => Some((1984, Rem::R0)),
+        0b000000010011 => Some((2048, Rem::R0)),
+        0b000000010100 => Some((2112, Rem::R0)),
+        0b000000010101 => Some((2176, Rem::R0)),
+        0b000000010110 => Some((2240, Rem::R0)),
+        0b000000010111 => Some((2304, Rem::R0)),
+        0b000000011100 => Some((2368, Rem::R0)),
+        0b000000011101 => Some((2432, Rem::R0)),
+        0b000000011110 => Some((2496, Rem::R0)),
+        0b000000011111 => Some((2560, Rem::R0)),
+
+        // rest
+        _ => None,
+    }
+}
+
+fn white13(state: u16) -> Option<(u16, Rem)> {
+    match state {
+        // 11 bit
+        0b0000000100000..=0b0000000100011 => Some((1792, Rem::R2)),
+        0b0000000110000..=0b0000000110011 => Some((1856, Rem::R2)),
+        0b0000000110100..=0b0000000110111 => Some((1920, Rem::R2)),
+
+        // 12 bit
+        0b0000000100100 | 0b0000000100101 => Some((1984, Rem::R1)),
+        0b0000000100110 | 0b0000000100111 => Some((2048, Rem::R1)),
+        0b0000000101000 | 0b0000000101001 => Some((2112, Rem::R1)),
+        0b0000000101010 | 0b0000000101011 => Some((2176, Rem::R1)),
+        0b0000000101100 | 0b0000000101101 => Some((2240, Rem::R1)),
+        0b0000000101110 | 0b0000000101111 => Some((2304, Rem::R1)),
+        0b0000000111000 | 0b0000000111001 => Some((2368, Rem::R1)),
+        0b0000000111010 | 0b0000000111011 => Some((2432, Rem::R1)),
+        0b0000000111100 | 0b0000000111101 => Some((2496, Rem::R1)),
+        0b0000000111110 | 0b0000000111111 => Some((2560, Rem::R1)),
+
         // rest
         _ => None,
     }
