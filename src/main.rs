@@ -1,13 +1,12 @@
 //! # Signum! file tool
 #![warn(missing_docs)]
 
-use clap::Parser;
 use color_eyre::eyre::{self, eyre, WrapErr};
-use env_logger::Env;
-use log::{error, info, LevelFilter};
+use log::{error, info};
 use sdo_tool::cli::{
     bimc::process_bimc,
     font::{process_cset_v2, process_eset, process_ls30, process_ps09, process_ps24},
+    init,
     opt::Options,
     sdoc::{process_sdoc, process_sdoc_v3},
 };
@@ -21,13 +20,7 @@ use std::{
 };
 
 fn main() -> eyre::Result<()> {
-    color_eyre::install()?;
-    env_logger::Builder::new()
-        .filter_level(LevelFilter::Info)
-        .format_timestamp(None)
-        .parse_env(Env::new().filter("SDO_TOOL_LOG"))
-        .init();
-    let opt = Options::parse();
+    let opt = init::<Options>()?;
     let file_res = File::open(&opt.file);
     let file = WrapErr::wrap_err_with(file_res, || {
         format!("Failed to open file: `{}`", opt.file.display())

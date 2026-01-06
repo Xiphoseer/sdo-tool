@@ -1,3 +1,6 @@
+use env_logger::Env;
+use log::LevelFilter;
+
 pub mod bimc;
 pub mod font;
 pub mod opt;
@@ -7,12 +10,11 @@ mod util;
 /// Set up CLI
 pub fn init<T: clap::Parser>() -> color_eyre::Result<T> {
     color_eyre::install()?;
-    let mut builder = pretty_env_logger::formatted_builder();
-    builder.filter_level(log::LevelFilter::Info);
-    if let Ok(s) = ::std::env::var("SDO_TOOL_LOG") {
-        builder.parse_filters(&s);
-    }
-    builder.init();
-    let args = T::try_parse()?;
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Info)
+        .format_timestamp(None)
+        .parse_env(Env::new().filter("SDO_TOOL_LOG"))
+        .init();
+    let args = T::parse();
     Ok(args)
 }
