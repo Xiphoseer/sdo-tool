@@ -4,35 +4,33 @@
 //! i.e. consuming bits from the input as a sequence of [`bool`] and matching
 //! on them.
 
-mod image;
-mod terminals;
-
-use terminals::{black_terminal, fax_decode_h, white_terminal};
-
-use crate::{bits::BitIter, g42d::FaxResult};
-pub use image::FaxImage;
+use crate::{
+    bits::BitIter,
+    terminals::{black_terminal, fax_decode_h, white_terminal, TermFn},
+    Color, FaxImage, FaxResult,
+};
 
 pub struct FaxDecode {
-    complete: Vec<bool>,
-    reference: Vec<bool>,
-    current: Vec<bool>,
+    complete: Vec<Color>,
+    reference: Vec<Color>,
+    current: Vec<Color>,
     width: usize,
     a0: usize,
-    ink: bool,
+    color: Color,
     first: bool,
     debug: bool,
 }
 
 impl FaxDecode {
     pub fn new(width: usize) -> Self {
-        let reference = vec![false; width];
+        let reference = vec![Color::White; width];
         FaxDecode {
             complete: vec![],
             width,
             reference,
-            current: vec![false; width],
+            current: vec![Color::White; width],
             a0: 0,
-            ink: false,
+            color: Color::White,
             first: true,
             debug: false,
         }
@@ -59,7 +57,7 @@ impl FaxDecode {
             }
 
             self.a0 = 0;
-            self.ink = false;
+            self.color = Color::White;
             self.complete.extend_from_slice(&self.current);
             self.first = true;
             std::mem::swap(&mut self.current, &mut self.reference);
@@ -82,9 +80,9 @@ impl FaxDecode {
             return;
         }
         for i in (self.a0 + 1)..new_a0 {
-            self.current[i - 1] = self.ink;
+            self.current[i - 1] = self.color;
         }
-        self.ink = !self.ink;
+        self.color.invert();
         self.a0 = new_a0;
     }
 
@@ -93,7 +91,7 @@ impl FaxDecode {
             print!("[{}]", self.a0);
         }
         let mut ref_ink = if self.a0 == 0 {
-            false
+            Color::White
         } else {
             self.reference[self.a0 - 1]
         };
@@ -109,7 +107,7 @@ impl FaxDecode {
                         break;
                     }
 
-                    if ink != self.ink {
+                    if ink != self.color {
                         // with a color other than a0
                         b1 = Some(i + 1);
                     }
@@ -149,26 +147,23 @@ impl FaxDecode {
             }
         } else if bit_iter.next().unwrap() {
             // 001 --> horizontal writing mode
-            let (a, b) = if self.ink {
-                let a = fax_decode_h(bit_iter, black_terminal)?;
-                let b = fax_decode_h(bit_iter, white_terminal)?;
-                (a, b)
-            } else {
-                let a = fax_decode_h(bit_iter, white_terminal)?;
-                let b = fax_decode_h(bit_iter, black_terminal)?;
-                (a, b)
+            let (aterm, bterm): (TermFn, TermFn) = match self.color {
+                Color::Black => (black_terminal, white_terminal),
+                Color::White => (white_terminal, black_terminal),
             };
+            let a = fax_decode_h(bit_iter, aterm)?;
+            let b = fax_decode_h(bit_iter, bterm)?;
 
             if self.debug {
                 print!(" {} {} H", a, b);
             }
             let start = if self.first { 0 } else { 1 };
             for _ in start..a {
-                self.current[self.a0] = self.ink;
+                self.current[self.a0] = self.color;
                 self.a0 += 1;
             }
             for _ in 0..b {
-                self.current[self.a0] = !self.ink;
+                self.current[self.a0] = !self.color;
                 self.a0 += 1;
             }
             self.a0 += 1;
@@ -180,7 +175,7 @@ impl FaxDecode {
 
             let start = if self.a0 == 0 { 1 } else { self.a0 };
             for i in start..b2 {
-                self.current[i - 1] = self.ink;
+                self.current[i - 1] = self.color;
             }
             self.a0 = b2;
         } else if bit_iter.next().unwrap() {
@@ -235,7 +230,7 @@ impl FaxDecode {
             }
         }
         if self.a0 <= self.width {
-            self.current[self.a0 - 1] = self.ink;
+            self.current[self.a0 - 1] = self.color;
         }
         self.first = false;
         Some(false)

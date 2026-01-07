@@ -1,9 +1,8 @@
 use crate::bits::BitIter;
 
-pub fn fax_decode_h(
-    bit_iter: &mut BitIter,
-    terminal: fn(bit_iter: &mut BitIter) -> Option<u16>,
-) -> Option<u16> {
+pub type TermFn = fn(&mut BitIter) -> Option<u16>;
+
+pub fn fax_decode_h(bit_iter: &mut BitIter, terminal: TermFn) -> Option<u16> {
     let mut sum = 0;
     loop {
         let v = terminal(bit_iter)?;

@@ -1,12 +1,13 @@
 //! Common structs and enums
 
 /// Black or White Color
+#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Color {
     /// No-Ink
-    White,
+    White = 0xFF,
     /// Ink
-    Black,
+    Black = 0x00,
 }
 
 impl From<bool> for Color {
@@ -15,6 +16,23 @@ impl From<bool> for Color {
             Color::Black
         } else {
             Color::White
+        }
+    }
+}
+
+impl From<Color> for bool {
+    fn from(c: Color) -> bool {
+        c == Color::Black
+    }
+}
+
+impl std::ops::Not for Color {
+    type Output = Color;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Self::Black => Self::White,
+            Self::White => Self::Black,
         }
     }
 }

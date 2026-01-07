@@ -2,15 +2,18 @@
 //!
 //! Spec: ITU-T Recommendation T.6 (11/88) <https://www.itu.int/rec/T-REC-T.6-198811-I/en>
 
-use crate::bits::{BitIter, FillOrder};
+use crate::{
+    bits::{BitIter, FillOrder},
+    FaxResult,
+};
 
 mod decode;
 mod decode_iter;
 mod encode;
 
+pub use crate::FaxImage;
 pub use decode::Decoder as G4Decoder;
 use decode_iter::FaxDecode;
-pub use decode_iter::FaxImage;
 pub use encode::Encoder as G4Encoder;
 
 /// Options for fax decoding
@@ -24,12 +27,6 @@ pub struct FaxOptions {
     /// Print to console after decoding
     pub debug: bool,
 }
-
-/// An error when parsing a CCITT encoded bi-level image
-#[non_exhaustive]
-#[derive(Debug)]
-pub enum FaxError {}
-type FaxResult<T> = Result<T, FaxError>;
 
 /// Decode a bitmap and print it to the console
 ///

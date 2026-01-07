@@ -1,11 +1,11 @@
 use std::{io, iter::Peekable};
 
-use crate::{ascii_art::BorderDrawing, ASCII};
+use crate::{ascii_art::BorderDrawing, Color, ASCII};
 
 /// A decoded bi-level image
 pub struct FaxImage {
     pub(crate) width: usize,
-    pub(crate) complete: Vec<bool>,
+    pub(crate) complete: Vec<Color>,
 }
 
 impl FaxImage {
@@ -24,7 +24,8 @@ impl FaxImage {
         for row in self.complete.chunks_exact(self.width) {
             print!("{}", b.left);
             for bit in row {
-                let c = if *bit ^ invert { b.ink } else { b.no_ink };
+                let ink = bool::from(*bit) ^ invert;
+                let c = if ink { b.ink } else { b.no_ink };
                 print!("{}", c);
             }
             println!("{}", b.right);
@@ -51,7 +52,8 @@ impl FaxImage {
         for row in RepeatIter::new(self.complete.chunks_exact(self.width), 2) {
             for bit in row {
                 // PBM: 1 is black, 0 is white
-                let v = if *bit ^ invert { 1 } else { 0 };
+                let ink = bool::from(*bit) ^ invert;
+                let v = if ink { 1 } else { 0 };
                 write!(writer, "{:b}", v)?;
             }
             writeln!(writer)?;
