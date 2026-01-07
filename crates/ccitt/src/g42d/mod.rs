@@ -1,5 +1,5 @@
 //! # CCITT Group 4 2D-encoding
-//! 
+//!
 //! Spec: ITU-T Recommendation T.6 (11/88) <https://www.itu.int/rec/T-REC-T.6-198811-I/en>
 
 use crate::bits::{BitIter, FillOrder};

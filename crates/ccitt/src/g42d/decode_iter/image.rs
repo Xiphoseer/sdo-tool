@@ -33,7 +33,7 @@ impl FaxImage {
     }
 
     /// Write a PBM file from the decoded image
-    /// 
+    ///
     /// ## Parameters
     ///
     /// - `dbl` - write every line twice, because "Standard" fax is 200 dpi horizontal and 100 dpi vertical
@@ -71,9 +71,10 @@ where
     I::Item: Copy,
 {
     fn new(inner: I, count: usize) -> Self {
+        assert!(count > 0);
         Self {
             count,
-            rem: count,
+            rem: count - 1,
             inner: inner.peekable(),
         }
     }
@@ -84,7 +85,7 @@ impl<T: Copy, I: Iterator<Item = T>> Iterator for RepeatIter<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.rem == 0 {
-            self.rem = self.count;
+            self.rem = self.count - 1;
             self.inner.next()
         } else {
             self.rem -= 1;

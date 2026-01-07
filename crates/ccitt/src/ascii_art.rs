@@ -1,5 +1,5 @@
 /// # Draw bitmap as ascii-art
-use std::fmt;
+use std::{fmt, io};
 
 use crate::bits::BitIter;
 
@@ -80,5 +80,31 @@ pub fn ascii_art<W: fmt::Write>(
     }
     w.write_char(b.bottom.right)?;
     w.write_char('\n')?;
+    Ok(())
+}
+
+/// Write a packed bitmap as a PBM file
+pub fn pbm_to_io_writer<W: io::Write>(
+    w: &mut W,
+    bitmap: &[u8],
+    width: usize,
+    invert: bool,
+    dbl: bool,
+) -> io::Result<()> {
+    let height = bitmap.len() * 8 / width;
+    let mut iter = BitIter::new(&bitmap);
+    let mut s = String::with_capacity(width);
+    writeln!(w, "P1 {} {}", width, if dbl { height * 2 } else { height })?;
+    for _ in 0..height {
+        s.clear();
+        for _ in 0..width {
+            let bit = iter.next().unwrap();
+            s.push(if bit ^ invert { '1' } else { '0' });
+        }
+        writeln!(w, "{s}")?;
+        if dbl {
+            writeln!(w, "{s}")?;
+        }
+    }
     Ok(())
 }
