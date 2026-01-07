@@ -1,4 +1,8 @@
-use crate::{bits::BitIter, terminals, Color};
+use crate::{
+    bits::BitIter,
+    terminals::{self, Terminal},
+    Color,
+};
 
 /// Decode a line of 1-d encoded bi-level image data
 pub fn decode_1d_line(bit_iter: &mut BitIter<'_>, width: usize) -> Vec<Color> {
@@ -12,13 +16,34 @@ pub fn decode_1d_line(bit_iter: &mut BitIter<'_>, width: usize) -> Vec<Color> {
             Color::White => terminals::white_terminal,
             Color::Black => terminals::black_terminal,
         };
-        if let Some(code) = terminals::fax_decode_h(bit_iter, terminal) {
-            let cu = code as usize;
-            a0 += cu;
-            output.reserve(cu);
-            output.extend(std::iter::repeat_n(color, cu));
+        match terminals::fax_decode_h(bit_iter, terminal) {
+            Some(Terminal::Sum(code)) => {
+                let cu = code as usize;
+                a0 += cu;
+                output.reserve(cu);
+                output.extend(std::iter::repeat_n(color, cu));
+                color.invert();
+            }
+            Some(Terminal::EOL) => {
+                if !output.is_empty() {
+                    break;
+                }
+            }
+            Some(Terminal::Code10) => {
+                // Extension?
+                let a = bit_iter.next().unwrap();
+                let b = bit_iter.next().unwrap();
+                let c = bit_iter.next().unwrap();
+                panic!("Extension? at {} ({},{},{})", output.len(), a, b, c);
+            }
+            Some(term) => panic!("{:?}", term),
+            None => {
+                if !output.is_empty() {
+                    println!("WARN: EOF mid scanline");
+                }
+                break;
+            }
         }
-        color.invert();
     }
     output
 }

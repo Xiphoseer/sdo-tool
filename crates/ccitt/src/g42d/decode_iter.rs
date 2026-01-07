@@ -151,8 +151,8 @@ impl FaxDecode {
                 Color::Black => (black_terminal, white_terminal),
                 Color::White => (white_terminal, black_terminal),
             };
-            let a = fax_decode_h(bit_iter, aterm)?;
-            let b = fax_decode_h(bit_iter, bterm)?;
+            let a = fax_decode_h(bit_iter, aterm)?.to_sum().unwrap();
+            let b = fax_decode_h(bit_iter, bterm)?.to_sum().unwrap();
 
             if self.debug {
                 print!(" {} {} H", a, b);

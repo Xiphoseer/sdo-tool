@@ -1,14 +1,45 @@
+use std::u16;
+
 use crate::bits::BitIter;
 
 pub type TermFn = fn(&mut BitIter) -> Option<u16>;
 
-pub fn fax_decode_h(bit_iter: &mut BitIter, terminal: TermFn) -> Option<u16> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Terminal {
+    /// Number
+    Sum(u16),
+    /// 000000001
+    Code8,
+    /// 0000000001
+    Code9,
+    /// 00000000001
+    Code10,
+    /// 000000000001 (after fill)
+    EOL,
+}
+
+impl Terminal {
+    pub fn to_sum(&self) -> Option<u16> {
+        match *self {
+            Terminal::Sum(v) => Some(v),
+            _ => None,
+        }
+    }
+}
+
+pub fn fax_decode_h(bit_iter: &mut BitIter, terminal: TermFn) -> Option<Terminal> {
     let mut sum = 0;
     loop {
         let v = terminal(bit_iter)?;
         sum += v;
-        if v < 64 {
-            break Some(sum);
+        match v {
+            0..64 => break Some(Terminal::Sum(sum)),
+            // Note: we might loose some make-up codes here
+            0xFFFC => break Some(Terminal::Code8),
+            0xFFFD => break Some(Terminal::Code9),
+            0xFFFE => break Some(Terminal::Code10),
+            0xFFFF => break Some(Terminal::EOL),
+            _ => {}
         }
     }
 }
@@ -640,7 +671,20 @@ fn fax_decode_h_both(bit_iter: &mut BitIter) -> Option<u16> {
         } else {
             Some(1792) // 00000001000
         }
+    } else if bit_iter.next()? {
+        // 000000001
+        Some(0xFFFC)
+    } else if bit_iter.next()? {
+        // 0000000001
+        Some(0xFFFD)
+    } else if bit_iter.next()? {
+        // 00000000001
+        Some(0xFFFE)
     } else {
-        panic!("Invalid Code");
+        loop {
+            if bit_iter.next()? {
+                break Some(u16::MAX); // EOL
+            }
+        }
     }
 }

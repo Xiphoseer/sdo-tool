@@ -5,9 +5,10 @@ use std::{
 };
 
 use ccitt_t4_t6::{
-    bits::{BitWriter, FillOrder},
+    bits::{BitIter, BitWriter, FillOrder},
+    g3::G3Decoder,
     g42d::{fax_decode, FaxOptions, G4Decoder},
-    pbm_to_io_writer,
+    pbm_to_io_writer, FaxImage,
 };
 use color_eyre::eyre::{self, eyre};
 use tiff::{
@@ -84,36 +85,124 @@ fn value_into_rational(v: Value) -> Option<f64> {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
+struct FaxTiffOptions {
+    photometric_interpretation: PhotometricInterpretation,
+    width: u16,
+    length: Option<u16>,
+    fill_order: FillOrder,
+    resolution_unit: Option<ResolutionUnit>,
+    xresolution: Option<f64>,
+    yresolution: Option<f64>,
+}
+
+impl FaxTiffOptions {
+    fn read<R: io::Read + io::Seek>(
+        mut tiff_decoder: &mut TiffDecoder<R>,
+    ) -> color_eyre::Result<Self> {
+        let photometric_interpretation = tag_photometric_interpretation(&mut tiff_decoder)?;
+        let width = tag_u16(&mut tiff_decoder, Tag::ImageWidth)?.expect("ImageWidth");
+        let length = tag_u16(&mut tiff_decoder, Tag::ImageLength)?;
+        dbg!(width, length);
+        let fill_order = tag_fill_order(&mut tiff_decoder)?;
+        dbg!(fill_order);
+
+        let resolution_unit = tag_resolution_unit(&mut tiff_decoder)?;
+        let (xres, yres) = tag_resolution(&mut tiff_decoder)?;
+        Ok(Self {
+            photometric_interpretation,
+            width,
+            length,
+            fill_order,
+            resolution_unit,
+            xresolution: xres,
+            yresolution: yres,
+        })
+    }
+
+    /// Check for 'standard' resolution i.e. 2:1 so we can correct for it
+    fn is_dbl(&self) -> bool {
+        let mut dbl = false;
+        let res = self.xresolution.zip(self.yresolution);
+        if let Some(resolution) = res {
+            let aspect_ratio = resolution.0 / resolution.1;
+            if aspect_ratio.round() == 2.0 {
+                dbl = true;
+            }
+        }
+        dbl
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+struct T4Options {
+    flag_2d: bool,
+    flag_uncompressed: bool,
+    flag_fill_bits: bool,
+}
+
+const T4_OPTIONS: Tag = Tag::Unknown(292);
+
+impl T4Options {
+    fn read<R: io::Read + io::Seek>(tiff_decoder: &mut TiffDecoder<R>) -> TiffResult<Self> {
+        let t4opt = tiff_decoder
+            .find_tag(T4_OPTIONS)?
+            .map(Value::into_u32)
+            .transpose()?
+            .unwrap_or(0);
+        let flag_2d = t4opt & (1 << 0) > 0;
+        let flag_uncompressed = t4opt & (1 << 1) > 0;
+        let flag_fill_bits = t4opt & (1 << 2) > 0;
+        Ok(Self {
+            flag_2d,
+            flag_uncompressed,
+            flag_fill_bits,
+        })
+    }
+}
+
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let opt: Options = argh::from_env();
     let file = std::fs::read(&opt.file)?;
 
     let mut tiff_decoder = TiffDecoder::new(Cursor::new(file))?;
+    dbg!(tiff_decoder.byte_order());
     let compression = tag_compression_method(&mut tiff_decoder)?;
     dbg!(compression);
     match compression {
         CompressionMethod::Fax3 => {
-            // Group 4
-            todo!("Group 3 coding");
+            // Group 3
+            let fax = &FaxTiffOptions::read(&mut tiff_decoder)?;
+            dbg!(fax);
+            let t4opt = T4Options::read(&mut tiff_decoder)?;
+            dbg!(t4opt);
+            if t4opt.flag_2d {
+                todo!("Group3 2-D");
+            } else if t4opt.flag_uncompressed {
+                todo!("Group3 uncompressed");
+            }
+            for_each_strip(&mut tiff_decoder, |bytes| {
+                if let Some(out) = &opt.output {
+                    std::fs::write(out, bytes)?;
+                }
+
+                let mut decoder = G3Decoder::new(fax.width as usize);
+                let mut bit_iter = BitIter::new(bytes);
+                bit_iter.set_fill_order(fax.fill_order);
+                let image = decoder.decode(&mut bit_iter).unwrap();
+                println!("DONE G3Decoder");
+
+                output(&opt, fax, image)?;
+                Ok(())
+            })
         }
         CompressionMethod::Fax4 => {
             // Group 4
-            dbg!(tiff_decoder.byte_order());
-            let photometric_interpretation = tag_photometric_interpretation(&mut tiff_decoder)?;
-            dbg!(photometric_interpretation);
-            let width = tiff_decoder.get_tag(Tag::ImageWidth)?.into_u16()?;
-            let length = tiff_decoder.get_tag(Tag::ImageLength)?.into_u16()?;
-            let fill_order = tag_fill_order(&mut tiff_decoder)?;
-
-            if let Some(resolution_unit) = tag_resolution_unit(&mut tiff_decoder)? {
-                dbg!(resolution_unit);
-            }
-            let (xres, yres) = tag_resolution(&mut tiff_decoder)?;
-            let dbl = is_dbl(xres, yres);
-
-            dbg!(width, length);
-            dbg!(fill_order);
+            let fax = &FaxTiffOptions::read(&mut tiff_decoder)?;
+            dbg!(fax);
             for_each_strip(&mut tiff_decoder, |bytes| {
                 if let Some(out) = &opt.output {
                     std::fs::write(out, bytes)?;
@@ -122,26 +211,18 @@ fn main() -> eyre::Result<()> {
                 match opt.decoder {
                     DecoderImpl::BitIter => {
                         let mut fax_options = FaxOptions::default();
-                        fax_options.fill_order = fill_order;
-                        fax_options.width = width.into();
+                        fax_options.fill_order = fax.fill_order;
+                        fax_options.width = fax.width as usize;
                         fax_options.debug = opt.debug;
                         let image = fax_decode(bytes, fax_options).expect("fax_decode");
                         println!("DONE fax_decode");
 
-                        if let Some(out) = &opt.pbm {
-                            let file = std::fs::File::create(&out)?;
-                            let mut buf_writer = BufWriter::new(file);
-                            image.write_pbm(&mut buf_writer, dbl, opt.invert)?;
-                        }
-
-                        if opt.print {
-                            image.print(opt.invert);
-                        }
+                        output(&opt, fax, image)?;
                         Ok(())
                     }
                     DecoderImpl::StateMachine => {
-                        let mut decoder = G4Decoder::<BitWriter>::new(width.into());
-                        decoder.set_fill_order(fill_order);
+                        let mut decoder = G4Decoder::<BitWriter>::new(fax.width as usize);
+                        decoder.set_fill_order(fax.fill_order);
                         decoder.decode(&bytes)?;
                         let store = decoder.into_store();
 
@@ -154,9 +235,9 @@ fn main() -> eyre::Result<()> {
                             pbm_to_io_writer(
                                 &mut buf_writer,
                                 &bitmap,
-                                width as usize,
+                                fax.width as usize,
                                 opt.invert,
-                                dbl,
+                                fax.is_dbl(),
                             )?;
                         }
 
@@ -165,7 +246,7 @@ fn main() -> eyre::Result<()> {
                             ccitt_t4_t6::ascii_art(
                                 &mut string,
                                 &bitmap,
-                                width as usize,
+                                fax.width as usize,
                                 opt.invert,
                             )
                             .unwrap();
@@ -178,6 +259,17 @@ fn main() -> eyre::Result<()> {
         }
         _ => Err(eyre!("Compression not supported: {:?}", compression)),
     }
+}
+
+fn output(opt: &Options, fax: &FaxTiffOptions, image: FaxImage) -> color_eyre::Result<()> {
+    if let Some(out) = &opt.pbm {
+        let file = std::fs::File::create(&out)?;
+        let mut buf_writer = BufWriter::new(file);
+        image.write_pbm(&mut buf_writer, fax.is_dbl(), opt.invert)?;
+    }
+    Ok(if opt.print {
+        image.print(opt.invert);
+    })
 }
 
 fn for_each_strip(
@@ -201,19 +293,14 @@ fn for_each_strip(
     Ok(())
 }
 
-/// Check for 'standard' resolution i.e. 2:1 so we can correct for it
-fn is_dbl(xres: Option<f64>, yres: Option<f64>) -> bool {
-    let mut dbl = false;
-    let res = xres.zip(yres);
-    if let Some(resolution) = res {
-        dbg!(resolution);
-        let aspect_ratio = resolution.0 / resolution.1;
-        dbg!(aspect_ratio);
-        if aspect_ratio.round() == 2.0 {
-            dbl = true;
-        }
-    }
-    dbl
+fn tag_u16<R: io::Read + io::Seek>(
+    tiff_decoder: &mut TiffDecoder<R>,
+    tag: Tag,
+) -> TiffResult<Option<u16>> {
+    Ok(tiff_decoder
+        .find_tag(tag)?
+        .map(Value::into_u16)
+        .transpose()?)
 }
 
 fn tag_compression_method<R: io::Read + io::Seek>(
