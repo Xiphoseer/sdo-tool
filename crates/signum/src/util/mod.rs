@@ -12,7 +12,7 @@ mod vfs;
 
 pub use bit_iter::{BitIter, ByteBits};
 pub(crate) use bit_writer::BitWriter;
-pub use buf::Buf;
+pub use buf::{Buf, Cow};
 pub use bytes::{Bytes16, Bytes32};
 pub use file_format::{
     FileFormatKind, FileFormatKindV1, Signum1Format, Signum3Format, SignumFormat,
@@ -20,7 +20,7 @@ pub use file_format::{
 pub use four_cc::FourCC;
 pub use parsers::V3Chunk;
 #[allow(unused_imports)]
-pub(crate) use parsers::{map_bstr, map_buf};
+pub(crate) use parsers::{map_bstr, map_buf, map_cow, map_cow_owned, map_cow_to_owned};
 pub use vfs::{AsyncIterator, LocalFS, VFS};
 
 /// A 16 bit position

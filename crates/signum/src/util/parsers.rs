@@ -9,6 +9,8 @@ use nom::{
     IResult, Parser,
 };
 
+use crate::util::Cow;
+
 use super::Buf;
 
 /// Parse a chunk
@@ -19,6 +21,36 @@ where
     F: Parser<&'a [u8], &'a [u8], E>,
 {
     map(parser, Buf)
+}
+
+/// Parse a chunk
+pub fn map_cow<'a, F, E: ParseError<&'a [u8]>>(
+    parser: F,
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Cow<'a>, E>
+where
+    F: Parser<&'a [u8], &'a [u8], E>,
+{
+    map(parser, Cow::new)
+}
+
+/// Parse a chunk
+pub fn map_cow_owned<'a, 'b, F, E: ParseError<&'b [u8]>>(
+    parser: F,
+) -> impl FnMut(&'b [u8]) -> IResult<&'b [u8], Cow<'a>, E>
+where
+    F: Parser<&'b [u8], Vec<u8>, E>,
+{
+    map(parser, Cow::new_owned)
+}
+
+/// Parse a chunk
+pub fn map_cow_to_owned<'a, 'b, F, E: ParseError<&'b [u8]>>(
+    parser: F,
+) -> impl FnMut(&'b [u8]) -> IResult<&'b [u8], Cow<'a>, E>
+where
+    F: Parser<&'b [u8], &'b [u8], E>,
+{
+    map_cow_owned(map(parser, Vec::from))
 }
 
 /// Parse a chunk

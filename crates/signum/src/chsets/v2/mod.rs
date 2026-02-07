@@ -14,14 +14,14 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     combinator::{map, map_opt, rest},
-    error::{context, ContextError, ParseError},
+    error::{context, ContextError, ParseError, VerboseError},
     multi::length_value,
     number::complete::{be_u16, be_u32},
     sequence::{preceded, terminated, tuple},
     IResult,
 };
 
-use crate::util::{map_buf, Buf};
+use crate::util::{map_cow, map_cow_to_owned, Cow};
 
 /// Tag (magic bytes) for Signum!3 (uncompressed) fonts
 pub const TAG_CHSET: &[u8; 12] = b"\0\0chset001\0\0";
@@ -33,7 +33,7 @@ pub const TAG_CHSET_COMPRESSED: &[u8; 12] = b"\0\x02chset001\0\0";
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct ChsetHeader<'a> {
-    rest: Buf<'a>,
+    rest: Cow<'a>,
 }
 
 impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
@@ -43,7 +43,15 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, rest) = map_buf(rest)(input)?;
+        let (input, rest) = map_cow(rest)(input)?;
+        Ok((input, ChsetHeader { rest }))
+    }
+
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>,
+    {
+        let (input, rest) = map_cow_to_owned(rest)(input)?;
         Ok((input, ChsetHeader { rest }))
     }
 }
@@ -52,7 +60,7 @@ impl<'a> ChsetChunk<'a> for ChsetHeader<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct FontDescriptor<'a> {
-    rest: Buf<'a>,
+    rest: Cow<'a>,
 }
 
 impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
@@ -62,7 +70,15 @@ impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, rest) = map_buf(rest)(input)?;
+        let (input, rest) = map_cow(rest)(input)?;
+        Ok((input, FontDescriptor { rest }))
+    }
+
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>,
+    {
+        let (input, rest) = map_cow_to_owned(rest)(input)?;
         Ok((input, FontDescriptor { rest }))
     }
 }
@@ -71,7 +87,7 @@ impl<'a> ChsetChunk<'a> for FontDescriptor<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct LigatureTable<'a> {
-    rest: Buf<'a>,
+    rest: Cow<'a>,
 }
 
 impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
@@ -81,7 +97,15 @@ impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, rest) = map_buf(rest)(input)?;
+        let (input, rest) = map_cow(rest)(input)?;
+        Ok((input, LigatureTable { rest }))
+    }
+
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>,
+    {
+        let (input, rest) = map_cow_to_owned(rest)(input)?;
         Ok((input, LigatureTable { rest }))
     }
 }
@@ -90,7 +114,7 @@ impl<'a> ChsetChunk<'a> for LigatureTable<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Characters<'a> {
-    rest: Buf<'a>,
+    rest: Cow<'a>,
 }
 
 impl<'a> ChsetChunk<'a> for Characters<'a> {
@@ -100,7 +124,15 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, rest) = map_buf(rest)(input)?;
+        let (input, rest) = map_cow(rest)(input)?;
+        Ok((input, Characters { rest }))
+    }
+
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>,
+    {
+        let (input, rest) = map_cow_to_owned(rest)(input)?;
         Ok((input, Characters { rest }))
     }
 }
@@ -109,7 +141,7 @@ impl<'a> ChsetChunk<'a> for Characters<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct KerningTable<'a> {
-    rest: Buf<'a>,
+    rest: Cow<'a>,
 }
 
 impl<'a> ChsetChunk<'a> for KerningTable<'a> {
@@ -119,58 +151,71 @@ impl<'a> ChsetChunk<'a> for KerningTable<'a> {
     where
         E: ParseError<&'a [u8]>,
     {
-        let (input, rest) = map_buf(rest)(input)?;
+        let (input, rest) = map_cow(rest)(input)?;
+        Ok((input, KerningTable { rest }))
+    }
+
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>,
+    {
+        let (input, rest) = map_cow_to_owned(rest)(input)?;
         Ok((input, KerningTable { rest }))
     }
 }
 
-fn parse_compressed<'a, E, T: ChsetChunk<'a>>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<'a, T>, E>
+fn parse_compressed<'a, E, T: ChsetChunk<'a>>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<T>, E>
 where
     E: ParseError<&'a [u8]>,
 {
-    let (input, len) = be_u32(input)?;
-    let (input, bytes) = map_buf(rest)(input)?;
-    Ok((input, Chunk::Compressed { len, bytes }))
+    let (input, _len) = be_u32(input)?;
+    let (input, iv) = be_u16(input)?;
+    let (input, bytes) = rest(input)?;
+    let mut data = Vec::new();
+    let mut bits = iv;
+    for chunk in bytes.chunks_exact(2) {
+        bits += 0x61;
+        let v = u16::from_be_bytes([chunk[0], chunk[1]]);
+        data.extend_from_slice(&(v ^ bits).to_be_bytes());
+    }
+    let (_, c) = T::parse_ext::<VerboseError<_>>(&data).unwrap();
+    Ok((input, Chunk::Compressed(iv, c)))
 }
 
 /// A Signum 3/4 font
 pub struct ChsetV2<'a> {
     /// `chset001` chunk
-    pub chset001: Chunk<'a, ChsetHeader<'a>>,
+    pub chset001: Chunk<ChsetHeader<'a>>,
     /// `fdeskr01` chunk
-    pub fdeskr01: Chunk<'a, FontDescriptor<'a>>,
+    pub fdeskr01: Chunk<FontDescriptor<'a>>,
     /// `lgtab001` chunk
-    pub lgtab001: Chunk<'a, LigatureTable<'a>>,
+    pub lgtab001: Chunk<LigatureTable<'a>>,
     /// `chars001` chunk
-    pub chars001: Chunk<'a, Characters<'a>>,
+    pub chars001: Chunk<Characters<'a>>,
     /// `kerntab1` chunk
-    pub kerntab1: Option<Chunk<'a, KerningTable<'a>>>,
+    pub kerntab1: Option<Chunk<KerningTable<'a>>>,
 }
 
 /// A character set chunk
 #[derive(Clone)]
-pub enum Chunk<'a, T> {
+pub enum Chunk<T> {
     /// An uncompresssed (Signum!3) chunk
     Plain(T),
     /// A compressed (Signum!4) chunk
-    Compressed {
-        /// Uncompressed length
-        len: u32,
-        /// Compressed bytes
-        bytes: Buf<'a>,
-    },
+    Compressed(u16, T),
 }
 
-impl<'a, T: ChsetChunk<'a>> fmt::Debug for Chunk<'a, T> {
+impl<'a, T: ChsetChunk<'a>> fmt::Debug for Chunk<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Plain(arg0) => arg0.fmt(f),
-            Self::Compressed { len, bytes } => f
-                .debug_struct("CompressedChunk")
-                .field("tag", &T::TAG)
-                .field("len", len)
-                .field("bytes", bytes)
-                .finish(),
+            Self::Compressed(_, arg0) => arg0.fmt(f),
+            /*Self::Compressed { len, bytes } => f
+            .debug_struct("CompressedChunk")
+            .field("tag", &T::TAG)
+            .field("len", len)
+            .field("bytes", bytes)
+            .finish(),*/
         }
     }
 }
@@ -184,7 +229,12 @@ trait ChsetChunk<'a>: fmt::Debug + Sized {
     where
         E: ParseError<&'a [u8]>;
 
-    fn parse_chunk<E>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<'a, Self>, E>
+    /// Parsing the content of a chunk
+    fn parse_ext<'b, E>(input: &'b [u8]) -> IResult<&'b [u8], Self, E>
+    where
+        E: ParseError<&'b [u8]>;
+
+    fn parse_chunk<E>(input: &'a [u8]) -> IResult<&'a [u8], Chunk<Self>, E>
     where
         E: ParseError<&'a [u8]>,
         E: ContextError<&'a [u8]>,
